@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "currency": "usd",
+  "data": [
+    {
+      "origin": "MAD",
+      "destination": "BCN",
+      "origin_airport": "MAD",
+      "destination_airport": "BCN",
+      "price": 52,
+      "airline": "VY",
+      "flight_number": "VY 6402",
+      "departure_at": "2026-11-07",
+      "return_at": "2026-11-14",
+      "transfers": 0,
+      "return_transfers": 0,
+      "duration": 150,
+      "duration_to": 150,
+      "duration_back": 145,
+      "link": "/search/MAD0711BCN1?t=VY1741580000000-1741590000000"
+    },
+    {
+      "origin": "MAD",
+      "destination": "BCN",
+      "origin_airport": "MAD",
+      "destination_airport": "BCN",
+      "price": 78,
+      "airline": "IB",
+      "flight_number": "IB 6252",
+      "departure_at": "2026-11-07",
+      "return_at": "2026-11-14",
+      "transfers": 1,
+      "return_transfers": 0,
+      "duration": 260,
+      "duration_to": 270,
+      "duration_back": 250,
+      "link": "/search/MAD0711BCN1?t=IB1741580100000-1741590300000"
+    },
+    {
+      "origin": "MAD",
+      "destination": "BCN",
+      "origin_airport": "MAD",
+      "destination_airport": "BCN",
+      "departure_at": "2026-11-07",
+      "airline": "FR",
+      "flight_number": "FR 9999",
+      "transfers": 0,
+      "duration": 140
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+name: nightly
+
+# 分层冒烟（评审报告 §4.2）：PR 层在 ci.yml；夜间跑集成冒烟：
+# 起 MySQL/Redis + FastAPI 后端（首启即自动迁移 schema），再跑 tests/api
+# 端到端（真实 LLM 生成，需 LLM_API_KEY secret，缺失时跳过）；
+# 另起浏览器金路径 E2E（注册→ChatIntake 一句话创建→详情页地图）。
+# （语义检索评测已随 RAG 退役整体删除。）
+# 手动触发：Actions → nightly → Run workflow。
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 02:00 Asia/Shanghai
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-smoke:
+    name: Integration smoke (tests/api)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: travel_assistant
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 -uroot -pci-only-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard (require LLM_API_KEY)
+        id: guard
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 LLM_API_KEY secret，跳过集成冒烟（tests/api 需要真实生成）"
+          fi
+      - uses: astral-sh/setup-uv@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install python deps
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        run: uv sync --frozen
+      - name: Start agent (hashed 向量：零模型下载)
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          REDIS_URL: redis://127.0.0.1:6379/0
+          AGENT_INTERNAL_TOKEN: ci-internal-token
+          # 本进程自己签发会话票：必须显式给 JWT_SECRET（≥32 字符），不能依赖空默认值
+          JWT_SECRET: ci-example-jwt-secret-at-least-32-chars
+        run: |
+          nohup uv run python main.py > /tmp/agent.log 2>&1 &
+      - name: Wait for services
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/agent/health >/dev/null && break || sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/api/agent/health
+          # 后端已统一到 FastAPI：这一步同时验证「空库启动即迁移」（Java 退役后没有 Flyway 了）
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/test/hello >/dev/null && break || sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/api/test/hello
+      - name: pytest tests/api
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          API_BASE_URL: http://127.0.0.1:8000
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: uv run pytest tests/api -q
+      - name: Real-LLM eval（小样本 3 例 + 防倒退门禁）
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          REDIS_URL: redis://127.0.0.1:6379/0
+        run: |
+          uv run python tests/agent_eval/llm_eval.py --path stream --limit 3 | tee llm_eval_small.json
+          # 防倒退门禁（SPEC v2.3 §8 A2）：failed run / Prompt 或生成路径漂移 / 一致率低于基线 → 红；
+          # degraded 如实呈现，不判失败。--path stream 是刻意的：产品实际走的逐日流式。
+          uv run python tests/agent_eval/eval_gate.py
+          # trip 图路径（同步 /v1/generate）独立小样本（审查 P2-6）：它是**唯一带
+          # validate_plans 终检**的链，此前零真实 LLM 覆盖（"最强的链没被真实评测，
+          # 被评测的链没有终检"）。2 例、报告落 llm_report_graph.json，与 stream 的
+          # 深度基线互不套用；首跑后作者按实测把 eval_gate 的 graph 深度下限认账抬升。
+          uv run python tests/agent_eval/llm_eval.py --path graph --limit 2 --out-stem llm_report_graph | tee llm_eval_graph_small.json
+          uv run python tests/agent_eval/eval_gate.py --path graph
+      - name: Usage 软棘轮（L5a：真实评测的调用/token 上限，首跑后按实测校准数字）
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        run: >
+          uv run python scripts/usage_report.py --check
+          --latest 5 --max-calls 120 --max-total-tokens 260000
+      - uses: actions/upload-artifact@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          name: nightly-eval
+          path: |
+            travel-agent-python/llm_eval_small.json
+            travel-agent-python/llm_eval_graph_small.json
+            travel-agent-python/tests/agent_eval/report
+
+  frontend-golden-e2e:
+    name: Golden path E2E (browser)
+    # 真浏览器金路径：注册登录 → ChatIntake 一句话创建 → 生成进度 → 详情页地图。
+    # 生成走真实 LLM（同 tests/api 口径），没有 LLM_API_KEY 时跳过；LLM/代理劣化
+    # 夜可能红——那是产品可观测的真实回归（生成卡死/永不终态），不是脚本抖动。
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: travel_assistant
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 -uroot -pci-only-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard (require LLM_API_KEY)
+        id: guard
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 LLM_API_KEY secret，跳过浏览器金路径 E2E（需真实生成）"
+          fi
+      - uses: astral-sh/setup-uv@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install python deps
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        run: uv sync --frozen
+      - name: Start agent backend
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          REDIS_URL: redis://127.0.0.1:6379/0
+          AGENT_INTERNAL_TOKEN: ci-internal-token
+          JWT_SECRET: ci-example-jwt-secret-at-least-32-chars
+        run: |
+          nohup uv run python main.py > /tmp/agent.log 2>&1 &
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: travel-frontend-react/package-lock.json
+      - name: Install frontend deps
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-frontend-react
+        run: npm ci
+      - name: Start vite dev server
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-frontend-react
+        run: |
+          nohup npm run dev > /tmp/vite.log 2>&1 &
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:5173/ >/dev/null && break || sleep 2
+          done
+          curl -sf http://localhost:5173/ >/dev/null
+      - name: Wait for backend
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/test/hello >/dev/null && break || sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/api/test/hello
+      - name: Run golden path E2E
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-frontend-react
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://127.0.0.1:8000
+          # ubuntu runner 预装 Chrome（无 Edge），指定 channel 免下载浏览器
+          E2E_CHANNEL: chrome
+        run: node e2e/golden-path.mjs
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "=== agent.log (tail) ==="; tail -200 /tmp/agent.log || true
+          echo "=== vite.log (tail) ==="; tail -60 /tmp/vite.log || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-golden-artifacts
+          path: travel-frontend-react/e2e/artifacts/
+
+  llm-judge:
+    name: LLM-as-judge 校准（仅 nightly，D7：不进 PR 门禁）
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard (require LLM_API_KEY)
+        id: guard
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 LLM_API_KEY secret，跳过 judge 校准"
+          fi
+      - uses: astral-sh/setup-uv@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        if: steps.guard.outputs.skip != 'true'
+        run: uv sync --frozen
+      - name: Judge 30 条人工校准集（异家族 judge，四维一致性）
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # judge 模型自 2026-10-04 起走角色键（app/common/model_registry.py）：
+          # LLM_ROLE_JUDGE 留空复用 main；要跑成"异家族"须另配 provider 并把角色指向它
+        run: uv run python tests/agent_eval/judge.py
+      - uses: actions/upload-artifact@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          name: nightly-judge
+          path: travel-agent-python/tests/agent_eval/report/nightly
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "=== agent.log (tail) ==="; tail -200 /tmp/agent.log || true

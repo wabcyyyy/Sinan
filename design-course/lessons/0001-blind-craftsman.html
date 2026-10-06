@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0001 · 闭眼工匠 —— 为什么 AI 生成的前端总有模板味</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  /* 本课专属：对照演示（demo 卡）。可复用的部分都在 assets/，这里只放一次性内容。 */
+
+  .demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+    margin: var(--sp-4) 0 var(--sp-6);
+  }
+  @media (max-width: 720px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  .demo-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: var(--sp-2);
+  }
+
+  /* ---- 左卡：典型 AI 默认输出（不是丑化稻草人，就是那种"能用但糙"）---- */
+  .demo-slop {
+    border: 1px solid #c9c9c9;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+  }
+  .demo-slop h3 { font-size: 16px; margin: 0 0 6px; color: #000; }
+  .demo-slop p { margin: 0 0 10px; }
+  .slop-badges { margin-bottom: 8px; }
+  .slop-badges span {
+    display: inline-block; font-size: 12px; padding: 2px 8px;
+    border-radius: 999px; margin-right: 4px;
+  }
+  .bd-red   { background: #fee2e2; color: #dc2626; }
+  .bd-green { background: #dcfce7; color: #16a34a; }
+  .bd-blue  { background: #dbeafe; color: #2563eb; }
+  .slop-actions button {
+    font-size: 13px; padding: 6px 14px; margin-right: 6px;
+    border-radius: 6px; cursor: default; border: 1px solid #ccc;
+    background: #fff; color: #333;
+  }
+  .slop-actions .btn-blue {
+    background: #3b82f6; border-color: #3b82f6; color: #fff;
+  }
+
+  /* ---- 右卡：同一信息，做过 6 个微决策之后 ---- */
+  .demo-polished {
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+  }
+  .pol-eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: var(--sp-2);
+  }
+  .demo-polished h3 {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
+    line-height: 1.4; margin: 0 0 var(--sp-2);
+  }
+  .demo-polished .pol-body {
+    font-size: 13px; line-height: 1.65; color: var(--ink-2);
+    margin: 0 0 var(--sp-3);
+  }
+  .pol-meta { font-size: 12px; color: var(--ink-3); margin-bottom: var(--sp-4); }
+  .pol-meta i { font-style: normal; margin: 0 6px; opacity: .6; }
+  .pol-actions { display: flex; align-items: center; gap: var(--sp-3); }
+  .btn-ink {
+    font-size: 13px; font-weight: 500;
+    background: var(--accent); color: var(--accent-ink);
+    border: none; border-radius: 999px; padding: 8px 18px; cursor: default;
+  }
+  .btn-quiet {
+    font-size: 13px; background: none; border: none;
+    color: var(--ink-3); padding: 8px 4px; cursor: default;
+  }
+  .btn-quiet:hover { color: var(--ink); }
+
+  /* ---- 微决策注释列表 ---- */
+  .notes-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2) var(--sp-6);
+    font-size: var(--fs-small); color: var(--ink-2);
+  }
+  @media (max-width: 720px) { .notes-grid { grid-template-columns: 1fr; } }
+  .notes-grid div { padding-left: 1.6em; position: relative; }
+  .notes-grid .n {
+    position: absolute; left: 0; top: 0.35em;
+    font-size: 11px; font-weight: 600; color: var(--ink-3);
+  }
+  .demo-caption { font-size: var(--fs-caption); color: var(--ink-3); margin-top: var(--sp-2); }
+</style>
+</head>
+<body>
+<article class="lesson">
+
+  <div class="eyebrow">司南设计课 · Lesson 0001 · 约 10 分钟 + 10 分钟作业</div>
+  <h1>闭眼工匠</h1>
+  <p class="lede">为什么 AI 生成的前端总有"模板味"，为什么换更好的工具也不解决——以及你今天就能用的第一个杠杆。</p>
+
+  <h2><span class="sec">§1</span>先说结论：问题不在你的技巧</h2>
+  <p>你换了工具（Astra）仍不满意，这本身就是线索：<strong>换工具无效，说明瓶颈不在工具，在流程</strong>。默认的 vibe-coding 流程有一个结构性缺陷——<em>AI 写代码，但从不看渲染出来的页面</em>。</p>
+  <p>想象你雇了一位工匠，他闭着眼睛干活，做完也不睁眼检查。无论他手艺多好、你换多少位工匠，结果都一样：能用，但糙。你对前端的不满，绝大多数来自这批"需要眼睛才能发现"的问题：标题折行了、两张卡片没对齐、行距挤得喘不过气、按钮和输入框高度差 2px。</p>
+  <p>商业网站好看，也不是因为设计师天赋异禀——他们的工作 90% 是"看 → 调 → 再看"的循环。你缺的是这个环。好消息：这个环可以建，而且你一个人 + AI 就能建。</p>
+
+  <h2><span class="sec">§2</span>模板味的三个根因</h2>
+
+  <h3>根因一：均值回归</h3>
+  <p>语言模型输出的是训练数据里<strong>平均水平</strong>的设计——千万个 Bootstrap 后台和 Tailwind 默认蓝的均值。商业网站好看，恰恰因为它们<em>偏离均值</em>：有人做过一连串明确的取舍（近黑按钮而不是蓝按钮、24px 卡片内边距而不是 10px、四档字号而不是一档）。</p>
+  <p>你不给取舍清单，模型只能给均值。这就是"模板味"的本质：<strong>没有人做过决定的地方，就是模板</strong>。</p>
+
+  <h3>根因二：盲眼工匠</h3>
+  <p>AI 看不见像素。它不知道你的行程卡片在 375px 宽的屏幕上标题换行了三行，不知道两个相邻模块的左边缘差了 8px，不知道浅灰字放在浅灰底上已经看不清。这些全都需要"渲染 → 截图 → 看"这个动作。没有它，AI 是在<strong>凭想象调样式</strong>；有它，每一次修改都有像素级的事实反馈。</p>
+
+  <h3>根因三：形容词没有信息量</h3>
+  <p>"优雅""高级""现代""有质感"——这些词在不同人脑中激活的画面完全不同，对模型也一样。你给形容词，它只能猜；而猜的默认方向永远是训练均值——绕回根因一。有效的输入是<strong>可测量的锚点</strong>：截图、具体字号、具体间距、色板约束、"对齐到这一条线"、"参照这个网站的这一块"。</p>
+  <div class="callout">
+    <span class="tag">你已经有家底</span>
+    仓库根目录的 <code>TREK-DESIGN-STYLE.md</code> 是一份 563 行的取舍清单（色板 / 字号四档 / 间距节奏 / 组件规格都提好了）。第 2 课我们把它变成 AI <strong>每次必读、甩不掉</strong>的约束——现在它只是一份"存在"的文档，还没进入你的日常循环。
+  </div>
+
+  <h2><span class="sec">§3</span>对照实验：同一张行程卡片的两种命运</h2>
+  <p>两张卡片信息量相同，右卡没有用任何图片、图标库或动画。差别只在 6 个可测量的微决策：</p>
+
+  <div class="demo-grid">
+    <div>
+      <div class="demo-label">AI 默认输出</div>
+      <div class="demo-slop">
+        <h3>Day 2 京都东部一日游 🎌</h3>
+        <div class="slop-badges"><span class="bd-red">美食</span><span class="bd-green">文化</span><span class="bd-blue">夜景</span></div>
+        <p>上午参观清水寺，中午在二年坂品尝抹茶甜品，下午漫步祇园，晚上到鸭川看夜景。建议穿着舒适的鞋子，注意防晒补水。</p>
+        <div class="slop-actions"><button class="btn-blue">查看地图</button><button>编辑</button><button>删除</button></div>
+      </div>
+    </div>
+    <div>
+      <div class="demo-label">6 个微决策之后</div>
+      <div class="demo-polished">
+        <div class="pol-eyebrow">Day 2 · 京都东部</div>
+        <h3>清水寺 → 二年坂 → 祇园 → 鸭川</h3>
+        <p class="pol-body">上午清水寺，中午二年坂抹茶小憩，下午祇园漫步，傍晚鸭川纳凉。</p>
+        <div class="pol-meta">步行 6.5 km<i>·</i>09:30–20:00<i>·</i>舒适鞋</div>
+        <div class="pol-actions"><button class="btn-ink">查看地图 ↗</button><button class="btn-quiet">编辑</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes-grid">
+    <div><span class="n">①</span><strong>层级</strong>：17px/600 标题 + 13px 正文 + 11px 大写小标签，三档拉开；左卡标题正文全是同一个字号区间</div>
+    <div><span class="n">②</span><strong>颜色</strong>：一个近黑主色 + 中性灰阶；左卡蓝按钮 + 红绿蓝三色标签在互相打架</div>
+    <div><span class="n">③</span><strong>留白</strong>：内边距 10/12 → 20/22，行距 1.5 → 1.65，间距全部 4 的倍数</div>
+    <div><span class="n">④</span><strong>信息分层</strong>：把"建议穿舒适鞋"从正文降级进 meta 行；把"删除"从三个并排按钮里拿掉（主次操作分离）</div>
+    <div><span class="n">⑤</span><strong>轮廓</strong>：hairline 边框 + 轻阴影替代 1px 灰实线；圆角 6 → 14，与卡片体量匹配</div>
+    <div><span class="n">⑥</span><strong>符号</strong>：去 emoji，用中点、箭头这类单色字符——色彩预算留给内容本身</div>
+  </div>
+  <p class="demo-caption">把这 6 条逐个念一遍你会发现：<strong>没有一条需要美术功底</strong>。全部是可测量的参数。所谓设计感，就是一致地做对几十个这样的小参数，而不是灵感。</p>
+
+  <h2><span class="sec">§4</span>检查一下直觉</h2>
+
+  <div class="quiz" data-explain="廉价感最常见的来源是层级与节奏的缺失：元素大小接近、间距随意、没有呼吸感。加颜色和加动画通常是反向操作——它让页面更花，是均值回归的加速器。">
+    <p class="quiz-q">一版 AI 生成的页面"说不上哪里不对，但就是廉价"。最可能的根因是？</p>
+    <button class="quiz-option">页面颜色太少，显得太朴素了</button>
+    <button class="quiz-option" data-answer="right">层级与留白缺少一致的节奏</button>
+    <button class="quiz-option">动画效果太少，缺少了动感</button>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <div class="quiz" data-explain="闭环越紧、纠偏越早、成本越低。攒一批再看会让问题互相污染、来回翻烧饼；直接上线是把最贵的反馈留给最贵的受众。截图反馈应该是每一轮修改的一部分，不是最后的总结。">
+    <p class="quiz-q">你让 AI 改完一处 UI 之后，下一步最应该做的是？</p>
+    <button class="quiz-option">继续改下一个组件，攒一批再看</button>
+    <button class="quiz-option" data-answer="right">截图渲染结果给 AI，确认再改</button>
+    <button class="quiz-option">直接部署上线，等用户来反馈</button>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <h2><span class="sec">§5</span>本课带走的东西：把形容词翻译成锚点</h2>
+  <p>从今天起，对自己说"这页好丑"的时候，逼自己过一遍这五个问题——<strong>每题的答案都带数字或带指向</strong>（可打印版在 <a href="../reference/five-question-ui-self-check.html">五问自检卡</a>）：</p>
+  <ol>
+    <li><strong>层级</strong>：这一屏有几档字号？少于 3 档（正文/标题没拉开）通常就是"平"的来源。</li>
+    <li><strong>留白</strong>：最挤的容器的内边距是多少 px？正文行高是多少？行高 1.5 以下、内边距 16px 以下，多半在喘不过气。</li>
+    <li><strong>颜色</strong>：除黑白灰之外有几种彩色？超过 2 种主色通常在打架；accent 只该有一个。</li>
+    <li><strong>对齐</strong>：同屏的卡片、文字、图标，左右边缘有没有压到同一条参考线？</li>
+    <li><strong>密度</strong>：信息量与留白的比例，和对标产品（TREK）比是过疏还是过挤？</li>
+  </ol>
+  <p>然后把答案写成指令。模板：<strong>「把 X 从 A 改成 B，参照 Y」</strong>。例："卡片内边距 12px → 20px，行高 1.5 → 1.65，参照 TREK-DESIGN-STYLE.md §4.1 的间距节奏。"</p>
+
+  <h2><span class="sec">§6</span>作业（10 分钟，下次 session 带回来）</h2>
+  <ol>
+    <li>打开司南任何一个你不满意的页面，截一张全屏图。</li>
+    <li>用 §5 的五问逐项过，把答案写下来（<strong>要带数字</strong>）。</li>
+    <li>挑出 3 条，改写成给 AI 的指令（用上面的模板）。<strong>指令里禁止出现"优雅 / 高级 / 质感 / 大气 / 现代"</strong>——每个要求必须能量出来，或指得出位置。</li>
+    <li>下次 session 带着这份清单来，我们当场改一轮，并把"截图 → 改 → 再截图"的闭环完整跑一遍。</li>
+  </ol>
+
+  <h2><span class="sec">§7</span>深入阅读（本课 primary source）</h2>
+  <p>Erik Kennedy，<a href="https://learnui.design/blog/7-rules-for-creating-gorgeous-ui-part-1.html"><em>7 Rules for Creating Gorgeous UI</em>（2024 更新版，免费）</a>。重点读 Rule 2「Black and White First」和 Rule 3「Double Your Whitespace」——它们正是 §5 第 3、2 问的理论背书。读完 Part 1 再看 <a href="https://learnui.design/blog/7-rules-for-creating-gorgeous-ui-part-2.html">Part 2</a>。</p>
+
+  <footer class="lesson-footer">
+    <p>下一课预告 <strong>0002 · 甩不掉的约束</strong>：把 <code>TREK-DESIGN-STYLE.md</code> 接进 AI 工作流（token 先行 + 参考截图的给法 + theme:lint 执法），让均值回归没有发生的空间。</p>
+    <p>任何不清楚的地方，回到对话里直接问你的 agent——提问是课程的一部分，不是打扰。</p>
+    <p>课程文件：<a href="../MISSION.md">MISSION.md</a> · <a href="../RESOURCES.md">RESOURCES.md</a> · <a href="../reference/five-question-ui-self-check.html">五问自检卡</a></p>
+  </footer>
+
+</article>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

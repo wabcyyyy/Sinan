@@ -1,0 +1,8 @@
+[
+  {"name": "kyoto-baseline", "prompt_version": "", "city": "京都", "days": 3, "persons": 2, "budget": 50000, "preferences": ["二次元", "文化"]},
+  {"name": "kyoto-themed", "prompt_version": "", "city": "京都", "days": 3, "persons": 2, "budget": 50000, "preferences": ["二次元", "文化"], "intent": "京都 3 日《千恋万花》圣地巡礼，住柏悦，节奏松弛"},
+  {"name": "hangzhou-baseline", "prompt_version": "", "city": "杭州", "days": 1, "persons": 2, "preferences": ["亲子"]},
+  {"name": "hangzhou-themed", "prompt_version": "", "city": "杭州", "days": 1, "persons": 2, "preferences": ["亲子"], "intent": "带 5 岁娃的杭州一日，以动物和自然科学为主，节奏松弛"},
+  {"name": "chengdu-baseline", "prompt_version": "", "city": "成都", "days": 2, "persons": 2, "preferences": ["美食"]},
+  {"name": "chengdu-themed", "prompt_version": "", "city": "成都", "days": 2, "persons": 2, "preferences": ["美食"], "intent": "成都两日老味道深度游，只吃本地人排队的老店，避开网红连锁"}
+]

@@ -1,0 +1,2726 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "LoginBody": {
+      "properties": {
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "title": "LoginBody",
+      "type": "object"
+    },
+    "RegisterBody": {
+      "properties": {
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string"
+        },
+        "nickname": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nickname"
+        }
+      },
+      "required": [
+        "username",
+        "password",
+        "nickname"
+      ],
+      "title": "RegisterBody",
+      "type": "object"
+    },
+    "UserInfoVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "nickname": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Nickname"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Phone"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Role"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "nickname",
+        "phone",
+        "role"
+      ],
+      "title": "UserInfoVO",
+      "type": "object"
+    },
+    "LoginData": {
+      "properties": {
+        "user": {
+          "$ref": "#/$defs/UserInfoVO"
+        }
+      },
+      "required": [
+        "user"
+      ],
+      "title": "LoginData",
+      "type": "object"
+    },
+    "GenerateTripRequest": {
+      "properties": {
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days"
+        },
+        "persons": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 1,
+          "title": "Persons"
+        },
+        "stayNights": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Staynights"
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "endDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enddate"
+        },
+        "budget": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget"
+        },
+        "preferences": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferences"
+        },
+        "hotelTier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hoteltier"
+        },
+        "regionHint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Regionhint"
+        },
+        "originCity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origincity"
+        },
+        "requirements": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirements"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        }
+      },
+      "title": "GenerateTripRequest",
+      "type": "object",
+      "required": [
+        "city",
+        "days",
+        "persons",
+        "stayNights",
+        "startDate",
+        "endDate",
+        "budget",
+        "preferences",
+        "hotelTier",
+        "regionHint",
+        "originCity",
+        "requirements",
+        "intent"
+      ]
+    },
+    "ItemUpsertRequest": {
+      "properties": {
+        "dayId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayid"
+        },
+        "itemType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemtype"
+        },
+        "poiName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Poiname"
+        },
+        "poiId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Poiid"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "format": "time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "format": "time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "durationMin": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationmin"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
+        },
+        "openTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opentime"
+        },
+        "imageUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imageurl"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "sourceUpdatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceupdatedat"
+        },
+        "verificationStatus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verificationstatus"
+        },
+        "valueKind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valuekind"
+        },
+        "freshnessStatus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freshnessstatus"
+        },
+        "reviewRequirement": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewrequirement"
+        },
+        "factEvidenceJson": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factevidencejson"
+        }
+      },
+      "title": "ItemUpsertRequest",
+      "type": "object",
+      "required": [
+        "dayId",
+        "itemType",
+        "poiName",
+        "poiId",
+        "address",
+        "latitude",
+        "longitude",
+        "startTime",
+        "endTime",
+        "durationMin",
+        "cost",
+        "tag",
+        "remark",
+        "openTime",
+        "imageUrl",
+        "source",
+        "sourceUpdatedAt",
+        "verificationStatus",
+        "valueKind",
+        "freshnessStatus",
+        "reviewRequirement",
+        "factEvidenceJson"
+      ]
+    },
+    "HotelOptionRequest": {
+      "properties": {
+        "hotelName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hotelname"
+        },
+        "tier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tier"
+        },
+        "roomType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roomtype"
+        },
+        "dayNos": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daynos"
+        },
+        "actionMessageId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actionmessageid"
+        },
+        "baseRevision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baserevision"
+        }
+      },
+      "title": "HotelOptionRequest",
+      "type": "object",
+      "required": [
+        "hotelName",
+        "tier",
+        "roomType",
+        "dayNos",
+        "actionMessageId",
+        "baseRevision"
+      ]
+    },
+    "LiveQuotesBody": {
+      "properties": {
+        "startDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "endDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enddate"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
+        }
+      },
+      "title": "LiveQuotesBody",
+      "type": "object",
+      "required": [
+        "startDate",
+        "endDate",
+        "limit"
+      ]
+    },
+    "PreferenceSignalsBody": {
+      "properties": {
+        "explicitPreferences": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explicitpreferences"
+        },
+        "hardConstraints": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hardconstraints"
+        },
+        "negativePreferences": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Negativepreferences"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        }
+      },
+      "title": "PreferenceSignalsBody",
+      "type": "object",
+      "required": [
+        "explicitPreferences",
+        "hardConstraints",
+        "negativePreferences",
+        "source",
+        "confidence"
+      ]
+    },
+    "VersionBody": {
+      "properties": {
+        "operation": {
+          "default": "snapshot",
+          "title": "Operation",
+          "type": "string"
+        },
+        "summary": {
+          "default": "行程快照",
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "title": "VersionBody",
+      "type": "object",
+      "required": [
+        "operation",
+        "summary"
+      ]
+    },
+    "OptimizeDayBody": {
+      "properties": {
+        "dayId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayid"
+        }
+      },
+      "title": "OptimizeDayBody",
+      "type": "object",
+      "required": [
+        "dayId"
+      ]
+    },
+    "UpdateDayBody": {
+      "properties": {
+        "theme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Theme"
+        }
+      },
+      "title": "UpdateDayBody",
+      "type": "object",
+      "required": [
+        "theme"
+      ]
+    },
+    "NlEditBody": {
+      "properties": {
+        "instruction": {
+          "default": "",
+          "title": "Instruction",
+          "type": "string"
+        }
+      },
+      "title": "NlEditBody",
+      "type": "object",
+      "required": [
+        "instruction"
+      ]
+    },
+    "ApplyPlansBody": {
+      "properties": {
+        "plans": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plans"
+        },
+        "actionMessageId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actionmessageid"
+        },
+        "baseRevision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baserevision"
+        }
+      },
+      "title": "ApplyPlansBody",
+      "type": "object",
+      "required": [
+        "plans",
+        "actionMessageId",
+        "baseRevision"
+      ]
+    },
+    "ChatEditBody": {
+      "properties": {
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        },
+        "history": {
+          "default": [],
+          "items": {
+            "type": "object"
+          },
+          "title": "History",
+          "type": "array"
+        }
+      },
+      "title": "ChatEditBody",
+      "type": "object",
+      "required": [
+        "message",
+        "history"
+      ]
+    },
+    "CoverBody": {
+      "properties": {
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "unsplashId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unsplashid"
+        }
+      },
+      "required": [
+        "source",
+        "unsplashId"
+      ],
+      "title": "CoverBody",
+      "type": "object"
+    },
+    "FavoriteBody": {
+      "properties": {
+        "favorite": {
+          "title": "Favorite",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "favorite"
+      ],
+      "title": "FavoriteBody",
+      "type": "object"
+    },
+    "ArchiveBody": {
+      "properties": {
+        "archived": {
+          "title": "Archived",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "archived"
+      ],
+      "title": "ArchiveBody",
+      "type": "object"
+    },
+    "ShareCreateBody": {
+      "properties": {
+        "expireDays": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expiredays"
+        }
+      },
+      "title": "ShareCreateBody",
+      "type": "object",
+      "required": [
+        "expireDays"
+      ]
+    },
+    "ExpenseCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "attraction",
+            "food",
+            "hotel",
+            "transport",
+            "shopping",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 99999999.99,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Amount"
+        },
+        "currency": {
+          "default": "CNY",
+          "maxLength": 3,
+          "minLength": 3,
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "spentAt": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spentat"
+        },
+        "paymentMethod": {
+          "anyOf": [
+            {
+              "maxLength": 24,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paymentmethod"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "category",
+        "amount",
+        "currency",
+        "dayNo",
+        "itemId",
+        "spentAt",
+        "paymentMethod",
+        "note"
+      ],
+      "title": "ExpenseCreate",
+      "type": "object"
+    },
+    "ExpenseUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "attraction",
+                "food",
+                "hotel",
+                "transport",
+                "shopping",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 99999999.99,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "maxLength": 3,
+              "minLength": 3,
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "spentAt": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spentat"
+        },
+        "paymentMethod": {
+          "anyOf": [
+            {
+              "maxLength": 24,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paymentmethod"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "title": "ExpenseUpdate",
+      "type": "object",
+      "required": [
+        "category",
+        "amount",
+        "currency",
+        "dayNo",
+        "itemId",
+        "spentAt",
+        "paymentMethod",
+        "note"
+      ]
+    },
+    "ExpenseVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "userId": {
+          "title": "Userid",
+          "type": "integer"
+        },
+        "category": {
+          "enum": [
+            "attraction",
+            "food",
+            "hotel",
+            "transport",
+            "shopping",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "amount": {
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 3,
+          "minLength": 3,
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "spentAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spentat"
+        },
+        "paymentMethod": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paymentmethod"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "itineraryId",
+        "userId",
+        "category",
+        "amount",
+        "currency",
+        "dayNo",
+        "itemId",
+        "spentAt",
+        "paymentMethod",
+        "note",
+        "createdAt"
+      ],
+      "title": "ExpenseVO",
+      "type": "object"
+    },
+    "ExpenseCategoryTotal": {
+      "properties": {
+        "category": {
+          "enum": [
+            "attraction",
+            "food",
+            "hotel",
+            "transport",
+            "shopping",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "currency": {
+          "maxLength": 3,
+          "minLength": 3,
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "amount": {
+          "title": "Amount",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "currency",
+        "amount"
+      ],
+      "title": "ExpenseCategoryTotal",
+      "type": "object"
+    },
+    "ExpenseListVO": {
+      "properties": {
+        "expenses": {
+          "items": {
+            "$ref": "#/$defs/ExpenseVO"
+          },
+          "title": "Expenses",
+          "type": "array"
+        },
+        "totals": {
+          "items": {
+            "$ref": "#/$defs/ExpenseCategoryTotal"
+          },
+          "title": "Totals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "expenses",
+        "totals"
+      ],
+      "title": "ExpenseListVO",
+      "type": "object"
+    },
+    "InvitationCreate": {
+      "properties": {
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role"
+      ],
+      "title": "InvitationCreate",
+      "type": "object"
+    },
+    "InvitationVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "expiresAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expiresat"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "acceptedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Acceptedat"
+        },
+        "acceptedBy": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Acceptedby"
+        },
+        "revokedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Revokedat"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "accepted",
+            "revoked",
+            "expired"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "itineraryId",
+        "role",
+        "expiresAt",
+        "createdAt",
+        "acceptedAt",
+        "acceptedBy",
+        "revokedAt",
+        "status"
+      ],
+      "title": "InvitationVO",
+      "type": "object"
+    },
+    "InvitationCreatedVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "expiresAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expiresat"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "acceptedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Acceptedat"
+        },
+        "acceptedBy": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Acceptedby"
+        },
+        "revokedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Revokedat"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "accepted",
+            "revoked",
+            "expired"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "token": {
+          "maxLength": 256,
+          "minLength": 16,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "itineraryId",
+        "role",
+        "expiresAt",
+        "createdAt",
+        "acceptedAt",
+        "acceptedBy",
+        "revokedAt",
+        "status",
+        "token"
+      ],
+      "title": "InvitationCreatedVO",
+      "type": "object"
+    },
+    "InvitationListVO": {
+      "properties": {
+        "invitations": {
+          "items": {
+            "$ref": "#/$defs/InvitationVO"
+          },
+          "title": "Invitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "invitations"
+      ],
+      "title": "InvitationListVO",
+      "type": "object"
+    },
+    "MemberVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "userId": {
+          "title": "Userid",
+          "type": "integer"
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Username"
+        },
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "itineraryId",
+        "userId",
+        "username",
+        "role",
+        "createdAt"
+      ],
+      "title": "MemberVO",
+      "type": "object"
+    },
+    "MemberListVO": {
+      "properties": {
+        "members": {
+          "items": {
+            "$ref": "#/$defs/MemberVO"
+          },
+          "title": "Members",
+          "type": "array"
+        }
+      },
+      "required": [
+        "members"
+      ],
+      "title": "MemberListVO",
+      "type": "object"
+    },
+    "MemberRoleUpdate": {
+      "properties": {
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role"
+      ],
+      "title": "MemberRoleUpdate",
+      "type": "object"
+    },
+    "InvitationAcceptRequest": {
+      "properties": {
+        "token": {
+          "maxLength": 256,
+          "minLength": 16,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "title": "InvitationAcceptRequest",
+      "type": "object"
+    },
+    "InvitationAcceptVO": {
+      "properties": {
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "role": {
+          "enum": [
+            "editor",
+            "viewer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "itineraryId",
+        "role",
+        "title"
+      ],
+      "title": "InvitationAcceptVO",
+      "type": "object"
+    },
+    "FeedbackCreate": {
+      "properties": {
+        "itemId": {
+          "minimum": 1,
+          "title": "Itemid",
+          "type": "integer"
+        },
+        "value": {
+          "enum": [
+            "right",
+            "wrong"
+          ],
+          "title": "Value",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "wrong_location",
+                "wrong_time",
+                "wrong_price",
+                "not_interested",
+                "closed",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "itemId",
+        "value",
+        "reason",
+        "note"
+      ],
+      "title": "FeedbackCreate",
+      "type": "object"
+    },
+    "FeedbackVO": {
+      "properties": {
+        "itemId": {
+          "title": "Itemid",
+          "type": "integer"
+        },
+        "value": {
+          "enum": [
+            "right",
+            "wrong"
+          ],
+          "title": "Value",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "wrong_location",
+                "wrong_time",
+                "wrong_price",
+                "not_interested",
+                "closed",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "updatedAt": {
+          "title": "Updatedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "itemId",
+        "value",
+        "reason",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "FeedbackVO",
+      "type": "object"
+    },
+    "FeedbackListVO": {
+      "properties": {
+        "feedbacks": {
+          "items": {
+            "$ref": "#/$defs/FeedbackVO"
+          },
+          "title": "Feedbacks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "feedbacks"
+      ],
+      "title": "FeedbackListVO",
+      "type": "object"
+    },
+    "TemplateCostTier": {
+      "properties": {
+        "category": {
+          "enum": [
+            "门票",
+            "餐饮",
+            "交通",
+            "酒店"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "amountRangeText": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Amountrangetext",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "amountRangeText"
+      ],
+      "title": "TemplateCostTier",
+      "type": "object"
+    },
+    "TemplateItemVO": {
+      "properties": {
+        "poiName": {
+          "title": "Poiname",
+          "type": "string"
+        },
+        "itemType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemtype"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        }
+      },
+      "required": [
+        "poiName",
+        "itemType",
+        "startTime",
+        "endTime",
+        "latitude",
+        "longitude"
+      ],
+      "title": "TemplateItemVO",
+      "type": "object"
+    },
+    "TemplateDayVO": {
+      "properties": {
+        "dayNo": {
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Theme"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/TemplateItemVO"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dayNo",
+        "theme",
+        "items"
+      ],
+      "title": "TemplateDayVO",
+      "type": "object"
+    },
+    "TemplateSummaryVO": {
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "days": {
+          "title": "Days",
+          "type": "integer"
+        },
+        "persons": {
+          "title": "Persons",
+          "type": "integer"
+        },
+        "intro": {
+          "title": "Intro",
+          "type": "string"
+        },
+        "costTiers": {
+          "items": {
+            "$ref": "#/$defs/TemplateCostTier"
+          },
+          "title": "Costtiers",
+          "type": "array"
+        },
+        "dayList": {
+          "items": {
+            "$ref": "#/$defs/TemplateDayVO"
+          },
+          "title": "Daylist",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "city",
+        "days",
+        "persons",
+        "intro",
+        "costTiers",
+        "dayList"
+      ],
+      "title": "TemplateSummaryVO",
+      "type": "object"
+    },
+    "TemplatePublishVO": {
+      "properties": {
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "publishedAt": {
+          "title": "Publishedat",
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/TemplateSummaryVO"
+        }
+      },
+      "required": [
+        "itineraryId",
+        "publishedAt",
+        "summary"
+      ],
+      "title": "TemplatePublishVO",
+      "type": "object"
+    },
+    "TemplateCardVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "days": {
+          "title": "Days",
+          "type": "integer"
+        },
+        "coverUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverurl"
+        },
+        "costTiers": {
+          "items": {
+            "$ref": "#/$defs/TemplateCostTier"
+          },
+          "title": "Costtiers",
+          "type": "array"
+        },
+        "publishedAt": {
+          "title": "Publishedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "city",
+        "days",
+        "coverUrl",
+        "costTiers",
+        "publishedAt"
+      ],
+      "title": "TemplateCardVO",
+      "type": "object"
+    },
+    "TemplateDetailVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "days": {
+          "title": "Days",
+          "type": "integer"
+        },
+        "coverUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverurl"
+        },
+        "costTiers": {
+          "items": {
+            "$ref": "#/$defs/TemplateCostTier"
+          },
+          "title": "Costtiers",
+          "type": "array"
+        },
+        "publishedAt": {
+          "title": "Publishedat",
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/TemplateSummaryVO"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "city",
+        "days",
+        "coverUrl",
+        "costTiers",
+        "publishedAt",
+        "summary"
+      ],
+      "title": "TemplateDetailVO",
+      "type": "object"
+    },
+    "TemplateListVO": {
+      "properties": {
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/TemplateCardVO"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "templates"
+      ],
+      "title": "TemplateListVO",
+      "type": "object"
+    },
+    "TemplateForkVO": {
+      "properties": {
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "itineraryId",
+        "title"
+      ],
+      "title": "TemplateForkVO",
+      "type": "object"
+    },
+    "WeatherDay": {
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "tMax": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tmax"
+        },
+        "tMin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tmin"
+        },
+        "precipProb": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precipprob"
+        }
+      },
+      "required": [
+        "date",
+        "code",
+        "text",
+        "tMax",
+        "tMin",
+        "precipProb"
+      ],
+      "title": "WeatherDay",
+      "type": "object"
+    },
+    "WeatherVO": {
+      "properties": {
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "source": {
+          "default": "open-meteo",
+          "title": "Source",
+          "type": "string"
+        },
+        "daily": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/WeatherDay"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daily"
+        }
+      },
+      "required": [
+        "city",
+        "source",
+        "daily"
+      ],
+      "title": "WeatherVO",
+      "type": "object"
+    },
+    "ClientErrorReport": {
+      "properties": {
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "stack": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stack"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "userAgent": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Useragent"
+        },
+        "ts": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ts"
+        }
+      },
+      "required": [
+        "message",
+        "stack",
+        "source",
+        "path",
+        "userAgent",
+        "ts"
+      ],
+      "title": "ClientErrorReport",
+      "type": "object"
+    },
+    "LlmGatewayCreateBody": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "baseUrl": {
+          "title": "Baseurl",
+          "type": "string"
+        },
+        "apiKey": {
+          "title": "Apikey",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "baseUrl",
+        "apiKey",
+        "model"
+      ],
+      "title": "LlmGatewayCreateBody",
+      "type": "object"
+    },
+    "LlmGatewayUpdateBody": {
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "baseUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseurl"
+        },
+        "apiKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Apikey"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        }
+      },
+      "title": "LlmGatewayUpdateBody",
+      "type": "object",
+      "required": [
+        "name",
+        "baseUrl",
+        "apiKey",
+        "model"
+      ]
+    },
+    "LlmGatewayVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "baseUrl": {
+          "title": "Baseurl",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "apiKeyHint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Apikeyhint"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "createdAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Createdat"
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Updatedat"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "baseUrl",
+        "model",
+        "apiKeyHint",
+        "enabled",
+        "createdAt",
+        "updatedAt"
+      ],
+      "title": "LlmGatewayVO",
+      "type": "object"
+    },
+    "LlmGatewayTestVO": {
+      "properties": {
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "latencyMs": {
+          "title": "Latencyms",
+          "type": "integer"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "latencyMs",
+        "message"
+      ],
+      "title": "LlmGatewayTestVO",
+      "type": "object"
+    },
+    "ImageIntentVO": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "suggestedMessage": {
+          "title": "Suggestedmessage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "suggestedMessage"
+      ],
+      "title": "ImageIntentVO",
+      "type": "object"
+    },
+    "SpeechIntentVO": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "suggestedMessage": {
+          "title": "Suggestedmessage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "suggestedMessage"
+      ],
+      "title": "SpeechIntentVO",
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,493 @@
+/* Sinan: resort editorial canvas — 现代板岩黑配晨曦日落橙，通透纯净度假风，对标 Layla.ai。 */
+:root {
+  --sinan-ink: #0F172A;
+  --sinan-ink-soft: #334155;
+  --sinan-muted: #64748B;
+  /* FEUX-5：faint 旧值 #94A3B8 在白底仅 2.45-2.56:1（WCAG AA 4.5 不过线），
+     提到 muted 同值 4.76:1；两档合一后的层级差交给字号/字重表达 */
+  --sinan-faint: #64748B;
+  --sinan-accent: #FF5A36;
+  --sinan-accent-dark: #E04018;
+  --sinan-accent-soft: #FFEBE5;
+  --sinan-accent-wash: #FFF5F2;
+  --sinan-azure: #0EA5E9;
+  --sinan-teal: #0D9488;
+  --sinan-paper: #F8FAFC;
+  --sinan-surface: #FFFFFF;
+  --sinan-line: #E2E8F0;
+  --sinan-line-soft: #F1F5F9;
+  --sinan-warm: #F1F5F9;
+  --sinan-on-image: #FFFFFF;
+  /* FEUX-5：强调底上的文字用深墨（#0F172A on #FF5A36 = 5.75:1 过 AA）；
+     此前主按钮/激活 chip 白字 3.10:1 不达标。accent 在亮暗两主题都是亮珊瑚色，
+     深字在两主题都成立 */
+  --sinan-on-accent: #0F172A;
+  --sinan-photo-shade: #0F172A;
+  --sinan-danger: #EF4444;
+  --sinan-shadow: 0 20px 40px -15px rgba(15, 23, 42, .07), 0 0 1px 1px rgba(15, 23, 42, .03);
+  --sinan-shadow-soft: 0 8px 24px -6px rgba(15, 23, 42, .05), 0 0 1px rgba(15, 23, 42, .03);
+  --sinan-composer-shadow: 0 24px 48px -12px rgba(15, 23, 42, .09), 0 0 1px 1px rgba(15, 23, 42, .04);
+  --sinan-shadow-coral: 0 10px 24px -6px rgba(255, 90, 54, .35);
+  --sinan-radius-xs: 8px;
+  --sinan-radius-sm: 12px;
+  --sinan-radius: 18px;
+  --sinan-radius-lg: 24px;
+  --sinan-radius-pill: 999px;
+  --sinan-ease: cubic-bezier(.16, 1, .3, 1);
+  --sinan-z-nav: var(--lp-z-bar);
+  --sinan-z-modal: var(--lp-z-modal);
+}
+
+.dark {
+  --sinan-ink: #F8FAFC;
+  --sinan-ink-soft: #CBD5E1;
+  --sinan-muted: #94A3B8;
+  --sinan-faint: #64748B;
+  --sinan-accent: #FF6A47;
+  --sinan-accent-dark: #FF8A6B;
+  --sinan-accent-soft: #331A14;
+  --sinan-accent-wash: #1F120E;
+  --sinan-azure: #38BDF8;
+  --sinan-teal: #2DD4BF;
+  --sinan-paper: #0B0F17;
+  --sinan-surface: #131A26;
+  --sinan-line: #1E293B;
+  --sinan-line-soft: #182234;
+  --sinan-warm: #162032;
+  --sinan-photo-shade: #020617;
+  --sinan-danger: #F87171;
+  --sinan-shadow: 0 20px 40px -15px rgba(0, 0, 0, .45), 0 0 1px 1px rgba(255, 255, 255, .05);
+  --sinan-shadow-soft: 0 8px 24px -6px rgba(0, 0, 0, .35), 0 0 1px rgba(255, 255, 255, .05);
+  --sinan-composer-shadow: 0 24px 48px -12px rgba(0, 0, 0, .55), 0 0 1px 1px rgba(255, 255, 255, .08);
+  --sinan-shadow-coral: 0 10px 24px -6px rgba(255, 106, 71, .4);
+}
+
+/* ============================================================
+   外观契约（SPEC v2.3 §7.1）：令牌驱动 + scheme / 暗色 / 密度 / 减弱动效
+   - 唯一运行时写入口是 src/styles/appearance.ts（切 .dark 与 data-* 属性）；
+     index.html 的首帧引导脚本是它的无依赖镜像副本（有测试钉住两处一致）
+   - 具体色值只允许出现在本文件的令牌块（:root / [data-scheme] / .dark）；
+     其余规则一律 var(--lp-*)，由 `npm run theme:lint` 机器强制
+   - 旧名（--lp-bg/--lp-ink/--lp-font-display/…）是**迁移期别名**：F2/F3 重做各页面时
+     改用规范名并删掉别名段；新代码一律使用规范名（零消费成员已于 2026-10-04 清理）
+   ============================================================ */
+
+/* ---------- 字体（自托管：仅拉丁子集；中文不做 webfont，走系统栈）
+   Poppins © Indian Type Foundry（SIL OFL 1.1，许可证见 public/fonts/Poppins-OFL.txt）：
+   trek 视觉复刻的主字体（trek --font-system 实测首位），静态字重 400/500/600/700
+   Geist Sans © Vercel（SIL OFL 1.1，许可证见 public/fonts/geist-OFL.txt）：
+   v2.6 §19.2 由 Inter 替换；可变字重 100–900。trek 的 --font-subtext 也以 Geist 打头，
+   本项目保留它作为 Poppins 之后的拉丁回退 ---------- */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/poppins-latin-400.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/poppins-latin-500.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/poppins-latin-600.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/poppins-latin-700.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/geist-latin-var.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---------- 规范令牌：default scheme · light（v2.8 trek 视觉复刻对表：灰阶从 slate 换
+   trek 的 gray 系，玻璃边/影换暖调，状态色对齐 trek --st-* 实测值） ---------- */
+:root {
+  /* 面 */
+  --lp-surface-1: #f8fafc;
+  /* 玻璃面四件套（trek .tool 实测：白 72%→暖白 50% 渐变 + 暖灰边 + 内高光 + 暖调双层影）；
+     消费方只声明 backdrop-filter: var(--lp-glass-blur) 与 background/border/shadow 四个令牌 */
+  --lp-glass-bg: linear-gradient(135deg, rgb(255 255 255 / 74%), rgb(248 250 252 / 56%));
+  --lp-glass-border: rgb(226 232 240 / 75%);
+  --lp-glass-highlight: inset 0 1px 0 rgb(255 255 255 / 85%);
+  --lp-glass-shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 12px 32px -14px rgb(15 23 42 / 14%);
+  --lp-glass-blur: blur(22px) saturate(1.4);
+  /* 文本（trek --text-* 实测：gray 系 #111827/#374151/#6b7280/#9ca3af） */
+  --lp-text-1: #111827;
+  --lp-text-muted: #6b7280;
+  --lp-text-faint: #9ca3af;
+  /* 边框（trek --border-*：#d1d5db 强调边） */
+  --lp-edge-2: #d1d5db;
+  /* 强调（默认 = 黑白灰，v2.7 §20 R4 照 TREK 默认 swatch #111827/#e4e4e7：
+     主按钮近黑、选中面浅灰；彩色留给 teal/contrast 两套可选 scheme） */
+  --lp-accent: #111827;
+  --lp-accent-hover: #1f2937;
+  --lp-accent-subtle: #f3f4f6;
+  /* 状态（trek --st-* / soft 实测：info #2563eb、warning #d97706；success/danger 已随消费方删除） */
+  --lp-warning: #d97706;
+  --lp-warning-soft: #fffbeb;
+  --lp-info: #2563eb;
+  --lp-info-soft: #eff6ff;
+  /* 排版（trek --font-system 实测首位 Poppins；Geist 殿后作拉丁回退，中文走系统栈） */
+  --lp-font-ui:
+    'Poppins', 'Geist Sans', system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  --lp-font-mono: 'SF Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  /* 字号倍率（TREK 借鉴）：字号 = 基准 × 倍率；密度档改倍率即可整体缩放正文 */
+  --lp-fs-scale-title: 1;
+  --lp-fs-scale-caption: 1;
+  --lp-text-display: calc(40px * var(--lp-fs-scale-title));
+  --lp-text-display-xl: calc(56px * var(--lp-fs-scale-title));
+  --lp-text-title: calc(22px * var(--lp-fs-scale-title));
+  --lp-text-caption: calc(12px * var(--lp-fs-scale-caption));
+  --lp-text-micro: 11px;
+  /* 层叠：全站唯一刻度（禁写裸 z-index 数字） */
+  --lp-z-sticky: 30; /* 内容区内的粘性元素：刻意低于 bar，滚动时让位顶栏 */
+  --lp-z-bar: 60;
+  --lp-z-modal: 1000;
+
+  /* ---------- 迁移期别名（F2/F3 重做页面后删除本段） ---------- */
+  --lp-bg: var(--lp-surface-1);
+  --lp-ink: var(--lp-text-1);
+  --lp-accent-soft: var(--lp-accent-subtle);
+  --lp-font-display: var(--lp-font-ui);
+  --lp-font-body: var(--lp-font-ui);
+  --lp-stream-glow: rgb(255 90 54 / 16%);
+}
+
+/* ---------- scheme 覆盖（accent 家族；具体色值只在本块与 .dark 块出现） ---------- */
+[data-scheme='teal'] {
+  --lp-accent: #0f766e;
+  --lp-accent-hover: #0c5f59;
+  --lp-accent-subtle: #e4f3f1;
+}
+
+[data-scheme='contrast'] {
+  --lp-accent: #155e75;
+  --lp-accent-hover: #0e7490;
+  --lp-accent-subtle: #cffafe;
+  --lp-text-1: #000000;
+  --lp-text-muted: #374151;
+  --lp-edge-2: #64748b;
+}
+
+[data-scheme='indigo'] {
+  --lp-accent: #4f46e5;
+  --lp-accent-hover: #4338ca;
+  --lp-accent-subtle: #eef2ff;
+}
+
+[data-scheme='rose'] {
+  --lp-accent: #e11d48;
+  --lp-accent-hover: #be123c;
+  --lp-accent-subtle: #ffe4e6;
+}
+
+[data-scheme='amber'] {
+  --lp-accent: #d97706;
+  --lp-accent-hover: #b45309;
+  --lp-accent-subtle: #fef3c7;
+}
+
+[data-scheme='violet'] {
+  --lp-accent: #7c3aed;
+  --lp-accent-hover: #6d28d9;
+  --lp-accent-subtle: #ede9fe;
+}
+
+/* ---------- 暗色（.dark 由 appearance.ts / 引导脚本写在 <html> 上；trek 实测为
+   中性 zinc 系：body #121215、bg #0f0f0f、card #131316、text #f4f4f5、edge #27272a） ---------- */
+.dark {
+  --lp-surface-1: #0f0f0f;
+  --lp-glass-bg: linear-gradient(135deg, rgb(30 41 59 / 62%), rgb(15 23 42 / 48%));
+  --lp-glass-border: rgb(255 255 255 / 10%);
+  --lp-glass-highlight: inset 0 1px 0 rgb(255 255 255 / 8%);
+  --lp-glass-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 32px -14px rgb(0 0 0 / 55%);
+  --lp-text-1: #f4f4f5;
+  --lp-text-muted: #a1a1aa;
+  --lp-text-faint: #71717a;
+  --lp-edge-2: #3f3f46;
+  /* 暗色档反相（TREK swatch #e4e4e7）：主按钮近白、选中面深灰 */
+  --lp-accent: #e4e4e7;
+  --lp-accent-hover: #f4f4f5;
+  --lp-accent-subtle: #27272a;
+  --lp-warning: #fbbf24;
+  --lp-warning-soft: #2a1f0a;
+  --lp-info: #60a5fa;
+  --lp-info-soft: #131c2e;
+  --lp-stream-glow: rgb(255 133 87 / 16%);
+}
+
+.dark[data-scheme='teal'] {
+  --lp-accent: #14b8a6;
+  --lp-accent-hover: #2dd4bf;
+  --lp-accent-subtle: #062f2b;
+}
+
+.dark[data-scheme='contrast'] {
+  --lp-accent: #22d3ee;
+  --lp-accent-hover: #67e8f9;
+  --lp-accent-subtle: #0a2c35;
+  --lp-text-1: #ffffff;
+  --lp-text-muted: #cbd5e1;
+  --lp-edge-2: #94a3b8;
+}
+
+.dark[data-scheme='indigo'] {
+  --lp-accent: #818cf8;
+  --lp-accent-hover: #a5b4fc;
+  --lp-accent-subtle: #1e1b4b;
+}
+
+.dark[data-scheme='rose'] {
+  --lp-accent: #fb7185;
+  --lp-accent-hover: #fda4af;
+  --lp-accent-subtle: #4c0519;
+}
+
+.dark[data-scheme='amber'] {
+  --lp-accent: #fbbf24;
+  --lp-accent-hover: #fcd34d;
+  --lp-accent-subtle: #451a03;
+}
+
+.dark[data-scheme='violet'] {
+  --lp-accent: #a78bfa;
+  --lp-accent-hover: #c4b5fd;
+  --lp-accent-subtle: #2e1065;
+}
+
+/* ---------- 密度：只改间距令牌 + 字号倍率 ---------- */
+[data-density='compact'] {
+  /* 紧凑档连带收一点字号（TREK 的 --fs-scale-* 机制）：正文不缩，标题微调 */
+  --lp-fs-scale-title: 0.94;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-family: var(--lp-font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--lp-ink);
+  letter-spacing: 0.01em;
+}
+
+::selection {
+  background: var(--lp-accent-soft);
+  color: var(--lp-accent-hover);
+}
+
+/* ---------- TREK 动效签名：quint 曲线 + 按压手感 + 页面入场 ---------- */
+:root {
+  --lp-ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --lp-ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --lp-dur-press: 80ms;
+  --lp-dur-fast: 150ms;
+  --lp-dur-base: 180ms;
+  --lp-dur-modal: 220ms;
+  --lp-dur-reveal: 420ms;
+  /* 中文字面是满幅方块，负字距会让笔画粘连；标题允许的收紧上限就到这 */
+  --lp-track-display: -0.01em;
+}
+
+button:not(:disabled):not([data-no-press]),
+[role='button']:not([aria-disabled='true']):not([data-no-press]) {
+  transition-property: transform, color, background-color, border-color, box-shadow, opacity, filter;
+  transition-duration: var(--lp-dur-base);
+  transition-timing-function: var(--lp-ease-out-quint);
+}
+
+button:not(:disabled):not([data-no-press]):active,
+[role='button']:not([aria-disabled='true']):not([data-no-press]):active,
+[data-press]:active {
+  transform: scale(0.97);
+  transition-duration: var(--lp-dur-press);
+}
+
+.transition,
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-transform,
+.transition-shadow {
+  transition-timing-function: var(--lp-ease-out-quint);
+}
+
+.lp-glass {
+  background: var(--lp-glass-bg);
+  border: 1px solid var(--lp-glass-border);
+  box-shadow: var(--lp-glass-shadow), var(--lp-glass-highlight);
+  -webkit-backdrop-filter: var(--lp-glass-blur);
+  backdrop-filter: var(--lp-glass-blur);
+}
+
+.lp-eyebrow {
+  font-family: var(--lp-font-ui);
+  font-size: var(--lp-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+}
+
+.lp-label {
+  font-family: var(--lp-font-ui);
+  font-size: var(--lp-text-caption);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--lp-text-muted);
+}
+
+.lp-display {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-text-display);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  color: var(--lp-text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-display-md {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-text-title);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--lp-text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-display-xl {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-text-display-xl);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  color: var(--lp-text-1);
+}
+
+.lp-num {
+  font-family: var(--lp-font-ui);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lp-text-1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--lp-edge-2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--lp-text-faint);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 减少动效：系统偏好 + 手动覆盖两路（!important 是 a11y 语义所需，见 theme-lint 例外） ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reading-progress {
+    display: none !important;
+  }
+}
+
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] *::before,
+[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+[data-reduce-motion='true'] .reading-progress {
+  display: none !important;
+}
+
+/* 减弱动效：压掉 press 缩放与 lift（transition 已被上面压成瞬时，transform 仍需显式关掉） */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):not([data-no-press]):active,
+  [role='button']:not([aria-disabled='true']):not([data-no-press]):active,
+  [data-press]:active {
+    transform: none !important;
+  }
+}
+
+[data-reduce-motion='true'] button:not(:disabled):not([data-no-press]):active,
+[data-reduce-motion='true'] [role='button']:not([aria-disabled='true']):not([data-no-press]):active,
+[data-reduce-motion='true'] [data-press]:active {
+  transform: none !important;
+}

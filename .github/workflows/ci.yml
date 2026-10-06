@@ -1,0 +1,241 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+# 最小 token 权限（与 nightly.yml / release.yml 同款）：本 workflow 只读检出代码
+permissions:
+  contents: read
+
+# 同分支新 push 自动取消旧 run（G-0.4）：省 CI 分钟数，也避免旧结论覆盖新推送
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    # 便宜门禁先行（G-0.4）：与本地 travel-agent-python/scripts/check.ps1 同序同果。
+    # lint / typecheck / secret-scan 任何一项红，测试与构建 job 直接不开跑。
+    # import-linter 在 G-1.2 落地后并入本 job。
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        # 依赖一律由 uv.lock 驱动，禁止手写 pin 列表
+        run: uv sync --frozen
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format --check
+        run: uv run ruff format --check .
+      - name: Typecheck (pyright baseline ratchet)
+        # 存量报错冻结在 pyright-baseline.txt，新增即红；本地入口 scripts/typecheck.ps1
+        run: uv run python scripts/typecheck.py
+      - name: Import boundaries (import-linter)
+        # G-1.2：分层 api->services->agent + 门面唯一公开面；本地入口 check.ps1 同步
+        run: uv run lint-imports
+      - name: Code metrics (long functions / huge files ratchet)
+        # G-2.6：存量长尾冻结在 scripts/code_metrics_limits.json，只减不增（INV-1）
+        run: uv run python scripts/code_metrics.py
+      - name: Secret scan
+        working-directory: .
+        shell: pwsh
+        run: ./scripts/check-secrets.ps1
+
+  python-agent:
+    needs: preflight
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # diff-cover 要拿 origin/master 做比对基线（默认 fetch-depth=1 拿不到）
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        run: uv sync --frozen
+      - name: Offline unit tests (+ coverage for diff gate)
+        env:
+          # 单测不依赖真实密钥
+          AGENT_INTERNAL_TOKEN: ''
+          LLM_API_KEY: ''
+        # coverage.xml 供下一步 diff-cover 用；全量覆盖率不设阈值（存量面有历史
+        # 包袱），只对**本次变更行**设门槛——这是 G-3.4 的口径。
+        # tests/agent_eval 度量层单测已进离线套件（PR-0 从 --ignore 解除）：
+        # eval 度量/门禁/棘轮实现改坏 → 这里红（与 CI agent-eval job 的行为面互补）。
+        run: |
+          uv run pytest tests/ --ignore=tests/api --ignore=tests/perf -q             --cov=app --cov-report=xml --cov-report=
+      - name: Coverage gate on changed lines
+        # G-3.4：本次变更行覆盖率 ≥70%，门槛只升不降（INV-1）。
+        # 故意提交无测试的新函数 → 本步红（与 "门禁只升不降" 同一纪律）。
+        run: uv run diff-cover coverage.xml --compare-branch=origin/master --fail-under=70
+      - name: Contract schema drift check
+        # 契约唯一源是 app/schemas/**（登记表 app/schemas/contracts.py）；入仓导出物
+        # （事件/分组 schema + openapi.json + 前端生成类型）与模型不同步即红
+        run: |
+          uv run python scripts/export_contracts.py
+          git diff --exit-code -- ../contracts/ ../travel-frontend-react/src/types/generated/
+          # 存在于磁盘却没入仓的产物，上面那条 diff 永远看不见（openapi.json 就是这么漏网的）
+          test -z "$(git ls-files --others --exclude-standard ../contracts/)" || {
+            echo "untracked contract artifacts:"; git ls-files --others --exclude-standard ../contracts/; exit 1; }
+      - name: Compose config
+        working-directory: .
+        run: docker compose config -q
+
+  agent-eval:
+    needs: preflight
+    # 行为防线（G-2.0）：mock 驱动的离线 eval 与流式事件快照。与单测分层——
+    # 单测断言单点字段，这里断言**端到端行为与事件序列**（P2 拆分的判据）。
+    # 独立 job 而非并入 python-agent：失败语义清晰（行为回归 vs 单测失败），
+    # 且与单测并行跑。
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        run: uv sync --frozen
+      - name: Streaming event snapshot (trip/day)
+        # trip 的 NDJSON 事件序列 + day 链路 plan/trace 逐字节比对 golden；
+        # 有意改口径须 GOLDEN_REGENERATE=1 重生成并人工复核 diff
+        env:
+          LLM_API_KEY: ''
+        run: uv run pytest tests/test_stream_snapshot.py -q
+      - name: Offline eval (agent + research) + per-metric ratchet
+        # 口径升级（PR-0，取代逐字节比对 `git diff --exit-code tests/agent_eval/report/`）：
+        # 字节 diff 区分不了变好/变坏，任何变化都只能"无脑 re-baseline"，是放松而非
+        # 收紧。现在逐指标双向棘轮（scripts/eval_ratchet.py + tests/agent_eval/
+        # metrics_baseline.json）：回归红、显著变好也逼 --update 认账收紧、未冻结指标红；
+        # 报告可复现性拆给 eval-determinism job（同 fixture 两遍 SHA256）单独把关。
+        # 指标口径见 tests/agent_eval/report/offline/report.md。
+        env:
+          LLM_API_KEY: ''
+        run: |
+          uv run python tests/agent_eval/eval_agent.py
+          uv run python tests/agent_eval/eval_research.py
+          uv run python tests/agent_eval/eval_editing.py
+          uv run python scripts/eval_ratchet.py
+
+  eval-determinism:
+    needs: preflight
+    # 确定性校验（PR-0）：同一 fixture 连跑 eval 两遍，报告 SHA256 必须逐字节一致。
+    # 报告不确定 = 指标棘轮比对的是噪声；并行研究泳道的到达乱序由 metrics.py 的
+    # 泳道稳定排序规范化（保留调用顺序，不按名丢序），这里验证"可复现"本身。
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        run: uv sync --frozen
+      - name: Run eval twice, report hashes must match
+        env:
+          LLM_API_KEY: ''
+        run: |
+          run_eval() {
+            uv run python tests/agent_eval/eval_agent.py >/dev/null
+            uv run python tests/agent_eval/eval_research.py >/dev/null
+            uv run python tests/agent_eval/eval_editing.py >/dev/null
+            (cd tests/agent_eval/report/offline && sha256sum * | sort)
+          }
+          first=$(run_eval)
+          second=$(run_eval)
+          echo "first run:";  echo "$first"
+          echo "second run:"; echo "$second"
+          diff <(echo "$first") <(echo "$second")
+
+  frontend:
+    needs: preflight
+    # 前端门禁：类型检查 + 生产构建 + 纯逻辑单测（store reducer / SSE 帧解析）
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-frontend-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: travel-frontend-react/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Type check & build
+        run: npm run build
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Theme lint
+        # 外观契约门禁（SPEC v2.3 §7.1.6）：裸色值 / z-index 字面量 / !important；
+        # 旧文件走 scripts/theme-lint.allowlist.json，只准变短不准变长
+        run: npm run theme:lint
+      - name: EP allowlist
+        # 去 EP 门禁（SPEC v2.6 §19.7-2）：产品面禁止新增 Element Plus 使用；
+        # 存量走 scripts/ep-allowlist.json，总数只减不增
+        run: npm run ep:lint
+
+  schema-migration:
+    needs: preflight
+    # 迁移门禁：按版本序把全部迁移 SQL（当前 V1-V7）应用到空库，验证「新环境可复现正确 schema」
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: travel_assistant
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 -uroot -pci-only-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply all migrations in version order (V1 → V2 → …)
+        env:
+          MYSQL_PWD: ci-only-password
+        run: |
+          # 版本序而非字典序：V10 必须排在 V2 之后（`sort -V` 按版本号）
+          for f in $(ls -1 travel-agent-python/app/db/migrations/sql/V*.sql | sort -V); do
+            echo "applying $f"
+            mysql -h127.0.0.1 -uroot travel_assistant < "$f"
+          done
+          tables=$(mysql -h127.0.0.1 -uroot -N -B travel_assistant \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='travel_assistant'")
+          echo "created tables: $tables"
+          test "$tables" -ge 13
+          # V2 列/表断言：清单只增不减，防「迁移漏跑」
+          # （poi_knowledge avg_cost 断言已随 V4 语料退役删除，2026-09）
+          mysql -h127.0.0.1 -uroot -N -B travel_assistant \
+            -e "SHOW COLUMNS FROM itinerary_main LIKE 'cover_url'" | grep -q cover_url
+          mysql -h127.0.0.1 -uroot -N -B travel_assistant \
+            -e "SHOW COLUMNS FROM itinerary_main LIKE 'share_token'" | grep -q share_token
+          mysql -h127.0.0.1 -uroot -N -B travel_assistant \
+            -e "SHOW TABLES LIKE 'city_geo'" | grep -q city_geo
+      - name: Cross-check schema contract (Python 只读列 vs 全部迁移)
+        # 防 schema 漂移：迁移文件（V1+V*）必须覆盖查询用到的全部列（纯静态，无需 DB）
+        run: python3 travel-agent-python/scripts/check_schema_contract.py

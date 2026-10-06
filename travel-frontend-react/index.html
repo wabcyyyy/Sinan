@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 字体：零第三方请求——中文走系统栈，拉丁子集自托管 woff2（见 theme.css） -->
+    <!-- 首帧引导脚本 = src/styles/appearance.ts 的无依赖镜像：同一 KEY、同一属性集合
+         （有测试读本文件文本比对 APPEARANCE_KEY / APPEARANCE_ATTRS，防两处漂移） -->
+    <script>
+      ;(() => {
+        try {
+          const h = document.documentElement
+          const c = JSON.parse(localStorage.getItem('ta-appearance-v1') || '{}')
+          h.setAttribute('data-scheme', c.scheme === 'teal' || c.scheme === 'contrast' ? c.scheme : 'default')
+          h.setAttribute('data-density', c.density === 'compact' ? 'compact' : 'comfortable')
+          h.setAttribute('data-reduce-motion', c.reduceMotion ? 'true' : 'false')
+          if (c.dark) h.classList.add('dark')
+        } catch (e) { /* 引导失败不阻塞首帧 */ }
+      })()
+    </script>
+    <meta name="application-name" content="司南 Sinan" />
+    <meta name="apple-mobile-web-app-title" content="司南 Sinan" />
+    <meta name="description" content="司南 Sinan：从一句话开始，找到一段有方向的旅程。" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>司南 Sinan</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

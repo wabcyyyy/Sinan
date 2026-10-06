@@ -1,0 +1,191 @@
+[project]
+name = "travel-agent-python"
+version = "0.1.0"
+description = "AI Agent service for Travel Assistant"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.111.0",
+    "uvicorn[standard]==0.30.1",
+    "pydantic==2.8.2",
+    "httpx==0.27.0",
+    "mcp>=1.10,<2",
+    "python-dotenv==1.0.1",
+    # PR-1（PLAN D1）：0.2.44 → 1.2.x 稳定线（interrupt / stream_mode / checkpoint
+    # saver 只在新线维护）；langchain-core 随之 0.3.15 → 1.6.x（langgraph 1.x 要求
+    # >=1.4.7,<2）。行为零变化由 golden/eval 零 diff 验收。
+    "langgraph==1.2.12",
+    "langchain-core==1.6.4",
+    "pymysql==1.2.0",
+    "redis>=5.2,<6",
+    # 后端迁移基座（PLAN v3.0）：SQLAlchemy 2 承载业务层数据访问；Alembic 以
+    # op.execute() 原样包裹既有 db/migration/V*.sql（迁移文件不重写，保住
+    # 「V1 一经发布不得修改」纪律，只换执行器）；bcrypt 校验 Java
+    # BCryptPasswordEncoder 写入的既有口令哈希（$2a$ 前缀两侧互认）。
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.13,<2",
+    "bcrypt>=4,<6",
+    # PDF 导出（M6）：reportlab 直接排版印刷版行程单。候选里只有它同时满足
+    # 「纯 Python（本机 Windows 与 CI 同一套 wheel）」和「表格边框合并 + 日块不跨页」：
+    # xhtml2pdf 实测自己声明忽略 border-collapse / border-radius / page-break-inside，
+    # 而这三条正是这份印刷稿的骨架；WeasyPrint 全都支持，却要 Pango/Cairo 原生库，
+    # 等于把「导出 PDF」这条 demo 链路做成只能在 Linux 跑。
+    "reportlab>=4.1,<5",
+    # 封面图压缩（SPEC v2.3 S0-14）：长边缩放 + JPEG 重编码。此前仅经 reportlab
+    # 传递进锁；显式列为直接依赖，避免 reportlab 升级/替换时被连带移除。
+    "pillow>=10,<13",
+    "pydantic-settings>=2.7,<3",
+    # BYOK 网关密钥静态加密（V11）：Fernet（对称认证加密）。唯一成熟且全平台纯
+    # wheel 的方案——自造 XOR/流密码违反哲学 5 且更弱，明文落库对可烧钱的
+    # 凭据不可接受（INV-10 理由详见引入 commit message）。
+    "cryptography>=44,<47",
+    # PR-3（D2）：图检查点存储——dev/单机用 SqliteSaver（自管建表，不动 MySQL 迁移，
+    # INV-3 不受影响），生产路径预留 PostgresSaver（同一 BaseCheckpointSaver 协议，
+    # 换存储不换恢复语义）；断点续跑与 time-travel 的地基。反序列化走白名单 +
+    # pickle 关闭（见 runtime/checkpoint.py）。
+    "langgraph-checkpoint-sqlite==3.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "diff-cover>=10.5.1",
+    "import-linter>=2.15",
+    # 评测数据集 schema 校验（PR-0 数据集治理，tests/agent_eval/dataset_schema.py）。
+    # 非新增包体：jsonschema 4.26.0 早已在 mcp 的传递闭包里（uv.lock），这里只是
+    # 把"评测工具链直接用它"这层关系显式化（INV-10 理由见 commit message）。
+    "jsonschema>=4.18,<5",
+    "pyright>=1.1.414",
+    "pytest==8.2.2",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.7",
+]
+
+[tool.ruff]
+# 行宽实测分布 P90=75 / P95=86 / P99=103（38,794 行）：120 让中文注释几乎不断行，
+# one-shot format 只重排代码长尾；>120 的行（20 行）一次性收敛后由 E501 拦住增量。
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # FastAPI 惯用法：Depends(...) 出现在参数默认值里（app/api/** 全部路由签名）。
+    "B008",
+    # 中文项目的假阳性：注释/文档字符串/字符串里的全角标点（，、（）等）是正确写法，
+    # RUF001-003 的同形字检查在这里只产生噪音（实测 6,200+ 条，无一是真同形字）。
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # PEP 695 泛型语法（class C[T]）需 pydantic >= 2.9 才被完整支持；当前钉在 2.8.2，
+    # 升级 pydantic 后移除此豁免（共 2 处：schemas/common.ApiResponse、services/itinerary_city）。
+    "UP046",
+    "UP047",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试里断言内联、嵌套容器字面量是常态；只保留正确性类规则。
+"tests/*" = ["SIM117", "RUF012", "RUF001", "RUF002", "RUF003"]
+# agent_eval 的评测/回放脚本先做 sys.path 注入再 import app，E402 是既定结构。
+"tests/agent_eval/*" = ["E402"]
+
+[tool.pyright]
+include = ["app", "tests", "scripts", "main.py"]
+exclude = ["**/__pycache__", "**/.venv*", ".pytest_tmp", ".tmp_*"]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+# 缺 stub 的第三方：存在性交给运行时，类型层面不拦。
+reportMissingTypeStubs = "none"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.uv]
+package = false
+
+# ---------------------------------------------------------------------------
+# import-linter（G-1.2）：架构边界机检。
+# 契约 1 分层：api -> services -> agent，禁反向/跨层；
+# 契约 2 门面：api/services 只准 import app.agent 门面（app/agent/__init__.py），
+# 深路径进入 agent 子模块一律红。新增 agent 子模块时必须登记进 forbidden_modules。
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "Layering: api -> services -> agent"
+type = "layers"
+layers = ["app.api", "app.services", "app.agent"]
+
+[[tool.importlinter.contracts]]
+name = "Agent domain ladder: core -> runtime -> data -> grounding -> tools -> research -> generation -> editing"
+type = "layers"
+# 域地图（app/agent/README.md）：上层可 import 下层，下层不得 import 上层。
+# 本契约随域化改造逐层长大，目标形态
+#   core → runtime → data → grounding → tools/research → generation → editing
+# 每迁一个域就在此加一层（与搬迁同一 commit），未域化的平铺模块不在契约内。
+layers = [
+    "app.agent.editing",
+    "app.agent.generation",
+    "app.agent.research",
+    "app.agent.tools",
+    "app.agent.grounding",
+    "app.agent.data",
+    "app.agent.runtime",
+    "app.agent.core",
+]
+# 已知倒挂（INV-1 豁免，留期限）：app/common/llm_client.py 反向 import agent runtime
+# （用量/限额/轨迹收口），于是任何调用 LLM 的下层模块都会经它间接够到 runtime。
+# 这里豁免的是**根因边**（llm_client → runtime），不是逐个受害模块，所以 data 域的
+# pricing / web_search 落地时不必再加条目。
+# 期限：把 llm_client 的 runtime 依赖改为注入、或把 llm_client 迁入 app.agent.runtime
+# 之后删除这四条（届时阶梯契约会立刻验证）。
+ignore_imports = [
+    "app.common.llm_client -> app.agent.runtime.observability",
+    "app.common.llm_client -> app.agent.runtime.run_limits",
+    "app.common.llm_client -> app.agent.runtime.trace",
+    "app.common.llm_client -> app.agent.runtime.usage_store",
+]
+
+[[tool.importlinter.contracts]]
+name = "Generation sublayers: rules -> content -> output -> orchestration"
+type = "layers"
+# 生成域内四层（自下而上；层序由依赖图 SCC + 拓扑排序算出，不是按语义猜的）：
+#   rules（纯规则）→ content（造内容 + 校验/事实）→ output（输出落地/终检/优化）
+#   → orchestration（图、循环、流式链路、facade）
+# 注意 output 在 orchestration **之下**：是编排层调用它把行程落地。蓝图说的"formatting 是
+# workflow 的下游"指执行顺序，不是 import 方向。
+# reflect / route_matrix / graph_state 在 content：它们被 output 与 orchestration 共用，
+# 必须落在 output 之下；workflow/trip_graph/day_workflow/day_stream 之间的薄门面互调是
+# 懒导入破环，故同层。
+layers = [
+    "app.agent.generation.orchestration",
+    "app.agent.generation.output",
+    "app.agent.generation.content",
+    "app.agent.generation.rules",
+]
+
+[[tool.importlinter.contracts]]
+name = "Agent facade: api/services import app.agent only, never agent internals"
+type = "forbidden"
+source_modules = ["app.api", "app.services"]
+# 只拦直接 import（as_packages 默认语义会把「import app.agent 门面」也视作 import
+# 其全部子模块；allow_indirect_imports 切到直接依赖判定，恰好匹配"零深路径"门禁：
+# 深路径一定是直接 import；经 services 转手的间接链由 services 自身的直接 import 拦下。
+allow_indirect_imports = true
+# 历史上这里豁免过两条 `-> app.agent.usage_store`：门面 re-export 名与同名字模块存在
+# 解析歧义（实际经 app/agent/__init__.py 转发，非深路径）。usage_store 迁入
+# app.agent.runtime 后歧义消失——import-linter 不再把 `from app.agent import usage_store`
+# 记成深路径，两条豁免随之删除（2026-09-23 域化改造，实测 unmatched 后清理）。
+forbidden_modules = [
+    # 域级登记（2026-09-23 域化改造完成）：登记父包即覆盖其全部子模块，域内新增模块
+    # 不必再改本表；登记面完整性由 tests/test_agent_facade_registration.py 机检。
+    # 域地图、"新代码放哪"落位表与域间阶梯见 app/agent/README.md。
+    "app.agent.core",
+    "app.agent.data",
+    "app.agent.editing",
+    "app.agent.generation",
+    "app.agent.grounding",
+    "app.agent.research",
+    "app.agent.runtime",
+    "app.agent.tools",
+]

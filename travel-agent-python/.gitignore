@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+# 运行时数据目录（checkpoints/上传物）。必须锚定：裸 data/ 会连 app/agent/data/ 域包
+# 一起忽略——city_center.py 与 __init__.py 曾被静默吞掉，导致已提交代码 import 不存在的模块
+/data/
+.pytest_cache/
+dist/
+build/
+*.log
+# G-3.4：diff-cover 的中间产物（CI 里生成，不入仓）
+coverage.xml
+.coverage

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vibe Coding 工具与范式 · 重做一页的实操手册</title>
+    <meta
+      name="description"
+      content="帮你更好生成新页面的 vibe coding 工具地图、工作范式、Prompt 模板与验收清单。"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <nav class="site-nav" aria-label="页面导航">
+      <div class="wrap">
+        <a class="brand" href="#top">VIBE FIELD GUIDE <span>page redo</span></a>
+        <ul class="nav-links">
+          <li><a href="#what">是什么</a></li>
+          <li><a href="#tools">工具</a></li>
+          <li><a href="#paradigms">范式</a></li>
+          <li><a href="#flow">工作流</a></li>
+          <li><a href="#prompts">Prompt</a></li>
+          <li><a href="#check">清单</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">Field guide · 重做一页</p>
+          <h1>别凭感觉 freestyle，先锁方向再 <em>vibe</em></h1>
+          <p class="lede">
+            这份手册整理了 vibe coding 的工具地图与可复用范式，目标只有一个：让你「完全重做一个新页面」时，生成结果更稳、更有品味、少返工。
+          </p>
+        </div>
+        <aside class="hero-aside">
+          <h2>阅读方式</h2>
+          <ul class="meta-list">
+            <li><strong>对象</strong><span>要重做落地页 / 作品集 / 营销页的开发者</span></li>
+            <li><strong>路径</strong><span>先范式 → 再选工具 → 最后短环迭代</span></li>
+            <li><strong>产出</strong><span>可预览的单页（index.html + css/js）</span></li>
+          </ul>
+          <p class="note">
+            说明：本环境本轮 Browser Use/IAB 检索不可用，内容为领域知识整理的实操手册，产品名以你当前订阅与网络可达为准。
+          </p>
+        </aside>
+        <figure class="hero-visual">
+          <img
+            src="assets/vibe-hero.png"
+            width="1536"
+            height="1024"
+            alt="暖纸色背景上的抽象网页线框与代码几何拼贴，朱红色强调形"
+          />
+        </figure>
+      </div>
+    </header>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">01 · Definition</p>
+          <h2 id="what-title">Vibe coding 不是「乱写」，是「用对话驱动短反馈环」</h2>
+          <p>
+            核心是：你描述意图与约束，模型生成可见结果，你看图说话、立刻修正。品味与验收仍在你这边。
+          </p>
+        </div>
+        <div class="def-grid">
+          <article class="def-card">
+            <h3>有效的 vibe</h3>
+            <p>
+              有风格锚点、有硬约束、有验收标准；每轮只改一个变量；截图 / 预览后用具体语言纠偏（「标题太大」「不要紫渐变」）。
+            </p>
+          </article>
+          <article class="def-card bad">
+            <h3>无效的 vibe</h3>
+            <p>
+              「做一个好看的官网」却不给参考；连续说「再酷一点」；接受 AI 默认紫渐变 + 三列卡片 + Inter；从不对照 brief 复查。
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tools" aria-labelledby="tools-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">02 · Tool map</p>
+          <h2 id="tools-title">工具地图：按你卡在哪一步来选</h2>
+          <p>
+            不要堆工具。先判断你是「缺想法」「缺代码」「缺资产」还是「缺品味约束」，再对号入座。
+          </p>
+        </div>
+
+        <div class="filters" role="group" aria-label="工具筛选">
+          <button class="filter-btn" type="button" data-filter="all" aria-pressed="true">全部</button>
+          <button class="filter-btn" type="button" data-filter="agent" aria-pressed="false">编程代理</button>
+          <button class="filter-btn" type="button" data-filter="builder" aria-pressed="false">页面生成器</button>
+          <button class="filter-btn" type="button" data-filter="system" aria-pressed="false">设计系统</button>
+          <button class="filter-btn" type="button" data-filter="asset" aria-pressed="false">视觉资产</button>
+          <button class="filter-btn" type="button" data-filter="rules" aria-pressed="false">规则与记忆</button>
+        </div>
+
+        <div class="tool-grid">
+          <article class="tool span8" data-cats="agent rules">
+            <span class="tool-tag">agent · 终端 / IDE</span>
+            <h3>Claude Code · Cursor · Windsurf · Copilot Agent</h3>
+            <p>
+              适合改真实代码库、多文件重构、把设计规范落成组件。重做已有产品页时优先：它们能读 AGENTS.md / CLAUDE.md，把项目约定焊进每轮生成。Cursor 的 Composer/Agent、Claude Code 的长任务规划，对「整页推倒重来」特别有用。
+            </p>
+            <div class="fit">适合：在现有 Vue/React 仓库里重做页面 · 需要遵循主题与门禁</div>
+          </article>
+
+          <article class="tool" data-cats="builder">
+            <span class="tool-tag">builder · 快速成页</span>
+            <h3>v0 · Lovable · Bolt</h3>
+            <p>
+              对话出 React/Tailwind 界面，预览即时。适合从 0 磨第一版视觉方向，再把代码迁回主仓。
+            </p>
+            <div class="fit">适合：探索布局 · 30 分钟内要可点原型</div>
+          </article>
+
+          <article class="tool wide" data-cats="builder agent">
+            <span class="tool-tag">builder · 全栈应用</span>
+            <h3>Replit Agent · Base44 · Create 类工具</h3>
+            <p>
+              不只出页面，连数据与部署一起。如果你的「新页面」背后还要表单、登录、简单 CRUD，这类比纯 UI 生成器少拼积木。
+            </p>
+            <div class="fit">适合：落地页 + 轻后端 · 个人项目闭环</div>
+          </article>
+
+          <article class="tool" data-cats="system">
+            <span class="tool-tag">system · 组件底座</span>
+            <h3>Tailwind · shadcn/ui · Radix</h3>
+            <p>
+              先定 utility 与组件所有权，再谈风格。shadcn 把组件源码交给你，方便 vibe 时「直接改这一段」。
+            </p>
+            <div class="fit">适合：要可维护的现代 Web，而不是一次性 HTML</div>
+          </article>
+
+          <article class="tool" data-cats="system">
+            <span class="tool-tag">system · 成熟品牌向</span>
+            <h3>官方设计系统包</h3>
+            <p>
+              Fluent、Carbon、Polaris、Primer、Material Web：读起来像企业产品就用官方包，别让模型手搓 90% 的仿制品。
+            </p>
+            <div class="fit">适合：B 端 / 合规 / 平台风格</div>
+          </article>
+
+          <article class="tool wide" data-cats="asset">
+            <span class="tool-tag">asset · 图与图标</span>
+            <h3>图像生成 · 真实摄影 · Simple Icons</h3>
+            <p>
+              营销页必须有真图。抽象背景、产品意象用生成图；人物、地点、产品照优先真实图或你自己的素材；品牌 logo 用 Simple Icons / 官方 SVG，不要纯文字 wordmark 硬凑信任墙。
+            </p>
+            <div class="fit">适合：Hero、分区插图、纹理、图标族</div>
+          </article>
+
+          <article class="tool" data-cats="rules">
+            <span class="tool-tag">rules · 持久约束</span>
+            <h3>CLAUDE.md / AGENTS.md / .cursorrules</h3>
+            <p>
+              把设计决策、禁用默认、组件约定写进规则文件，每轮对话自动带上。这是 vibe 质量从「碰运气」变「可重复」的分水岭。
+            </p>
+            <div class="fit">适合：多人/多轮/多会话持续改同一页</div>
+          </article>
+
+          <article class="tool" data-cats="rules">
+            <span class="tool-tag">rules · 可视验收</span>
+            <h3>截图闭环 · 设计 QA</h3>
+            <p>
+              浏览器截图 / 设备模拟，对照 brief 逐条勾。没有「看图说话」的 vibe 只是盲写。
+            </p>
+            <div class="fit">适合：每轮生成后的必做动作</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="paradigms" aria-labelledby="paradigms-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">03 · Paradigms</p>
+          <h2 id="paradigms-title">六个范式：比工具更重要的生成方式</h2>
+          <p>工具会换，这六条几乎决定页面最终像不像「人做的」。</p>
+        </div>
+
+        <div class="paradigm-list">
+          <article class="paradigm">
+            <div class="num">01</div>
+            <div class="body">
+              <h3>设计锁定先于代码</h3>
+              <p>
+                先写一页 DESIGN 意向：风格锚点（像哪类产品/印刷物）、色板（底/墨/一个强调色，写死色值）、字体配对与字号阶、栅格与留白节奏、1–2 个记忆点。模型对齐这份 brief，而不是对齐「好看」。
+              </p>
+            </div>
+            <aside class="aside">风格锚点 + 色值 + 字体 + 栅格 + 记忆点</aside>
+          </article>
+
+          <article class="paradigm">
+            <div class="num">02</div>
+            <div class="body">
+              <h3>反默认清单（anti-slop）</h3>
+              <p>
+                明令禁止 AI 套餐：紫蓝渐变、玻璃拟态滥用、居中 Hero + 三等卡、Inter 一统天下、纯黑投影、每段小眉题、em-dash 装饰。把禁令写进 prompt 或规则文件，比事后改快得多。
+              </p>
+            </div>
+            <aside class="aside">禁紫渐变 · 禁三等卡 · 禁眉题刷屏</aside>
+          </article>
+
+          <article class="paradigm">
+            <div class="num">03</div>
+            <div class="body">
+              <h3>短反馈环：生成 → 看 → 单点改</h3>
+              <p>
+                每轮只动一个变量（色、字阶、某一区块布局）。连续「再炫一点」会让模型漂。正确说法是可执行的：「Hero 标题缩到 2 行内」「第二个分区改成左文右图并去掉眉题」。
+              </p>
+            </div>
+            <aside class="aside">一轮一变量 · 改动可验证</aside>
+          </article>
+
+          <article class="paradigm">
+            <div class="num">04</div>
+            <div class="body">
+              <h3>规则文件当长期记忆</h3>
+              <p>
+                项目级写：字体栈、主题锁、组件拆分、禁止事项、检查命令。个人级写：你的审美偏好、讨厌的默认、常用风格锚点。新会话不用从头解释品味。
+              </p>
+            </div>
+            <aside class="aside">AGENTS.md / CLAUDE.md / 全局偏好</aside>
+          </article>
+
+          <article class="paradigm">
+            <div class="num">05</div>
+            <div class="body">
+              <h3>结构图先于堆段落</h3>
+              <p>
+                重做一页前先定区块序列与布局族（Hero / 对照 / 工具网格 / 步骤条 / 清单…）。同一布局族一页最多用一次；避免连续三段左图右文。结构对了，细节 vibe 才有意义。
+              </p>
+            </div>
+            <aside class="aside">先 manifest，后文案与组件</aside>
+          </article>
+
+          <article class="paradigm">
+            <div class="num">06</div>
+            <div class="body">
+              <h3>人负责品味与验收</h3>
+              <p>
+                模型负责广度与执行速度；你负责「像不像这个产品」、对比度、文案是否胡编、CTA 是否重复、移动端是否塌。金路径 + 边界情况都点一遍再交付。
+              </p>
+            </div>
+            <aside class="aside">你签字，才算做完</aside>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="flow" aria-labelledby="flow-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">04 · Flow</p>
+          <h2 id="flow-title">从「想重做」到「可预览」的闭环</h2>
+          <p>推荐把 vibe 卡成五步；跳过 1–2 步，后面就会开始「随机好看」。</p>
+        </div>
+
+        <div class="flow-panel" aria-label="vibe coding 工作流示意图">
+          <svg viewBox="0 0 680 220" xmlns="http://www.w3.org/2000/svg" role="img">
+            <title>Vibe coding 五步闭环</title>
+            <defs>
+              <marker id="chev" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#141413" stroke-width="1" />
+              </marker>
+            </defs>
+            <rect x="24" y="70" width="110" height="56" rx="8" fill="#fffdf9" stroke="#d6d0c6" stroke-width="0.5" />
+            <text x="79" y="95" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="13" fill="#141413">锁设计意向</text>
+            <text x="79" y="112" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c5955">DESIGN brief</text>
+
+            <rect x="160" y="70" width="110" height="56" rx="8" fill="#fffdf9" stroke="#d6d0c6" stroke-width="0.5" />
+            <text x="215" y="95" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="13" fill="#141413">选工具栈</text>
+            <text x="215" y="112" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c5955">agent / builder</text>
+
+            <rect x="296" y="70" width="110" height="56" rx="8" fill="#fffdf9" stroke="#d6d0c6" stroke-width="0.5" />
+            <text x="351" y="95" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="13" fill="#141413">生成骨架</text>
+            <text x="351" y="112" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c5955">布局 + 文案位</text>
+
+            <rect x="432" y="70" width="110" height="56" rx="8" fill="#fffdf9" stroke="#d6d0c6" stroke-width="0.5" />
+            <text x="487" y="95" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="13" fill="#141413">截图纠偏</text>
+            <text x="487" y="112" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c5955">单点反馈</text>
+
+            <rect x="568" y="70" width="88" height="56" rx="8" fill="#fffdf9" stroke="#e23d14" stroke-width="1" />
+            <text x="612" y="95" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="13" fill="#141413">验收</text>
+            <text x="612" y="112" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c5955">清单签字</text>
+
+            <line x1="134" y1="98" x2="154" y2="98" stroke="#141413" stroke-width="1" marker-end="url(#chev)" />
+            <line x1="270" y1="98" x2="290" y2="98" stroke="#141413" stroke-width="1" marker-end="url(#chev)" />
+            <line x1="406" y1="98" x2="426" y2="98" stroke="#141413" stroke-width="1" marker-end="url(#chev)" />
+            <line x1="542" y1="98" x2="562" y2="98" stroke="#141413" stroke-width="1" marker-end="url(#chev)" />
+
+            <path d="M 487 126 V 168 H 215 V 132" fill="none" stroke="#e23d14" stroke-width="1" marker-end="url(#chev)" />
+            <text x="350" y="186" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, sans-serif" font-size="11" fill="#e23d14">未过验收 → 回到生成/纠偏</text>
+          </svg>
+        </div>
+
+        <div class="steps" style="margin-top: 1.25rem">
+          <article class="step">
+            <h3>写 DESIGN brief</h3>
+            <p>锚点、色板、字阶、栅格、记忆点、禁用项。三五行即可，必须含具体色值。</p>
+          </article>
+          <article class="step">
+            <h3>选一条主路径</h3>
+            <p>改仓库用编程代理；从 0 磨视觉用生成器；要数据用全栈 Agent。不要三线并行。</p>
+          </article>
+          <article class="step">
+            <h3>先骨架后皮肤</h3>
+            <p>区块序列与布局族先对齐 brief，再调字号、间距、强调色与图像。</p>
+          </article>
+          <article class="step">
+            <h3>截图单点迭代</h3>
+            <p>桌面 + 移动各看一遍。每轮只提一条可验证的修改，不叠形容词。</p>
+          </article>
+          <article class="step">
+            <h3>清单验收交付</h3>
+            <p>对比度、CTA 唯一、文案无胡编、动效有理由、减少动态偏好，勾完再交。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="prompts" aria-labelledby="prompts-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">05 · Prompts</p>
+          <h2 id="prompts-title">可直接改用的 Prompt 骨架</h2>
+          <p>把方括号换成你的真约束。少形容词，多结构。</p>
+        </div>
+        <div class="prompt-grid">
+          <pre class="prompt"><span class="label">A · 首次生成（设计锁定）</span>读成：面向[受众]的[页面类型]，[vibe 一句]，向[风格锚点/产品名]靠。
+色板：底 #____ / 墨 #____ / 强调 #____（仅此一个强调色）。
+字体：展示____ + 正文____；标题尺度____。
+布局：max-width __，栅格 __，每段一种布局族，禁止居中三等卡。
+记忆点：1) ____ 2) ____。
+禁用：紫蓝渐变、玻璃拟态滥用、Inter 默认、每段眉题、em-dash 装饰。
+先给区块清单（manifest），确认后再写 HTML/CSS。</pre>
+          <pre class="prompt"><span class="label">B · 看图纠偏（一轮一条）</span>对照 DESIGN brief 只改这一点：
+[例如：Hero 标题改为 2 行内，副标题 ≤20 字，CTA 保持一个]
+其余像素级保持不变。
+不要顺手「优化」其他区块。
+改完列出你实际改动的 3 个文件/选择器。</pre>
+          <pre class="prompt"><span class="label">C · 反 AI 味审查</span>按 anti-slop 清单审查这一页，逐条报告是否违规：
+紫蓝渐变 / 居中 Hero+三等卡 / 每段 uppercase 眉题 /
+Inter 一统 / 纯黑投影 / 重复 CTA 意图 / 假精确数字 /
+文案像模型卖弄 / 移动端布局塌陷。
+只报告问题与位置，先不要改。</pre>
+          <pre class="prompt"><span class="label">D · 写入项目规则</span>把本次设计决策固化进 AGENTS.md：
+色板与字体栈、主题锁、布局约定、禁用默认、
+组件命名、移动端规则、验收命令。
+用简短条目，不要叙事段落。</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="check" aria-labelledby="check-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="kicker">06 · Ship check</p>
+          <h2 id="check-title">交付前清单 + 按场景推荐组合</h2>
+          <p>清单勾完再交；组合只选一条主路径。</p>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <h3>页面验收（勾完再交）</h3>
+            <ul class="check-list">
+              <li>风格与 DESIGN brief 的锚点、色板、字阶一致</li>
+              <li>强调色全站唯一，中途没有换色</li>
+              <li>Hero 首屏可完成主行动，标题 ≤2 行</li>
+              <li>同一布局族没有重复刷屏；无连续三段 zigzag</li>
+              <li>小眉题总数 ≤ 章节数 ÷ 3</li>
+              <li>每个 CTA 文案唯一，正文对比度 AA</li>
+              <li>有真实视觉资产，不是假截图色块</li>
+              <li>移动端单列可用，导航一行（桌面）</li>
+              <li>文案无胡编数字、无模型式俏皮空话</li>
+              <li>动效都能说出目的；尊重减少动态偏好</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>场景 → 主路径</h3>
+            <ul class="stack-list">
+              <li>
+                <strong>在现有 Vue 产品里重做一个 View</strong>
+                <span>Claude Code / Cursor + 项目 AGENTS.md + 截图验收。先 brief，再局部重写路由页。</span>
+              </li>
+              <li>
+                <strong>从 0 做营销落地页</strong>
+                <span>DESIGN brief → v0/Lovable 磨视觉 → 导出代码收束到静态页或主仓 → 真图与文案精修。</span>
+              </li>
+              <li>
+                <strong>作品集 / 个人实验页</strong>
+                <span>前端代理 + 你给 2 个参考站。允许更高方差，但字体与色仍锁死。</span>
+              </li>
+              <li>
+                <strong>页 + 表单/轻后端</strong>
+                <span>Replit Agent / 全栈生成器打底，再回编程代理做设计系统收敛。</span>
+              </li>
+              <li>
+                <strong>团队长期维护的营销站</strong>
+                <span>Tailwind + 自有组件（或官方 DS）+ 规则文件 + 设计 QA 回归；禁止只在聊天里 vibe。</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <p>Vibe Coding Field Guide · 为「重做一页」准备的工具与范式速查。</p>
+        <p>
+          主视觉：
+          <code>assets/vibe-hero.png</code>
+          · 把 brief 填实，比多换一个工具更能提升生成质量。
+        </p>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

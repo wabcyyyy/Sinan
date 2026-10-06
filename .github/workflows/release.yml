@@ -1,0 +1,152 @@
+name: release
+
+# CI 分层第三层（评审报告 §4.2）：打 tag 时跑全量评测与门禁，产物存档。
+# 日常提交走 ci.yml（PR 层）；定时走 nightly.yml（集成冒烟）。
+# 手动触发：Actions → release → Run workflow。
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval-suite:
+    name: Offline eval suite (agent / research)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: travel-agent-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync deps (lockfile-driven)
+        run: uv sync --frozen
+      - name: Unit tests
+        env:
+          AGENT_INTERNAL_TOKEN: ''
+          LLM_API_KEY: ''
+        # tests/agent_eval 度量层单测已进离线套件（PR-0）：eval 度量实现改坏 → 这里红
+        run: uv run pytest tests/ --ignore=tests/api --ignore=tests/perf -q
+      - name: Agent / research evals (hashed)
+        run: |
+          mkdir -p eval-artifacts
+          uv run python tests/agent_eval/eval_agent.py | tee eval-artifacts/eval_agent.json
+          uv run python tests/agent_eval/eval_research.py | tee eval-artifacts/eval_research.json
+          uv run python tests/agent_eval/eval_editing.py | tee eval-artifacts/eval_editing.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-artifacts
+          path: |
+            travel-agent-python/eval-artifacts
+            travel-agent-python/tests/agent_eval/report
+
+  frontend-gates:
+    name: Frontend gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: travel-frontend-react/package-lock.json
+      - name: Frontend build + unit tests
+        working-directory: travel-frontend-react
+        run: |
+          npm ci
+          npm run build
+          npm run test:unit
+
+  perf:
+    name: Load test (services up) + report artifact
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: travel_assistant
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 -uroot -pci-only-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard (require LLM_API_KEY)
+        id: guard
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          if [ -z "$LLM_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 LLM_API_KEY secret，跳过压测（generate 端点需要真实生成）"
+          fi
+      - uses: astral-sh/setup-uv@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install python deps
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        run: uv sync --frozen
+      - name: Start agent
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          REDIS_URL: redis://127.0.0.1:6379/0
+          AGENT_INTERNAL_TOKEN: ci-internal-token
+          # 本进程自己签发会话票：必须显式给 JWT_SECRET（≥32 字符），不能依赖空默认值
+          JWT_SECRET: ci-example-jwt-secret-at-least-32-chars
+        run: |
+          nohup uv run python main.py > /tmp/agent.log 2>&1 &
+      - name: Wait for services
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/agent/health >/dev/null && break || sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/api/agent/health
+          # 后端已统一到 FastAPI：这一步同时验证「空库启动即迁移」（Java 退役后没有 Flyway 了）
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/test/hello >/dev/null && break || sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/api/test/hello
+      - name: Load test (all endpoints)
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: uv run python tests/perf/load_test.py --endpoint all
+      - uses: actions/upload-artifact@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          name: perf-report
+          path: travel-agent-python/tests/perf/report
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "=== agent.log (tail) ==="; tail -200 /tmp/agent.log || true

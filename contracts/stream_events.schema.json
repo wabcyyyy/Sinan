@@ -1,0 +1,906 @@
+{
+  "$defs": {
+    "BackupRule": {
+      "properties": {
+        "if": {
+          "maxLength": 120,
+          "title": "If",
+          "type": "string"
+        },
+        "action": {
+          "maxLength": 120,
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "if",
+        "action"
+      ],
+      "title": "BackupRule",
+      "type": "object"
+    },
+    "DailyPlan": {
+      "properties": {
+        "dayNo": {
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/TripItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Theme"
+        },
+        "miniRoute": {
+          "title": "Miniroute",
+          "type": "object"
+        },
+        "backupPlan": {
+          "items": {
+            "$ref": "#/$defs/BackupRule"
+          },
+          "title": "Backupplan",
+          "type": "array"
+        },
+        "photoSpots": {
+          "items": {
+            "$ref": "#/$defs/PhotoSpot"
+          },
+          "title": "Photospots",
+          "type": "array"
+        },
+        "practicalNotes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Practicalnotes",
+          "type": "array"
+        },
+        "dayOptions": {
+          "items": {
+            "$ref": "#/$defs/DayOption"
+          },
+          "title": "Dayoptions",
+          "type": "array"
+        },
+        "tripTheme": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Triptheme"
+        },
+        "suggestions": {
+          "items": {
+            "$ref": "#/$defs/Suggestion"
+          },
+          "title": "Suggestions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dayNo",
+        "note",
+        "items",
+        "theme",
+        "miniRoute",
+        "backupPlan",
+        "photoSpots",
+        "practicalNotes",
+        "dayOptions",
+        "tripTheme",
+        "suggestions"
+      ],
+      "title": "DailyPlan",
+      "type": "object"
+    },
+    "DayEvent": {
+      "properties": {
+        "type": {
+          "const": "day",
+          "enum": [
+            "day"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/DailyPlan"
+        }
+      },
+      "required": [
+        "type",
+        "plan"
+      ],
+      "title": "DayEvent",
+      "type": "object"
+    },
+    "DayOption": {
+      "properties": {
+        "label": {
+          "maxLength": 40,
+          "title": "Label",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 120,
+          "title": "Summary",
+          "type": "string"
+        },
+        "tradeoff": {
+          "maxLength": 120,
+          "title": "Tradeoff",
+          "type": "string"
+        },
+        "items": {
+          "items": {},
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "summary",
+        "tradeoff",
+        "items"
+      ],
+      "title": "DayOption",
+      "type": "object"
+    },
+    "DayPatchEvent": {
+      "properties": {
+        "type": {
+          "const": "day_patch",
+          "enum": [
+            "day_patch"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/DailyPlan"
+        }
+      },
+      "required": [
+        "type",
+        "plan"
+      ],
+      "title": "DayPatchEvent",
+      "type": "object"
+    },
+    "DoneEvent": {
+      "properties": {
+        "type": {
+          "const": "done",
+          "enum": [
+            "done"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "daysExpected": {
+          "title": "Daysexpected",
+          "type": "integer"
+        },
+        "daysEmitted": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Daysemitted",
+          "type": "array"
+        },
+        "tripTheme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Triptheme"
+        },
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Message"
+        }
+      },
+      "required": [
+        "type",
+        "daysExpected",
+        "daysEmitted",
+        "tripTheme",
+        "complete",
+        "message"
+      ],
+      "title": "DoneEvent",
+      "type": "object"
+    },
+    "ErrorEvent": {
+      "properties": {
+        "type": {
+          "const": "error",
+          "enum": [
+            "error"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ],
+      "title": "ErrorEvent",
+      "type": "object"
+    },
+    "FactEvidence": {
+      "properties": {
+        "sourceRef": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceref"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "expiresAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expiresat"
+        },
+        "verificationStatus": {
+          "default": "unverified",
+          "enum": [
+            "verified",
+            "partially_verified",
+            "unverified"
+          ],
+          "title": "Verificationstatus",
+          "type": "string"
+        },
+        "valueKind": {
+          "default": "generated",
+          "enum": [
+            "observed",
+            "estimated",
+            "generated"
+          ],
+          "title": "Valuekind",
+          "type": "string"
+        },
+        "freshnessStatus": {
+          "default": "unknown",
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown"
+          ],
+          "title": "Freshnessstatus",
+          "type": "string"
+        },
+        "reviewRequirement": {
+          "default": "before_departure",
+          "enum": [
+            "none",
+            "before_departure"
+          ],
+          "title": "Reviewrequirement",
+          "type": "string"
+        }
+      },
+      "title": "FactEvidence",
+      "type": "object",
+      "required": [
+        "sourceRef",
+        "sourceUrl",
+        "provider",
+        "retrievedAt",
+        "expiresAt",
+        "verificationStatus",
+        "valueKind",
+        "freshnessStatus",
+        "reviewRequirement"
+      ]
+    },
+    "PhotoSpot": {
+      "properties": {
+        "name": {
+          "maxLength": 60,
+          "title": "Name",
+          "type": "string"
+        },
+        "tip": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tip"
+        },
+        "bestTime": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Besttime"
+        }
+      },
+      "required": [
+        "name",
+        "tip",
+        "bestTime"
+      ],
+      "title": "PhotoSpot",
+      "type": "object"
+    },
+    "StartEvent": {
+      "properties": {
+        "type": {
+          "const": "start",
+          "enum": [
+            "start"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "runId"
+      ],
+      "title": "StartEvent",
+      "type": "object"
+    },
+    "Suggestion": {
+      "properties": {
+        "poiId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Poiid"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "default": "attraction",
+          "enum": [
+            "attraction",
+            "activity",
+            "food",
+            "hotel",
+            "shopping",
+            "souvenir"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "intro": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intro"
+        },
+        "needReservation": {
+          "default": false,
+          "title": "Needreservation",
+          "type": "boolean"
+        },
+        "estimatedCost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimatedcost"
+        },
+        "used": {
+          "default": false,
+          "title": "Used",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "poiId",
+        "name",
+        "category",
+        "address",
+        "latitude",
+        "longitude",
+        "intro",
+        "needReservation",
+        "estimatedCost",
+        "used"
+      ],
+      "title": "Suggestion",
+      "type": "object"
+    },
+    "SuggestionsEvent": {
+      "properties": {
+        "type": {
+          "const": "suggestions",
+          "enum": [
+            "suggestions"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Suggestion"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "items"
+      ],
+      "title": "SuggestionsEvent",
+      "type": "object"
+    },
+    "TripItem": {
+      "properties": {
+        "itemType": {
+          "default": "attraction",
+          "pattern": "^(attraction|food|hotel|transport)$",
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "poiName": {
+          "title": "Poiname",
+          "type": "string"
+        },
+        "poiId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Poiid"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "durationMin": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationmin"
+        },
+        "openTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opentime"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
+        },
+        "whyThis": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Whythis"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "sourceUpdatedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceupdatedat"
+        },
+        "verificationStatus": {
+          "default": "unverified",
+          "enum": [
+            "verified",
+            "partially_verified",
+            "unverified"
+          ],
+          "title": "Verificationstatus",
+          "type": "string"
+        },
+        "valueKind": {
+          "default": "generated",
+          "enum": [
+            "observed",
+            "estimated",
+            "generated"
+          ],
+          "title": "Valuekind",
+          "type": "string"
+        },
+        "freshnessStatus": {
+          "default": "unknown",
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown"
+          ],
+          "title": "Freshnessstatus",
+          "type": "string"
+        },
+        "reviewRequirement": {
+          "default": "before_departure",
+          "enum": [
+            "none",
+            "before_departure"
+          ],
+          "title": "Reviewrequirement",
+          "type": "string"
+        },
+        "factEvidence": {
+          "additionalProperties": {
+            "$ref": "#/$defs/FactEvidence"
+          },
+          "title": "Factevidence",
+          "type": "object"
+        }
+      },
+      "required": [
+        "itemType",
+        "poiName",
+        "poiId",
+        "address",
+        "latitude",
+        "longitude",
+        "startTime",
+        "endTime",
+        "durationMin",
+        "openTime",
+        "cost",
+        "tag",
+        "remark",
+        "whyThis",
+        "image",
+        "source",
+        "sourceUpdatedAt",
+        "verificationStatus",
+        "valueKind",
+        "freshnessStatus",
+        "reviewRequirement",
+        "factEvidence"
+      ],
+      "title": "TripItem",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "day": "#/$defs/DayEvent",
+      "day_patch": "#/$defs/DayPatchEvent",
+      "done": "#/$defs/DoneEvent",
+      "error": "#/$defs/ErrorEvent",
+      "start": "#/$defs/StartEvent",
+      "suggestions": "#/$defs/SuggestionsEvent"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/StartEvent"
+    },
+    {
+      "$ref": "#/$defs/DayEvent"
+    },
+    {
+      "$ref": "#/$defs/DayPatchEvent"
+    },
+    {
+      "$ref": "#/$defs/SuggestionsEvent"
+    },
+    {
+      "$ref": "#/$defs/DoneEvent"
+    },
+    {
+      "$ref": "#/$defs/ErrorEvent"
+    }
+  ]
+}

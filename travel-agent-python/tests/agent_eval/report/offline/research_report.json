@@ -1,0 +1,45 @@
+{
+  "mode": "offline-fixture-research",
+  "city": "杭州",
+  "domains": [
+    {
+      "domain": "attraction",
+      "city": "杭州",
+      "count": 12,
+      "confidence": 1.0,
+      "rounds": 1,
+      "gaps": [],
+      "degraded": false
+    },
+    {
+      "domain": "food",
+      "city": "杭州",
+      "count": 4,
+      "confidence": 1.0,
+      "rounds": 1,
+      "gaps": [],
+      "degraded": false
+    },
+    {
+      "domain": "hotel",
+      "city": "杭州",
+      "count": 2,
+      "confidence": 1.0,
+      "rounds": 1,
+      "gaps": [],
+      "degraded": false
+    }
+  ],
+  "refill": {
+    "city": "杭州",
+    "first_round_empty": true,
+    "refill_items": 1,
+    "refill_filled": true
+  },
+  "metrics": {
+    "avg_rounds": 1.0,
+    "pack_total": 18,
+    "degraded_rate": 0.0,
+    "refill_effectiveness": 1.0
+  }
+}

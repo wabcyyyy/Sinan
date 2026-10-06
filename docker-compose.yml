@@ -1,0 +1,180 @@
+# 本地/演示编排：基础设施一键起，应用可继续用 start-all 或 profile 拉起。
+# 用法：
+#   docker compose up -d mysql redis
+#   docker compose --profile apps up -d   # 可选：容器化后端(FastAPI) + 前端（需先构建镜像）
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml --profile prod up -d
+#                                         # 生产：MySQL + Redis + agent + Caddy 边缘（自动 TLS），
+#                                         # 叠加层负责生产专属覆盖（Secure Cookie 等），见 deploy/README.md
+#
+# 默认仅起 MySQL + Redis，避免与宿主机已占用端口冲突时难排查。
+# 后端已统一到 FastAPI（travel-agent-python 的 agent-python 服务，:8000 承载 /api 与 /api/agent）。
+# 注：语料库退役（V4）后不再需要 Qdrant——地点事实走 LLM + 联网搜索 + OpenTripMap/Nominatim，
+#     Docker 只承担 MySQL + Redis 两件基础设施。
+
+name: travel-assistant
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ta-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-travel_dev_only}
+      MYSQL_DATABASE: ${MYSQL_DB:-travel_assistant}
+    ports:
+      # 只绑回环：宿主机上的工具照样连，但不会把 3306 开放给整个网络
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - ta-mysql-data:/var/lib/mysql
+      # 表结构由后端（travel-agent-python）启动时自动迁移创建（见 app/db/migrations/sql/），
+      # 不需要挂载初始化 SQL；如需兜底种子，后端建表后手工导入 sql/seed_data.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-travel_dev_only}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ta-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ta_dev_redis_only}
+    ports:
+      # 默认与项目 start-all 使用的 6380 对齐，避免与本机已有 6379 冲突；
+      # 只绑 127.0.0.1（R1-7）：这个库里放着 JWT 吊销黑名单与登录锁桶，
+      # 之前的 `--protected-mode no` + 无口令 + 0.0.0.0:6380 等于让同网段任意主机
+      # 清空白名单（被踢的票继续有效 24h）并抹掉失败计数。
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:-ta_dev_redis_only}
+    volumes:
+      - ta-redis-data:/data
+    healthcheck:
+      # $$ 让 $REDIS_PASSWORD 留给容器内 shell 运行期展开（与 command 的 --requirepass
+      # 同源 environment）。裸 $ 会被 compose 在解析期按宿主机 .env 插值——宿主机未设
+      # 该键时变成 -a ""，与默认口令错位，容器永远 unhealthy（预演实证）。
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ---- 应用层（可选 profile）----
+  # 镜像需自行 build；模型/密钥通过 .env 注入。未开启 apps profile 时不会启动。
+
+  agent-python:
+    # apps = 本地容器化演示；prod = 生产（deploy/docker-compose.prod.yml 叠加层配套）
+    profiles: ["apps", "prod"]
+    build:
+      context: ./travel-agent-python
+      dockerfile: Dockerfile
+    container_name: ta-agent
+    env_file:
+      - ./travel-agent-python/.env
+      # 运行密钥（JWT_SECRET/AGENT_INTERNAL_TOKEN/LLM_API_KEY 等）以根 .env 为准：
+      # backend .env 是宿主机开发路径，容器内同名键由此处覆盖
+      - ./.env
+    environment:
+      AGENT_HOST: 0.0.0.0
+      # 容器内连 MySQL 服务：口令/库名与 mysql 服务的 MYSQL_* 同源（root .env），
+      # 覆盖 backend .env 里指向宿主机本地库的 DB_*，避免两份口令漂移
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-travel_dev_only}
+      DB_NAME: ${MYSQL_DB:-travel_assistant}
+      # 不再写死 REDIS_URL：口令要进 URL，由 REDIS_HOST/PORT/PASSWORD 单点派生
+      # （见 app/common/config.py:_default_redis_url），否则两份地址必然漂移
+      REDIS_HOST: redis
+      # 容器网络内 Redis 监听 6379（宿主机才映射为 6380）
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ta_dev_redis_only}
+      # XFF 归因：只有这台代理**替换**过 XFF（nginx.conf 用 $remote_addr），
+      # 才允许后端按可信网段从右往左取跳。网段是 compose 默认 bridge 段。
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,::1,172.16.0.0/12}
+      # 分享卡外壳取壳地址（P1-5）：本地演示链路的静态源是 frontend-react 容器；
+      # 生产叠加层按拓扑覆盖为 caddy。与 nginx.conf / deploy/Caddyfile 的 /s/ 反代配套。
+      FRONTEND_SHELL_URL: http://frontend-react/index.html
+      # compose 的 nginx 只 listen 80（明文），Secure Cookie 会被浏览器丢掉；
+      # 上 TLS 后删掉这行，回到 config.py 的安全默认值（R1-6）。
+      AUTH_COOKIE_SECURE: "false"
+    volumes:
+      # 封面/上传图（UPLOADS_DIR）与 PDF 导出（EXPORT_DIR）都落 BASE_DIR/data，
+      # 容器内即 /app/data——不挂卷则容器重建即丢（S0-7）
+      - ./travel-agent-python/data:/app/data
+    ports:
+      # 只绑回环：前端经容器网络访问 agent-python:8000，宿主机端口留给调试。
+      # 0.0.0.0:8000 会让 /api/agent/** 与 /mcp 绕过 nginx 直接暴露（R1-8）。
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/agent/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  frontend-react:
+    profiles: ["apps"]
+    build:
+      context: ./travel-frontend-react
+      dockerfile: Dockerfile
+      # 必须显式指 target：Dockerfile 末段是 caddy（生产边缘），漏写会默认
+      # build 到 caddy——5173 吐 Caddy 默认页且 /api 反代消失（重建实测）
+      target: web
+    container_name: ta-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      # M7-b 切流量：nginx.conf 里 /api/ 的上游已是 FastAPI，依赖跟着改
+      - agent-python
+    restart: unless-stopped
+
+  # 生产边缘（仅 prod profile）：单一入口，自动 HTTPS（Let's Encrypt），
+  # 静态托管 + /api 反代二合一；镜像用前端 Dockerfile 的 caddy target（同一构建产物）。
+  # 路由语义与 nginx.conf 对齐：agent 直调面与 /mcp 绝不经边缘可达（R1-8）。
+  caddy:
+    profiles: ["prod"]
+    build:
+      context: ./travel-frontend-react
+      dockerfile: Dockerfile
+      # 复用 build 阶段产物，不重复 npm 构建（构建真相单一源见该 Dockerfile 头注）
+      target: caddy
+    container_name: ta-caddy
+    environment:
+      # 站点域名单一来源：根 .env 的 DOMAIN（Caddy 据此自动签发/续期证书）。
+      # 软默认 localhost（本机预演/漏配时不炸常用命令）；真域名缺失由 deploy/deploy.sh 拦截
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      # HTTP/3（QUIC）走 UDP 443；VPS 防火墙需放行
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # 证书与 ACME 账户状态：不挂卷则每次重建都重签（触发 Let's Encrypt 限速）
+      - ta-caddy-data:/data
+      - ta-caddy-config:/config
+    depends_on:
+      agent-python:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ta-mysql-data:
+  ta-redis-data:
+  ta-caddy-data:
+  ta-caddy-config:

@@ -1,0 +1,3195 @@
+{
+  "01_authoritative_hit": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 0.0,
+      "餐饮": 195.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              },
+              "open_time": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              }
+            },
+            "freshness_status": "fresh",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.0,
+            "longitude": 120.0,
+            "open_time": "00:00-24:00",
+            "poi_id": "poi-西湖",
+            "poi_name": "西湖",
+            "remark": null,
+            "review_requirement": "none",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "observed",
+            "verification_status": "partially_verified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 97.5,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              }
+            },
+            "freshness_status": "fresh",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.1,
+            "longitude": 120.1,
+            "open_time": null,
+            "poi_id": "poi-楼外楼",
+            "poi_name": "楼外楼",
+            "remark": "餐饮价偏高，已按城市人均¥65参考价调整为¥97.5",
+            "review_requirement": "none",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "observed",
+            "verification_status": "partially_verified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "西湖线",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": "湖景",
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "knowledge_backed",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 0.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 2.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "西湖 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "楼外楼 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "opentripmap",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": "2026-08-01T00:00:00Z",
+        "source_id": "opentripmap",
+        "source_url": null,
+        "storage_source": "opentripmap"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "达到重试上限后仍存在行程约束问题",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "发现 1 个问题：",
+      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）"
+    ]
+  },
+  "02_authoritative_missing_coords": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 20.0,
+      "餐饮": 120.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 10.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "before_departure",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.2,
+            "longitude": 120.1,
+            "open_time": null,
+            "poi_id": "poi-灵隐寺",
+            "poi_name": "灵隐寺",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 60.0,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.21,
+            "longitude": 120.11,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "素斋",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 120,
+            "end_time": "16:20",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.22,
+            "longitude": 120.12,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "永福寺",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "14:20",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "山线",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "knowledge_backed",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 3.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "READY_WITH_WARNINGS",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "灵隐寺 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "素斋 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "永福寺 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "opentripmap",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": "2026-08-01T00:00:00Z",
+        "source_id": "opentripmap",
+        "source_url": null,
+        "storage_source": "opentripmap"
+      },
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "success",
+    "status_reason": null,
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  },
+  "03_open_mode_llm": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 110.0,
+      "餐饮": 90.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 55.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.3,
+            "longitude": 120.2,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "小众码头",
+            "remark": "需提前电话确认",
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 45.0,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.31,
+            "longitude": 120.21,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "社区面馆",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 120,
+            "end_time": "16:10",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": null,
+            "longitude": null,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "旧仓库",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "14:10",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "自由探索（价格为估算，请以现场或官方渠道为准）",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": "慢游杭州"
+      }
+    ],
+    "days": 1,
+    "destination_status": "researched",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 3.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "READY_WITH_WARNINGS",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "小众码头 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "社区面馆 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "旧仓库 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "destination_status": "researched",
+      "open_research": true,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "success",
+    "status_reason": null,
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": "慢游杭州",
+    "validation_log": [
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  },
+  "04_hotel_live_price": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 140.0,
+      "餐饮": 160.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 70.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.27,
+            "longitude": 120.07,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "西溪湿地",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 80.0,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.26,
+            "longitude": 120.06,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "农家菜",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 120,
+            "end_time": "16:20",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.28,
+            "longitude": 120.05,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "福堤",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "14:20",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "含酒店",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "draft_only",
+    "price_note": "酒店为淡季估算（系数×0.85），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 3.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "READY_WITH_WARNINGS",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "西溪湿地 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "农家菜 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "福堤 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "success",
+    "status_reason": null,
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  },
+  "05_hotel_season_estimate": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 200.0,
+      "餐饮": 160.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 100.0,
+            "duration_min": 300,
+            "end_time": "14:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 27.1,
+            "longitude": 100.18,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "玉龙雪山",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 80.0,
+            "duration_min": 60,
+            "end_time": "15:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 26.87,
+            "longitude": 100.23,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "云雪丽",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "14:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "无实时价",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "knowledge_backed",
+    "price_note": "酒店为淡季估算（系数×0.85），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 2.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "玉龙雪山 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "云雪丽 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "达到重试上限后仍存在行程约束问题",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "发现 1 个问题：",
+      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）"
+    ]
+  },
+  "06_food_live_and_clamp": {
+    "budget_estimate": {
+      "交通": 50.0,
+      "酒店": 900.0,
+      "门票": 40.0,
+      "餐饮": 120.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 120,
+            "end_time": "11:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.24,
+            "longitude": 120.17,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "河坊街",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 60.0,
+            "duration_min": 90,
+            "end_time": "13:10",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.25,
+            "longitude": 120.17,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "杭州本地餐厅1",
+            "remark": "联网实时价￥96：杭州本地餐厅1 人均；餐饮价偏高，已按城市人均¥40参考价调整为¥60",
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "11:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": null,
+            "duration_min": 60,
+            "end_time": "14:40",
+            "fact_evidence": {
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.24,
+            "longitude": 120.16,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "无名小馆",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "13:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 20.0,
+            "duration_min": 120,
+            "end_time": "17:10",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.23,
+            "longitude": 120.15,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "南宋官窑",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "15:10",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "餐线",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "draft_only",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 1 天出现两顿午餐（杭州本地餐厅1、无名小馆），请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 4.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "河坊街 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "杭州本地餐厅1 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "无名小馆 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "南宋官窑 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[3]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "达到重试上限后仍存在行程约束问题",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "发现 1 个问题：",
+      "第 1 天出现两顿午餐（杭州本地餐厅1、无名小馆），请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐",
+      "第 1 天出现两顿午餐（杭州本地餐厅1、无名小馆），请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐"
+    ]
+  },
+  "07_multi_day_budget": {
+    "budget_estimate": {
+      "交通": 270.0,
+      "酒店": 1512.0,
+      "门票": 1005.0,
+      "餐饮": 847.5
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 0.9833333333333334,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 0.9958,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              }
+            },
+            "freshness_status": "fresh",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.2,
+            "longitude": 120.1,
+            "open_time": null,
+            "poi_id": "poi-西湖",
+            "poi_name": "西湖",
+            "remark": null,
+            "review_requirement": "none",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "observed",
+            "verification_status": "partially_verified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 97.5,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.25,
+            "longitude": 120.14,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "楼外楼",
+            "remark": "餐饮价偏高，已按城市人均¥65参考价调整为¥97.5",
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 756.0,
+            "duration_min": 30,
+            "end_time": "18:30",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              }
+            },
+            "freshness_status": "fresh",
+            "image": null,
+            "item_type": "hotel",
+            "latitude": 30.26,
+            "longitude": 120.16,
+            "open_time": null,
+            "poi_id": "poi-杭州舒适酒店1",
+            "poi_name": "杭州舒适酒店1",
+            "remark": "联网实时价￥420：杭州·杭州舒适酒店1 挂牌价；按节假日旺季系数×1.8调整",
+            "review_requirement": "none",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "18:00",
+            "tag": null,
+            "value_kind": "observed",
+            "verification_status": "partially_verified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "D1",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      },
+      {
+        "backup_plan": [],
+        "day_no": 2,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 45.0,
+            "duration_min": 240,
+            "end_time": "13:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.24,
+            "longitude": 120.1,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "灵隐寺",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 55.0,
+            "duration_min": 60,
+            "end_time": "14:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.241,
+            "longitude": 120.101,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "素斋",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "13:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "D2",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      },
+      {
+        "backup_plan": [],
+        "day_no": 3,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 290.0,
+            "duration_min": 300,
+            "end_time": "15:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.19,
+            "longitude": 120.09,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "宋城",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "10:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "D3",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 3,
+    "destination_status": "knowledge_backed",
+    "price_note": "酒店价格来源：杭州·杭州舒适酒店1 挂牌价",
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 3 天未安排餐饮",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 0.6667,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 6.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "西湖 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "楼外楼 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "杭州舒适酒店1 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "灵隐寺 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[1].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "素斋 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[1].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "宋城 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[2].items[0]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "opentripmap",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": "2026-08-01T00:00:00Z",
+        "source_id": "opentripmap",
+        "source_url": null,
+        "storage_source": "opentripmap"
+      },
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "达到重试上限后仍存在行程约束问题",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州3日游",
+    "trip_theme": null,
+    "validation_log": [
+      "发现 1 个问题：",
+      "第 3 天未安排餐饮",
+      "第 3 天未安排餐饮"
+    ]
+  },
+  "08_sanitize_and_empty_day": {
+    "budget_estimate": {
+      "交通": 120.0,
+      "酒店": 900.0,
+      "门票": 240.0,
+      "餐饮": 520.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 0.5,
+        "diversity": 0.7,
+        "pace": 0.5,
+        "preference_alignment": 1.0
+      },
+      "issues": [
+        "第 2 天缺少主要活动",
+        "行程类型较单一，可增加餐饮或不同主题活动"
+      ],
+      "score": 0.675,
+      "strengths": []
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 60,
+            "end_time": "11:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.25,
+            "longitude": 120.15,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "丝绸店",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "10:00",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 120.0,
+            "duration_min": 150,
+            "end_time": null,
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.22,
+            "longitude": 120.12,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "龙井采茶",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": null,
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": null,
+            "duration_min": null,
+            "end_time": "worse",
+            "fact_evidence": {
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": null,
+            "longitude": null,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "未定",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "bad",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "混合",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      },
+      {
+        "backup_plan": [],
+        "day_no": 2,
+        "day_options": [],
+        "items": [],
+        "mini_route": {},
+        "note": "空日",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "draft_only",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+          "path": null
+        },
+        {
+          "code": "ROUTE_OR_SCHEDULE_CONFLICT",
+          "message": "第 1 天未安排餐饮",
+          "path": null
+        },
+        {
+          "code": "MISSING_DAY_ITEMS",
+          "message": "以下日期没有可交付的行程地点：2",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 1.0,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 3.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "丝绸店 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "龙井采茶 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "未定 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "达到重试上限后仍存在行程约束问题",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "第 2 天无行程项",
+      "发现 2 个问题：",
+      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+      "第 1 天未安排餐饮",
+      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+      "第 1 天未安排餐饮"
+    ]
+  },
+  "09_retry_exhausted": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 0.0,
+      "餐饮": 260.0
+    },
+    "city": "丽江",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 0.0,
+        "diversity": 0.7,
+        "pace": 0.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [
+        "第 1 天缺少主要活动",
+        "行程类型较单一，可增加餐饮或不同主题活动"
+      ],
+      "score": 0.425,
+      "strengths": []
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [],
+        "mini_route": {},
+        "note": "只有酒店",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "draft_only",
+    "price_note": null,
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "NO_ITINERARY_ITEMS",
+          "message": "没有可交付的行程地点",
+          "path": null
+        },
+        {
+          "code": "MISSING_DAY_ITEMS",
+          "message": "以下日期没有可交付的行程地点：1",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 0.0,
+        "fact_evidence_coverage": 0.0,
+        "item_count": 0.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": []
+    },
+    "schedule_report": {},
+    "schema_version": "1.0",
+    "sources": [],
+    "status": "failed",
+    "status_reason": "开放模式结果未通过全部约束校验（见校验日志），已保留但请复核当日时间安排",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "丽江1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "第 1 天无行程项",
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  },
+  "10_no_items": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 0.0,
+      "餐饮": 260.0
+    },
+    "city": "丽江",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 0.0,
+        "diversity": 0.7,
+        "pace": 0.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [
+        "第 1 天缺少主要活动",
+        "行程类型较单一，可增加餐饮或不同主题活动"
+      ],
+      "score": 0.425,
+      "strengths": []
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [],
+        "mini_route": {},
+        "note": "草案",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "draft_only",
+    "price_note": null,
+    "quality_report": {
+      "blocking_issues": [
+        {
+          "code": "NO_ITINERARY_ITEMS",
+          "message": "没有可交付的行程地点",
+          "path": null
+        },
+        {
+          "code": "MISSING_DAY_ITEMS",
+          "message": "以下日期没有可交付的行程地点：1",
+          "path": null
+        }
+      ],
+      "metrics": {
+        "estimated_fact_ratio": 0.0,
+        "fact_evidence_coverage": 0.0,
+        "item_count": 0.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "BLOCKED",
+      "validated_at": "<normalized>",
+      "warnings": []
+    },
+    "schedule_report": {
+      "destination_status": "draft_only"
+    },
+    "schema_version": "1.0",
+    "sources": [],
+    "status": "failed",
+    "status_reason": null,
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "丽江1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "第 1 天无行程项",
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  },
+  "11_suggestions_research": {
+    "budget_estimate": {
+      "交通": 60.0,
+      "酒店": 900.0,
+      "门票": 0.0,
+      "餐饮": 180.0
+    },
+    "city": "杭州",
+    "critic_report": {
+      "dimensions": {
+        "completeness": 1.0,
+        "diversity": 1.0,
+        "pace": 1.0,
+        "preference_alignment": 1.0
+      },
+      "issues": [],
+      "score": 1.0,
+      "strengths": [
+        "景点与餐饮类型有基本搭配",
+        "整体节奏和偏好匹配度良好"
+      ]
+    },
+    "daily_plans": [
+      {
+        "backup_plan": [],
+        "day_no": 1,
+        "day_options": [],
+        "items": [
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 180,
+            "end_time": "12:00",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "fresh",
+                "provider": "opentripmap",
+                "retrieved_at": "2026-08-01T00:00:00Z",
+                "review_requirement": "none",
+                "source_ref": "opentripmap",
+                "source_url": null,
+                "value_kind": "observed",
+                "verification_status": "verified"
+              }
+            },
+            "freshness_status": "fresh",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.24,
+            "longitude": 120.14,
+            "open_time": null,
+            "poi_id": "poi-西湖",
+            "poi_name": "西湖",
+            "remark": null,
+            "review_requirement": "none",
+            "source": "opentripmap",
+            "source_updated_at": "2026-08-01T00:00:00Z",
+            "start_time": "09:00",
+            "tag": null,
+            "value_kind": "observed",
+            "verification_status": "partially_verified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 90.0,
+            "duration_min": 60,
+            "end_time": "13:40",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "food",
+            "latitude": 30.25,
+            "longitude": 120.15,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "知味观",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "12:40",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          },
+          {
+            "address": null,
+            "cost": 0.0,
+            "duration_min": 120,
+            "end_time": "16:10",
+            "fact_evidence": {
+              "cost": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": null,
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": null,
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              },
+              "identity": {
+                "expires_at": null,
+                "freshness_status": "unknown",
+                "provider": "llm.open_day",
+                "retrieved_at": null,
+                "review_requirement": "before_departure",
+                "source_ref": "llm.open_day",
+                "source_url": null,
+                "value_kind": "generated",
+                "verification_status": "unverified"
+              }
+            },
+            "freshness_status": "unknown",
+            "image": null,
+            "item_type": "attraction",
+            "latitude": 30.24,
+            "longitude": 120.16,
+            "open_time": null,
+            "poi_id": null,
+            "poi_name": "柳浪闻莺",
+            "remark": null,
+            "review_requirement": "before_departure",
+            "source": "llm.open_day",
+            "source_updated_at": null,
+            "start_time": "14:10",
+            "tag": null,
+            "value_kind": "estimated",
+            "verification_status": "unverified",
+            "why_this": null
+          }
+        ],
+        "mini_route": {},
+        "note": "带建议",
+        "photo_spots": [],
+        "practical_notes": [],
+        "suggestions": [],
+        "theme": null,
+        "trip_theme": null
+      }
+    ],
+    "days": 1,
+    "destination_status": "knowledge_backed",
+    "price_note": "酒店为节假日旺季估算（系数×1.8），未获取到联网实时价",
+    "quality_report": {
+      "blocking_issues": [],
+      "metrics": {
+        "estimated_fact_ratio": 0.6667,
+        "fact_evidence_coverage": 1.0,
+        "item_count": 3.0
+      },
+      "quality_rule_version": "travel-quality-1.0",
+      "quality_status": "READY_WITH_WARNINGS",
+      "validated_at": "<normalized>",
+      "warnings": [
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "西湖 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[0]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "知味观 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[1]"
+        },
+        {
+          "code": "FACT_REQUIRES_REVIEW",
+          "message": "柳浪闻莺 的部分事实需要出发前复核",
+          "path": "trip.daily_plans[0].items[2]"
+        }
+      ]
+    },
+    "schedule_report": {
+      "degraded": false,
+      "research": {
+        "confidence": 0.6,
+        "evidence_count": 7,
+        "gaps": [
+          "营业时间"
+        ]
+      },
+      "route_sources": [
+        "amap"
+      ]
+    },
+    "schema_version": "1.0",
+    "sources": [
+      {
+        "expires_at": null,
+        "provider": "opentripmap",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": "2026-08-01T00:00:00Z",
+        "source_id": "opentripmap",
+        "source_url": null,
+        "storage_source": "opentripmap"
+      },
+      {
+        "expires_at": null,
+        "provider": "llm.open_day",
+        "published_at": null,
+        "publisher": null,
+        "retrieved_at": null,
+        "source_id": "llm.open_day",
+        "source_url": null,
+        "storage_source": "llm.open_day"
+      }
+    ],
+    "status": "degraded",
+    "status_reason": "研究阶段部分证据源超时",
+    "suggestions": [
+      {
+        "address": null,
+        "category": "activity",
+        "estimated_cost": null,
+        "intro": null,
+        "latitude": 30.24,
+        "longitude": 120.15,
+        "name": "西湖夜游",
+        "need_reservation": false,
+        "poi_id": "A1",
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 60.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点0",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 70.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点1",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 80.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点2",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      },
+      {
+        "address": null,
+        "category": "hotel",
+        "estimated_cost": 90.0,
+        "intro": "联网补池替身",
+        "latitude": null,
+        "longitude": null,
+        "name": "网搜地点3",
+        "need_reservation": true,
+        "poi_id": null,
+        "used": false
+      }
+    ],
+    "title": "杭州1日游",
+    "trip_theme": null,
+    "validation_log": [
+      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+    ]
+  }
+}

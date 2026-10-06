@@ -1,0 +1,15 @@
+[
+  {"city": "北京", "days": 1, "persons": 2, "preferences": ["人文历史"]},
+  {"city": "上海", "days": 2, "persons": 2, "preferences": ["网红出片"]},
+  {"city": "杭州", "days": 3, "persons": 3, "preferences": ["自然风光"]},
+  {"city": "成都", "days": 4, "persons": 2, "preferences": ["美食"]},
+  {"city": "西安", "days": 2, "persons": 4, "preferences": ["人文历史"]},
+  {"city": "三亚", "days": 5, "persons": 2, "preferences": ["自然风光"]},
+  {"city": "广州", "days": 2, "persons": 2, "preferences": ["美食"]},
+  {"city": "厦门", "days": 3, "persons": 2, "preferences": ["海滨"]},
+  {"city": "Barcelona", "days": 3, "persons": 2, "preferences": ["高迪建筑"]},
+  {"city": "Tokyo", "days": 2, "persons": 2, "preferences": ["城市观察"]},
+  {"city": "Bali", "days": 4, "persons": 2, "preferences": ["海岛"]},
+  {"city": "昆明", "days": 2, "persons": 2, "preferences": ["无坐标边界"], "coords": false},
+  {"city": "Paris", "days": 2, "persons": 2, "preferences": ["博物馆"], "coords": false}
+]

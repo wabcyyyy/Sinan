@@ -1,0 +1,109 @@
+{
+  "search_metadata": {
+    "id": "example-serpapi-search-id",
+    "status": "Success",
+    "created_at": "2026-09-25 10:00:00 +0000"
+  },
+  "search_parameters": {
+    "engine": "google_flights",
+    "departure_id": "CDG",
+    "arrival_id": "LHR",
+    "outbound_date": "2026-10-03",
+    "return_date": "2026-10-10",
+    "currency": "CNY",
+    "type": "1",
+    "api_key": "REDACTED-SERPAPI-KEY"
+  },
+  "search_information": {},
+  "best_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": {
+            "name": "Paris Charles de Gaulle Airport",
+            "id": "CDG",
+            "time": "2026-10-03 10:10"
+          },
+          "arrival_airport": {
+            "name": "Heathrow Airport",
+            "id": "LHR",
+            "time": "2026-10-03 10:40"
+          },
+          "duration": 90,
+          "airplane": "Airbus A319",
+          "airline": "British Airways",
+          "airline_logo": "https://serpapi.com/assets/google-flights/airline-logos/ba.png",
+          "travel_class": "Economy",
+          "flight_number": "BA 301",
+          "legroom": "29 in"
+        }
+      ],
+      "layovers": [],
+      "total_duration": 90,
+      "price": 1180,
+      "type": "Round trip",
+      "booking_token": "REDACTED-BOOKING-TOKEN"
+    }
+  ],
+  "other_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": {
+            "name": "Paris Orly Airport",
+            "id": "ORY",
+            "time": "2026-10-03 14:20"
+          },
+          "arrival_airport": {
+            "name": "Heathrow Airport",
+            "id": "LHR",
+            "time": "2026-10-03 16:30"
+          },
+          "duration": 80,
+          "airplane": "Airbus A320",
+          "airline": "easyJet",
+          "travel_class": "Economy",
+          "flight_number": "U2 2710"
+        },
+        {
+          "departure_airport": {
+            "name": "Heathrow Airport",
+            "id": "LHR",
+            "time": "2026-10-10 18:00"
+          },
+          "arrival_airport": {
+            "name": "Paris Charles de Gaulle Airport",
+            "id": "CDG",
+            "time": "2026-10-10 20:25"
+          },
+          "duration": 85,
+          "airplane": "Airbus A320neo",
+          "airline": "Air France",
+          "travel_class": "Economy",
+          "flight_number": "AF 1281"
+        }
+      ],
+      "layovers": [
+        {
+          "duration": 90,
+          "name": "Heathrow Airport",
+          "id": "LHR"
+        }
+      ],
+      "total_duration": 305,
+      "price": 890,
+      "type": "Round trip",
+      "booking_token": "REDACTED-BOOKING-TOKEN-2"
+    },
+    {
+      "flights": [],
+      "price": null,
+      "type": "Round trip"
+    }
+  ],
+  "price_insights": {
+    "lowest_price": 890,
+    "price_level": "low",
+    "typical_price_range": [850, 1400]
+  }
+}

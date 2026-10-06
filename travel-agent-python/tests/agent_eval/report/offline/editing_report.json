@@ -1,0 +1,72 @@
+{
+  "mode": "offline-editing",
+  "case_count": 9,
+  "cassettes": {
+    "edit_real_case.json": "c7389f7d00147c962205b44e467fab0c175d44c03807089df46af5b40997c119"
+  },
+  "metrics": {
+    "edit_ops_valid_rate": 1.0,
+    "edit_target_hit_rate": 1.0,
+    "clarify_slot_fill_rate": 1.0,
+    "clarify_question_valid_rate": 1.0,
+    "guide_kind_valid_rate": 1.0,
+    "guide_suggestion_shape_rate": 1.0,
+    "replan_lock_respected_rate": 1.0,
+    "replan_replaced_rate": 1.0
+  },
+  "details": {
+    "nl_edit": [
+      {
+        "valid": true,
+        "target_hit": true,
+        "returned": 1
+      },
+      {
+        "valid": true,
+        "target_hit": true,
+        "returned": 1
+      },
+      {
+        "valid": true,
+        "target_hit": true,
+        "returned": 8
+      }
+    ],
+    "clarify": [
+      {
+        "slot_filled": 2,
+        "slot_expected": 2,
+        "question_ok": true,
+        "ready_ok": true
+      },
+      {
+        "slot_filled": 6,
+        "slot_expected": 6,
+        "question_ok": true,
+        "ready_ok": true
+      }
+    ],
+    "city_guide": [
+      {
+        "kind_ok": true,
+        "suggestion_shape_ok": true
+      },
+      {
+        "kind_ok": true,
+        "suggestion_shape_ok": true
+      }
+    ],
+    "local_replan": [
+      {
+        "lock_respected": true,
+        "replaced": true,
+        "expects_replacement": true,
+        "status_ok": true
+      },
+      {
+        "status_ok": true,
+        "replaced": false
+      }
+    ]
+  }
+}

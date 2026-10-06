@@ -1,0 +1,497 @@
+{
+  "_comment": "深链语义 parity 共享用例（Y4）：后端 tests/test_deeplink_parity.py 与前端 travel-frontend-react/src/react-app/itinerary/deeplink-parity.test.ts 读同一份文件，各断言各自实现的当前协议口径（host+path 前缀+关键查询参数存在；坐标数值换算等属实现细节，不整串相等）。两侧口径差异见同目录 deeplink_parity.md（差异表）。params=必须存在的查询参数；null=true 表示该侧不产出深链。2026-10-04 React 迁移后前端口径：不再实现搜索/路线深链（旧 Vue geo.ts 随退役删除），只按 pin 出两条「核实」链接（高德 marker / 谷歌查询，经 shared/map-link 白名单），有有效坐标才出（2026-10-04 拍板补齐有效性谓词 hasValidCoords，与后端 _parse_coords 同语义：有限值+范围+非 0/0 哨兵，无效视同无坐标）。",
+  "cases": [
+    {
+      "name": "search_domestic_with_coords",
+      "input": {
+        "name": "西湖",
+        "city": "杭州",
+        "latitude": 30.24,
+        "longitude": 120.15
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/marker",
+        "params": [
+          "position",
+          "name"
+        ]
+      },
+      "frontend": {
+        "pin_links": [
+          {
+            "host": "uri.amap.com",
+            "path": "/marker",
+            "params": [
+              "position",
+              "name"
+            ]
+          },
+          {
+            "host": "www.google.com",
+            "path": "/maps/search",
+            "params": [
+              "query"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_domestic_no_coords",
+      "input": {
+        "name": "外滩",
+        "city": "上海"
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/search",
+        "params": [
+          "keyword"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "search_foreign_with_coords",
+      "input": {
+        "name": "Eiffel Tower",
+        "city": "Paris",
+        "latitude": 48.8584,
+        "longitude": 2.2945
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/search",
+        "params": [
+          "query"
+        ]
+      },
+      "frontend": {
+        "pin_links": [
+          {
+            "host": "uri.amap.com",
+            "path": "/marker",
+            "params": [
+              "position",
+              "name"
+            ]
+          },
+          {
+            "host": "www.google.com",
+            "path": "/maps/search",
+            "params": [
+              "query"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_foreign_no_coords",
+      "input": {
+        "name": "Times Square",
+        "city": "New York"
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/search",
+        "params": [
+          "query"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "search_zero_sentinel",
+      "input": {
+        "name": "断桥残雪",
+        "city": "杭州",
+        "latitude": 0,
+        "longitude": 0
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/search",
+        "params": [
+          "keyword"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "search_out_of_range_coords",
+      "input": {
+        "name": "断桥",
+        "city": "杭州",
+        "latitude": 200,
+        "longitude": -95
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/search",
+        "params": [
+          "keyword"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "search_hanzi_foreign_city_no_coords",
+      "input": {
+        "name": "乌鲁瓦图断崖",
+        "city": "巴厘岛"
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/search",
+        "params": [
+          "query"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_domestic_two_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          },
+          {
+            "name": "灵隐寺",
+            "latitude": 30.2407,
+            "longitude": 120.0972
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/navigation",
+        "params": [
+          "from",
+          "to"
+        ],
+        "absent_params": [
+          "via"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_foreign_two_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "Eiffel Tower",
+            "latitude": 48.8584,
+            "longitude": 2.2945
+          },
+          {
+            "name": "Louvre",
+            "latitude": 48.8606,
+            "longitude": 2.3376
+          }
+        ],
+        "city": "Paris"
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/dir",
+        "params": [
+          "api",
+          "origin",
+          "destination"
+        ],
+        "absent_params": [
+          "waypoints"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_single_point",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "null": true
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_domestic_three_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          },
+          {
+            "name": "灵隐寺",
+            "latitude": 30.2407,
+            "longitude": 120.0972
+          },
+          {
+            "name": "河坊街",
+            "latitude": 30.2434,
+            "longitude": 120.1668
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/navigation",
+        "params": [
+          "from",
+          "to",
+          "via"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_domestic_four_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          },
+          {
+            "name": "灵隐寺",
+            "latitude": 30.2407,
+            "longitude": 120.0972
+          },
+          {
+            "name": "河坊街",
+            "latitude": 30.2434,
+            "longitude": 120.1668
+          },
+          {
+            "name": "西溪湿地",
+            "latitude": 30.2534,
+            "longitude": 120.0638
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "null": true
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_foreign_five_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "Senso-ji",
+            "latitude": 35.7148,
+            "longitude": 139.7967
+          },
+          {
+            "name": "Tokyo Skytree",
+            "latitude": 35.7101,
+            "longitude": 139.8107
+          },
+          {
+            "name": "Ueno Park",
+            "latitude": 35.7156,
+            "longitude": 139.7745
+          },
+          {
+            "name": "Tokyo Station",
+            "latitude": 35.6812,
+            "longitude": 139.7671
+          },
+          {
+            "name": "Shibuya Crossing",
+            "latitude": 35.6595,
+            "longitude": 139.7005
+          }
+        ],
+        "city": "Tokyo"
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/dir",
+        "params": [
+          "api",
+          "origin",
+          "destination",
+          "waypoints"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_foreign_seven_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "S1",
+            "latitude": 35.71,
+            "longitude": 139.79
+          },
+          {
+            "name": "S2",
+            "latitude": 35.72,
+            "longitude": 139.78
+          },
+          {
+            "name": "S3",
+            "latitude": 35.73,
+            "longitude": 139.77
+          },
+          {
+            "name": "S4",
+            "latitude": 35.74,
+            "longitude": 139.76
+          },
+          {
+            "name": "S5",
+            "latitude": 35.75,
+            "longitude": 139.75
+          },
+          {
+            "name": "S6",
+            "latitude": 35.76,
+            "longitude": 139.74
+          },
+          {
+            "name": "S7",
+            "latitude": 35.77,
+            "longitude": 139.73
+          }
+        ],
+        "city": "Tokyo"
+      },
+      "backend": {
+        "host": "www.google.com",
+        "path": "/maps/dir",
+        "params": [
+          "api",
+          "origin",
+          "destination",
+          "waypoints"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_mixed_validity_stops",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          },
+          {
+            "name": "零点哨兵",
+            "latitude": 0,
+            "longitude": 0
+          },
+          {
+            "name": "缺坐标"
+          },
+          {
+            "name": "灵隐寺",
+            "latitude": 30.2407,
+            "longitude": 120.0972
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/navigation",
+        "params": [
+          "from",
+          "to"
+        ],
+        "absent_params": [
+          "via"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    },
+    {
+      "name": "route_out_of_range_stop",
+      "input": {
+        "stops": [
+          {
+            "name": "西湖",
+            "latitude": 30.24,
+            "longitude": 120.15
+          },
+          {
+            "name": "越界点",
+            "latitude": 200,
+            "longitude": -95
+          },
+          {
+            "name": "灵隐寺",
+            "latitude": 30.2407,
+            "longitude": 120.0972
+          }
+        ],
+        "city": "杭州"
+      },
+      "backend": {
+        "host": "uri.amap.com",
+        "path": "/navigation",
+        "params": [
+          "from",
+          "to"
+        ],
+        "absent_params": [
+          "via"
+        ]
+      },
+      "frontend": {
+        "null": true
+      }
+    }
+  ]
+}

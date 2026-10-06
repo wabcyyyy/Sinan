@@ -1,0 +1,1103 @@
+{
+  "generated_at": "2026-09-23T09:41:38+00:00",
+  "mode": "real-llm",
+  "dataset": {
+    "file": "cases.json",
+    "sha256": "6bf7ce311bf320ae1cccf483810ba007e8cda1ce692e519a9853f436a15f5581"
+  },
+  "generation_path": "stream",
+  "model": "qwen-plus",
+  "temperature": 0.4,
+  "prompt_version": "workflow-v2-authority-route-20260828",
+  "open_day_prompt_version": "v1.1.narrative",
+  "open_trip_prompt_version": "v1.1.narrative",
+  "case_count": 3,
+  "run_count": 6,
+  "consistency_rate": 0.0,
+  "status_counts": {
+    "success": 5,
+    "degraded": 1,
+    "failed": 0
+  },
+  "depth_metrics": {
+    "coord_valid_rate": 0.728,
+    "deeplink_resolvable_rate": 0.2222,
+    "category_reasonable_rate": 1.0
+  },
+  "aggregate_stats": {
+    "llm_calls": 7,
+    "retry_count": 0,
+    "fallback_count": 0,
+    "prompt_tokens": 835,
+    "completion_tokens": 692,
+    "total_tokens": 1527
+  },
+  "failed_cases": [],
+  "degraded_cases": [
+    {
+      "city": "上海",
+      "days": 2,
+      "persons": 2,
+      "preferences": [
+        "网红出片"
+      ],
+      "prompt_version": "v1.1.narrative/v1.1.narrative"
+    }
+  ],
+  "details": [
+    {
+      "case": {
+        "city": "北京",
+        "days": 1,
+        "persons": 2,
+        "preferences": [
+          "人文历史"
+        ],
+        "prompt_version": "v1.1.narrative/v1.1.narrative"
+      },
+      "consistent": false,
+      "signature1": "天安门广场>毛主席纪念堂>国家博物馆>故宫博物院>景山公园",
+      "signature2": "天安门广场>毛主席纪念堂>故宫博物院>景山公园",
+      "run1": {
+        "run_id": "llm-北京-1-run1-stream",
+        "status": "success",
+        "status_reason": null,
+        "stats": {
+          "llm_calls": 1,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 126,
+          "completion_tokens": 50,
+          "total_tokens": 176
+        },
+        "trace": {
+          "run_id": "llm-北京-1-run1-stream",
+          "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+          "events": [
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-北京-1-run1-stream",
+              "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+              "span_id": "a4ffd49139014eada3955d0f1183eaef",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 8890,
+                "prompt_tokens": 1847,
+                "completion_tokens": 3391
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-北京-1-run1-stream",
+              "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+              "span_id": "8278fd02385e42ef94550043f1f5f620",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 126,
+                "completion_tokens": 50
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "suggestion_web_fill",
+              "status": "ok",
+              "run_id": "llm-北京-1-run1-stream",
+              "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+              "span_id": "5bfbae24297742efaa890b493be461ce",
+              "metadata": {
+                "city": "北京",
+                "before": 42,
+                "after": 43,
+                "counts": {
+                  "keys": [
+                    "activity",
+                    "attraction",
+                    "food",
+                    "hotel",
+                    "shopping",
+                    "souvenir"
+                  ],
+                  "size": 6
+                }
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-北京-1-run1-stream",
+              "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+              "span_id": "b3810c95c08541d98b34b105b4fd0033",
+              "metadata": {
+                "city": "北京",
+                "days_expected": 1,
+                "days_emitted": [
+                  1
+                ],
+                "complete": true,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 27,
+                "suggestions_final": 43
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-北京-1-run1-stream",
+              "request_id": "a0298c1cc99f44d5be7c6f0aaecc800d",
+              "span_id": "e5e959dd46204e45b0c337220f5927ca",
+              "metadata": {
+                "elapsed_ms": 57656.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 2,
+                "max_llm_calls": 32,
+                "retrievals": 1,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 10,
+                "max_existence_checks": 24,
+                "prompt_tokens": 1973,
+                "completion_tokens": 3441,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "北京",
+            "days": 1,
+            "persons": 2,
+            "preferences": [
+              "人文历史"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "success",
+          "status_reason": null,
+          "days": 1,
+          "total_items": 6,
+          "poi_authority_rate": 1.0,
+          "poi_grounded_rate": 1.0,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0,
+          "route_violation_rate": 1.0,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.4118,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 1.0,
+          "pending_review_count": 5
+        },
+        "depth": {
+          "coord_valid_rate": 1.0,
+          "deeplink_resolvable_rate": 0.0,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "run2": {
+        "run_id": "llm-北京-1-run2-stream",
+        "status": "success",
+        "status_reason": null,
+        "stats": {
+          "llm_calls": 0,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "total_tokens": 0
+        },
+        "trace": {
+          "run_id": "llm-北京-1-run2-stream",
+          "request_id": "0dcd27d447db41db94a8639e8ca6a875",
+          "events": [
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-北京-1-run2-stream",
+              "request_id": "0dcd27d447db41db94a8639e8ca6a875",
+              "span_id": "b52b09dee9374062abb434fd9fbe9a76",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 8781,
+                "prompt_tokens": 1847,
+                "completion_tokens": 3374
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-北京-1-run2-stream",
+              "request_id": "0dcd27d447db41db94a8639e8ca6a875",
+              "span_id": "832f1831b43f4b36943332fb1cd39605",
+              "metadata": {
+                "city": "北京",
+                "days_expected": 1,
+                "days_emitted": [
+                  1
+                ],
+                "complete": true,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 28,
+                "suggestions_final": 38
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-北京-1-run2-stream",
+              "request_id": "0dcd27d447db41db94a8639e8ca6a875",
+              "span_id": "e9e872227e694ae59058561edbd95cee",
+              "metadata": {
+                "elapsed_ms": 48093.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 1,
+                "max_llm_calls": 32,
+                "retrievals": 0,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 0,
+                "max_existence_checks": 24,
+                "prompt_tokens": 1847,
+                "completion_tokens": 3374,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "北京",
+            "days": 1,
+            "persons": 2,
+            "preferences": [
+              "人文历史"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "success",
+          "status_reason": null,
+          "days": 1,
+          "total_items": 5,
+          "poi_authority_rate": 1.0,
+          "poi_grounded_rate": 1.0,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0,
+          "route_violation_rate": 1.0,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.4118,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 1.0,
+          "pending_review_count": 4
+        },
+        "depth": {
+          "coord_valid_rate": 1.0,
+          "deeplink_resolvable_rate": 0.0,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "failure_reasons": []
+    },
+    {
+      "case": {
+        "city": "上海",
+        "days": 2,
+        "persons": 2,
+        "preferences": [
+          "网红出片"
+        ],
+        "prompt_version": "v1.1.narrative/v1.1.narrative"
+      },
+      "consistent": false,
+      "signature1": "外滩>南京路步行街>人民广场>上海博物馆>豫园|武康大楼>安福路>新天地>上海音乐厅",
+      "signature2": "外滩>南京路步行街>豫园>城隍庙旅游区|上海博物馆>人民广场>新天地>中共一大会址纪念馆",
+      "run1": {
+        "run_id": "llm-上海-2-run1-stream",
+        "status": "degraded",
+        "status_reason": "仅产出 2/2 天",
+        "stats": {
+          "llm_calls": 4,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 474,
+          "completion_tokens": 551,
+          "total_tokens": 1025
+        },
+        "trace": {
+          "run_id": "llm-上海-2-run1-stream",
+          "request_id": "2babacd800d44096b9475bf8a2774680",
+          "events": [
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "032b62d4507043b19e77d9ad9497eec8",
+              "metadata": {
+                "day_no": 2,
+                "poi_name": "Ministry of Crab",
+                "via": "coord"
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "51dcaf3cd9574f28ab03a589b48bd265",
+              "metadata": {
+                "day_no": 2,
+                "poi_name": "Bar Constellation No. 3",
+                "via": "coord"
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "4a64a4837e7d4a3887d4764362ed6c81",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 14386,
+                "prompt_tokens": 1834,
+                "completion_tokens": 5400
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "9f4ee8ec45d249d78f971b6afb795f0c",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 120,
+                "completion_tokens": 102
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "599278bfeb024aee95e2baa24f97e0af",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 126,
+                "completion_tokens": 211
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "cbce33c44d9c4cfc9bde4af0c1882fa3",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 115,
+                "completion_tokens": 55
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "2db9d3104ac14f7aa4e35b54357a5afb",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 113,
+                "completion_tokens": 183
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "suggestion_web_fill",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "036028b6dd8a4d18828baa3fea3b093b",
+              "metadata": {
+                "city": "上海",
+                "before": 17,
+                "after": 27,
+                "counts": {
+                  "keys": [
+                    "activity",
+                    "attraction",
+                    "food",
+                    "hotel",
+                    "shopping",
+                    "souvenir"
+                  ],
+                  "size": 6
+                }
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "82c15c6f6f594480aa31ac6d5ef273f7",
+              "metadata": {
+                "city": "上海",
+                "days_expected": 2,
+                "days_emitted": [
+                  1,
+                  2
+                ],
+                "complete": false,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 0,
+                "suggestions_final": 27
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-上海-2-run1-stream",
+              "request_id": "2babacd800d44096b9475bf8a2774680",
+              "span_id": "b7b332e98ac446bba5f128b850417b8b",
+              "metadata": {
+                "elapsed_ms": 108266.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 5,
+                "max_llm_calls": 32,
+                "retrievals": 4,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 20,
+                "max_existence_checks": 24,
+                "prompt_tokens": 2308,
+                "completion_tokens": 5951,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "上海",
+            "days": 2,
+            "persons": 2,
+            "preferences": [
+              "网红出片"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "degraded",
+          "status_reason": "仅产出 2/2 天",
+          "days": 2,
+          "total_items": 13,
+          "poi_authority_rate": 1.0,
+          "poi_grounded_rate": 0.9231,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0,
+          "route_violation_rate": 0.9,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.8343,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 1.0,
+          "pending_review_count": 10
+        },
+        "depth": {
+          "coord_valid_rate": 0.9231,
+          "deeplink_resolvable_rate": 0.0,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "run2": {
+        "run_id": "llm-上海-2-run2-stream",
+        "status": "success",
+        "status_reason": null,
+        "stats": {
+          "llm_calls": 0,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "total_tokens": 0
+        },
+        "trace": {
+          "run_id": "llm-上海-2-run2-stream",
+          "request_id": "098c252dc89340e5b930195d44f162ea",
+          "events": [
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-上海-2-run2-stream",
+              "request_id": "098c252dc89340e5b930195d44f162ea",
+              "span_id": "5b3e36517f734466a1fa1371ca5237ed",
+              "metadata": {
+                "day_no": 2,
+                "poi_name": "Ministry of Crab",
+                "via": "coord"
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-上海-2-run2-stream",
+              "request_id": "098c252dc89340e5b930195d44f162ea",
+              "span_id": "19666e463dcc4b25896537d9f6c28081",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 13551,
+                "prompt_tokens": 1834,
+                "completion_tokens": 5135
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-上海-2-run2-stream",
+              "request_id": "098c252dc89340e5b930195d44f162ea",
+              "span_id": "f9eebd0f96004e77818b7a82b5ffc846",
+              "metadata": {
+                "city": "上海",
+                "days_expected": 2,
+                "days_emitted": [
+                  1,
+                  2
+                ],
+                "complete": true,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 32,
+                "suggestions_final": 47
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-上海-2-run2-stream",
+              "request_id": "098c252dc89340e5b930195d44f162ea",
+              "span_id": "2609c065f7d44038bf5204e190e8831b",
+              "metadata": {
+                "elapsed_ms": 82079.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 1,
+                "max_llm_calls": 32,
+                "retrievals": 0,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 10,
+                "max_existence_checks": 24,
+                "prompt_tokens": 1834,
+                "completion_tokens": 5135,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "上海",
+            "days": 2,
+            "persons": 2,
+            "preferences": [
+              "网红出片"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "success",
+          "status_reason": null,
+          "days": 2,
+          "total_items": 12,
+          "poi_authority_rate": 0.9167,
+          "poi_grounded_rate": 0.75,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0,
+          "route_violation_rate": 0.6,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.8103,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 0.75,
+          "pending_review_count": 9
+        },
+        "depth": {
+          "coord_valid_rate": 0.75,
+          "deeplink_resolvable_rate": 0.0,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "failure_reasons": [
+        "仅产出 2/2 天"
+      ]
+    },
+    {
+      "case": {
+        "city": "杭州",
+        "days": 3,
+        "persons": 3,
+        "preferences": [
+          "自然风光"
+        ],
+        "prompt_version": "v1.1.narrative/v1.1.narrative"
+      },
+      "consistent": false,
+      "signature1": "断桥残雪>苏堤春晓>花港观鱼>雷峰塔>三潭印月（乘船登岛）|杭州城市规划展览馆>市民中心>杭州大剧院>凤凰寺>南宋御街>京杭大运河武林门码头夜游|灵隐寺>飞来峰石刻造像>龙井村>中国茶叶博物馆（龙井馆区）",
+      "signature2": "西湖西线>杭州城市规划展览馆>凤凰寺>Hangzhou Grand Theatre|Former Residence of Hu Xueyan>Haichao Temple>Sicheng Church|Raffles City Hangzhou>Huacheng International Development Mansion>The National Commercial Bank, Hangzhou Branch>Chongyi Church",
+      "run1": {
+        "run_id": "llm-杭州-3-run1-stream",
+        "status": "success",
+        "status_reason": null,
+        "stats": {
+          "llm_calls": 0,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "total_tokens": 0
+        },
+        "trace": {
+          "run_id": "llm-杭州-3-run1-stream",
+          "request_id": "8dadb99ac5824885a76c89a1ad83b35b",
+          "events": [
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run1-stream",
+              "request_id": "8dadb99ac5824885a76c89a1ad83b35b",
+              "span_id": "c224fcf5beee4e2995aabe4ec09ccfd5",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 17976,
+                "prompt_tokens": 1929,
+                "completion_tokens": 6664
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run1-stream",
+              "request_id": "8dadb99ac5824885a76c89a1ad83b35b",
+              "span_id": "112fb72e6a7741c1a0e21b9c9e312387",
+              "metadata": {
+                "city": "杭州",
+                "days_expected": 3,
+                "days_emitted": [
+                  1,
+                  2,
+                  3
+                ],
+                "complete": true,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 36,
+                "suggestions_final": 47
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run1-stream",
+              "request_id": "8dadb99ac5824885a76c89a1ad83b35b",
+              "span_id": "b3f1ea73eeeb4bef944cdf89af60f1de",
+              "metadata": {
+                "elapsed_ms": 126579.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 1,
+                "max_llm_calls": 32,
+                "retrievals": 0,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 24,
+                "max_existence_checks": 24,
+                "prompt_tokens": 1929,
+                "completion_tokens": 6664,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "杭州",
+            "days": 3,
+            "persons": 3,
+            "preferences": [
+              "自然风光"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "success",
+          "status_reason": null,
+          "days": 3,
+          "total_items": 23,
+          "poi_authority_rate": 0.5217,
+          "poi_grounded_rate": 0.2609,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0556,
+          "route_violation_rate": 1.0,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.8872,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 0.4,
+          "pending_review_count": 22
+        },
+        "depth": {
+          "coord_valid_rate": 0.2609,
+          "deeplink_resolvable_rate": 0.6667,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "run2": {
+        "run_id": "llm-杭州-3-run2-stream",
+        "status": "success",
+        "status_reason": null,
+        "stats": {
+          "llm_calls": 2,
+          "tool_calls": 0,
+          "retry_count": 0,
+          "fallback_count": 0,
+          "prompt_tokens": 235,
+          "completion_tokens": 91,
+          "total_tokens": 326
+        },
+        "trace": {
+          "run_id": "llm-杭州-3-run2-stream",
+          "request_id": "ffa2d5135a1842ae9995165ba859e221",
+          "events": [
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "4a491074a38f4610b3ef7e350aa5f713",
+              "metadata": {
+                "day_no": 2,
+                "poi_name": "星巴克",
+                "via": "coord"
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "5a5b17ffda424888843b03e67cc0b436",
+              "metadata": {
+                "day_no": 3,
+                "poi_name": "Hangzhou Grand Theatre"
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "stream_duplicate_dropped",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "98d0227a263a4ba69bc26da2c6022ea4",
+              "metadata": {
+                "day_no": 3,
+                "poi_name": "市民中心员工餐厅"
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.stream_request",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "30843eaff9d64e9e97965f9cef164e73",
+              "metadata": {
+                "model": "qwen-plus",
+                "content_length": 16037,
+                "prompt_tokens": 1929,
+                "completion_tokens": 5897
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "49f630cdb7db4e249c4b28910bae96c3",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 120,
+                "completion_tokens": 39
+              }
+            },
+            {
+              "kind": "llm",
+              "name": "llm.request",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "9538094a038b41299c6d3cbd9f71217a",
+              "metadata": {
+                "model": "qwen-plus",
+                "prompt_tokens": 115,
+                "completion_tokens": 52
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "suggestion_web_fill",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "41f1106de3994cf0a08c93709f3dbefa",
+              "metadata": {
+                "city": "杭州",
+                "before": 23,
+                "after": 24,
+                "counts": {
+                  "keys": [
+                    "activity",
+                    "attraction",
+                    "food",
+                    "hotel",
+                    "shopping",
+                    "souvenir"
+                  ],
+                  "size": 6
+                }
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "trip_stream_done",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "78d73037d6c243079fc96ff43bf0ab7c",
+              "metadata": {
+                "city": "杭州",
+                "days_expected": 3,
+                "days_emitted": [
+                  1,
+                  2,
+                  3
+                ],
+                "complete": true,
+                "parse_failures": 0,
+                "stream_error": null,
+                "raw_suggestions": 32,
+                "suggestions_final": 24
+              }
+            },
+            {
+              "kind": "decision",
+              "name": "run_limits",
+              "status": "ok",
+              "run_id": "llm-杭州-3-run2-stream",
+              "request_id": "ffa2d5135a1842ae9995165ba859e221",
+              "span_id": "c925d946719e419a8d0aca46b15ab0ed",
+              "metadata": {
+                "elapsed_ms": 98218.0,
+                "deadline_seconds": 120.0,
+                "llm_calls": 3,
+                "max_llm_calls": 32,
+                "retrievals": 2,
+                "max_retrievals": 64,
+                "research_calls": 0,
+                "max_research_calls": 12,
+                "existence_checks": 10,
+                "max_existence_checks": 24,
+                "prompt_tokens": 2164,
+                "completion_tokens": 5988,
+                "max_tokens": 80000,
+                "replans": 0,
+                "max_replans": 3,
+                "no_progress_count": 0
+              }
+            }
+          ]
+        },
+        "quality": {
+          "case": {
+            "city": "杭州",
+            "days": 3,
+            "persons": 3,
+            "preferences": [
+              "自然风光"
+            ],
+            "prompt_version": "v1.1.narrative/v1.1.narrative"
+          },
+          "status": "success",
+          "status_reason": null,
+          "days": 3,
+          "total_items": 17,
+          "poi_authority_rate": 0.9412,
+          "poi_grounded_rate": 0.8235,
+          "poi_refuted_count": 0,
+          "field_reference_rate": 0.0,
+          "time_conflict_rate": 0.0,
+          "route_violation_rate": 0.4545,
+          "attraction_duplicate_rate": 0.0,
+          "budget_deviation_rate": 0.8518,
+          "fallback_success": true,
+          "trace": {
+            "node_count": 0,
+            "tool_count": 0,
+            "nodes": [],
+            "tools": [],
+            "routes": []
+          },
+          "research_rounds": 0,
+          "research_pack": 0
+        },
+        "narrative": {
+          "theme_sentence_rate": 1.0,
+          "why_coverage": 1.0,
+          "practical_notes_rate": 1.0,
+          "theme_hit_rate": null,
+          "poi_relevance": null,
+          "coord_available_rate": 0.9091,
+          "pending_review_count": 4
+        },
+        "depth": {
+          "coord_valid_rate": 0.8235,
+          "deeplink_resolvable_rate": 0.0,
+          "category_reasonable_rate": 1.0
+        }
+      },
+      "failure_reasons": []
+    }
+  ]
+}

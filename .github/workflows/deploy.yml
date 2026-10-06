@@ -1,0 +1,39 @@
+name: deploy
+
+# push 即部署：SSH 上 VPS 跑 deploy/deploy.sh（拉码 → 构建 → 滚动拉起 → 五行冒烟）。
+# 首次部署仍按 docs/上线教学-2026-09-27.md 手动做；本 workflow 只接管之后的日常升级。
+# 启用四件套（缺一则跳过，不会让每次 push 都红）：
+#   Secrets: VPS_HOST（公网 IP）/ VPS_USER（root）/ VPS_SSH_KEY（部署专用私钥全文）
+#   Variables: VPS_DEPLOY_ENABLED=1（总开关，首次部署跑通后再配）
+# 密钥建议专用一对 ed25519（生成步骤见教学文档 §8），泄露面最小、可单独吊销。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+concurrency:
+  # 连续 push 只部署最后一个 commit，与 ci.yml 的 G-0.4 取消语义一致
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ vars.VPS_DEPLOY_ENABLED == '1' }}
+    runs-on: ubuntu-latest
+    # 本 job 只持 SSH 私钥上 VPS 跑脚本，不需要 GITHUB_TOKEN 的任何权限
+    permissions: {}
+    timeout-minutes: 20
+    steps:
+      - name: SSH 上 VPS 执行部署
+        # 第三方 action 且持 root SSH 私钥：必须 pin 到 commit SHA（mutable tag 可被
+        # 移动/重发布）。当前 v1 = v1.2.5，升级时改 SHA 并同步注释版本号。
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # 任一命令非零即失败（deploy.sh 自带 set -euo pipefail，这里是双保险）
+          script_stop: true
+          script: |
+            cd /root/Travel-Assistant
+            bash deploy/deploy.sh

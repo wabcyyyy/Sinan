@@ -1,0 +1,15 @@
+# 构建上下文瘦身 + 防止本地环境/密钥进镜像（G-1.3 ⑤）
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# 运行期数据与遗留本地模型不进入镜像
+data/
+models/
+*.log
+# 密钥：运行时经 compose env_file 注入，绝不烘焙进镜像
+.env
+# 开发杂物
+.pyright-baseline.txt
+tests/agent_eval/report/

@@ -1,0 +1,98 @@
+# 仓库根的运行时数据目录。必须锚定：裸 data/ 会连 travel-agent-python/app/agent/data/
+# 域包一起忽略——city_center.py 与 __init__.py 曾被静默吞掉，导致已提交代码 import
+# 不存在的模块（新鲜 clone 即坏）。运行时数据口径见下方 travel-agent-python/data/。
+/data/
+.idea/
+.vscode/
+.env
+!.env.example
+logs/
+*.log
+.pnpm-store/
+.uv-cache/
+.uv-python/
+node_modules/
+
+# 构建与临时
+dist/
+target/
+.venv/
+.venv-*/
+travel-frontend-react/dist/
+travel-agent-python/data/
+travel-agent-python/.venv*/
+travel-agent-python/.tmp_pytest/
+travel-agent-python/.tmp_*
+travel-agent-python/.pytest_tmp/
+travel-agent-python/.repro/
+travel-agent-python/models/
+sql/__pycache__/
+**/__pycache__/
+.pytest_cache/
+
+# 敏感/本地测试产物
+.test-report/
+.test-token.txt
+.test-user.txt
+*.token
+secrets/
+**/secrets/
+# 散落的本机 OpenAPI 落盘（曾经的第二生产者）。契约产物在 contracts/ 下，
+# 必须入仓并被漂移门禁看见——不要再写裸 `openapi.json` 规则把它一起吞掉。
+/openapi.json
+/travel-agent-python/openapi.json
+
+# 编辑器/工具私有
+.trae/
+.worktrees/
+dump.rdb
+.agents/
+skills-lock.json
+.claude/
+.zcode/
+
+# 夜间会话/门禁本地临时物
+.tmp/
+travel-agent-python/.pytest-tmp*/
+
+# 内部工作文档（不入库，本地保留）
+docs/
+
+# 本地侦察/探针临时物（TREK 稀疏克隆、无头截图与 stub 等，不入库）
+.tmp-*
+# E2E 失败截图（travel-frontend-react/e2e/golden-path.mjs 产物，不入库）
+travel-frontend-react/e2e/artifacts/
+# G-3.4：diff-cover 的中间产物（CI 里生成，不入仓）
+coverage.xml
+.coverage
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "travel-assistant://agent-eval/datasets.schema.json",
+  "title": "Agent 评测数据集（单一真源）",
+  "$comment": "cases.json / themed_cases.json / replay_cases.json 的行结构约束（PR-0 数据集治理）。字段约束对齐 app/schemas/trip.py 的 GenerateRequest（改契约时同步这里）；name/prompt_version 是评测元数据，不进生成请求。加载点统一走 tests/agent_eval/dataset_schema.py；PR-9 回流草稿入 replay_cases.json 前同样过这里。",
+  "$defs": {
+    "case_body": {
+      "type": "object",
+      "required": ["city", "days", "persons"],
+      "properties": {
+        "city": {"type": "string", "minLength": 1, "maxLength": 64},
+        "days": {"type": "integer", "minimum": 1, "maximum": 7},
+        "persons": {"type": "integer", "minimum": 1, "maximum": 20},
+        "budget": {"type": "number"},
+        "start_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "preferences": {"type": "array", "items": {"type": "string"}},
+        "hotel_tier": {"type": "string"},
+        "requirements": {"type": "string", "maxLength": 4000},
+        "intent": {"type": "string", "maxLength": 4000},
+        "region_hint": {"type": "string", "maxLength": 64},
+        "coords": {
+          "type": "boolean",
+          "$comment": "C3.2 无坐标边界变体（false = 走无坐标 fixture）"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "$comment": "评测元数据：用例名，不进 GenerateRequest"
+        },
+        "prompt_version": {
+          "type": "string",
+          "$comment": "评测元数据：占位空串，运行时填充实际契约版本"
+        }
+      }
+    },
+    "case": {
+      "allOf": [{"$ref": "#/$defs/case_body"}],
+      "unevaluatedProperties": false
+    },
+    "themed_case": {
+      "allOf": [{"$ref": "#/$defs/case_body"}],
+      "required": ["name", "prompt_version"],
+      "$comment": "主题化同题：每城一对（基线 + 主题版），同城同参数只差 intent",
+      "unevaluatedProperties": false
+    },
+    "replay_case": {
+      "type": "object",
+      "required": ["id", "kind", "description", "expected"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["authority", "route", "opening"]},
+        "description": {"type": "string"},
+        "expected": {"type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}},
+    "themed_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/themed_case"}},
+    "replay_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/replay_case"}}
+  }
+}

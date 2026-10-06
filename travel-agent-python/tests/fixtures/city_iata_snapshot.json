@@ -1,0 +1,812 @@
+{
+  "entries": {
+    "AKL": {
+      "airports": [
+        "AKL",
+        "MHB"
+      ],
+      "kind": "airport"
+    },
+    "AMS": {
+      "airports": [
+        "AMS"
+      ],
+      "kind": "airport"
+    },
+    "ATH": {
+      "airports": [
+        "ATH"
+      ],
+      "kind": "airport"
+    },
+    "AUH": {
+      "airports": [
+        "AUH",
+        "AZI",
+        "DHF",
+        "XBW"
+      ],
+      "kind": "airport"
+    },
+    "BCN": {
+      "airports": [
+        "BCN"
+      ],
+      "kind": "airport"
+    },
+    "BER": {
+      "airports": [
+        "BER",
+        "QYG",
+        "SXF",
+        "THF",
+        "TXL"
+      ],
+      "kind": "airport"
+    },
+    "BKK": {
+      "airports": [
+        "BKK",
+        "DMK"
+      ],
+      "kind": "airport"
+    },
+    "BNE": {
+      "airports": [
+        "BNE"
+      ],
+      "kind": "airport"
+    },
+    "BOG": {
+      "airports": [
+        "BOG"
+      ],
+      "kind": "airport"
+    },
+    "BOM": {
+      "airports": [
+        "BOM",
+        "NMI"
+      ],
+      "kind": "airport"
+    },
+    "BOS": {
+      "airports": [
+        "BOS",
+        "PSM"
+      ],
+      "kind": "airport"
+    },
+    "BRU": {
+      "airports": [
+        "BRU",
+        "CRL"
+      ],
+      "kind": "airport"
+    },
+    "BUD": {
+      "airports": [
+        "BUD"
+      ],
+      "kind": "airport"
+    },
+    "BUE": {
+      "airports": [
+        "AEP",
+        "EZE"
+      ],
+      "kind": "city"
+    },
+    "CAI": {
+      "airports": [
+        "CAI",
+        "CCE",
+        "SPX"
+      ],
+      "kind": "airport"
+    },
+    "CAN": {
+      "airports": [
+        "CAN"
+      ],
+      "kind": "airport"
+    },
+    "CGO": {
+      "airports": [
+        "CGO"
+      ],
+      "kind": "airport"
+    },
+    "CHI": {
+      "airports": [
+        "CGX",
+        "CHI",
+        "DPA",
+        "MDW",
+        "ORD",
+        "PWK",
+        "RFD"
+      ],
+      "kind": "airport"
+    },
+    "CKG": {
+      "airports": [
+        "CKG",
+        "CQW",
+        "WSK"
+      ],
+      "kind": "airport"
+    },
+    "CMB": {
+      "airports": [
+        "BYV",
+        "CMB",
+        "RML"
+      ],
+      "kind": "airport"
+    },
+    "CNX": {
+      "airports": [
+        "CNX"
+      ],
+      "kind": "airport"
+    },
+    "CPH": {
+      "airports": [
+        "CPH",
+        "RKE"
+      ],
+      "kind": "airport"
+    },
+    "CSX": {
+      "airports": [
+        "CSX"
+      ],
+      "kind": "airport"
+    },
+    "CTU": {
+      "airports": [
+        "CTU",
+        "TFU"
+      ],
+      "kind": "airport"
+    },
+    "CUN": {
+      "airports": [
+        "CUN"
+      ],
+      "kind": "airport"
+    },
+    "DEL": {
+      "airports": [
+        "DEL",
+        "QAH"
+      ],
+      "kind": "airport"
+    },
+    "DOH": {
+      "airports": [
+        "DIA",
+        "DOH"
+      ],
+      "kind": "airport"
+    },
+    "DPS": {
+      "airports": [
+        "DPS"
+      ],
+      "kind": "airport"
+    },
+    "DUB": {
+      "airports": [
+        "DUB"
+      ],
+      "kind": "airport"
+    },
+    "DXB": {
+      "airports": [
+        "DCG",
+        "DWC",
+        "DXB",
+        "NHD"
+      ],
+      "kind": "airport"
+    },
+    "EDI": {
+      "airports": [
+        "EDI"
+      ],
+      "kind": "airport"
+    },
+    "FRA": {
+      "airports": [
+        "FRA",
+        "HHN"
+      ],
+      "kind": "airport"
+    },
+    "GVA": {
+      "airports": [
+        "GVA"
+      ],
+      "kind": "airport"
+    },
+    "HAN": {
+      "airports": [
+        "HAN"
+      ],
+      "kind": "airport"
+    },
+    "HAV": {
+      "airports": [
+        "HAV"
+      ],
+      "kind": "airport"
+    },
+    "HEL": {
+      "airports": [
+        "HEL",
+        "HEM",
+        "HVT"
+      ],
+      "kind": "airport"
+    },
+    "HGH": {
+      "airports": [
+        "HGH"
+      ],
+      "kind": "airport"
+    },
+    "HKG": {
+      "airports": [
+        "HKG"
+      ],
+      "kind": "airport"
+    },
+    "HKT": {
+      "airports": [
+        "HKT"
+      ],
+      "kind": "airport"
+    },
+    "HRB": {
+      "airports": [
+        "HRB",
+        "PFA"
+      ],
+      "kind": "airport"
+    },
+    "IST": {
+      "airports": [
+        "ISL",
+        "IST",
+        "SAW"
+      ],
+      "kind": "airport"
+    },
+    "JKT": {
+      "airports": [
+        "CGK",
+        "HLP"
+      ],
+      "kind": "city"
+    },
+    "JNB": {
+      "airports": [
+        "GCJ",
+        "HLA",
+        "JNB",
+        "QRA"
+      ],
+      "kind": "airport"
+    },
+    "KHH": {
+      "airports": [
+        "KHH"
+      ],
+      "kind": "airport"
+    },
+    "KMG": {
+      "airports": [
+        "KMG"
+      ],
+      "kind": "airport"
+    },
+    "KTM": {
+      "airports": [
+        "KTM"
+      ],
+      "kind": "airport"
+    },
+    "KUL": {
+      "airports": [
+        "KUL",
+        "SZB"
+      ],
+      "kind": "airport"
+    },
+    "KWL": {
+      "airports": [
+        "KWL"
+      ],
+      "kind": "airport"
+    },
+    "LAS": {
+      "airports": [
+        "BLD",
+        "HSH",
+        "LAS",
+        "VGT"
+      ],
+      "kind": "airport"
+    },
+    "LAX": {
+      "airports": [
+        "BUR",
+        "CCD",
+        "JBP",
+        "JWC",
+        "LAX",
+        "SNA",
+        "VNY",
+        "WHP"
+      ],
+      "kind": "airport"
+    },
+    "LED": {
+      "airports": [
+        "LED",
+        "RVH"
+      ],
+      "kind": "airport"
+    },
+    "LIM": {
+      "airports": [
+        "LIM"
+      ],
+      "kind": "airport"
+    },
+    "LIS": {
+      "airports": [
+        "LIS"
+      ],
+      "kind": "airport"
+    },
+    "LJG": {
+      "airports": [
+        "LJG"
+      ],
+      "kind": "airport"
+    },
+    "LON": {
+      "airports": [
+        "BQH",
+        "LCY",
+        "LGW",
+        "LHR",
+        "LTN",
+        "SEN",
+        "STN"
+      ],
+      "kind": "city"
+    },
+    "LXA": {
+      "airports": [
+        "LXA"
+      ],
+      "kind": "airport"
+    },
+    "MAD": {
+      "airports": [
+        "MAD"
+      ],
+      "kind": "airport"
+    },
+    "MEL": {
+      "airports": [
+        "AVV",
+        "MBW",
+        "MEB",
+        "MEL"
+      ],
+      "kind": "airport"
+    },
+    "MEX": {
+      "airports": [
+        "AZP",
+        "MEX",
+        "NLU",
+        "TLC"
+      ],
+      "kind": "airport"
+    },
+    "MFM": {
+      "airports": [
+        "MFM"
+      ],
+      "kind": "airport"
+    },
+    "MIA": {
+      "airports": [
+        "MIA",
+        "MPB",
+        "OPF",
+        "TMB",
+        "TNT"
+      ],
+      "kind": "airport"
+    },
+    "MIL": {
+      "airports": [
+        "BGY",
+        "LIN",
+        "MXP",
+        "SWK"
+      ],
+      "kind": "city"
+    },
+    "MLE": {
+      "airports": [
+        "MLE"
+      ],
+      "kind": "airport"
+    },
+    "MNL": {
+      "airports": [
+        "MNL"
+      ],
+      "kind": "airport"
+    },
+    "MOW": {
+      "airports": [
+        "DME",
+        "OSF",
+        "SVO",
+        "VKO",
+        "ZIA"
+      ],
+      "kind": "city"
+    },
+    "MUC": {
+      "airports": [
+        "MUC"
+      ],
+      "kind": "airport"
+    },
+    "NBO": {
+      "airports": [
+        "NBO",
+        "WIL"
+      ],
+      "kind": "airport"
+    },
+    "NKG": {
+      "airports": [
+        "NKG",
+        "NKJ"
+      ],
+      "kind": "airport"
+    },
+    "NYC": {
+      "airports": [
+        "EWR",
+        "JFK",
+        "LGA",
+        "NBP",
+        "NES",
+        "NWS",
+        "QNY"
+      ],
+      "kind": "city"
+    },
+    "OKA": {
+      "airports": [
+        "DNA",
+        "OKA"
+      ],
+      "kind": "airport"
+    },
+    "OSA": {
+      "airports": [
+        "ITM",
+        "KIX",
+        "UKB"
+      ],
+      "kind": "city"
+    },
+    "OSL": {
+      "airports": [
+        "OSL",
+        "RYG",
+        "TRF"
+      ],
+      "kind": "airport"
+    },
+    "PAR": {
+      "airports": [
+        "BVA",
+        "CDG",
+        "LBG",
+        "ORY",
+        "POX",
+        "VIY"
+      ],
+      "kind": "city"
+    },
+    "PEK": {
+      "airports": [
+        "PEK"
+      ],
+      "kind": "airport"
+    },
+    "PRG": {
+      "airports": [
+        "PRG",
+        "VOD"
+      ],
+      "kind": "airport"
+    },
+    "PUS": {
+      "airports": [
+        "PUS"
+      ],
+      "kind": "airport"
+    },
+    "PVG": {
+      "airports": [
+        "PVG"
+      ],
+      "kind": "airport"
+    },
+    "RAK": {
+      "airports": [
+        "RAK"
+      ],
+      "kind": "airport"
+    },
+    "REK": {
+      "airports": [
+        "KEF",
+        "RKV"
+      ],
+      "kind": "city"
+    },
+    "RIO": {
+      "airports": [
+        "GIG",
+        "RRJ",
+        "SDU"
+      ],
+      "kind": "city"
+    },
+    "ROM": {
+      "airports": [
+        "CIA",
+        "FCO"
+      ],
+      "kind": "city"
+    },
+    "SAO": {
+      "airports": [
+        "CGH",
+        "GRU",
+        "QGB",
+        "RTE",
+        "VCP"
+      ],
+      "kind": "city"
+    },
+    "SCL": {
+      "airports": [
+        "SCL",
+        "ULC"
+      ],
+      "kind": "airport"
+    },
+    "SEA": {
+      "airports": [
+        "BFI",
+        "LKE",
+        "SEA"
+      ],
+      "kind": "airport"
+    },
+    "SEL": {
+      "airports": [
+        "GMP",
+        "ICN",
+        "SSN"
+      ],
+      "kind": "city"
+    },
+    "SFO": {
+      "airports": [
+        "EMB",
+        "SFO"
+      ],
+      "kind": "airport"
+    },
+    "SGN": {
+      "airports": [
+        "SGN"
+      ],
+      "kind": "airport"
+    },
+    "SHE": {
+      "airports": [
+        "SHE"
+      ],
+      "kind": "airport"
+    },
+    "SIN": {
+      "airports": [
+        "QPG",
+        "SIN",
+        "XSP"
+      ],
+      "kind": "airport"
+    },
+    "SPK": {
+      "airports": [
+        "CTS",
+        "OKD"
+      ],
+      "kind": "city"
+    },
+    "STO": {
+      "airports": [
+        "ARN",
+        "BMA",
+        "NYO",
+        "VST"
+      ],
+      "kind": "city"
+    },
+    "SYD": {
+      "airports": [
+        "BWU",
+        "LBH",
+        "RSE",
+        "SYD",
+        "WSI"
+      ],
+      "kind": "airport"
+    },
+    "SYX": {
+      "airports": [
+        "SYX"
+      ],
+      "kind": "airport"
+    },
+    "SZX": {
+      "airports": [
+        "SZX"
+      ],
+      "kind": "airport"
+    },
+    "TAO": {
+      "airports": [
+        "TAO"
+      ],
+      "kind": "airport"
+    },
+    "TLV": {
+      "airports": [
+        "SDV",
+        "TLV"
+      ],
+      "kind": "airport"
+    },
+    "TPE": {
+      "airports": [
+        "TPE",
+        "TSA"
+      ],
+      "kind": "airport"
+    },
+    "TSN": {
+      "airports": [
+        "TSN"
+      ],
+      "kind": "airport"
+    },
+    "TYO": {
+      "airports": [
+        "HND",
+        "NRT"
+      ],
+      "kind": "city"
+    },
+    "URC": {
+      "airports": [
+        "URC"
+      ],
+      "kind": "airport"
+    },
+    "VCE": {
+      "airports": [
+        "TSF",
+        "VCE"
+      ],
+      "kind": "airport"
+    },
+    "VIE": {
+      "airports": [
+        "VIE"
+      ],
+      "kind": "airport"
+    },
+    "WAS": {
+      "airports": [
+        "BZS",
+        "DCA",
+        "IAD",
+        "JPN"
+      ],
+      "kind": "city"
+    },
+    "WAW": {
+      "airports": [
+        "WAW",
+        "WMI"
+      ],
+      "kind": "airport"
+    },
+    "WUH": {
+      "airports": [
+        "WUH"
+      ],
+      "kind": "airport"
+    },
+    "XIY": {
+      "airports": [
+        "XIY"
+      ],
+      "kind": "airport"
+    },
+    "XMN": {
+      "airports": [
+        "XMN"
+      ],
+      "kind": "airport"
+    },
+    "YMQ": {
+      "airports": [
+        "YHU",
+        "YMX",
+        "YUL"
+      ],
+      "kind": "city"
+    },
+    "YTO": {
+      "airports": [
+        "YHM",
+        "YKZ",
+        "YTZ",
+        "YYZ"
+      ],
+      "kind": "city"
+    },
+    "YVR": {
+      "airports": [
+        "CXH",
+        "YDT",
+        "YVR"
+      ],
+      "kind": "airport"
+    },
+    "ZRH": {
+      "airports": [
+        "ZRH"
+      ],
+      "kind": "airport"
+    }
+  },
+  "generated_at": "2026-09-26",
+  "note": "LA3 存在性校验快照：city_iata 表每行代码的数据集背书。由 scripts/iata_snapshot.py 生成，勿手改；表与快照双向一致的机检见 tests/test_flight_chain.py。",
+  "sources": {
+    "airports": "https://api.travelpayouts.com/data/airports.json",
+    "cities": "https://api.travelpayouts.com/data/cities.json",
+    "routes": "https://api.travelpayouts.com/data/routes.json"
+  }
+}

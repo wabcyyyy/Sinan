@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0002 · 快通道 —— 零思考成本的设计质量</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<article class="lesson">
+
+  <div class="eyebrow">司南设计课 · Lesson 0002 · 5 分钟读完，无作业</div>
+  <h1>快通道</h1>
+  <p class="lede">你时间不多，主要靠 vibe-coding 直接生成。这一课把上一课的原理压成一套<strong>你几乎不用思考</strong>的流程——分析和批评全部由 AI 承担，你只保留最后 30 秒的"过 / 不过"。</p>
+
+  <h2><span class="sec">§1</span>先算账：省时间 = 减少返工</h2>
+  <p>vibe-coding 里<strong>生成是免费的，返工才是昂贵的</strong>。你感觉"做前端费时间"，费的不是那一次生成，而是"改→不对→再改→又不对"的循环——每轮都是掷一次均值骰子（见 <a href="./0001-blind-craftsman.html">0001 根因一</a>）。</p>
+  <p>所以快通道只有一件事：<strong>让第一版就带着约束出生，让 AI 自己当批评家</strong>。约束是现成的（你仓库里的 TREK 风格文档），批评 AI 自己会做——唯一前置的成本是把这两样接进流程，一次性，约 15 分钟。</p>
+
+  <h2><span class="sec">§2</span>快通道三件套</h2>
+
+  <h3>① 约束前置（一次性，已完成）</h3>
+  <p>我把仓库根那份 563 行的 <code>TREK-DESIGN-STYLE.md</code> 压成了一页可粘贴的硬约束：<a href="../reference/sinan-style-brief.md"><code>sinan-style-brief.md</code></a>（十条硬规则 + 组件速查）。563 行的完整版适合人查阅，但塞给 AI 会话又贵又抓不住重点——一页版才是给机器的。</p>
+  <p>从此生成任何页面，提示词第一行就是：<strong>读这份约束</strong>。均值回归没有发生的空间。</p>
+
+  <h3>② 参考即提示（每次生成，10 秒）</h3>
+  <p>生成新页面前，找一张你觉得"就这个感觉"的截图（TREK 的、Linear 的、任何产品的都行）贴进对话，配一句话模板：</p>
+  <pre><code>读 design-course/reference/sinan-style-brief.md 作为硬约束。
+做〈页面 X〉，气质参考我贴的截图（结构不必相同）。
+写完后自己启动页面截图，按约束自查一遍再交付。</code></pre>
+  <p>一张截图的信息量超过五百个形容词——这 10 秒是你全流程唯一的体力活。</p>
+
+  <h3>③ AI 自评闭环（每轮迭代，2 分钟，几乎全自动）</h3>
+  <p>上一课的"五问自检"本来是留给你的作业——<strong>现在降级为 AI 的自查清单</strong>。你觉得不对劲时只需要一句话：</p>
+  <pre><code>截图见下。你当设计审查：按五问（层级/留白/颜色/对齐/密度）
+逐项给出带数字的问题清单，只列 top 3，先别改代码。</code></pre>
+  <p>AI 列清单 → 你划掉不认同的、剩下的让它修 → 修完再截图对比。你的角色只剩两个词：<strong>过 / 不过</strong>。在 ZCode 里截图本身也是自动的（browser-use 技能）；在别的工具里 Win+Shift+S 手截也就 5 秒。</p>
+
+  <div class="callout">
+    <span class="tag">唯一不能外包的</span>
+    最后那一眼"过 / 不过"必须是你——审美偏好没法委托。但它只要 30 秒，而且你天生就会。完整的可复制模板都在 <a href="../reference/one-line-prompt-kit.html">一句话提示词包</a>。
+  </div>
+
+  <h2><span class="sec">§3</span>检查一下直觉</h2>
+  <div class="quiz" data-explain="约束+参考把「猜」变成「抄作业」，AI 自查替代你的分析，通常 1–2 轮收敛。多生成几版是在反复掷均值骰子；自己手调参数则是把最贵的时间花在最机械的环节上。">
+    <p class="quiz-q">你只有 10 分钟改一个页面，最省时间的用法是？</p>
+    <button class="quiz-option">让 AI 自由发挥，多生成几版挑最好的</button>
+    <button class="quiz-option" data-answer="right">贴截图加风格约束，让 AI 自查后修一轮</button>
+    <button class="quiz-option">自己逐个手调参数，不信任 AI 的审美</button>
+    <p class="quiz-feedback" aria-live="polite"></p>
+  </div>
+
+  <h2><span class="sec">§4</span>诚实的边界</h2>
+  <p>全自动能到 80 分：干净、一致、有层级、不模板味。最后 20 分（那个"记忆点"——TREK 的大数字排版、玻璃 hero 那种）来自<strong>偶尔的一次人工指向</strong>："这里我要一个像 TREK Dashboard 的大数字横幅"。在你有兴致的时候给一句，没有就停在 80 分——80 分已经不输大多数商业产品了。</p>
+
+  <footer class="lesson-footer">
+    <p><strong>没有作业。</strong>下一步就是下次改前端时，把 <a href="../reference/one-line-prompt-kit.html">提示词包</a>里的第一段贴进对话，跑一轮试试。</p>
+    <p>Primary source：<a href="https://dev.to/wasp/a-structured-workflow-for-vibe-coding-full-stack-apps-352l">A Structured Workflow for Vibe Coding（Wasp）</a>——"先地基后生成"的完整论证，想深挖再看。</p>
+    <p>上一课：<a href="./0001-blind-craftsman.html">0001 闭眼工匠</a> · 工具：<a href="../reference/sinan-style-brief.md">一页约束</a> · <a href="../reference/one-line-prompt-kit.html">提示词包</a> · <a href="../reference/five-question-ui-self-check.html">五问卡（现在是 AI 的清单）</a></p>
+  </footer>
+
+</article>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

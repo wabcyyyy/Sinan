@@ -1,0 +1,218 @@
+{
+  "mode": "offline-ablation",
+  "route_provider": "fixture-route (deterministic substitute, not live traffic)",
+  "variants": {
+    "baseline_a_coordinate": {
+      "mode": "coordinate-generated / fixture-route-evaluated",
+      "case_count": 6,
+      "initial_pass_rate": 0.0,
+      "route_violation_rate": 0.1818,
+      "fallback_rate": 1.0,
+      "average_duration_ms": 0.1,
+      "details": [
+        {
+          "case": {
+            "city": "北京",
+            "days": 1,
+            "persons": 2,
+            "preferences": [
+              "人文历史"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 2,
+          "duration_ms": 0.15,
+          "item_count": 4
+        },
+        {
+          "case": {
+            "city": "上海",
+            "days": 2,
+            "persons": 2,
+            "preferences": [
+              "网红出片"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 4,
+          "duration_ms": 0.1,
+          "item_count": 8
+        },
+        {
+          "case": {
+            "city": "杭州",
+            "days": 3,
+            "persons": 3,
+            "preferences": [
+              "自然风光"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 6,
+          "duration_ms": 0.08,
+          "item_count": 12
+        },
+        {
+          "case": {
+            "city": "成都",
+            "days": 4,
+            "persons": 2,
+            "preferences": [
+              "美食"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 8,
+          "duration_ms": 0.08,
+          "item_count": 16
+        },
+        {
+          "case": {
+            "city": "西安",
+            "days": 2,
+            "persons": 4,
+            "preferences": [
+              "人文历史"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 4,
+          "duration_ms": 0.08,
+          "item_count": 8
+        },
+        {
+          "case": {
+            "city": "三亚",
+            "days": 5,
+            "persons": 2,
+            "preferences": [
+              "自然风光"
+            ]
+          },
+          "initial_or_final_pass": false,
+          "issue_count": 1,
+          "route_violations": 1,
+          "route_pairs": 9,
+          "duration_ms": 0.09,
+          "item_count": 19
+        }
+      ]
+    },
+    "baseline_b_route_optimizer": {
+      "mode": "fixture-route",
+      "case_count": 6,
+      "final_pass_rate": 1.0,
+      "route_violation_rate": 0.0,
+      "fallback_rate": 1.0,
+      "average_duration_ms": 0.78,
+      "details": [
+        {
+          "case": {
+            "city": "北京",
+            "days": 1,
+            "persons": 2,
+            "preferences": [
+              "人文历史"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 2,
+          "duration_ms": 0.37,
+          "item_count": 4
+        },
+        {
+          "case": {
+            "city": "上海",
+            "days": 2,
+            "persons": 2,
+            "preferences": [
+              "网红出片"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 4,
+          "duration_ms": 0.56,
+          "item_count": 8
+        },
+        {
+          "case": {
+            "city": "杭州",
+            "days": 3,
+            "persons": 3,
+            "preferences": [
+              "自然风光"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 6,
+          "duration_ms": 0.87,
+          "item_count": 12
+        },
+        {
+          "case": {
+            "city": "成都",
+            "days": 4,
+            "persons": 2,
+            "preferences": [
+              "美食"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 8,
+          "duration_ms": 1.02,
+          "item_count": 16
+        },
+        {
+          "case": {
+            "city": "西安",
+            "days": 2,
+            "persons": 4,
+            "preferences": [
+              "人文历史"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 4,
+          "duration_ms": 0.68,
+          "item_count": 8
+        },
+        {
+          "case": {
+            "city": "三亚",
+            "days": 5,
+            "persons": 2,
+            "preferences": [
+              "自然风光"
+            ]
+          },
+          "initial_or_final_pass": true,
+          "issue_count": 0,
+          "route_violations": 0,
+          "route_pairs": 9,
+          "duration_ms": 1.2,
+          "item_count": 19
+        }
+      ]
+    }
+  }
+}

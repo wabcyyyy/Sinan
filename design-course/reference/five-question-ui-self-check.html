@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>参考卡 · 五问自检 + 形容词翻译表</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  .ref-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); margin: var(--sp-4) 0; }
+  .ref-table th, .ref-table td { text-align: left; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--edge-soft); vertical-align: top; }
+  .ref-table th { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+  .banned code { text-decoration: line-through; opacity: .75; }
+</style>
+</head>
+<body>
+<article class="lesson">
+
+  <div class="eyebrow">参考卡 · 打印贴工位 · 配合 <a href="../lessons/0001-blind-craftsman.html">Lesson 0001</a></div>
+  <h1>五问自检 + 形容词翻译表</h1>
+  <p class="lede">"这页好丑"不是反馈，是情绪。过完这五问，它就会变成 AI 能执行的指令。</p>
+
+  <table class="ref-table">
+    <thead>
+      <tr><th>问</th><th>怎么量</th><th>常见病灶 → 指令写法</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1 · 层级</strong></td>
+        <td>这一屏有几档字号？（数出来）</td>
+        <td>标题正文同区间 → 「标题提到 17px/600，正文 13px，注释 11px 大写加字距，拉开三档」</td>
+      </tr>
+      <tr>
+        <td><strong>2 · 留白</strong></td>
+        <td>最挤容器的 padding？正文 line-height？</td>
+        <td>行高 &lt;1.5、padding &lt;16px → 「卡片 padding 提到 20px，正文行高 1.65，间距只用 4 的倍数」</td>
+      </tr>
+      <tr>
+        <td><strong>3 · 颜色</strong></td>
+        <td>黑白灰之外几种彩色？accent 几个？</td>
+        <td>彩标签 + 蓝按钮打架 → 「彩色只留一个 accent，标签统一中性灰底，状态色只进 chip」</td>
+      </tr>
+      <tr>
+        <td><strong>4 · 对齐</strong></td>
+        <td>同屏卡片/文字/图标的边缘压同一条线吗？</td>
+        <td>差 8px → 「左卡右卡与正文块统一 padding-left，图标与文字基线对齐」</td>
+      </tr>
+      <tr>
+        <td><strong>5 · 密度</strong></td>
+        <td>与对标产品（TREK）并排截图比</td>
+        <td>过挤 → 「参照 TREK 同类页删掉三分之一的视觉元素，信息降级进 meta 行」</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>指令模板</h3>
+  <pre><code>把 X 从 A 改成 B，参照 Y
+- X 必须是具体元素（"Day 卡片的标题"）
+- A/B 必须带数字或指向（"16px → 17px/600"、"参照 TREK-DESIGN-STYLE.md §4.1"）
+- 一条指令只改一件事，改完截图确认</code></pre>
+
+  <h3>禁用词表</h3>
+  <p class="banned">写给 AI 的指令里，这些词一律替换成上面的量法：<code>优雅</code> <code>高级</code> <code>质感</code> <code>大气</code> <code>现代</code> <code>简洁</code> <code>专业</code> —— 它们没有信息量，模型只能按训练均值猜，猜出来的就是模板味。</p>
+
+  <h3>每轮迭代的闭环</h3>
+  <ol>
+    <li>改前截图（基准）</li>
+    <li>发指令：一条只改一件事</li>
+    <li>改后截图，与基准并排对比确认</li>
+    <li>对不上就回滚，不叠新改动</li>
+  </ol>
+
+  <footer class="lesson-footer">
+    <p>来源：Lesson 0001 §5。相关：<a href="../lessons/0001-blind-craftsman.html">0001 闭眼工匠</a> · <a href="../MISSION.md">MISSION.md</a> · <a href="https://learnui.design/blog/7-rules-for-creating-gorgeous-ui-part-1.html">7 Rules for Creating Gorgeous UI</a></p>
+  </footer>
+
+</article>
+</body>
+</html>

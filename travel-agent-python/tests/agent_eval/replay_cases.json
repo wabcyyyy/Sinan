@@ -1,0 +1,20 @@
+[
+  {
+    "id": "unknown_poi",
+    "kind": "authority",
+    "description": "模型输出不在候选白名单中的景点",
+    "expected": "reject"
+  },
+  {
+    "id": "route_gap",
+    "kind": "route",
+    "description": "两个相距较远的 POI 之间只留 30 分钟",
+    "expected": "reject"
+  },
+  {
+    "id": "opening_window",
+    "kind": "opening",
+    "description": "景点游玩结束时间超过闭馆时间",
+    "expected": "reject"
+  }
+]

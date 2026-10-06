@@ -1,0 +1,59 @@
+# Sinan 生产边缘：自动 HTTPS + 静态托管 + /api 反代，单文件即全部路由。
+# 路由语义与 travel-frontend-react/nginx.conf（本地容器演示链路）对齐，两处改动必须同步：
+#   1. agent 直调面（/api/agent/**）与 /mcp 绝不经边缘可达（R1-8）
+#   2. /api 反代必须【替换】XFF（后端 app/common/client_ip.py 按可信网段从右往左取跳）
+# 域名单一来源：compose 注入的 DOMAIN（根 .env）。Caddy 据此自动签发/续期证书并做
+# 80→443 跳转；暂无域名时把 DOMAIN 设为 localhost 可在本机预演（附录见 deploy/README.md）。
+
+{$DOMAIN} {
+	# 静态资源：前端构建产物（前端 Dockerfile 的 caddy target 已 COPY 到 /srv）
+	encode zstd gzip
+	root * /srv
+
+	# 安全响应头（P2）：站点级对静态资源与反代 /api 响应（含下方 route 内的 403）都
+	# 生效；与 travel-frontend-react/nginx.conf 的 add_header 互为镜像，改动必须同步。
+	# 未加 CSP：前端 index.html 有内联首帧引导脚本，且地图瓦片/字形源清单由
+	# OpenFreeMap 的远端 style 文件控制，无法在仓内固定完整 connect-src，宁缺毋错。
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# route 块 = 显式保序（Caddy 规范序里 try_files 先于 respond/reverse_proxy，会把
+	# /api/** 先改写成 /index.html——预演实证；等价于 nginx 的 location 优先级语义）。
+	# 顺序即语义：先 deny（R1-8），再业务反代，再缓存头（只作用于其后的静态处理，
+	# 反代响应自带缓存语义、不被覆盖），最后 SPA fallback。
+	route {
+		# R1-8：agent 面（自带 X-Agent-Token 鉴权、接受调用方自备 user_id）与 MCP 出口
+		# 只允许内网直连，绝不对公网开放——与 nginx.conf 的 deny all 同义。
+		respond /api/agent/* 403
+		respond /mcp* 403
+
+		# 业务面反代（SSE 长推与 300s 生成 deadline 都在此链路上：flush 立即、不设读超时）。
+		# header_up 显式替换 XFF：Caddy 默认就不信任来路 XFF，这里写明以防版本语义变化，
+		# 与 nginx.conf 的 `proxy_set_header X-Forwarded-For $remote_addr` 同一安全姿态。
+		reverse_proxy /api/* agent-python:8000 {
+			header_up X-Forwarded-For {http.request.remote.host}
+			flush_interval -1
+		}
+
+		# 分享卡外壳（P1-5）：/s/{token} 由后端注入 og meta 后整页返回（分享卡爬虫
+		# 不执行 JS，直接给静态 index.html 永远拿不到卡片）。XFF 同样必须替换——
+		# 外壳端点按 IP 分钟窗限速，不替换会把全站访客算进 caddy 一个桶。
+		reverse_proxy /s/* agent-python:8000 {
+			header_up X-Forwarded-For {http.request.remote.host}
+		}
+
+		# 缓存头（P1-4，与 nginx.conf 同源、改动必须同步）：默认 no-cache——SPA 外壳
+		# 与深链 fallback 都是可变 HTML；/assets/* 全部是构建 hash 产物名，内容永不
+		# 变（变即新 URL），immutable 一年让回访首屏近乎零请求。后写的 /assets/* 规则
+		# 覆盖前面的默认值；两条都在反代之后，不影响 /api 与 /s 的响应头。
+		header Cache-Control "no-cache"
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+
+		try_files {path} /index.html
+		file_server
+	}
+}

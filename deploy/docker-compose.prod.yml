@@ -1,0 +1,20 @@
+# 生产编排叠加层：在根 docker-compose.yml 之上只放【生产专属覆盖】。
+# 服务拓扑（MySQL/Redis/agent/Caddy）单一真源仍是根编排，这里不复制任何服务定义。
+#
+# 用法（VPS 上仓库根目录）：
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml --profile prod up -d --build
+# 或直接用 deploy/deploy.sh（拉码 + 构建 + 拉起 + 冒烟一条龙）。
+#
+# 本地预演：DOMAIN=localhost 时同一命令可在开发机跑通（Caddy 对 localhost 签自签证书，
+# curl 加 -k；验证的是编排与路由，不是真 TLS）。
+
+services:
+  agent-python:
+    environment:
+      # 根编排里这是 false（compose 本地演示链路只有明文 :80，Secure Cookie 会被浏览器
+      # 丢弃）；生产在 Caddy 后面全链路 TLS，必须回到安全默认——漏掉这行时 deploy.sh
+      # 会通过后端启动日志里的明文 Cookie 告警直接报红。
+      AUTH_COOKIE_SECURE: "true"
+      # 分享卡外壳取壳地址（P1-5）：生产的静态源是 caddy 容器（同一份前端构建产物），
+      # 覆盖根编排里指向 frontend-react 的演示值（apps profile 在生产不拉起）。
+      FRONTEND_SHELL_URL: http://caddy/index.html

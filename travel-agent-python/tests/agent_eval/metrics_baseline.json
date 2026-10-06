@@ -1,0 +1,143 @@
+{
+  "_meta": {
+    "frozen_at": "2026-09-23",
+    "口径": "PR-0 尺子校准：取代报告字节比对的逐指标双向棘轮基线。离线报告由 mock fixture 驱动、确定可复现（CI eval-determinism 两遍 SHA256 把关），指标值只有在行为/口径变化时才动，因此容差只设浮点噪声级。方向语义：只带 min = 越高越好（下限）；只带 max = 越低越好（上限）；min+max = 钉在区间内（口径/结构计数类，动了必须人工认账）。回归红；显著变好也红（逼 --update 收紧，基线只跟不松）。",
+    "update": "uv run python tests/agent_eval/eval_agent.py && uv run python tests/agent_eval/eval_research.py && uv run python scripts/eval_ratchet.py --update（人工复核 diff 后与代码同一 commit 入库；放宽界值属 INV-1 豁免，PR 须留注释与期限）"
+  },
+  "reports": {
+    "report/offline/report.json": {
+      "poi_authority_rate": {
+        "min": 1.0,
+        "note": "证据票背书率（D11A 口径）；mock 全票 = 1.0，掉了就是接地回归"
+      },
+      "poi_grounded_rate": {
+        "min": 0.6528,
+        "note": "票+坐标双落地率；含 coords:false 无坐标变体，故不到 1"
+      },
+      "poi_refuted_count": {
+        "min": 0,
+        "max": 0,
+        "note": "被驳回删除的编造 POI 数：>0 = 出现编造，=非0的新低也可能是安全网变化，都认账"
+      },
+      "field_reference_rate": {
+        "min": 1.0,
+        "note": "可比字段（门票价）与参照一致率；无可比样本计 None 不进此指标"
+      },
+      "time_conflict_rate": {
+        "max": 0.0,
+        "note": "同日时间重叠率：越低越好"
+      },
+      "route_violation_rate": {
+        "max": 0.0,
+        "note": "转场时间不足率（估算口径）：越低越好"
+      },
+      "attraction_duplicate_rate": {
+        "max": 0.0,
+        "note": "景点跨日重复率：越低越好"
+      },
+      "budget_deviation_rate": {
+        "max": 0.0,
+        "note": "预算偏差率（生产同口径期望）：越低越好"
+      },
+      "success_status_rate": {
+        "min": 0.0,
+        "max": 0.0,
+        "note": "mock 口径恒 degraded（开放研究结果如实呈现），success 占比动了 = 状态口径漂移"
+      },
+      "degraded_status_rate": {
+        "min": 1.0,
+        "max": 1.0,
+        "note": "同上：degraded 是本项目如实呈现的预期状态，占比钉 1.0"
+      },
+      "failed_status_rate": {
+        "min": 0,
+        "max": 0,
+        "note": "硬失败占比：任何非 0 都红"
+      },
+      "fallback_success_rate": {
+        "min": 1.0,
+        "note": "天数齐全且每天有交付的比例"
+      },
+      "trace_complete_rate": {
+        "min": 1.0,
+        "note": "parse/research/generate/reflect/format 全链路节点 + 工具调用齐全率"
+      },
+      "research_rounds_avg": {
+        "min": 3.0,
+        "max": 3.0,
+        "note": "三域推理轮次合计（1 轮/域 ×3）：编排结构计数，动了 = 研究编排行为变化"
+      },
+      "research_pack_avg": {
+        "min": 18.0,
+        "max": 18.0,
+        "note": "三域证据包规模合计（12+4+2 fixture）：结构计数"
+      },
+      "coord_valid_rate": {
+        "min": 0.6528,
+        "note": "attraction/food/hotel 坐标有效率（C3.2）；含 coords:false 变体故不到 1"
+      },
+      "deeplink_resolvable_rate": {
+        "min": 1.0,
+        "note": "按天计全天路线深链可解析率（≥2 有效停靠点的天必须可解析）"
+      },
+      "category_reasonable_rate": {
+        "min": 1.0,
+        "note": "item_type 白名单 + poi_name 非空"
+      }
+    },
+    "report/offline/research_report.json": {
+      "avg_rounds": {
+        "min": 1.0,
+        "max": 1.0,
+        "note": "单域推理轮次（fixture 判定充分即收）：研究编排结构计数"
+      },
+      "pack_total": {
+        "min": 18,
+        "max": 18,
+        "note": "三域证据总量（fixture 规模）：结构计数"
+      },
+      "degraded_rate": {
+        "max": 0.0,
+        "note": "降级证据包占比：越低越好"
+      },
+      "refill_effectiveness": {
+        "min": 1.0,
+        "note": "Supervisor 缺口补查有效率：首轮空 → 补查必须填上"
+      }
+    },
+    "report/offline/editing_report.json": {
+      "clarify_question_valid_rate": {
+        "min": 1.0,
+        "note": "有缺必问、无缺不问（question 与 missing 同步）"
+      },
+      "clarify_slot_fill_rate": {
+        "min": 1.0,
+        "note": "澄清回复里该抽的槽位（city/days/persons…）抽出来了"
+      },
+      "edit_ops_valid_rate": {
+        "min": 1.0,
+        "note": "nl_edit 返回的操作合法（action 白名单、<=8 条、day_no 在界）"
+      },
+      "edit_target_hit_rate": {
+        "min": 1.0,
+        "note": "删除/改期类操作命中的点位确实存在于当次 plans"
+      },
+      "guide_kind_valid_rate": {
+        "min": 1.0,
+        "note": "city_guide 判定 kind 与流程契约归一后一致（province+落点→city）"
+      },
+      "guide_suggestion_shape_rate": {
+        "min": 1.0,
+        "note": "候选建议 1-2 条且 name/reason 齐全"
+      },
+      "replan_lock_respected_rate": {
+        "min": 1.0,
+        "note": "局部换排不丢锁定点位（locked_names 必须保留）"
+      },
+      "replan_replaced_rate": {
+        "min": 1.0,
+        "note": "可替换位真的被候选替换（replaced_items 记录 from→to）"
+      }
+    }
+  }
+}

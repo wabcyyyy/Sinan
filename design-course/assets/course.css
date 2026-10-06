@@ -1,0 +1,201 @@
+/* design-course 共享样式 — 每课都链它，让课程看起来像一门课而不是一堆一次性产物。
+   本文件自身就是课程主张的示范：token 先行（所有视觉参数走变量）、单色为主、
+   单一近黑 accent、4px 间距节奏、统一 easing。改样式先改 token，不动组件。 */
+
+:root {
+  /* 色板：近白纸面 + 三档墨色 + hairline 边，accent 就是近黑（TREK 式克制） */
+  --bg: #fdfdfc;
+  --bg-card: #ffffff;
+  --bg-soft: #f6f6f4;
+  --bg-code: #f3f3f0;
+  --ink: #1c1c1a;
+  --ink-2: #4b4b47;
+  --ink-3: #85857f;
+  --edge: #e7e7e2;
+  --edge-soft: #efefea;
+  --accent: #1c1c1a;
+  --accent-ink: #fdfdfc;
+  --ok: #2f7d4f;
+  --bad: #b03a3a;
+  --focus: #1d4ed8;
+
+  /* 间距节奏：4 的倍数，禁止自造中间值 */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px; --sp-16: 64px;
+
+  /* 字号四档 + 标题两档，组件不许写死 px */
+  --fs-caption: 12px; --fs-small: 13px; --fs-body: 15px;
+  --fs-sub: 18px; --fs-title: 28px; --fs-hero: 40px;
+
+  --measure: 44rem;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(28, 28, 26, 0.05);
+  --shadow-md: 0 2px 6px rgba(28, 28, 26, 0.05), 0 12px 32px -20px rgba(28, 28, 26, 0.2);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: var(--fs-body);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.lesson {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--sp-16) var(--sp-6);
+}
+
+a { color: inherit; text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---- 标题层级：eyebrow → hero → lede → 小节 ---- */
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+h1 {
+  font-size: var(--fs-hero);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin: var(--sp-3) 0 var(--sp-4);
+}
+
+.lede {
+  font-size: var(--fs-sub);
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-12);
+}
+
+h2 {
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: var(--sp-12) 0 var(--sp-3);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--edge-soft);
+}
+h2 .sec { color: var(--ink-3); font-weight: 500; margin-right: var(--sp-2); }
+
+h3 { font-size: var(--fs-body); font-weight: 600; margin: var(--sp-6) 0 var(--sp-2); }
+
+p { margin: 0 0 var(--sp-4); }
+p:last-child { margin-bottom: 0; }
+
+strong { font-weight: 600; }
+em { font-style: normal; background: linear-gradient(transparent 62%, rgba(28, 28, 26, 0.12) 62%); }
+
+ul, ol { padding-left: 1.4em; margin: 0 0 var(--sp-4); }
+li { margin-bottom: var(--sp-2); }
+li:last-child { margin-bottom: 0; }
+
+/* ---- 复用块 ---- */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-6);
+  margin: var(--sp-6) 0;
+}
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--sp-4) var(--sp-6);
+  font-size: var(--fs-small);
+  color: var(--ink-2);
+  margin: var(--sp-6) 0;
+}
+.callout .tag {
+  display: block;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3);
+  margin-bottom: var(--sp-1);
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--bg-code);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--edge-soft);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  overflow-x: auto;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+}
+pre code { background: none; padding: 0; }
+
+hr { border: none; border-top: 1px solid var(--edge); margin: var(--sp-12) 0; }
+
+.lesson-footer {
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--edge);
+  font-size: var(--fs-small);
+  color: var(--ink-3);
+}
+
+/* ---- quiz 组件（配合 assets/quiz.js）---- */
+
+.quiz { margin: var(--sp-4) 0 var(--sp-8); }
+.quiz-q { font-weight: 600; margin-bottom: var(--sp-3); }
+.quiz-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-small);
+  color: var(--ink);
+  background: var(--bg-card);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
+  cursor: pointer;
+  transition: border-color 150ms var(--ease), background 150ms var(--ease);
+}
+.quiz-option:hover:not(:disabled) { border-color: var(--ink-3); }
+.quiz-option:disabled { cursor: default; }
+.quiz-option.is-right { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
+.quiz-option.is-wrong { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.quiz-feedback { min-height: 1.6em; font-size: var(--fs-small); color: var(--ink-2); margin: var(--sp-2) 0 0; }
+.quiz-feedback.is-right { color: var(--ok); }
+.quiz-feedback.is-wrong { color: var(--bad); }
+
+/* ---- 打印：reference 页为打印优化 ---- */
+
+@media print {
+  body { background: #fff; }
+  .lesson { padding: 0; max-width: none; }
+  .no-print { display: none; }
+  a { text-decoration: none; }
+}

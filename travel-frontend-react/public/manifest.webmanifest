@@ -1,0 +1,13 @@
+{
+  "name": "司南 Sinan",
+  "short_name": "司南",
+  "description": "从一句话开始，找到一段有方向的旅程。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d63a1e",
+  "icons": [
+    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

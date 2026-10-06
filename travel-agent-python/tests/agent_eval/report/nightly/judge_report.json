@@ -1,0 +1,541 @@
+{
+  "generated_at": "2026-09-24T02:37:21+00:00",
+  "judge_model": "deepseek-v3",
+  "judged_model": "qwen-plus",
+  "judge_prompt_version": "judge-v1.0-20260924",
+  "judge_prompt_sha256": "9a89f8ca06ff6bcbb2ed4ccfaa8e867f0574ed047505415b7a578631a7e611e2",
+  "calibration_provenance": "校准样本与人工评分由维护者代拟（2026-09-24）；真实人工复评可覆盖同批样本后重算一致性",
+  "calibration_file": "calibration/human_scores.jsonl",
+  "calibration_sha256": "8726ab141e4f1782d2d56f03beb0deb2eb649258c6c3b44674b263d7a8292b5f",
+  "sample_count": 30,
+  "judged_count": 30,
+  "judge_error_count": 0,
+  "agreement": {
+    "spearman": {
+      "faithfulness": 0.601,
+      "relevance": 0.4948,
+      "coherence": 0.5488
+    },
+    "cohens_kappa": {
+      "estimated_labels": 0.2722
+    },
+    "exact_match_rate": {
+      "faithfulness": 0.2333,
+      "relevance": 0.6667,
+      "coherence": 0.3,
+      "estimated_labels": 0.7
+    }
+  },
+  "details": [
+    {
+      "id": "cal-001",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合亲子自然科学主题，叙述连贯，标注正确。"
+      },
+      "note": "真实点位、贴合亲子自然主题，标注与内容匹配"
+    },
+    {
+      "id": "cal-002",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 4,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "清水寺为真实景点，动漫巡礼理由合理，标注与内容确定性匹配。"
+      },
+      "note": "票价标 estimated 合理（无核实渠道）"
+    },
+    {
+      "id": "cal-003",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合用户意图，叙述连贯自洽，标注与内容确定性匹配。"
+      },
+      "note": "真实老店、意图贴合、标注合理"
+    },
+    {
+      "id": "cal-004",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合人文历史主题，叙述连贯，标注正确。"
+      },
+      "note": "真实权威点位，标注与预约提示都可信"
+    },
+    {
+      "id": "cal-005",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 4,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合漫步与美食主题，时间与叙述自洽，标注正确。"
+      },
+      "note": "真实点位；主题与美食意图略偏漫步但整体贴合"
+    },
+    {
+      "id": "cal-006",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合亲子度假需求，标注与内容确定性匹配"
+      },
+      "note": "水族馆名略长但真实存在，估算票价合理标注 estimated"
+    },
+    {
+      "id": "cal-007",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合历史与美食主题，标注与内容确定性匹配"
+      },
+      "note": "泡馍店名为常见叫法，真实度高；标注合理"
+    },
+    {
+      "id": "cal-008",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合园林主题，叙述连贯自洽，标注与内容确定性匹配。"
+      },
+      "note": "拙政园票价旺季浮动，标 verified 略满，判 partial"
+    },
+    {
+      "id": "cal-009",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 4,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，符合夜景主题，时间安排合理，标注与内容确定性匹配。"
+      },
+      "note": "真实点位，主题偏夜景未覆盖美食意图一半"
+    },
+    {
+      "id": "cal-010",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "鼓浪屿为真实景点，费用标注为预估且未验证，符合用户文艺海岛意图，叙述连贯。"
+      },
+      "note": "真实，联票浮动标 estimated 妥当"
+    },
+    {
+      "id": "cal-011",
+      "human": {
+        "faithfulness": 5,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "楼外楼为真实老字号，内容可信且完全符合美食主题，标注正确"
+      },
+      "note": "老字号真实；单店成主题略单薄；人均标 verified 偏满"
+    },
+    {
+      "id": "cal-012",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实存在且叙述可信，完全贴合二次元与购物主题，标注正确无误。"
+      },
+      "note": "真实连锁与街区；shopping 不填价格符合契约"
+    },
+    {
+      "id": "cal-013",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，完全贴合雪山主题，标注与内容确定性匹配"
+      },
+      "note": "真实点位；套票浮动标 estimated 合理"
+    },
+    {
+      "id": "cal-014",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合美食与骑楼主题，时间与叙述连贯，标注与内容确定性匹配。"
+      },
+      "note": "真实；标注妥当"
+    },
+    {
+      "id": "cal-015",
+      "human": {
+        "faithfulness": 3,
+        "relevance": 4,
+        "coherence": 4,
+        "estimated_labels": "incorrect"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合民国主题与本地小吃，标注与内容确定性匹配。"
+      },
+      "note": "小吃写成品类而非具体店名（欠具体）；18 元精确到个位却标 estimated/未核实矛盾感轻但品类冒充店名拉低忠实度"
+    },
+    {
+      "id": "cal-016",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，完全符合啤酒与海岸线主题，叙述连贯且标注正确。"
+      },
+      "note": "博物馆票价随票种浮动，全标 verified 略满"
+    },
+    {
+      "id": "cal-017",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合风光慢游主题，标注与内容确定性匹配。"
+      },
+      "note": "真实点位；标注得当"
+    },
+    {
+      "id": "cal-018",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，内容贴合亲子冰雪主题，标注与内容确定性匹配。"
+      },
+      "note": "票价季节浮动，estimated 标注且备注说明来源口径，诚实"
+    },
+    {
+      "id": "cal-019",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，符合用户意图，叙述连贯，标注正确。"
+      },
+      "note": "真实；人均估算标注 estimated 合理"
+    },
+    {
+      "id": "cal-020",
+      "human": {
+        "faithfulness": 3,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "内容可信且贴合桂林山水主题，标注正确反映信息不确定性"
+      },
+      "note": "项目名偏泛（漓江漂流多航段多经营方），中档忠实度；标注诚实"
+    },
+    {
+      "id": "cal-021",
+      "human": {
+        "faithfulness": 3,
+        "relevance": 2,
+        "coherence": 3,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 2,
+        "coherence": 3,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，但主题与用户意图不符，连贯性因主题偏离受影响。"
+      },
+      "note": "点位真实但完全偏离亲子自然意图（去逛街了）"
+    },
+    {
+      "id": "cal-022",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，贴合胡同主题，叙述连贯，标注正确。"
+      },
+      "note": "真实但主题句只覆盖半程；连贯性中档"
+    },
+    {
+      "id": "cal-023",
+      "human": {
+        "faithfulness": 3,
+        "relevance": 5,
+        "coherence": 4,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合亲子熊猫主题，时间叙述合理，标注与内容确定性匹配。"
+      },
+      "note": "基地真实；园内餐厅写法笼统；餐标 estimated 但餐厅本身泛称"
+    },
+    {
+      "id": "cal-024",
+      "human": {
+        "faithfulness": 3,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "correct"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，安排贴合美食夜市主题，标注正确且自洽。"
+      },
+      "note": "街区级笼统写法（非具体店名）但真实存在；标注一致"
+    },
+    {
+      "id": "cal-025",
+      "human": {
+        "faithfulness": 2,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "内容真实可信，符合亲子主题，标注正确。"
+      },
+      "note": "馆名疑似杜撰（岛上无此知名场馆），忠实度低；标注本身不算错"
+    },
+    {
+      "id": "cal-026",
+      "human": {
+        "faithfulness": 2,
+        "relevance": 2,
+        "coherence": 3,
+        "estimated_labels": "incorrect"
+      },
+      "judge": {
+        "faithfulness": 3,
+        "relevance": 2,
+        "coherence": 3,
+        "estimated_labels": "partial",
+        "rationale": "点位真实但主题偏离用户园林慢游意图；cost标注部分正确（西湖天街0元应标estimated）"
+      },
+      "note": "购物中心名杜撰且与园林意图双偏离；杜撰点却标 verified，标注错"
+    },
+    {
+      "id": "cal-027",
+      "human": {
+        "faithfulness": 2,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "incorrect"
+      },
+      "judge": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "correct",
+        "rationale": "点位名称可信且贴合美食主题，标注与内容确定性匹配。"
+      },
+      "note": "店名像杜撰的通用叫法；精确人均却标 verified 无核实渠道，标注错"
+    },
+    {
+      "id": "cal-028",
+      "human": {
+        "faithfulness": 4,
+        "relevance": 4,
+        "coherence": 1,
+        "estimated_labels": "partial"
+      },
+      "judge": {
+        "faithfulness": 5,
+        "relevance": 4,
+        "coherence": 3,
+        "estimated_labels": "correct",
+        "rationale": "点位真实可信，标注正确，但浅草寺亲子相关性较弱且时间安排与迪士尼冲突。"
+      },
+      "note": "点位真实但主题是纯路径串、迪士尼一整天与浅草寺二十分钟自相矛盾，连贯性崩"
+    },
+    {
+      "id": "cal-029",
+      "human": {
+        "faithfulness": 2,
+        "relevance": 3,
+        "coherence": 3,
+        "estimated_labels": "incorrect"
+      },
+      "judge": {
+        "faithfulness": 4,
+        "relevance": 5,
+        "coherence": 5,
+        "estimated_labels": "incorrect",
+        "rationale": "全聚德前门店可信，鬼味烤翅的精确人均66.6元无法核实，标注应为estimated。"
+      },
+      "note": "烤鸭真实，烤翅店存疑；66.6 元荒诞精度却标 verified——标注典型错误"
+    },
+    {
+      "id": "cal-030",
+      "human": {
+        "faithfulness": 1,
+        "relevance": 3,
+        "coherence": 2,
+        "estimated_labels": "incorrect"
+      },
+      "judge": {
+        "faithfulness": 4,
+        "relevance": 3,
+        "coherence": 4,
+        "estimated_labels": "incorrect",
+        "rationale": "伏见稻荷大社不在苏州，留园评弹时段未核实。"
+      },
+      "note": "京都社寺混进苏州行程（跨城市编造）；标注也随错——忠实度垫底样本"
+    }
+  ]
+}
