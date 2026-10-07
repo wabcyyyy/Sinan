@@ -69,3 +69,6 @@ coverage.xml
 
 # 夜审工作产物（含探针日志/录音/审计快照）——2026-10-06 安全检查结论：不入仓
 .night-audit/
+
+# nightly journal (local only, never committed)
+.nightly-journal/

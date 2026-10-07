@@ -49,7 +49,9 @@ def test_backup_rule_accepts_legacy_dict_shapes():
 
 
 def test_backup_rule_serializes_if_alias_on_wire():
-    rule = BackupRule(if_="雨天", action="改室内")
+    # 经 model_validate 走 wire 键构造：字段别名 "if" 非合法标识符，pydantic 为
+    # 其合成的 __init__ 参数名是别名而非 if_，构造器关键字直接写 if_ 会误报。
+    rule = BackupRule.model_validate({"if": "雨天", "action": "改室内"})
     assert rule.model_dump(mode="json", by_alias=True) == {"if": "雨天", "action": "改室内"}
 
 
@@ -60,7 +62,7 @@ def test_narrative_fields_serialize_camel_case_on_wire():
         trip_theme="京都·千恋万花圣地巡礼",
         items=[TripItem(poi_name="清水寺", why_this="巡礼核心点")],
         photo_spots=[PhotoSpot(name="清水寺舞台", tip="仰拍", best_time="清晨")],
-        backup_plan=[BackupRule(if_="雨天", action="改室内")],
+        backup_plan=[BackupRule.model_validate({"if": "雨天", "action": "改室内"})],
         day_options=[DayOption(label="暴走版", summary="八点连轴", tradeoff="体力消耗大")],
     )
     dump = plan.model_dump(mode="json", by_alias=True)

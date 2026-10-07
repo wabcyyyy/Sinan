@@ -145,8 +145,6 @@ tests/test_itinerary_list_filters.py:reportInvalidTypeForm:Return type of genera
 tests/test_itinerary_list_filters.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_itinerary_read_migration.py:reportOptionalMemberAccess:"metadata_json" is not a known attribute of "None"
 tests/test_itinerary_write_migration.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
-tests/test_narrative_contract.py:reportCallIssue:Argument missing for parameter "if"
-tests/test_narrative_contract.py:reportCallIssue:No parameter named "if_"
 tests/test_plan_apply_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
 tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"days" is not a known attribute of "None"
 tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"end_date" is not a known attribute of "None"
@@ -163,7 +161,6 @@ tests/test_research_agents.py:reportArgumentType:Argument of type "str" cannot b
 tests/test_retirement_readiness.py:reportArgumentType:Argument of type "ModuleSpec | None" cannot be assigned to parameter "spec" of type "ModuleSpec" in function "module_from_spec" |   Type "ModuleSpec | None" is not assignable to type "ModuleSpec" |     "None" is not assignable to "ModuleSpec"
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"exec_module" is not a known attribute of "None"
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"loader" is not a known attribute of "None"
-tests/test_route_service.py:reportOptionalSubscript:Object of type "None" is not subscriptable
 tests/test_schema_bootstrap_migration.py:reportReturnType:Type "str | None" is not assignable to return type "str" |   Type "str | None" is not assignable to type "str" |     "None" is not assignable to "str"
 tests/test_share_api.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
 tests/test_share_api.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"

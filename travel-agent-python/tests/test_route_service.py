@@ -24,8 +24,10 @@ def test_route_service_uses_provider_and_cache(monkeypatch):
     clear_route_cache()
     service = RouteService(fetcher=fetcher)
     first, second = _poi("A"), _poi("B", lng=120.01)
-    assert service.get_route(first, second)["source"] == "amap"
-    assert service.get_route(first, second)["duration_min"] == 12
+    route = service.get_route(first, second)
+    assert route is not None and route["source"] == "amap"
+    route = service.get_route(first, second)
+    assert route is not None and route["duration_min"] == 12
     assert len(calls) == 1
 
 
@@ -36,6 +38,7 @@ def test_route_service_falls_back_to_coordinate_estimate(monkeypatch):
     clear_route_cache()
     service = RouteService(fetcher=failing)
     route = service.get_route(_poi("A"), _poi("B", lat=30.1))
+    assert route is not None
     assert route["source"] == "coordinate-estimate"
     assert route["degraded"] is True
     assert route["duration_min"] > 0
@@ -57,5 +60,6 @@ def test_route_service_peak_factor_is_explicit(monkeypatch):
         }
     )
     route = service.get_route(_poi("A"), _poi("B"), departure_time="08:00")
+    assert route is not None
     assert route["base_duration_min"] == 10
     assert route["duration_min"] == 15
