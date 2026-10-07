@@ -98,11 +98,57 @@ def test_register_validation_messages_match_java_beans_validation(client, payloa
     assert response.json()["message"] == expected
 
 
-def test_register_throttle_after_five_attempts_per_ip(client: TestClient) -> None:
+def test_login_throttle_after_five_attempts_per_ip(client: TestClient) -> None:
     for _ in range(5):
         _register(client, username="bob1", password=PASSWORD)
     body = _register(client, username="bob2", password=PASSWORD)
     assert body["code"] == 429 and body["message"] == "注册过于频繁，请稍后再试"
+
+
+# ---------- 登录按 IP 总量窗（审计 §3.3.3） ----------
+
+
+def test_login_ip_total_window_blocks_password_spray(client: TestClient, monkeypatch) -> None:
+    """失败锁的粒度是 (IP, 用户名)：换用户名即重新计数，单 IP 可全速喷密码兼烧 bcrypt。
+    这里钉住按 IP 的总量闸：窗口内第 N+1 次登录尝试（无论用户名成败）429。
+    本文件 isolated_state 把 Redis 钉到不可达端口——本用例同时在验证进程内兜底路径。
+    conftest 已把阈值放开到极大值，这里改回真实默认 30 再验。
+    """
+    monkeypatch.setattr(settings, "login_ip_rate_per_minute", 30)
+    assert sessions.login_ip_key("1.2.3.4") == "auth:login:ip:1.2.3.4"
+    _register(client)
+    # 对 30 个不同用户名各试一次（每个 (IP, 用户名) 失败锁只计 1/5，全都不锁——
+    # 正是 §3.3.3 描述的"换用户名即重置"喷洒形态；用户不存在 → 不烧 bcrypt，快）
+    for i in range(30):
+        assert (
+            client.post("/api/auth/login", json={"username": f"victim{i}", "password": "bad1234"}).json()["code"] == 400
+        )
+    sprayed = client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD})
+    body = sprayed.json()
+    assert body["code"] == 429 and body["message"] == "登录过于频繁，请稍后再试"
+
+
+def test_login_ip_total_window_fires_before_user_lookup(client: TestClient, monkeypatch) -> None:
+    """总量闸在 _find_user/bcrypt 之前：超限 IP 的第 N+1 次连用户查询都不进（CPU 止损）。"""
+    monkeypatch.setattr(settings, "login_ip_rate_per_minute", 5)
+    looked_up: list[str] = []
+    monkeypatch.setattr(user_service, "_find_user", lambda username: looked_up.append(username))
+    for _ in range(5):
+        client.post("/api/auth/login", json={"username": "whoever", "password": "bad1234"})
+    looked_up.clear()
+    blocked = client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD}).json()
+    assert blocked["code"] == 429
+    assert not looked_up, "超限请求不应触发用户查询，更不应烧 bcrypt"
+
+
+def test_login_ip_total_window_counts_success_too(client: TestClient, monkeypatch) -> None:
+    """总窗不看成败：同一 IP 的高速成功登录（脚本化会话刷新）同样被闸。"""
+    monkeypatch.setattr(settings, "login_ip_rate_per_minute", 5)
+    _register(client)
+    for _ in range(5):
+        assert client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD}).json()["code"] == 200
+    body = client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD}).json()
+    assert body["code"] == 429 and body["message"] == "登录过于频繁，请稍后再试"
 
 
 # ---------- 登录 ----------

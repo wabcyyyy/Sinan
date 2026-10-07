@@ -6702,6 +6702,7 @@
         "properties": {
           "input": {
             "type": "string",
+            "maxLength": 4000,
             "title": "Input",
             "default": ""
           },
@@ -6785,6 +6786,7 @@
         "properties": {
           "message": {
             "type": "string",
+            "maxLength": 2000,
             "minLength": 1,
             "title": "Message"
           },

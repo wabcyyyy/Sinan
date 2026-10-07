@@ -17,12 +17,15 @@
 """
 
 import asyncio
+import json
 import logging
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import Message, Receive, Scope, Send
 
 from app.agent.runtime import checkpoint
 from app.agent.runtime.usage_store import usage_store
@@ -31,13 +34,101 @@ from app.api.business import business_routers
 from app.api.security_headers import SecurityHeadersMiddleware
 from app.common import cron, model_registry, retention, timezone_check
 from app.common.config import settings
-from app.common.envelope import install_exception_handlers
+from app.common.envelope import fail, install_exception_handlers
 from app.db import migrate as db_migrate
 from app.services import export_service, generation_recovery, itinerary_chat, itinerary_generation
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 logger = logging.getLogger(__name__)
+
+# ---- 请求体上限（P0-4 应用侧；边缘两处镜像见注释） ----
+# 口径与 deploy/Caddyfile 的 request_body、travel-frontend-react/nginx.conf 的
+# client_max_body_size 互为镜像，三处改动必须同步：/api/** 全量 2MB（JSON API 足够）；
+# multipart 上传端点按"服务侧文件本体上限 + 1MB 包裹余量"分档放行——服务层用
+# cover_service.read_upload_capped 流式截断文件本体（封面/图片意图 5MB、语音 8MB），
+# 全局一刀切 2MB 会把上传拦死在到达服务层之前。边缘（Caddy/nginx）与本中间件
+# 谁先拦都是 413。
+API_BODY_MAX_BYTES = 2 * 1024 * 1024
+# 6MB 档：封面上传（cover_upload_max_bytes=5MB）与图片意图（IMAGE_INTENT_MAX_BYTES=5MB）。
+UPLOAD_BODY_MAX_BYTES = 6 * 1024 * 1024
+# 9MB 档：语音意图（SPEECH_INTENT_MAX_BYTES=8MB，16k 单声道 WAV 较长录音常见 2-8MB）。
+SPEECH_UPLOAD_BODY_MAX_BYTES = 9 * 1024 * 1024
+
+_ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
+
+# 6MB 档的固定上传端点（封面上传是带数字段的模式路径，见 _is_cover_upload）。
+_UPLOAD_6MB_PATHS = frozenset({"/api/image-intent"})
+_SPEECH_INTENT_PATH = "/api/speech-intent"
+
+
+def _is_cover_upload(path: str) -> bool:
+    """/api/itinerary/{id}/cover/upload（id 为数字段）——与边缘 matcher 的
+    /api/itinerary/*/cover/upload（Caddy）与 ^/api/itinerary/[^/]+/cover/upload$（nginx）
+    同一命中面。"""
+    prefix, suffix = "/api/itinerary/", "/cover/upload"
+    if not (path.startswith(prefix) and path.endswith(suffix)):
+        return False
+    return path[len(prefix) : -len(suffix)].isdigit()
+
+
+def _body_limit(path: str) -> int:
+    """按路径返回请求体上限档，与边缘 matcher 的命中面互为镜像：
+    封面上传/图片意图 6MB、语音意图 9MB、其余 /api/** 一律 2MB。"""
+    if path in _UPLOAD_6MB_PATHS or _is_cover_upload(path):
+        return UPLOAD_BODY_MAX_BYTES
+    if path == _SPEECH_INTENT_PATH:
+        return SPEECH_UPLOAD_BODY_MAX_BYTES
+    return API_BODY_MAX_BYTES
+
+
+def _content_length(scope: Scope) -> int | None:
+    """从 ASGI headers 取 Content-Length；缺失或不可解析返回 None（chunked 由边缘兜底）。"""
+    for name, value in scope.get("headers") or ():
+        if name == b"content-length":
+            try:
+                return int(value)
+            except ValueError:
+                return None
+    return None
+
+
+class RequestBodySizeLimitMiddleware:
+    """对 /api/** 做 Content-Length 预检：超限直接 413，绝不把 body 读进内存。
+
+    为什么只预检 Content-Length：读 body 才拦截就得先缓冲整包（Starlette 裸 dict
+    端点正是整包读入），那正是本中间件要防的内存放大；无 Content-Length 的
+    chunked 传输由边缘（Caddy request_body / nginx client_max_body_size）兜底。
+    GET/SSE 请求没有请求体（无 Content-Length），天然不受影响——中间件对它们
+    只是空转一次头部扫描。纯 ASGI 实现同 SecurityHeadersMiddleware：不包装响应流、
+    不经 BaseHTTPMiddleware，避免给 SSE 链路引入缓冲。
+    """
+
+    def __init__(self, app: _ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http":
+            await self._app(scope, receive, send)
+            return
+        path = scope.get("path", "")
+        if path.startswith("/api/"):
+            limit = _body_limit(path)
+            length = _content_length(scope)
+            if length is not None and length > limit:
+                body = json.dumps(fail(413, "请求体过大，请压缩后重试"), ensure_ascii=False).encode("utf-8")
+                response: Message = {
+                    "type": "http.response.start",
+                    "status": 413,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode("ascii")),
+                    ],
+                }
+                await send(response)
+                await send({"type": "http.response.body", "body": body})
+                return
+        await self._app(scope, receive, send)
 
 
 def _cleanup_usage() -> None:
@@ -132,6 +223,9 @@ app.add_middleware(
 )
 
 install_exception_handlers(app)
+# 请求体上限预检（P0-4 应用侧，上限常量见文件头注释：与边缘 Caddy/nginx 两处镜像）。
+# 挂在 SecurityHeadersMiddleware 之内（后 add 的在外层）：413 响应同样带上安全响应头。
+app.add_middleware(RequestBodySizeLimitMiddleware)
 # 全站安全响应头（R1-3）：纯 ASGI 包装，只补头、不缓冲 SSE
 app.add_middleware(SecurityHeadersMiddleware)
 

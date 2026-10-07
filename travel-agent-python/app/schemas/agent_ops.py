@@ -110,7 +110,11 @@ class CityGuideRequest(WireModel):
     显式 alias 优先于 to_camel 生成器（已验证），路由需 model_dump(by_alias=True)。
     """
 
-    user_input: str = Field(default="", alias="input")
+    # 上限放宽一档到 4000（审计 §3.3.5）：与相邻模型的 requirements/intent 同档——
+    # city-guide 是开放式的"说说你想怎么玩"，比 clarify 的一句话意图收得更宽，
+    # 但仍须有界（user_input 原样拼进 prompt）。history 由 run_city_guide 组装时
+    # 裁到最后 8 条、每条 600 字符，无需在此重复设界。
+    user_input: str = Field(default="", alias="input", max_length=4000)
     supported: list[str] = Field(default_factory=list)  # Java 会传；Python 现阶段忽略
     history: list[dict] | None = None  # 元素 {role, content}；保持 dict 让原逻辑工作
 

@@ -24,6 +24,12 @@ logger = logging.getLogger(__name__)
 LOGIN_WINDOW_SECONDS = 15 * 60
 MAX_LOGIN_FAILURES = 5
 MAX_REGISTER_ATTEMPTS = 5
+# 登录按 IP 总量窗（审计 §3.3.3）：失败锁的粒度是 (IP, 用户名) 对，换用户名即重新
+# 计数——单 IP 可全速喷密码（每个用户名各试一个常见密码）兼烧 bcrypt(rounds=10) CPU。
+# 这道闸不看用户名、不分成败，按 IP 记总量；一分钟窗口与失败锁的 15 分钟互补
+# （闸的是速率，不是重试预算）。阈值在 Settings.login_ip_rate_per_minute（可配置，
+# 离线套件会放开防用例间污染），30 次/分钟对真人（含输错重试）足够宽。
+LOGIN_IP_WINDOW_SECONDS = 60
 SESSION_KEY_PREFIX = "auth:sess:"
 
 _lock = threading.Lock()
@@ -102,6 +108,15 @@ def _note_redis_failure(exc: BaseException, message: str) -> None:
 def login_fail_key(ip: str, username: str) -> str:
     """键格式与 Java `UserServiceImpl` 完全一致：`auth:login:fail:{ip}|{username}`。"""
     return f"auth:login:fail:{ip}|{username}"
+
+
+def login_ip_key(ip: str) -> str:
+    """按 IP 的登录总量窗（审计 §3.3.3）：`auth:login:ip:{ip}`。
+
+    与 `login_fail_key` 的失败锁同前缀族（auth:login:*），但不带用户名段——
+    换用户名喷密码不会重置这只桶。
+    """
+    return f"auth:login:ip:{ip}"
 
 
 def register_key(ip: str) -> str:

@@ -306,7 +306,9 @@ class AdjustResponse(WireModel):
 
 
 class ClarifyRequest(WireModel):
-    message: str = Field(min_length=1)
+    # 上限对齐 ChatTurnRequest.message=2000（审计 §3.3.5）：message 原样拼进 clarify
+    # prompt，无上限时配额内单次可塞数百 KB 文本；一句话意图收集用不到 2000 之外的空间。
+    message: str = Field(min_length=1, max_length=2000)
     slots: dict = Field(default_factory=dict)
 
 

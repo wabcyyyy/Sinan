@@ -14,7 +14,8 @@
 - validate_boot 由 main.py lifespan 调用，坏配置 RuntimeError -> 进程退出码非 0；
   不放在 import 期，保证测试与脚本 import 不受真实密钥约束。
 
-依赖：python-dotenv、pydantic-settings；无内部依赖。
+依赖：python-dotenv、pydantic-settings；内部仅 app.common.config_rules
+（数值范围规则表，本文件拆出的纯数据面）。
 """
 
 import base64
@@ -29,12 +30,31 @@ from dotenv import load_dotenv
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.common.config_rules import NUMERIC_RULES, numeric_ok
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # 先加载仓库根目录共享 .env，再加载本模块 .env（同名变量后者优先）
 load_dotenv(BASE_DIR.parent / ".env")
 load_dotenv(BASE_DIR / ".env")
 
-_LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "0:0:0:0:0:0:0:1"})
+LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "0:0:0:0:0:0:0:1"})
+
+# 已知占位符前缀（小写匹配，审计 §3.4.2 / P0-5 应用侧）：.env.example 是公开仓库里的
+# 文件，其中的示例串人尽皆知——JWT_SECRET 的 replace-with-…-at-least-32-chars 恰好
+# 51 字符，能穿过下文 ≥32 的长度校验直上生产（误配 = 任何人可离线伪造含 admin 的
+# 会话票）。deploy.sh 在部署侧拦一道，validate_boot 在应用侧再拦一道（两层口径见
+# deploy/deploy.sh 的 reject_secret）。真实随机串（openssl rand -hex 32）不会命中
+# 任何前缀；空串不在此判（走各自的既有校验）。
+_SECRET_PLACEHOLDER_PREFIXES: tuple[str, ...] = ("replace-with", "your-", "changeme")
+
+
+def _secret_placeholder_mark(value: str) -> str | None:
+    """返回命中的占位符前缀原样（如 ``your-``）；非占位串返回 None。"""
+    text = value.strip().lower()
+    for prefix in _SECRET_PLACEHOLDER_PREFIXES:
+        if text.startswith(prefix):
+            return prefix
+    return None
 
 
 def parse_trusted_proxy(item: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -295,6 +315,12 @@ class Settings(BaseSettings):
     # claims 里，与 Cookie Max-Age 的差异无害，可独立设置有效期。
     jwt_secret: str = ""
     jwt_expire_hours: int = 24
+    # 登录按 IP 的总量滑窗（每分钟，审计 §3.3.3）：失败锁按 (IP, 用户名) 对计数，
+    # 换用户名喷密码不触发；这道闸不看用户名不分成败，堵密码喷洒与 bcrypt CPU 放大。
+    # 做成配置（而不是注册闸那类常量）：离线套件把它放开到极大值防止用例间互相
+    # 污染（conftest `_neutralize_ip_and_user_limits`，登录在多个不 reset 状态的
+    # 测试文件里都被调用），专项用例再改回小值。
+    login_ip_rate_per_minute: int = 30
     # 默认安全：会话票是唯一凭据载体，明文链路上可被同网段摘取。本地明文 http 与
     # compose（nginx 只 listen 80）在 .env / compose env_file 里显式设 false，
     # validate_boot 为非回环绑定把关（见下）。
@@ -310,8 +336,8 @@ class Settings(BaseSettings):
         """
         bad = [
             f"{key}={getattr(self, key)} {requirement}"
-            for key, requirement, _low, _high in _NUMERIC_RULES
-            if not _numeric_ok(key, getattr(self, key))
+            for key, requirement, _low, _high in NUMERIC_RULES
+            if not numeric_ok(key, getattr(self, key))
         ]
         if bad:
             raise ValueError("配置项取值非法：" + "；".join(bad))
@@ -319,9 +345,19 @@ class Settings(BaseSettings):
 
     def validate_boot(self) -> None:
         """main.py lifespan 的启动校验入口：坏配置 boot 期报清晰错误退出（不在 import 期）。"""
+        # 占位密钥（审计 §3.4.2 / P0-5 应用侧）：公开示例值不能当真密钥——先于长度/组合
+        # 校验拒绝，错误信息直指生成方式。空值不在此判：JWT_SECRET 空串由下面的长度
+        # 校验拦，AGENT_INTERNAL_TOKEN 空串对本地回环开发是合法形态。
+        for name, value in (("JWT_SECRET", self.jwt_secret), ("AGENT_INTERNAL_TOKEN", self.agent_internal_token)):
+            mark = _secret_placeholder_mark(value)
+            if mark is not None:
+                raise RuntimeError(
+                    f"{name} 仍是占位符串（{mark}…，来自 .env.example 的公开示例值）："
+                    "公开值不能作密钥，请用 openssl rand -hex 32 生成真实随机串"
+                )
         # 安全 fail-fast：generate/adjust 等端点每次调用消耗真实 LLM token。绑定非回环
         # 地址却不配置内部令牌，等于匿名烧钱接口；启动即拒绝，避免部署改 host 后裸奔。
-        if self.agent_host not in _LOCAL_HOSTS and not self.agent_internal_token:
+        if self.agent_host not in LOCAL_HOSTS and not self.agent_internal_token:
             raise RuntimeError(
                 "AGENT_HOST 绑定非回环地址但未配置 AGENT_INTERNAL_TOKEN，"
                 "生成类端点将匿名暴露并消耗 LLM 配额；请设置令牌或改回 127.0.0.1"
@@ -349,52 +385,12 @@ class Settings(BaseSettings):
                 raise RuntimeError("BYOK_ENC_KEY 非法：须为解码后恰 32 字节的 urlsafe base64 串")
         # 明文链路上的会话票会被同网段摘取。compose 的 nginx 目前只 listen 80，
         # 所以这里不 fail-fast，只把风险写在启动日志里（改成 TLS 后请删掉显式 false）。
-        if not self.auth_cookie_secure and self.agent_host not in _LOCAL_HOSTS:
+        if not self.auth_cookie_secure and self.agent_host not in LOCAL_HOSTS:
             logger.warning(
                 "AUTH_COOKIE_SECURE=false 且绑定 %s：会话票将以明文 Cookie 传输，"
                 "仅可接受于本地/内网可信链路；对外提供请上 TLS 并置 true",
                 self.agent_host,
             )
-
-
-# 数值范围规则：(键, 人话要求, 下界(开区间), 上界(闭区间))；默认值必须全部通过。
-# max_replans 下界 -1 表示允许 0（显式关闭重规划）。
-_NUMERIC_RULES: tuple[tuple[str, str, float, float], ...] = (
-    ("llm_timeout", "必须 > 0", 0, float("inf")),
-    ("llm_connect_timeout", "必须 > 0", 0, float("inf")),
-    ("agent_deadline_seconds", "必须 > 0", 0, float("inf")),
-    ("db_port", "必须在 1-65535 之间", 0, 65535),
-    ("db_pool_max", "必须 >= 1", 0, float("inf")),
-    ("tool_max_calls", "必须 >= 1", 0, float("inf")),
-    ("max_llm_calls", "必须 >= 1", 0, float("inf")),
-    ("user_llm_runs_per_minute", "必须 >= 1", 0, float("inf")),
-    ("user_daily_llm_runs", "必须 >= 1", 0, float("inf")),
-    ("user_live_quotes_per_minute", "必须 >= 1", 0, float("inf")),
-    ("agent_rate_limit_per_minute", "必须 >= 1", 0, float("inf")),
-    ("max_retrievals", "必须 >= 1", 0, float("inf")),
-    ("research_call_limit", "必须 >= 0", -1, float("inf")),
-    ("research_workers", "必须 >= 1", 0, float("inf")),
-    ("poi_search_workers", "必须 >= 1", 0, float("inf")),
-    ("max_replans", "必须 >= 0", -1, float("inf")),
-    ("jwt_expire_hours", "必须 >= 1", 0, float("inf")),
-    ("cover_upload_max_bytes", "必须 > 0", 0, float("inf")),
-    ("otm_radius_m", "必须 > 0", 0, float("inf")),
-    ("otm_limit", "必须 >= 1", 0, float("inf")),
-    ("places_timeout_seconds", "必须 > 0", 0, float("inf")),
-    ("existence_resolve_limit", "必须 >= 1", 0, float("inf")),
-    ("existence_area_radius_m", "必须 > 0", 0, float("inf")),
-    ("entity_name_similarity_min", "必须在 0-1 之间", 0, 1),
-    ("suggestion_resolve_limit", "必须 >= 1", 0, float("inf")),
-    ("share_rate_limit_per_minute", "必须 >= 1", 0, float("inf")),
-    ("public_rate_limit_per_minute", "必须 >= 1", 0, float("inf")),
-    ("serpapi_monthly_quota", "必须 >= 1", 0, float("inf")),
-)
-_RANGES = {key: (low, high) for key, _req, low, high in _NUMERIC_RULES}
-
-
-def _numeric_ok(key: str, value: float) -> bool:
-    low, high = _RANGES[key]
-    return low < value <= high
 
 
 settings = Settings()

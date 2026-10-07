@@ -1608,6 +1608,7 @@
     "ClarifyRequest": {
       "properties": {
         "message": {
+          "maxLength": 2000,
           "minLength": 1,
           "title": "Message",
           "type": "string"
@@ -3154,6 +3155,7 @@
       "properties": {
         "input": {
           "default": "",
+          "maxLength": 4000,
           "title": "Input",
           "type": "string"
         },

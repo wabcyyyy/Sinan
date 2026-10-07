@@ -49,6 +49,10 @@ def _neutralize_ip_and_user_limits(monkeypatch):
     # 会在无关用例之间累积命中 429。专项用例自行 monkeypatch 回小值。
     monkeypatch.setattr(settings, "user_live_quotes_per_minute", 100_000)
     monkeypatch.setattr(settings, "agent_rate_limit_per_minute", 100_000)
+    # 登录按 IP 总量窗（审计 §3.3.3 同族）：登录在多个不 reset 共享状态的测试文件里
+    # 都被调用（test_itinerary_collab、_optimize_support 一族），同一 testserver 桶
+    # 跨文件累积会随机 429。专项用例见 test_auth_migration（自行改回小值）。
+    monkeypatch.setattr(settings, "login_ip_rate_per_minute", 100_000)
     yield
 
 

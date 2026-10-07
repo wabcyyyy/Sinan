@@ -110,6 +110,13 @@ def _complex_enough(password: str) -> bool:
 
 
 def login(username: str, password: str, ip: str) -> LoginResult:
+    # 按 IP 总量闸（审计 §3.3.3）：先记一次再判定，放在 (IP, 用户名) 失败锁与任何
+    # bcrypt 计算之前——超限 IP 的第 N+1 次连 _find_user 都不进，喷密码循环既喷不动
+    # 也烧不动 CPU。窗口与键见 state_and_sessions（与注册闸同实现：Redis 滑窗，
+    # 不可用时进程内兜底）；阈值为 Settings.login_ip_rate_per_minute（默认 30/min）。
+    ip_hits = sessions.sliding_hit(sessions.login_ip_key(ip), sessions.LOGIN_IP_WINDOW_SECONDS)
+    if ip_hits > settings.login_ip_rate_per_minute:
+        raise ApiError(429, "登录过于频繁，请稍后再试")
     throttle_key = sessions.login_fail_key(ip, username)
     if sessions.sliding_count(throttle_key, sessions.LOGIN_WINDOW_SECONDS) >= sessions.MAX_LOGIN_FAILURES:
         raise ApiError(429, "登录失败次数过多，请稍后再试")
