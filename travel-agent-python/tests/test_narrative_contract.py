@@ -11,6 +11,11 @@
 import json
 
 from app.agent.generation.content import day_prompts, narrative
+from app.agent.generation.content.reflect import (
+    MAX_DAILY_ATTRACTIONS,
+    MAX_DAILY_MINUTES,
+    MIN_ACTIVE_MINUTES,
+)
 from app.agent.generation.orchestration import day_stream
 from app.prompts import open_generation
 from app.schemas.trip import (
@@ -190,9 +195,10 @@ def test_sanitize_narrative_keeps_why_this_of_non_attraction_items():
 
 
 def test_prompt_versions_current():
-    # 2026-10-07（P1-4）：参考资料块定界化，两版本同步 bump
-    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.4.localized"
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.3.localized"
+    # 2026-10-07（单日饱和度窗口入 prompt）：终检的 240-480 分钟窗口与景点上限
+    # 写进两套 Prompt，两版本同步 bump
+    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.5.localized"
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.4.localized"
 
 
 class _Mem:
@@ -203,7 +209,16 @@ class _Mem:
 
 
 def _day_prompt(day_no: int) -> str:
-    return open_generation.open_day_system_prompt(day_no=day_no, pace="", hotel_clause="", hotel_hint="", mem=_Mem())
+    return open_generation.open_day_system_prompt(
+        day_no=day_no,
+        pace="",
+        hotel_clause="",
+        hotel_hint="",
+        mem=_Mem(),
+        min_active_minutes=MIN_ACTIVE_MINUTES,
+        max_daily_minutes=MAX_DAILY_MINUTES,
+        max_daily_attractions=MAX_DAILY_ATTRACTIONS,
+    )
 
 
 def test_day_prompt_compact_mode_shrinks_output_budget():
@@ -212,7 +227,15 @@ def test_day_prompt_compact_mode_shrinks_output_budget():
     items 的短对象 = P2 空天内层根因。守约网关（默认路径）口径一字不变。"""
     full = _day_prompt(2)
     compact = open_generation.open_day_system_prompt(
-        day_no=2, pace="", hotel_clause="", hotel_hint="", mem=_Mem(), compact_output=True
+        day_no=2,
+        pace="",
+        hotel_clause="",
+        hotel_hint="",
+        mem=_Mem(),
+        min_active_minutes=MIN_ACTIVE_MINUTES,
+        max_daily_minutes=MAX_DAILY_MINUTES,
+        max_daily_attractions=MAX_DAILY_ATTRACTIONS,
+        compact_output=True,
     )
     assert "24-40" in full and "10-14" in compact and "24-40" not in compact
     assert "禁止返回空 items" in compact and "禁止返回空 items" not in full
@@ -240,8 +263,30 @@ def test_open_day_contract_omits_trip_theme_after_day_one():
     assert "仅第 1 天输出" in second
 
 
+def test_prompts_state_the_terminal_check_window():
+    """两套 Prompt 都必须告知终检的单日时长窗口（单日档还要给景点上限与餐次规则）。
+
+    2026-10-07 实测：不告知时 68 天里 20 天因「过满 11 + 过稀 9」被终检重置——
+    Prompt 说「密度你看着办」、门禁按硬窗口判，模型无从命中。数字取自同一常量
+    （reflect），所以改窗口即改正文，指纹与版本随之变化（刻意如此）。
+    """
+    trip = open_generation.open_trip_system_prompt(
+        days=2,
+        hotel_clause="",
+        min_active_minutes=MIN_ACTIVE_MINUTES,
+        max_daily_minutes=MAX_DAILY_MINUTES,
+    )
+    day = _day_prompt(1)
+    for prompt in (trip, day):
+        assert f"{MIN_ACTIVE_MINUTES}-{MAX_DAILY_MINUTES} 分钟" in prompt, "未告知单日时长窗口"
+    assert f"最多 {MAX_DAILY_ATTRACTIONS} 个" in day, "单日档缺景点上限"
+    assert "两顿午餐" in day, "单日档缺餐次规则"
+
+
 def test_open_trip_contract_contains_narrative_fields():
-    prompt = open_generation.open_trip_system_prompt(days=3, hotel_clause="")
+    prompt = open_generation.open_trip_system_prompt(
+        days=3, hotel_clause="", min_active_minutes=MIN_ACTIVE_MINUTES, max_daily_minutes=MAX_DAILY_MINUTES
+    )
     assert '"trip_theme":' in prompt
     assert "why_this" in prompt
     assert "叙事句" in prompt

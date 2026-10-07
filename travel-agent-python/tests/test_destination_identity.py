@@ -5,6 +5,11 @@ import pytest
 from app.agent.data import city_center, places
 from app.agent.editing import clarify
 from app.agent.generation.content.day_prompts import open_trip_prompt
+from app.agent.generation.content.reflect import (
+    MAX_DAILY_ATTRACTIONS,
+    MAX_DAILY_MINUTES,
+    MIN_ACTIVE_MINUTES,
+)
 from app.agent.grounding import existence, facts, suggestion_grounding
 from app.common.envelope import ApiError
 from app.prompts.open_generation import open_day_system_prompt
@@ -180,7 +185,16 @@ def test_both_generation_prompts_require_consistent_chinese_names():
             return []
 
     prompts = [
-        open_day_system_prompt(day_no=1, pace="", hotel_clause="", hotel_hint="", mem=Memory()),
+        open_day_system_prompt(
+            day_no=1,
+            pace="",
+            hotel_clause="",
+            hotel_hint="",
+            mem=Memory(),
+            min_active_minutes=MIN_ACTIVE_MINUTES,
+            max_daily_minutes=MAX_DAILY_MINUTES,
+            max_daily_attractions=MAX_DAILY_ATTRACTIONS,
+        ),
         open_trip_prompt(GenerateDayRequest(city="东京", days=3, day_no=1))[0],
     ]
     assert all("简体中文" in prompt and "禁止编造翻译" in prompt and "保持同一写法" in prompt for prompt in prompts)

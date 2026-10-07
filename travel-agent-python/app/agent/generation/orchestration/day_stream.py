@@ -40,6 +40,7 @@ from app.agent.generation.content.json_output import parse_llm_json_with_repair,
 from app.agent.generation.content.landing import drop_refuted_items, drop_used_items
 from app.agent.generation.content.narrative import normalize_name_mentions, sanitize_narrative, sync_schedule_summary
 from app.agent.generation.content.reference_pool import ReferencePool
+from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
 from app.agent.generation.output.facts import field_fact_evidence
@@ -112,16 +113,16 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     # 降级 json_object，见 day_prompts.json_response_format）：守约网关保证符合
     # 契约 schema（含"禁产经纬度/poi_id/来源字段"的闭合约束）；坏输出走修复重试 → 兜底。
     response_format = json_response_format("fast", "day_output", open_day_output_schema(req.day_no))
-    # system prompt 基座在 app/prompts/open_generation.py；intent（最高优先级
-    # 信号，置于最前）与 reference/budget/requirements/feedback 追加块留在本函数。
-    # 降级档压缩可选叙事输出：24-40 条 suggestions 在 8000 token 下高频截断，
-    # 截断→修复产出缺 items 的短对象 = P2 空天内层根因（2026-10-05 探针 3/3 实证）。
+    # 终检时长窗口常量由本层传入（prompt 模块不依赖 agent 层，也不自留副本）。
     system = open_day_system_prompt(
         day_no=req.day_no,
         pace=pace,
         hotel_clause=hotel_clause,
         hotel_hint=hotel_hint,
         mem=mem,
+        min_active_minutes=MIN_ACTIVE_MINUTES,
+        max_daily_minutes=MAX_DAILY_MINUTES,
+        max_daily_attractions=MAX_DAILY_ATTRACTIONS,
         compact_output=response_format.get("type") != "json_schema",
     )
     # intent 注入点：用户旅行意图是最高优先级信号，必须排在 reference block

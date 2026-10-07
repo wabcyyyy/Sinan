@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 
+from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.generation_core import day_hotel_clause, hotel_prompt_clause
 from app.prompts.open_generation import open_day_system_prompt, open_trip_system_prompt
 
@@ -34,7 +35,11 @@ class _CanonicalMemory:
 
 
 def prompt_text_sha256() -> str:
-    """两套开放生成 Prompt 正文的 sha256（固定参数，不含动态数据块）。"""
+    """两套开放生成 Prompt 正文的 sha256（固定参数，不含动态数据块）。
+
+    终检窗口参数取自 reflect 的常量：改窗口即改正文，指纹随之变化——这正是
+    想要的效果（改判据必须显式 bump 版本并同步 eval_gate 的期望常量）。
+    """
     parts = (
         open_day_system_prompt(
             day_no=1,
@@ -42,6 +47,9 @@ def prompt_text_sha256() -> str:
             hotel_clause=day_hotel_clause(True),
             hotel_hint="",
             mem=_CanonicalMemory(),
+            min_active_minutes=MIN_ACTIVE_MINUTES,
+            max_daily_minutes=MAX_DAILY_MINUTES,
+            max_daily_attractions=MAX_DAILY_ATTRACTIONS,
         ),
         open_day_system_prompt(
             day_no=2,
@@ -49,8 +57,21 @@ def prompt_text_sha256() -> str:
             hotel_clause=day_hotel_clause(False),
             hotel_hint="",
             mem=_CanonicalMemory(),
+            min_active_minutes=MIN_ACTIVE_MINUTES,
+            max_daily_minutes=MAX_DAILY_MINUTES,
+            max_daily_attractions=MAX_DAILY_ATTRACTIONS,
         ),
-        open_trip_system_prompt(days=1, hotel_clause=hotel_prompt_clause(True, 1)),
-        open_trip_system_prompt(days=1, hotel_clause=hotel_prompt_clause(False, 1)),
+        open_trip_system_prompt(
+            days=1,
+            hotel_clause=hotel_prompt_clause(True, 1),
+            min_active_minutes=MIN_ACTIVE_MINUTES,
+            max_daily_minutes=MAX_DAILY_MINUTES,
+        ),
+        open_trip_system_prompt(
+            days=1,
+            hotel_clause=hotel_prompt_clause(False, 1),
+            min_active_minutes=MIN_ACTIVE_MINUTES,
+            max_daily_minutes=MAX_DAILY_MINUTES,
+        ),
     )
     return hashlib.sha256(_CANONICAL_SEPARATOR.join(parts).encode("utf-8")).hexdigest()

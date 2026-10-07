@@ -17,14 +17,26 @@
 
 import json
 
+# 2026-10-07 v1.5/v1.4：把终检的单日时长窗口（MIN_ACTIVE_MINUTES/MAX_DAILY_MINUTES）
+# 与景点上限写进两套 Prompt——此前 prompt 说「密度你看着办」而门禁按硬窗口判，
+# 实测 68 天里 20 天因过满/过稀被重置（详见各构造器 docstring）。
 # 2026-10-07 v1.4/v1.3（P1-4）：动态追加的参考资料块改为三引号定界 + 可信/
 # 不可信分区渲染（reference_pool.block），两套生成 Prompt 的实际正文随之变化。
-OPEN_DAY_PROMPT_VERSION = "v1.4.localized"
-OPEN_TRIP_PROMPT_VERSION = "v1.3.localized"
+OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
+OPEN_TRIP_PROMPT_VERSION = "v1.4.localized"
 
 
 def open_day_system_prompt(
-    *, day_no: int = 1, pace: str, hotel_clause: str, hotel_hint: str, mem, compact_output: bool = False
+    *,
+    day_no: int = 1,
+    pace: str,
+    hotel_clause: str,
+    hotel_hint: str,
+    mem,
+    min_active_minutes: int,
+    max_daily_minutes: int,
+    max_daily_attractions: int,
+    compact_output: bool = False,
 ) -> str:
     """开放模式单日生成的 system prompt 基座（动态追加块由调用方拼接）。
 
@@ -36,6 +48,13 @@ def open_day_system_prompt(
     - hotel_clause：酒店条款（day_hotel_clause 产出）；
     - hotel_hint：预算分档/指定酒店提示句；
     - mem：WorkingMemory（鸭子类型，仅需 as_sorted_list()，序列化为避开名单）；
+    - min_active_minutes / max_daily_minutes / max_daily_attractions：**终检判据**
+      （reflect.validate_plans 的单日饱和度窗口与景点上限），由调用方从
+      `generation.content.reflect` 取常量传入。刻意不在这里写死数字：本模块是
+      纯字符串函数、不依赖 agent 层（反向 import 会与 day_prompts → 本模块成环），
+      而自留一份 240/480 副本就是第二份真源，改一处漏一处。
+      2026-10-07 实测：不告诉模型这条窗口时，68 天里 20 天因「过满 11 + 过稀 9」
+      被终检重置——prompt 说「密度你看着办」、门禁按硬窗口判，模型无从命中。
     - compact_output：json_object 降级档置 True——24-40 条 suggestions（每条
       60-100 字）在 8000 max_tokens 下高频截断（2026-10-05 探针 3/3 截断在
       suggestions 段，截断 → 修复重试产出缺 items 的短对象 = P2 空天内层根因），
@@ -127,6 +146,12 @@ def open_day_system_prompt(
         "优先 Google 高分店与米其林指南收录/推荐餐厅（含必比登），其次本地口碑名店；"
         f"{hotel_clause}"
         "景点顺序必须按地理位置从近到远排列，相邻景点间预留交通时间（步行10-15分钟/公交20-30分钟）。"
+        f"单日实质活动时长（当天景点与餐饮的停留时长之和，按 start_time 与 end_time 计）必须落在"
+        f"{min_active_minutes}-{max_daily_minutes} 分钟：低于 {min_active_minutes} 分钟算安排过稀、"
+        f"高于 {max_daily_minutes} 分钟算行程过满，两者都会被系统判为需要重排并退回重生成；"
+        f"用户要慢节奏时取区间下沿，不要低于 {min_active_minutes} 分钟。"
+        f"当天景点最多 {max_daily_attractions} 个（超过同样判过满）。"
+        "餐饮时段：午餐 11:00-13:30、晚餐 17:30-20:30，禁止一天两顿午餐，优先一午一晚。"
         f"{hotel_hint}"
         f"避开已去过的地点：{json.dumps(mem.as_sorted_list(), ensure_ascii=False)}。"
         "免费景点 cost 写 0；餐饮/酒店/付费景点必须写合理人民币估算，禁止写 0。"
@@ -134,12 +159,11 @@ def open_day_system_prompt(
     )
 
 
-def open_trip_system_prompt(*, days: int, hotel_clause: str) -> str:
+def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes: int, max_daily_minutes: int) -> str:
     """开放模式多日一次生成的 system prompt 基座（动态追加块由调用方拼接）。
 
-    参数与 llm_open_trip 中的局部变量同名：
-    - days：总天数（req.days 或 1）；
-    - hotel_clause：住宿口径条款（hotel_prompt_clause 产出）。
+    参数与 llm_open_trip 局部变量同名；min_active_minutes / max_daily_minutes 是单日
+    实质活动时长的**终检窗口**（reflect.validate_plans），理由同 open_day_system_prompt。
     """
     return (
         "你是资深当地导游。基于目的地常识一次安排完整多日行程。"
@@ -182,6 +206,9 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str) -> str:
         "每日节奏由你根据用户偏好、景点游玩时长、地理距离与游玩种类自主判断："
         "城市观光/美食/打卡可 3-5 景 + 2-3 餐；自然风光/慢节奏/长途跨区可 2-3 景并留足休息；"
         "相邻点位预留交通时间，禁止为凑数堆砌远距离点位。"
+        f"但每一天的实质活动时长（景点与餐饮停留之和，按 start_time 与 end_time 计）必须落在"
+        f"{min_active_minutes}-{max_daily_minutes} 分钟：低于 {min_active_minutes} 算过稀、高于"
+        f"{max_daily_minutes} 算过满，两者都会被系统判为需重排退回重生成；慢节奏取下沿。"
         "餐饮时段：午餐 11:00-13:30，晚餐 17:30-20:30，禁止一天两顿午餐，优先一午一晚。"
         "地点名必须简洁且真实存在，避免跨天重复；免费景点 cost 写 0，"
         "餐饮/酒店/付费景点必须写合理人民币估算，禁止写 0。"

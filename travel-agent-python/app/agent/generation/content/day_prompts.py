@@ -23,6 +23,7 @@ from app.agent.data.weather import trip_clause as trip_weather_clause
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_trip_output
 from app.agent.generation.content.narrative import NARRATIVE_THEME_MAX, sanitize_narrative
 from app.agent.generation.content.reference_pool import ReferencePool
+from app.agent.generation.content.reflect import MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.budget import budget_clause
 from app.agent.generation.rules.generation_core import hotel_prompt_clause
 from app.agent.runtime.trace import traced
@@ -184,7 +185,14 @@ def open_trip_prompt(req: GenerateDayRequest) -> tuple[str, str]:
     # 住宿口径：generation_core（N 天 = N-1 晚，全程默认同一家）
     hotel_clause = hotel_prompt_clause(req.needs_hotel, days)
     # system prompt 基座在 app/prompts/open_generation.py。
-    system = open_trip_system_prompt(days=days, hotel_clause=hotel_clause)
+    # 终检窗口由本层取常量传入：prompt 模块不依赖 agent 层（反向 import 会与
+    # day_prompts → prompts 成环），也不自留 240/480 副本（那是第二份真源）。
+    system = open_trip_system_prompt(
+        days=days,
+        hotel_clause=hotel_clause,
+        min_active_minutes=MIN_ACTIVE_MINUTES,
+        max_daily_minutes=MAX_DAILY_MINUTES,
+    )
     # intent 注入点：置于 reference block 之前，口径与 llm_open_day 一致——
     # 意图是最高优先级信号。
     intent_text = intent_clause(req.intent)
