@@ -7,6 +7,7 @@ import {
   estimatedPinCount,
   googleMapsLink,
   missingCoordCount,
+  poiPhotoUrl,
 } from './mapPins'
 
 const day = (dayNo: number, items: Array<{ name: string; lat?: number | null; lng?: number | null; kind?: string; time?: string }>): DayPlan =>
@@ -93,5 +94,19 @@ describe('深链构造（构造后必须能过 safeMapLink 白名单）', () => 
     const link = amapLink(pin)
     expect(link.startsWith('https://uri.amap.com/marker?position=120.15,30.26&name=')).toBe(true)
     expect(link).toContain(encodeURIComponent('断桥残雪'))
+  })
+})
+
+describe('poiPhotoUrl（点位实景链，替代跨城市封面兜底）', () => {
+  it('同源 poi-photo 路径，name/city 经编码', () => {
+    const url = poiPhotoUrl('断桥残雪', '杭州')
+    expect(url?.startsWith('/api/poi-photo?')).toBe(true)
+    expect(url).toContain(encodeURIComponent('断桥残雪'))
+    expect(url).toContain(encodeURIComponent('杭州'))
+  })
+  it('名字为空或超长（服务端 64 字上限）返回 undefined，调用方不渲染图', () => {
+    expect(poiPhotoUrl('', '杭州')).toBeUndefined()
+    expect(poiPhotoUrl('   ', '杭州')).toBeUndefined()
+    expect(poiPhotoUrl('名'.repeat(65), '杭州')).toBeUndefined()
   })
 })

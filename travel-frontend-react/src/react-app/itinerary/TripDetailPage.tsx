@@ -30,7 +30,7 @@ import { ChatPanel } from './ChatPanel'
 import { feedbackIndex } from './itemFeedback'
 import { ItemFeedbackControl } from './ItemFeedbackControl'
 import { TripMapPanel } from './TripMapPanel'
-import { amapLink } from './mapPins'
+import { amapLink, poiPhotoUrl } from './mapPins'
 import type { MapPin } from './mapPins'
 
 /** 时间线与类型徽章共用的图标映射（新类型先落到 pin，不裸奔）。 */
@@ -343,7 +343,7 @@ export function TripDetailPage({ path }: { path: string }) {
         />
         {weather?.daily?.length ? <div className="detail-weather" aria-label="天气参考"><span className="weather-label"><Icon name="sun" size={16} />天气参考</span>{weather.daily.slice(0, trip.days).map((item) => <span className="weather-day" key={item.date}><strong>{displayDate(item.date)}</strong><small>{item.text} · {item.tMin ?? '--'}–{item.tMax ?? '--'}℃</small></span>)}</div> : null}
       </div>
-      <figure className="detail-cover"><SmartImg src={destinations.find((item) => item.city === trip.city)?.image || destinations[0].image} alt="旅行目的地参考封面" ratio="16 / 10" eager /><figcaption><Icon name="pin" size={14} />{trip.city} · 城市印象</figcaption></figure>
+      <figure className="detail-cover"><SmartImg src={destinations.find((item) => item.city === trip.city)?.image || poiPhotoUrl(trip.city, trip.city)} alt={`${trip.city} 城市参考图`} ratio="16 / 10" eager /><figcaption><Icon name="pin" size={14} />{trip.city} · 城市印象</figcaption></figure>
     </section>
     <div className={offline ? 'detail-workspace' : `detail-workspace has-chat${chatCollapsed ? ' is-chat-collapsed' : ''}`}>
       {!offline && (
@@ -367,8 +367,9 @@ export function TripDetailPage({ path }: { path: string }) {
           const isItemActive = activePin === itemKey
           const hasCoord = item.latitude != null && item.longitude != null
           const nextItem = day.items[index + 1]
-          const cityCover = destinations.find((dest) => dest.city === trip.city)?.image || destinations[0].image
-          const itemImg = item.image || item.imageUrl || cityCover
+          // 实景图只认条目自身图片或服务端按名字解析的实景链——不再退回另一座
+          // 城市的硬编码封面（那是把别处照片当本地点位展示，alt 还挂着本点名）。
+          const itemImg = item.image || item.imageUrl || poiPhotoUrl(item.poiName, trip.city)
           return <div key={`${item.poiName}-${index}`} className="day-item-group">
             <article className={`day-item${isItemActive ? ' is-active' : ''}`} id={`day-item-${itemKey}`} style={{ '--stagger-i': index } as CSSProperties} onClick={() => setActivePin(itemKey)} onMouseEnter={() => setActivePin(itemKey)}>
               <div className="day-item-time">{item.startTime || '--:--'}<span>{item.endTime || ''}</span></div>
@@ -410,7 +411,7 @@ export function TripDetailPage({ path }: { path: string }) {
                 <div className="transit-track"><i /><span /></div>
                 <div className="transit-pill">
                   <Icon name="train" size={11} />
-                  <span>前往下站建议 · 市内通勤约 15–25 分钟</span>
+                  <span>前往下站 · 交通时间以地图导航为准</span>
                 </div>
               </div>
             )}

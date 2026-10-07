@@ -27,7 +27,7 @@ export function SmartImg({ src, alt, ratio, className = '', eager = false, width
   return (
     <span className={`smart-img ${className}`} style={ratio ? { aspectRatio: ratio } : undefined} data-state={state}>
       {state === 'error' ? (
-        <span className="smart-img-fallback" role="img" aria-label={alt}><Icon name="image" size={20} /></span>
+        <span className="smart-img-fallback" role="img" aria-label={`${alt}（暂无实景图）`}><Icon name="image" size={20} /></span>
       ) : (
         <img
           ref={ref}

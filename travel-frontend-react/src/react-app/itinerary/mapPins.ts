@@ -88,3 +88,19 @@ export function amapLink(pin: Pick<MapPin, 'latitude' | 'longitude' | 'poiName'>
     `https://uri.amap.com/marker?position=${pin.longitude},${pin.latitude}&name=${encodeURIComponent(pin.poiName)}`,
   )
 }
+
+/**
+ * 点位实景图 URL（同源 `/api/poi-photo`，服务端解析后 302 到白名单图床，未命中 404）。
+ *
+ * 替代此前「城市未覆盖就退到另一座城市的硬编码封面」的兜底：那是把别的城市
+ * 照片当成本地点位的事实展示，与 poi_photo 服务端「错误的图比没有图更伤观感」
+ * 的纪律正面冲突。未命中 404 时由 SmartImg 的 error 兜底接住（中性占位）。
+ * 名字缺省时返回 undefined，调用方直接不渲染图。
+ */
+export function poiPhotoUrl(name: string | null | undefined, city: string | null | undefined): string | undefined {
+  const cleanName = (name || '').trim()
+  if (!cleanName || cleanName.length > 64) return undefined
+  const params = new URLSearchParams({ name: cleanName, city: (city || '').trim().slice(0, 32) })
+  return `/api/poi-photo?${params.toString()}`
+}
+
