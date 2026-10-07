@@ -7,6 +7,8 @@ Java 用 `@Scheduled(fixedDelay=60s, initialDelay=60s)` + `ApplicationReadyEvent
   `ON UPDATE CURRENT_TIMESTAMP`——任何一次状态写（markRunning/markFailed/persist）都会刷新
   `itinerary_day.updated_at`，这就是"活跃天心跳"。Python 侧同样靠列默认值，不在代码里手写时间。
 - 老数据没有 `gen_state`，所以两个分支都要带 `gen_state IS NULL AND status IN (1,3)` 的回落。
+- 终态 PARTIAL（2026-10-07，P0-3）也进失败分支：只自动补「空天」（无可见内容的未成功天），
+  有内容的天留给用户显式的一键重生成端点，防把正在编辑的行程卷进重生成。
 - `gen_resumed=1` 表示"已经自动续跑过一次"，再失败不再重拉（防失败→重生成死循环）。
 - 续跑去重锁 `gen:resume:{id}` TTL 10 分钟（大于一次生成的读超时 + 落库时间）。
 """
@@ -80,7 +82,13 @@ def recover() -> int:
     )
     failed_resumable = and_(
         stale,
-        or_(ItineraryMain.gen_state == "FAILED", and_(ItineraryMain.gen_state.is_(None), ItineraryMain.status == 3)),
+        # PARTIAL（2026-10-07，P0-3）：终态部分交付此前不在谓词内、零次自动恢复，
+        # 半成品行程只能靠用户手动自救。纳入后与 FAILED 共用同一套封顶语义：
+        # gen_resumed 一次性旗 + resume 锁 + 日锁（recover_one），补齐不会无限重试。
+        or_(
+            ItineraryMain.gen_state.in_(("FAILED", "PARTIAL")),
+            and_(ItineraryMain.gen_state.is_(None), ItineraryMain.status == 3),
+        ),
     )
     changed = 0
     with session_scope() as session:
@@ -133,6 +141,24 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             logger.info("recovered completed itinerary %s", itinerary_id)
             return True
 
+        if main.gen_state == "PARTIAL":
+            # 交接陷阱护栏（P0-3）：PARTIAL 的自动补齐只碰「空天」（无可见内容的未成功天）。
+            # 有可见内容的天可能是终检重置的草稿，也可能是用户手动补的安排——DB 里两者
+            # 无法区分，一律不自动碰，留给用户显式点「重新生成这一天」（意图明确、且带
+            # 配额豁免语义）；否则恢复轮会把正在正常编辑的行程卷进重生成、软删用户内容。
+            days_with_live_items = {
+                row
+                for row in session.execute(
+                    select(ItineraryItem.day_id)
+                    .where(ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.deleted == 0)
+                    .distinct()
+                )
+                .scalars()
+                .all()
+            }
+            if any(day.generation_status != "SUCCEEDED" and day.id in days_with_live_items for day in days):
+                return False
+
         if any(day.generation_status == "RUNNING" and day.updated_at and day.updated_at > cutoff for day in days):
             return False
         if failed_resume and not _resumable_failed_trip(days):
@@ -141,6 +167,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 防死循环护栏（docstring 与 fail_trip 早已承诺此语义，V1 起一直无读取方）：
             # gen_resumed=1 = 已自动续跑过一次且再次失败，重拉只会重演同一失败。
             # resume 锁 TTL 只有 10 分钟，过期后挡住重拉的就只剩这面旗。
+            # PARTIAL 纳入扫描（P0-3）后同受此闸封顶：自动补齐只有一次机会，再失败
+            # 留给用户走「重新生成这一天」端点显式自救——前提是 complete_trip 在写
+            # PARTIAL 终态时不清这面旗（否则每轮扫描都重拉，白烧 LLM 成无限补齐）。
             return False
         if not generation_gate.try_resume_lock(itinerary_id):
             return False

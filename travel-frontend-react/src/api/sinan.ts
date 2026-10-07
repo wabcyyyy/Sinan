@@ -214,6 +214,12 @@ export function optimizeDay(id: number | string, dayId: number) {
   })
 }
 
+/** 重生成第 N 天（P0-3 部分交付自救）：真·LLM 重新生成未交付天（PENDING/FAILED/空），
+ * 服务端只拦分钟窗不扣当日配额；已成功天会被 400 拒（那类调整走 optimizeDay/对话编辑）。 */
+export function regenerateDay(id: number | string, dayNo: number) {
+  return apiRequest<ItineraryDetail>(`/itinerary/${id}/days/${dayNo}/regenerate`, { method: 'POST' })
+}
+
 export function updateDay(id: number | string, dayId: number, theme: string) {
   return apiRequest<ItineraryDetail>(`/itinerary/${id}/days/${dayId}`, {
     method: 'PATCH',

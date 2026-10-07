@@ -211,7 +211,7 @@ def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:
                 status=2,
                 gen_state="COMPLETED" if all_succeeded else "PARTIAL",
                 gen_finished_at=datetime.now(),
-                gen_resumed=False,
+                gen_resumed=False if all_succeeded else ItineraryMain.gen_resumed,  # PARTIAL 保留续跑旗，防无限重拉
                 title=f"{main.city}{main.days}日游",
                 plan_note=plan_note or None,
             )

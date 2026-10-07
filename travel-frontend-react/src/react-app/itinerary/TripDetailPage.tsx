@@ -9,6 +9,7 @@ import {
   isUnauthorized,
   listMyItemFeedback,
   optimizeDay,
+  regenerateDay as regenerateDayApi,
   revokeItemFeedback,
   setFavorite,
   submitItemFeedback,
@@ -212,9 +213,15 @@ export function TripDetailPage({ path }: { path: string }) {
     if (offline || !day) { setNotice('这是离线示例，无法写回服务端'); return }
     setWorking(true)
     try {
-      const result = await optimizeDay(trip.id, day.dayId)
+      // 未交付天（PENDING/FAILED/空）走「重生成第 N 天」端点：真·LLM 重新生成且不另扣
+      // 当日配额（部分交付自救）；已成功天保留 optimize 的确定性重排——那条路不烧 LLM。
+      const delivered = day.generationStatus === 'SUCCEEDED'
+        || (day.generationStatus == null && day.items.length > 0)
+      const result = delivered
+        ? await optimizeDay(trip.id, day.dayId)
+        : await regenerateDayApi(trip.id, day.dayNo)
       setTrip(result)
-      setNotice(`第 ${day.dayNo} 天已重新排好`)
+      setNotice(delivered ? `第 ${day.dayNo} 天已重新排好` : `第 ${day.dayNo} 天已重新生成`)
     } catch (err) {
       handleWriteError(err, '重新生成失败')
     } finally { setWorking(false) }
@@ -414,7 +421,16 @@ export function TripDetailPage({ path }: { path: string }) {
             <Icon name="alert" size={17} />
             <div>
               <strong>{trip.status === 1 ? '这一天还在校对中' : '这一天的安排未通过最终校验'}</strong>
-              <p>{trip.status === 1 ? '终检或重排完成后会自动更新，当前内容仅供参考。' : '内容偏少或存在冲突，可以点「重新生成这一天」，或让 AI 帮你补充。'}</p>
+              <p>{trip.status === 1 ? '终检或重排完成后会自动更新，当前内容仅供参考。' : '内容偏少或存在冲突，可以点「重新生成这一天」重新补齐（不另扣今日 AI 次数），或让 AI 帮你补充。'}</p>
+            </div>
+          </div>
+        )}
+        {trip.status !== 1 && !day.items.length && (
+          <div className="day-note" role="note">
+            <Icon name="alert" size={17} />
+            <div>
+              <strong>这一天还没有生成成功</strong>
+              <p>点上方「重新生成这一天」即可补齐（不另扣今日 AI 次数），或让 AI 帮你补充。</p>
             </div>
           </div>
         )}

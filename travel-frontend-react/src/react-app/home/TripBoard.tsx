@@ -78,7 +78,7 @@ export function TripBoard({ draft, onReset }: { draft: ItineraryDetail; onReset?
               return <BoardItem item={item} index={index} key={`${item.poiName}-${index}`} cityCover={cityCover} />
             })}
           </div>
-        : <p className="board-day-empty">这一天还没有安排，去完整行程里重新生成即可。</p>}
+        : <p className="board-day-empty">这一天还没有安排，到完整行程里点「重新生成这一天」即可补齐（不另扣今日 AI 次数）。</p>}
     </section>}
     <footer className="board-foot">
       {draft.budgetList.length > 0 && <div className="board-budget" aria-label="预算小计">

@@ -37,6 +37,26 @@ def enforce_llm_budget(user_id: int) -> None:
         raise ApiError(429, "今日 AI 生成次数已用完，请明天再试")
 
 
+def enforce_llm_rate_only(user_id: int) -> None:
+    """重生成未交付天（P0-3）的配额豁免口径：只过分钟窗，**不记不判日窗**。
+
+    拍板（2026-10-07，审查报告 §3.8.3/P0-3 硬线「不能让用户为补齐从未交付的天
+    再付一次配额」）：「重生成第 N 天」端点只接受 PENDING/FAILED/空天——这些天
+    用户在首次生成时已经付过配额却没有拿到（部分交付的真实形态），再扣日窗等于
+    为同一份交付付两次。选择「免扣」而非「事后回补」：回补需要跨请求记账（哪次
+    扣的、退给谁），免扣只需本函数不碰日窗，是最小正确方案。
+
+    滥用面有界（两层闸，不依赖日窗）：
+    - 分钟窗照拦脚本式连点（与 enforce_llm_budget 同一只计数器）；
+    - 端点语义侧每次成功重生成该天即转 SUCCEEDED，再点返回 400——单行程的免费
+      重生成次数上限 = 未交付天数（≤7），把天重新变回未交付态需要真实的上游
+      生成失败，不受用户控制。
+    """
+    key = f"quota:llm:min:{user_id}"
+    if state_and_sessions.sliding_hit(key, _MINUTE_WINDOW_SECONDS) > settings.user_llm_runs_per_minute:
+        raise ApiError(429, "操作过于频繁，请稍后再试")
+
+
 def enforce_live_quote_budget(user_id: int) -> None:
     """按需实时价（quotes/live、hotel-quotes/live）的按用户分钟窗。
 

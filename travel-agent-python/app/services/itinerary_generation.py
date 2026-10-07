@@ -324,6 +324,128 @@ def _generate_day_with_trace(
     return plan
 
 
+# ---------- 一键重生成第 N 天（P0-3 部分交付自救） ----------
+
+
+def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, Any]:
+    """重生成第 N 天：业务面暴露的「真·LLM 按天重生成」（审查 §3.2.1/§3.8.3/P0-3）。
+
+    与既有入口的边界（语义拍板，2026-10-07）：
+    - 只允许 PENDING / FAILED 天重新生成（「空天」就是状态列默认值的 PENDING 天，
+      generation_status V1 起 NOT NULL DEFAULT 'PENDING'）；已成功天返回 400——
+      本端点是对「从未交付」的补救，不是对已交付结果的改写入口（对已有内容做
+      增删改走 chat-edit / nl-edit / optimize_day，那是它们各自的产品职责）。
+    - 不设「当天不足 2 个点位」限制：那是 optimize_day（确定性重排，不引入点位）
+      的前件；本端点恰恰要接住空天——部分交付的真实形态就是天在、内容空
+      （.night-audit 行程 189 第二天 PENDING 且为空）。
+    - 配额走 quota_service.enforce_llm_rate_only（端点层）：只拦分钟窗不扣日窗，
+      用户不为补齐从未交付的天再付一次配额（报告 §3.8.3 硬线）。
+    - 同步执行（与 chat-edit 同纪律：请求线程内跑一次单日生成闭环），返回最新
+      详情；进度经既有 day_start/day_done/degraded/complete 事件推给 SSE 订阅者。
+    - 三重防双跑：日锁（与 plan_days/流式落库互斥）+ 指纹幂等（verify_action，
+      参数变化 409）+ 活跃注册表（恢复扫描的存活探测据此跳过，见 generation_recovery）。
+    """
+    main = itinerary_query.find_owned_main(user_id, itinerary_id)
+    if main.gen_state == "GENERATING" or main.status == 1 or is_planning_active(itinerary_id):
+        # 在跑的 plan_days / 恢复续跑拥有这趟行程（含各未完成天），此刻抢跑同一天
+        # 只会互相覆盖；用户等它终态后再来自救。
+        raise ApiError(409, "行程正在生成中，请等本次生成结束后再重试")
+
+    day = day_persistence.find_day(itinerary_id, day_no)
+    if day is None:
+        raise ApiError(404, "行程日不存在")
+    if day.generation_status == "SUCCEEDED":
+        raise ApiError(400, "这一天已生成成功，无需重新生成；调整内容请用「AI 编排此日」或对话补写")
+    if day.generation_status == "RUNNING":
+        raise ApiError(409, "这一天正在生成中，请勿重复操作")
+
+    if not generation_gate.try_day_lock(itinerary_id, day_no):
+        raise ApiError(409, "这一天正在生成中，请稍后再试")
+    _register_planning(itinerary_id)
+    try:
+        # 恢复侧同源：从主表反推生成参数（origin_city/intent/requirements 一并读回），
+        # 指纹与首次生成一致，幂等门不会把这次补齐拒在门外。函数内导入防环：
+        # generation_recovery 模块级 import 本模块，反向只能在运行期解析。
+        from app.services.generation_recovery import rebuild_request
+
+        command = rebuild_request(main)
+        fingerprint = generation_gate.request_fingerprint(command)
+        action_id = f"day-{itinerary_id}-{day_no}"
+        generation_gate.verify_action(day, action_id, fingerprint)
+        day_persistence.mark_running(day.id, action_id, fingerprint)
+        generation_events.day_start(itinerary_id, day_no)
+        _regenerate_day_core(user_id, itinerary_id, day, command, day_no, action_id, fingerprint)
+        # 成功收尾与 plan_days 共用 _finish：预算是交付的一部分、终态按天状态重算
+        # （补齐最后缺口天时行程升级 COMPLETED）、版本快照与 SSE 终帧照发。
+        _finish(user_id, itinerary_id, command, snapshot_summary=f"重生成第 {day_no} 天")
+        return itinerary_query.detail(user_id, itinerary_id)
+    finally:
+        _unregister_planning(itinerary_id)
+        generation_gate.release_day_lock(itinerary_id, day_no)
+
+
+def _regenerate_day_core(
+    user_id: int,
+    itinerary_id: int,
+    day: ItineraryDay,
+    command: GenerateCommand,
+    day_no: int,
+    action_id: str,
+    fingerprint: str,
+) -> None:
+    """regenerate_day 的工作段：研究 + 单日生成 + 失败落态（拆出以守住规模门禁）。
+
+    失败语义：天标记 FAILED 并发 degraded 帧，但**不动行程终态**——其余天不受这次
+    自救失败牵连（行程进本入口前已是终态）；原始异常只进日志，用户拿到文案 + 错误码
+    （R2-F3/API-1，与 plan_days 的日级失败同口径）。
+    """
+    # chosen_hotel 沿用 plan_days 的口径：首个成功天的酒店——重生成某天不让
+    # 跨天同住一店的产品语义被打散。
+    chosen_hotel = day_persistence.existing_hotel(sid) if (sid := _first_succeeded_day_id(itinerary_id)) else None
+    try:
+        with llm_gateway_service.route_scope(user_id):
+            # 研究上下文不落库，重生成与「无检查点的恢复」同口径重跑一次研究
+            # （恢复腿 submit_planning(context=None) 也是这么做的），保证补齐天
+            # 与首次生成同一质量；scene 归位口径同 plan_days。
+            with use_scene("research"):
+                context = run_plan_context(
+                    command.city,
+                    command.preferences,
+                    itinerary_id=itinerary_id,
+                    start_date=command.start_date.isoformat() if command.start_date else None,
+                    days=command.days,
+                    origin_city=command.origin_city,
+                )
+            _generate_day_with_trace(itinerary_id, command, context, day_no, [], chosen_hotel, action_id, fingerprint)
+    except ApiError as api_exc:
+        # BYOK 路由坏（409）等用户可读失败：原样透出，不裹成 502。
+        day_persistence.mark_failed(day.id, action_id, fingerprint, str(api_exc) or None)
+        generation_events.degraded(
+            itinerary_id, f"day_{day_no}", f"{user_reason(api_exc)}（错误码 {error_code(api_exc)}）", "待重试"
+        )
+        raise
+    except Exception as day_exc:
+        day_persistence.mark_failed(day.id, action_id, fingerprint, str(day_exc) or error_code(day_exc))
+        generation_events.degraded(
+            itinerary_id, f"day_{day_no}", f"{user_reason(day_exc)}（错误码 {error_code(day_exc)}）", "待重试"
+        )
+        logger.error("day regeneration failed for itinerary %s day %s", itinerary_id, day_no, exc_info=day_exc)
+        raise ApiError(502, f"{user_reason(day_exc)}（错误码 {error_code(day_exc)}）") from day_exc
+    finally:
+        itinerary_query.evict_detail(user_id, itinerary_id)
+
+
+def _first_succeeded_day_id(itinerary_id: int) -> int | None:
+    """首个已成功天的行 id（chosen_hotel 口径用；无成功天返回 None）。"""
+    with session_scope() as session:
+        return session.execute(
+            select(ItineraryDay.id)
+            .where(ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.generation_status == "SUCCEEDED")
+            .order_by(ItineraryDay.day_no)
+            .limit(1)
+        ).scalar_one_or_none()
+
+
 # ---------- 整段流式（一次 LLM 生成全程，边流边落库） ----------
 
 _stream_events = TypeAdapter(StreamEvent)
@@ -572,7 +694,7 @@ def _item_rule_dict(row: ItineraryItem) -> dict[str, Any]:
 # ---------- 终态 ----------
 
 
-def _finish(user_id: int, itinerary_id: int, command: GenerateCommand) -> None:
+def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_summary: str = "行程生成完成") -> None:
     with session_scope() as session:
         main = session.get(ItineraryMain, itinerary_id)
     if main is None:
@@ -585,7 +707,7 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand) -> None:
     day_persistence.complete_trip(itinerary_id, all_succeeded)
     version_id: int | None = None
     try:
-        snapshot = itinerary_version.create_snapshot(user_id, itinerary_id, "generate", "行程生成完成")
+        snapshot = itinerary_version.create_snapshot(user_id, itinerary_id, "generate", snapshot_summary)
         if isinstance(snapshot.get("id"), int):
             version_id = snapshot["id"]
     except Exception as snapshot_error:

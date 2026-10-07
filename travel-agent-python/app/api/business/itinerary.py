@@ -199,6 +199,22 @@ def patch_day(
     return ok(itinerary_command.update_day(user.id, id, dayId, body.theme))
 
 
+@router.post("/{id}/days/{dayNo}/regenerate")
+def post_regenerate_day(
+    id: int = Path(..., ge=1),
+    dayNo: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """重生成第 N 天（P0-3 部分交付一键自救）：真·LLM 重新生成，非 optimize 的确定性重排。
+
+    只接 PENDING/FAILED/空天（已成功天 400）；同步执行，返回补齐后的最新详情
+    （语义与配额拍板见 `itinerary_generation.regenerate_day` 与 `quota_service.enforce_llm_rate_only`）。
+    配额硬线：只拦分钟窗、不扣日窗——用户不为补齐从未交付的天再付一次配额。
+    """
+    quota_service.enforce_llm_rate_only(user.id)
+    return ok(itinerary_generation.regenerate_day(user.id, id, dayNo))
+
+
 @router.post("/{id}/nl-edit")
 def post_nl_edit(
     body: NlEditBody,
