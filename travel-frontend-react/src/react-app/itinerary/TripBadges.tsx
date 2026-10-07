@@ -49,11 +49,14 @@ export function TripMetrics({
   weatherDays: number
   hasWeather: boolean
 }): ReactNode {
+  const budgetWarning = [...(trip.qualityReport?.warnings || []), ...(trip.qualityReport?.blockingIssues || [])]
+    .find(issue => issue.code === 'BUDGET_EXCEEDED')
   return (
     <div className="detail-metrics">
       <span>
         <strong>￥{trip.totalAmount || trip.budget || 0}</strong>
         <small>{budgetCaption()}</small>
+        {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>
       <span>
         <strong>{dateText}</strong>

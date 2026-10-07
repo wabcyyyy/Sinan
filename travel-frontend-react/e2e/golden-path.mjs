@@ -16,6 +16,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import pw from 'playwright-core'
+import { assertGoldenDelivery } from './delivery-gate.mjs'
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:5173'
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000'
@@ -113,11 +114,17 @@ try {
   await page.locator('ol.planning-stages').waitFor({ state: 'visible', timeout: 20_000 })
   step('③ 生成进度已可见（SSE + 轮询并行监控）')
   await page.locator('.trip-board').waitFor({ state: 'visible', timeout: GEN_TIMEOUT })
-  step('③ 生成完成，首页预览板已出现')
+  step('③ 首页预览板已出现')
   await page.locator('.trip-board-cta').click()
   await page.waitForURL(/\/trips\/\d+/, { timeout: 30_000 })
   const tripId = page.url().match(/\/trips\/(\d+)/)?.[1]
   step(`③ 已从预览板进入行程 ${tripId}`)
+  const deliveryResponse = await context.request.get(`${BASE}/api/itinerary/${tripId}`, { timeout: 30_000 })
+  if (!deliveryResponse.ok()) throw new Error(`交付核验 HTTP ${deliveryResponse.status()}`)
+  const delivery = await deliveryResponse.json()
+  if (delivery.code !== 200) throw new Error(`交付核验失败：${delivery.message}`)
+  assertGoldenDelivery(delivery.data)
+  step('③ 两天完整交付、住宿晚数与最终预算均已核验')
 
   // ④ 详情页地图：懒加载 chunk + maplibre 初始化；无坐标点位时是空态（金路径不该走到）
   await page.locator('.trip-map').waitFor({ state: 'visible', timeout: 60_000 })
@@ -125,6 +132,7 @@ try {
     throw new Error(`行程 ${tripId} 没有任何带坐标的点位（地图空态）——生成质量回归`)
   }
   await page.locator('.maplibregl-canvas').waitFor({ state: 'visible', timeout: 60_000 })
+  await page.locator('.map-pin').first().waitFor({ state: 'visible', timeout: 60_000 })
   const pinCount = await page.locator('.map-pin').count()
   const title = (await page.locator('h1').first().textContent())?.trim() || ''
   if (!title) throw new Error('详情页标题为空')

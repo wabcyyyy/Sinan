@@ -15,6 +15,16 @@ const item = (fields: Partial<TripItem> = {}): TripItem =>
   ({ itemType: 'attraction', poiName: '西湖', ...fields }) as TripItem
 
 describe('React 详情页文案与徽章', () => {
+  it('预算告警消费后端的金额与口径，生成中也可见', () => {
+    const message = '当前估算总额 ￥640.00 超出预算 ￥500.00，超出 ￥140.00；请调整行程或预算'
+    const trip = { totalAmount: 640, budget: 500, qualityReport: {
+      qualityStatus: 'DRAFT', warnings: [{ code: 'BUDGET_EXCEEDED', message }],
+    } } as unknown as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(TripMetrics, { trip, dateText: '10月1日', weatherDays: 2, hasWeather: false }))
+    expect(html).toContain(message)
+    expect(html).toContain('role="status"')
+    expect(html).toContain('fact-warning')
+  })
   it('预算行带估算字样（P1-4：此前只有「预算参考」）', () => {
     const trip = { totalAmount: 3200 } as unknown as ItineraryDetail
     const html = renderToStaticMarkup(
