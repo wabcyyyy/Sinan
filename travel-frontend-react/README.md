@@ -1,30 +1,28 @@
 # travel-frontend-react
 
-React 18 + Vite + TypeScript 壳（`src/react-app/`）：一句话对话创建（澄清卡 + 槽位确认条）、生成期实时预览、行程列表、详情页对话编排 + 单日工作台。`src/` 下 Vue3 组件树为已退役遗留（Vue 组件树已整体删除）。
+React 19 + Vite + TypeScript 壳（入口 `src/react-app/`，`main.tsx` 挂载 `App.tsx`）：首页 ChatIntake 一句话对话创建（澄清卡 + 槽位确认条）、生成期实时预览、行程列表、详情页 ChatPanel 对话编排 + 地图。`src/` 下 Vue3 组件树已整体删除（2026-09-27），只剩 React 消费集：`api/`（后端只经 `api/sinan.ts` 访问）、`shared/`（框架无关纯函数与地图深链）、`types/`（手镜像 + 生成的契约）、`styles/`（令牌与首帧外观）、`assets/`。
 
 ## 技术栈
 
-- Vue 3.4 + Vite 5 + TypeScript（vue-tsc 类型检查）
-- **自研交互控件层 `src/components/ui/`**（对话框/抽屉/菜单/弹层/分段/输入/toast/确认框…）；Element Plus 2.7 为**存量面**并渐进退役——`npm run ep:lint` 对 EP 用量强制**只减不增**（管理员端/生成页在允许清单内）
-- Pinia + Vue Router + vuedraggable（拖拽排序与跨天拖入）
-- MapLibre GL：**OpenFreeMap 免 key 在线矢量底图**（亮/暗随外观切换，署名随图），编号圆钉/逐日路线色/按天可见性
-- Geist Sans 拉丁子集**自托管**（`public/fonts/`，中文走系统栈；首屏零第三方字体请求）
-- ECharts 6（管理端图表，按需注册）
+- React 19.2 + Vite 7 + TypeScript；**无路由库 / 无全局状态库**：路由由 `src/react-app/router.ts`（History API）+ `App.tsx` 按路径分发，状态在组件 hooks
+- MapLibre GL：**OpenFreeMap 免 key 在线矢量底图**（亮/暗随外观切换，署名随图）；点位钉与坐标有效性谓词在 `react-app/itinerary/mapPins.ts`，地图深链白名单在 `shared/map-link.ts`
+- 不引组件库：Element Plus 已零用量（`npm run ep:lint` 钉死防回潮），交互控件页面内自绘
+- 自托管字体（`public/fonts/`：Geist Sans 拉丁子集 + Poppins 回退，中文走系统栈；首屏零第三方字体请求）
+- 测试：vitest + happy-dom（纯逻辑 + `renderToStaticMarkup` 静态渲染断言）；金路径 E2E 走 playwright-core（`npm run e2e:golden`）
 
 ## 页面与路由
 
 | 路由 | 页面 | 说明 |
 | --- | --- | --- |
-| `/login` | LoginView | 登录 / 注册 |
-| `/generate` | GenerateView | 输入城市/天数/偏好/预算 → 生成行程 |
-| `/trips` | TripsView | 行程封面墙（状态筛选 / 搜索 / 收藏 / 归档） |
-| `/trips/:id` | TripDetailView | **三栏工作台（视口固定，两栏各自滚）**：左=面板头条（返回/标题/操作菜单）+ 天平铺日卡（内联提示卡 / 副标题 / 建议方案 / 优化路线 / 行内时间费用 / 站间「步行·车程 ≈ …」估算片）；中=地图铺底（编号钉 / 按天可见性 / 路线开关 / 走廊工具簇 / 贴底详情卡）；右=发现（搜索加点 / 全部·未排·已排 / 就近推荐 / 拖拽入天）；两栏 340/300 默认、可拖宽（200–520）可收起（挂耳钮；<1024 宽单栏三态）；选择态批量条 + 版本历史 + 导出 |
-| `/atlas` | AtlasView | 旅程图鉴（OpenFreeMap 底图 + 去过国家高亮 + 城市钉） |
-| `/s/:token` | ShareView | 公开只读分享页 |
-| `/` | HomeView | 首页（Hero CTA） |
-| `/admin` | admin/Admin* | 管理端（仪表盘 / 用户 / 行程 / Token / Agent 指标，需 admin 角色） |
+| `/` | HomePage | 首页：ChatIntake 一句话收集槽位（缺槽自动追问、确认卡拍板）+ 规划草稿实时预览 |
+| `/login` | LoginPage | 登录 / 注册 |
+| `/explore`、`/explore/guide/:slug` | ExplorePage / GuideDetailPage | 探索页三合一（灵感 / 目的地 / 攻略）；旧 `/destinations` `/inspiration` `/guides` 自动 replace 重定向并入 |
+| `/trips` | TripsPage | 行程列表（状态 Tab 筛选 / 搜索 / 收藏 / 草稿区） |
+| `/trips/:id` | TripDetailPage | 详情：ChatPanel 对话编排（草稿卡确认后应用）+ TripMapPanel 地图与深链核实外链 |
+| `/settings` | SettingsPage | LLM 网关管理（用户新增 / 启停 / 连通性测试） |
+| `/s/:token` | SharePage | 公开只读分享页 |
 
-> 点位导航：行程行与贴底详情卡带地图跳转外链（外部超链接，非 API 依赖）；就近推荐只用本地库内的真实坐标与距离。
+旧创建页 `/plan`、`/generate` 已退役：直达自动回首页（保留书签查询参数，见 `router.ts`）。
 
 ## 启动
 
@@ -34,14 +32,15 @@ npm install
 npm run dev            # http://localhost:5173，/api 代理到 8000（FastAPI）
 ```
 
-构建：`npm run build`（先跑 `vue-tsc --noEmit` 类型检查）。
+构建：`npm run build`（vite build）。
 
 ## 门禁
 
 ```bash
-npm run test:unit    # vitest（纯逻辑 + 组件行为；happy-dom）
-npm run theme:lint   # 外观契约：禁裸色/野 z-index/!important；豁免表只准变短
-npm run ep:lint      # 去 EP：产品面禁新增 Element Plus 引用，允许清单只减不增
+npm run test:unit    # vitest（纯逻辑 + 组件静态渲染；happy-dom）
+npm run theme:lint   # 外观契约：禁裸色/野 z-index/!important；豁免表只准变短（当前清零）
+npm run ep:lint      # 去 EP：产品面禁引入 Element Plus，允许清单只减不增（当前清零）
+npm run e2e:golden   # 金路径 E2E（先 start-all.ps1 起活栈；真实 LLM 生成，分钟级）
 ```
 
 ## 环境变量

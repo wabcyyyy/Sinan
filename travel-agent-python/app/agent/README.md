@@ -73,9 +73,9 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `existence_commercial.py` | 付费 provider（高德 / Google Places）：无 key 一律如实未判定，不占免费配额 |
 | `grounding_evidence.py` | 证据票：「本服务真的抓过这一行」的不可伪造凭据 |
 | `grounding_labels.py` | 背书口径唯一实现：来源值域 + 证据校验 → 溯源标签（三条链路共用） |
-| `grounding.py` | 事实落地：坐标校验与本地权威补点（判定委托 `existence`） |
+| `grounding/facts.py` | 事实落地：坐标校验与本地权威补点（判定委托 `existence`） |
 | `map_link.py` | 地图深链：关键词/路线两种 URL 与 GCJ-02 偏移 |
-| `open_plans.py` | 图路径的逐日草案：补池 → 落地 → 删证伪点 → 组装（与 `trip_stream` 产出同构） |
+| `open_plans.py` | 图路径的逐日草案：补池 → 落地 → 删证伪点 → 组装（`on_day`/`on_patch` 流式挂点在此） |
 | `generators.py` | 内容组装原语与对外面（纯函数优先，无编排） |
 | `narrative.py` | 叙事字段清洗及最终排程概述：限值、类型、指令残留与模型申报字段清洗；theme/note 由 items 派生 |
 | `day_prompts.py` | Prompt 组装：系统提示绑定、约束句拼装、日/整段两种入口的 LLM 调用 |
@@ -83,24 +83,23 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `suggestion_quality.py` | 交通线路与旅游设施的语义区分；备选池各补齐路径共享准入检查 |
 | `day_stream.py` | 单日链路：一次生成的编排与落地（反思/重试不在此） |
 | `day_workflow.py` | 单日图的门面 |
-| `stream_parser.py` | 流式 JSON 解析：跨块拼装与逐天产出 |
-| `trip_stream.py` | 整段流式：边流边落地，产出 NDJSON 事件 |
+| `stream_branch.py` | 整段流式：统一图的流式分支，custom stream 逐天下发 NDJSON 事件（`run_generate_trip_stream`） |
 | `workflow.py` | 图工作流的门面：生成 → 校验 → 修复循环 |
 
 ## 依赖方向（禁反向）
 
 ```
-trip_stream ──┐
-day_stream ───┼─→ workflow ──→ generators ──→ generation_core / core/poi_identity
-              │      │            │  │  │
-              │      │            │  │  └─→ budget / suggestions / reference_pool
-              │      │            │  └────→ narrative / grounding / day_prompts
-              │      └───────────────────→ formatting / reflect
-              └──────────────────────────→ research（只读证据）
+stream_branch ─┐
+day_stream ────┼─→ workflow ──→ generators ──→ generation_core / core/poi_identity
+               │      │            │  │  │
+               │      │            │  │  └─→ budget / suggestions / reference_pool
+               │      │            │  └────→ narrative / grounding / day_prompts
+               │      └───────────────────→ formatting / reflect
+               └──────────────────────────→ research（只读证据）
 ```
 
 - **自上而下单向**：`stream → workflow → generators → generation_core`。上层可以调用下层，下层**不得** import 上层。
-- `stream` 层（trip_stream / day_stream）负责编排与事件；`workflow` 负责图与循环；`generators` 及其兄弟模块负责"造内容"；`generation_core` 只做规则。
+- `stream` 层（stream_branch / day_stream）负责编排与事件；`workflow` 负责图与循环；`generators` 及其兄弟模块负责"造内容"；`generation_core` 只做规则。
 - `formatting/`（价格/事实/质量）与 `reflect.py`（校验）是 workflow 的**下游**，不得反过来 import 生成模块。
 - 事件模型只认 `app/schemas/stream_events.py`：事件构造 → `to_wire`，别在业务代码里手搓键名。
 

@@ -8,7 +8,7 @@
 
 - Python 3.12（uv 管理依赖）
 - FastAPI 0.111 + Uvicorn
-- LangGraph 0.2.44 + LangChain Core
+- LangGraph 1.2.12 + LangChain Core
 - PyMySQL（读 `city_geo` 字典与 `city_consumption` 消费基准两张城市级表）
 - 外部地点层：OpenTripMap（免 key 注册；仅 en/ru，名称为英文，中文名由 LLM 对齐）+ Nominatim（免 key，1 rps 政策）
 - 联网搜索：DashScope enable_search 插件（经 LLM 供应商，补真实店名/项目名；不保证坐标）。**只有百炼兼容层有这个插件**：主通道若是 DeepSeek 官方等无插件网关，联网补池与实时价会如实按「未联网」降级（一次外呼都不发，绝不用模型记忆冒充检索结果；见 `app/agent/data/web_search.py:search_channel_ready`）。要保留联网能力就把该通道指向 `https://dashscope.aliyuncs.com/compatible-mode/v1`。
@@ -38,7 +38,7 @@ generate 内部（LLM-only，外部数据只作证据）：
 
 每次外部检索写入脱敏 Trace 事件（含候选数、来源与 fallback 标记）；可通过 `X-Agent-Run-ID` 追踪完整检索链路。
 
-## 外部地点层（app/agent/places.py）
+## 外部地点层（app/agent/data/places.py）
 
 - **OpenTripMap**（主源）：城市定位（geoname）→ 分类半径检索（坐标/分类/热度，`sort=-rate`）→ xid 详情（结构化地址/官网/图片/维基简介）。进程内 TTL 缓存（城市 24h / 半径 6h / 详情 24h），负结果短 TTL；`OTM_API_KEY` 为空时整层禁用，景点池降级为纯联网搜索
 - **Nominatim**（兜底）：任意名称→坐标，OTM 语义上兜不了"点名解析"由它承担；公共实例 1 rps，`ExternalClient` 按 1.1s 间隔自节流
@@ -48,10 +48,10 @@ generate 内部（LLM-only，外部数据只作证据）：
 ## 目录结构
 
 ```
-main.py                # 入口（启动时自动迁移 schema 并导出 openapi.json）
+main.py                # 入口（启动时自动迁移 schema；openapi.json 只由 scripts/export_contracts.py 单点导出，启动期不落盘）
 app/
 ├── api/               # agent.py（Agent 面 /api/agent/**）+ business/（业务面 /api/**：鉴权/行程/图片/导出/后台）
-├── agent/             # workflow / research(多Agent研究层) / trip_stream(整段流式生成) / day_stream(开放模式事实层) / generators(ReferencePool) / reflect / tools / places(OTM+Nominatim+深链) / city_reference(城市字典/消费基准) / tool_registry / observability
+├── agent/             # 八域阶梯（域地图见 app/agent/README.md）：core / data(places=OTM+Nominatim+深链、web_search、city_reference) / grounding / tools(注册表+派发) / research(多Agent研究层) / generation(生成链路四层 rules→content→output→orchestration) / editing / runtime(轨迹/限额/指标)
 ├── services/          # 业务域服务（行程读写/版本快照/生成编排/缓存/PDF 导出/图片代理）
 ├── db/                # ORM 模型 / 启动即迁移执行器 / migrations/sql（全仓唯一 SQL 真相源；V4 退役 poi_knowledge/hotel_room_type）
 ├── common/            # config(.env) / llm_client / external_client(外部取数基类) / task_pool / event_hub / redis_client / season

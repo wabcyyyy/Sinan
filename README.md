@@ -1,6 +1,6 @@
 # 司南 Sinan 智能旅行规划
 
-基于 **AI Agent（LangGraph）+ 多 Agent 研究** 的旅行规划系统。输入城市、天数、偏好与一句话旅行意图，Agent 生成 AI 规划的每日行程：关键事实如实标注来源与核验状态（外部数据命中项 `observed`、LLM 估价项 `estimated`），并附地图深链引导出发前核实；生成过程通过 SSE 实时推送进度。前端为 **React 18 + Vite + TS**（入口 `src/react-app/`）：对话式创建（首页一句话收集槽位、缺槽自动追问）、地图可视化、自然语言改行程、预算展示与 PDF 导出。后端为**单一 FastAPI 服务**（Python 3.12）：业务接口、agent 编排与事件流同进程，Spring Boot 版已退役删除（见「后端演进」）。
+基于 **AI Agent（LangGraph）+ 多 Agent 研究** 的旅行规划系统。输入城市、天数、偏好与一句话旅行意图，Agent 生成 AI 规划的每日行程：关键事实如实标注来源与核验状态（外部数据命中项 `observed`、LLM 估价项 `estimated`），并附地图深链引导出发前核实；生成过程通过 SSE 实时推送进度。前端为 **React 19 + Vite + TS**（入口 `src/react-app/`）：对话式创建（首页一句话收集槽位、缺槽自动追问）、地图可视化、自然语言改行程、预算展示与 PDF 导出。后端为**单一 FastAPI 服务**（Python 3.12）：业务接口、agent 编排与事件流同进程，Spring Boot 版已退役删除（见「后端演进」）。
 
 > **AI-NATIVE 数据面（2026-09-17）**：本地不再维护景点语料库（`poi_knowledge` 随 V4 迁移退役，也不再需要 Qdrant）——地点事实走「LLM 世界知识 + 联网搜索（DashScope enable_search）+ **OpenTripMap**（坐标/分类/图片/百科简介）+ **Nominatim**（点名→坐标兜底）」，票价/营业时间由 LLM 估价并按 `estimated` 如实标注，前端以**地图深链**（国内高德 URI / 海外谷歌 Maps）核实。底图仍为 **OpenFreeMap** 免 key 在线矢量瓦片（MapLibre，署名随图）；图片仍可走 Unsplash/Pexels/维基（服务端代理，可选、未命中落占位块）。任意城市即开即用，不再受语料覆盖城市限制。
 
@@ -20,7 +20,7 @@
 ```
 ┌─────────────────────┐              ┌────────────────────────────────────────────┐
 │ travel-frontend-react │     HTTP     │            travel-agent-python             │
-│ React 18 + Vite+TS  │ ───────────► │   FastAPI 单进程后端（业务 + Agent）         │
+│ React 19 + Vite+TS  │ ───────────► │   FastAPI 单进程后端（业务 + Agent）         │
 │ 地图/预算看板/编辑    │     /api     │  ┌──────────────────┐  ┌─────────────────┐ │
 └─────────────────────┘              │  │ 业务层            │  │ Agent 层        │ │
                                      │  │ JWT/行程状态机/    │  │ LangGraph 编排/  │ │
@@ -30,7 +30,7 @@
                                      └───────────┼───────────────────────┼─────────┘
                                                  │                       │
                                           ┌──────▼───────┐   ┌───────────▼──────────────────────┐
-                                          │ MySQL 8      │   │  外部地点层（app/agent/places.py） │
+                                          │ MySQL 8      │   │  外部地点层（app/agent/data/places.py） │
                                           │ 用户数据      │   │ OpenTripMap 坐标/分类/图片        │
                                           │ +城市字典     │   │ Nominatim 点名→坐标（1rps 兜底）  │
                                           │ +消费基准     │   │ 联网搜索补店名 → LLM 估价/深链核实 │
@@ -45,7 +45,7 @@
 
 **资源口径（L5a，2026-09-27 实测）**：「一次 N 天生成花多少调用/token/秒」按 run_id 聚合可答（`travel-agent-python/scripts/usage_report.py`）。本机实测：2 天行程主生成 = 8 次 LLM 调用 / 18,223 token / 274 秒；对话式创建的每轮澄清 ≈ 2,700 token / 3-8 秒。离线评测为 mock 口径、结构性无 LLM 成本（探针实证 calls=0），故成本棘轮挂在 nightly 真实评测之后（`usage_report.py --check`，LLM 方差超限按基线认账）；线上时点数据经 `/api/agent/v1/usage` 查询。
 
-**后端演进（Java 版已删除）**：这个项目最初是「Vue + Spring Boot + Python Agent」三端结构，Spring 侧承载认证 / 行程状态机 / 缓存 / PDF / SSE 网关。为了把 agent 能力与持久化放进同一进程，后端已按绞杀者路线整体迁到 FastAPI：当前端点口径以**可对账数字**为准——**业务面+agent 面合计 102 paths / 118 ops（2026-10-05 自 contracts/openapi.json 实数），由 `contracts/openapi.json` 入仓并受契约漂移门禁保护；前端调用点 100% 路由覆盖有机检**（`tests/test_cutover_contract.py`）。Java 时期「50 个端点落地 49」的说法只有历史出处（ARCHIVED.md），口径已随 Java 删除不可现场对账，不再作为等价性主张；恢复步骤与「原先谁负责什么」的对照表见 `ARCHIVED.md`。
+**后端演进（Java 版已删除）**：这个项目最初是「Vue + Spring Boot + Python Agent」三端结构，Spring 侧承载认证 / 行程状态机 / 缓存 / PDF / SSE 网关。为了把 agent 能力与持久化放进同一进程，后端已按绞杀者路线整体迁到 FastAPI：当前端点口径以**可对账数字**为准——**业务面+agent 面合计 104 paths / 120 ops（2026-10-08 自 contracts/openapi.json 实数），由 `contracts/openapi.json` 入仓并受契约漂移门禁保护；前端调用点 100% 路由覆盖有机检**（`tests/test_cutover_contract.py`）。Java 时期「50 个端点落地 49」的说法只有历史出处（ARCHIVED.md），口径已随 Java 删除不可现场对账，不再作为等价性主张；恢复步骤与「原先谁负责什么」的对照表见 `ARCHIVED.md`。
 
 ## 快速开始
 
@@ -71,7 +71,7 @@ docker compose up -d mysql redis
 cd travel-agent-python
 cp .env.example .env        # 必填 DB_PASSWORD、JWT_SECRET（≥32 位）、AGENT_INTERNAL_TOKEN、LLM_API_KEY；建议填 OTM_API_KEY（免费）
 uv sync
-uv run python main.py       # 127.0.0.1:8000；启动即迁移 schema 并导出 openapi.json
+uv run python main.py       # 127.0.0.1:8000；启动即迁移 schema（openapi.json 由 scripts/export_contracts.py 单点导出）
 ```
 
 ### 3. 启动前端（travel-frontend-react）
@@ -185,7 +185,7 @@ Travel-Assistant/
 ├── justfile                # 单命令入口（just check / test / eval / snapshot / fe-check）
 ├── travel-agent-python/    # FastAPI 单进程后端：业务接口 + LangGraph 编排 + 多 Agent 研究 + 外部地点层（见其 AGENTS.md）
 │   └── app/agent/README.md # 生成链路模块蓝图（依赖方向与"新增能力先抄谁"）
-├── travel-frontend-react/  # React 18 + Vite + TS（入口 src/react-app/）：对话式创建首页 / 详情页对话编排·地图 / 探索页；src/shared/ 框架无关纯函数
+├── travel-frontend-react/  # React 19 + Vite + TS（入口 src/react-app/）：对话式创建首页 / 详情页对话编排·地图 / 探索页；src/shared/ 框架无关纯函数
 ├── contracts/              # 跨端契约导出物（schema + openapi + 前端生成类型，drift 门禁）
 └── sql/                    # 城市级消费基准种子（语料采集管线已随 V4 退役，见 git 历史）
 ```

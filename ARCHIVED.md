@@ -12,7 +12,7 @@
 | 行程状态机 / 读写 / 版本快照 | `app/services/itinerary_{query,command,version,plan_apply}.py` |
 | 生成编排（逐日落库、缺天修复、自动续跑） | `app/services/{itinerary_generation,day_persistence,generation_recovery}.py` |
 | 对话改行程 + 草稿版本 | `app/services/itinerary_chat.py` |
-| 详情缓存 / 限速 / 日锁 / 令牌黑名单 | `app/services/{cache_store,state_and_sessions,generation_gate}.py` + `app/common/{redis_client,token_revocation}.py`（共享同一套 Redis 键） |
+| 详情缓存 / 限速 / 日锁 / 令牌黑名单 | `app/services/{state_and_sessions,generation_gate}.py` + `app/common/{cache_store,redis_client,token_revocation}.py`（共享同一套 Redis 键） |
 | SSE 网关（Redis 订阅转发） | `app/common/event_hub.py`（进程内事件总线，不再需要 Redis 中转） |
 | 异步 PDF 导出（Thymeleaf 模板 + Flying Saucer） | `app/services/export_{service,pdf}.py`（reportlab 排同一套版式；字体在 `app/resources/fonts/`） |
 | schema 迁移执行器（Flyway） | `app/db/migrate.py`（Alembic 按序执行同一批 SQL，现在位于 `app/db/migrations/sql/`，服务启动即迁移） |
@@ -37,5 +37,5 @@ git checkout <commit> -- travel-backend-java           # 或整体取回工作�
 
 ## 迁移记录
 
-- 端点对照的历史结论：50 个业务端点，49 个等价落地，1 个是刻意退役的内部探针 `/api/test/call-agent`。`travel-agent-python/scripts/check_endpoint_coverage.py` 在 Java 侧不存在时报告"端点对照不再适用且无残留登记"（`EXPECTED_REMAINING` 已清空）
+- 端点对照的历史结论：50 个业务端点，49 个等价落地，1 个是刻意退役的内部探针 `/api/test/call-agent`。`travel-agent-python/scripts/check_endpoint_coverage.py` 在 Java 侧不存在时报告"端点对照不再适用且无残留登记"（`EXPECTED_REMAINING` 已清空；该脚本已于 2026-09-18 删除，理由见 `tests/test_retirement_readiness.py` 模块 docstring）
 - 迁移后的架构说明：根 `README.md`、`travel-agent-python/README.md`、`travel-frontend-react/README.md`（`docs/项目介绍/` 为本地内部文档，不入库）

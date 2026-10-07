@@ -1,6 +1,6 @@
 # AGENTS.md — travel-frontend-react
 
-入口是 React 18 壳（`src/react-app/`）：首页 ChatIntake 对话式收集槽位并实时预览、详情页 ChatPanel 对话编排（确认卡长在对话流内）。`src/` 下 Vue3 组件树已整体删除（2026-09-27），只剩 React 消费集：`api/sinan.ts`、`shared/`（纯函数证据与地图深链）、`types/`（手镜像 + 生成的契约）、`styles/`（令牌与首帧外观）、`assets/`。MapLibre + OpenFreeMap 免 key 底图。先读根 `../AGENTS.md`。
+入口是 React 19 壳（`src/react-app/`）：首页 ChatIntake 对话式收集槽位并实时预览、详情页 ChatPanel 对话编排（确认卡长在对话流内）。`src/` 下 Vue3 组件树已整体删除（2026-09-27），只剩 React 消费集：`api/sinan.ts`、`shared/`（纯函数证据与地图深链）、`types/`（手镜像 + 生成的契约）、`styles/`（令牌与首帧外观）、`assets/`。MapLibre + OpenFreeMap 免 key 底图。先读根 `../AGENTS.md`。
 
 ## 外观门禁（只减不增，CI 已接）
 
