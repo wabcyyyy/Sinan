@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from app.agent.generation.content.reflect import parse_time
 from app.agent.generation.rules.generation_core import PoiFactRow
+from app.agent.generation.rules.transfer_time import parse_time
 from app.agent.grounding.facts import has_coord
 from app.agent.grounding.grounding_labels import (
     ItemLabel,

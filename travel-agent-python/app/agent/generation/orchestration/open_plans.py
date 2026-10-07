@@ -37,6 +37,7 @@ from app.agent.generation.rules.generation_core import (
     spread_hotels,
     stay_nights,
 )
+from app.agent.generation.rules.transfer_time import fix_transfer_gaps
 from app.agent.grounding.grounding_labels import apply_label, label_for_landed_item
 from app.agent.runtime.trace import record_event
 from app.common.llm_client import StreamCancelled
@@ -184,6 +185,11 @@ def _generate_drafts(
         # 与本次行程矛盾的点位（解析到别处 / 权威源否证）在这里出局，剩下
         # 的"未判定"项保留——09-19 复评：免费源的"查不到"不足以删用户的点。
         plan["items"] = drop_refuted_items(kept_items, city=req.city, report=schedule_report)
+        # 生成后确定性微调：相邻点位转场留白不足就地修（判据与 validate_plans
+        # 同源，见 rules/transfer_time）；修不掉的原样交给校验层，不在这里硬掰。
+        transfer_fixed = fix_transfer_gaps(plan["items"])
+        if transfer_fixed:
+            record_event("decision", "transfer_gap_fix", metadata={"day_no": day_no, "fixed": transfer_fixed})
         # 标签统一（P1-3）：ref 池命中行在 ground 时已写入权威标签，其余项按
         # day 链同口径补 label_for_landed_item——存在性行（服务端 source+票+坐标）
         # 拿 partially_verified/observed，未命中任何证据的拿生成/估算标签。

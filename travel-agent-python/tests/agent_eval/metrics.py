@@ -9,12 +9,8 @@ from typing import Any
 from app.agent.core.intent import build_intent_keywords
 from app.agent.data.map_link import map_directions_url
 from app.agent.data.route_service import ROUTE_ESTIMATE_TOLERANCE_MIN
-from app.agent.generation.content.reflect import (
-    _item_end,
-    _item_start,
-    estimate_transfer_minutes,
-    validate_plans,
-)
+from app.agent.generation.content.reflect import validate_plans
+from app.agent.generation.rules.transfer_time import estimate_transfer_minutes, item_end, item_start
 from app.agent.grounding.grounding_evidence import lookup_ticket
 from app.agent.research.evidence import RESEARCH_DOMAINS
 
@@ -248,12 +244,12 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
     attractions = []
     for plan in response.daily_plans:
         timed = [i for i in plan.items if i.item_type in ("attraction", "food")]
-        timed = sorted((i.model_dump() for i in timed), key=_item_start)
+        timed = sorted((i.model_dump() for i in timed), key=item_start)
         pairs += max(len(timed) - 1, 0)
         for i in range(len(timed) - 1):
             previous, following = timed[i], timed[i + 1]
-            previous_end = _item_end(previous)
-            following_start = _item_start(following)
+            previous_end = item_end(previous)
+            following_start = item_start(following)
             conflicts += previous_end > following_start
             required = estimate_transfer_minutes(previous, following)
             if required is not None:

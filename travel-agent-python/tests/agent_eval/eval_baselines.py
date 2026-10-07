@@ -23,8 +23,9 @@ sys.path.insert(0, str(ROOT))
 
 from app.agent.data.route_service import RouteService, clear_route_cache
 from app.agent.generation.content import generators
-from app.agent.generation.content.reflect import _item_end, _item_start, _route_from_matrix, validate_plans
+from app.agent.generation.content.reflect import _route_from_matrix, validate_plans
 from app.agent.generation.output import schedule_optimizer
+from app.agent.generation.rules.transfer_time import item_end, item_start
 from app.common.config import settings
 from tests.agent_eval import mock_llm
 from tests.agent_eval.dataset_schema import load_dataset
@@ -56,13 +57,13 @@ def _route_violation_counts(plans: list[dict], matrix: dict) -> tuple[int, int]:
     for plan in plans:
         active = sorted(
             [item for item in plan.get("items") or [] if item.get("item_type") in ("attraction", "food")],
-            key=_item_start,
+            key=item_start,
         )
         for previous, following in pairwise(active):
             pairs += 1
             route = _route_from_matrix(previous, following, matrix)
             required = int((route or {}).get("duration_min") or 0)
-            if required and _item_start(following) - _item_end(previous) < required:
+            if required and item_start(following) - item_end(previous) < required:
                 violated += 1
     return violated, pairs
 

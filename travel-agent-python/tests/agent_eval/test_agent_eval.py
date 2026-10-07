@@ -148,7 +148,7 @@ def test_route_violation_uses_production_tolerance():
     50%-100% 违规。这里钉住两条：容差内不判、超出容差仍判。
     """
     from app.agent.data.route_service import ROUTE_ESTIMATE_TOLERANCE_MIN
-    from app.agent.generation.content.reflect import estimate_transfer_minutes
+    from app.agent.generation.rules.transfer_time import estimate_transfer_minutes
     from tests.agent_eval.metrics import evaluate_response
 
     consumption = {"transport_price": 35, "meal_price": 80}
@@ -198,7 +198,7 @@ def test_terminal_reset_reasons_label_route_gap():
     于是「路线时间不足」这条规则永远匹配不上，归因里出现「重置了但成因是空」——
     真实数据里它恰恰是主要成因（上海第 1 天连续三对点位只留 10 分钟、需 17 分钟）。
     """
-    from app.agent.generation.content.reflect import estimate_transfer_minutes
+    from app.agent.generation.rules.transfer_time import estimate_transfer_minutes
     from tests.agent_eval.metrics import evaluate_response
 
     consumption = {"transport_price": 35, "meal_price": 80}

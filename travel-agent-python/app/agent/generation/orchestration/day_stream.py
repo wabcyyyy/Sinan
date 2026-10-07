@@ -49,6 +49,7 @@ from app.agent.generation.rules.generation_core import (
     day_hotel_clause,
     sanitize_itinerary_items,
 )
+from app.agent.generation.rules.transfer_time import fix_transfer_gaps, normalize_item_clocks
 from app.agent.grounding.facts import has_coord, local_ground
 from app.agent.grounding.grounding_labels import (
     apply_label,
@@ -58,6 +59,7 @@ from app.agent.grounding.grounding_labels import (
     label_for_landed_item,
 )
 from app.agent.runtime.memory import WorkingMemory
+from app.agent.runtime.trace import record_event
 from app.common.addons import addons
 from app.common.config import settings
 from app.common.llm_client import get_llm_client
@@ -284,6 +286,12 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     if pre_drop and not drafts:
         logger.warning("day %s refutation dropped all %s drafts -> empty day", req.day_no, pre_drop)
 
+    # 生成后确定性微调：相邻点位转场留白不足就地修（判据与 validate_plans 同源，
+    # 见 rules/transfer_time），减少 day.reflect 的无效重试；修不掉的原样上报。
+    transfer_fixed = fix_transfer_gaps(drafts)
+    if transfer_fixed:
+        record_event("decision", "transfer_gap_fix", metadata={"day_no": req.day_no, "fixed": transfer_fixed})
+
     items: list[TripItem] = []
     for item in drafts:
         poi = lookup.get(str(item.get("poi_name") or ""))
@@ -324,20 +332,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
         item["fact_evidence"] = field_fact_evidence(
             item, label, cost_observed=cost_observed, open_time_observed=open_time_observed
         )
-
-        def _norm(t):
-            return t.replace("24:", "00:") if isinstance(t, str) else t
-
-        item["start_time"] = _norm(item.get("start_time"))
-        item["end_time"] = _norm(item.get("end_time"))
-        # 知识库 duration_min 是“典型游览时长”，可能与已排时间窗不一致
-        # （如西湖库内 480 分钟、行程只排 150 分钟）。以时间窗为准。
-        from app.agent.generation.content.reflect import parse_time as _parse_time
-
-        st = _parse_time(item.get("start_time"))
-        en = _parse_time(item.get("end_time"))
-        if st is not None and en is not None and en > st:
-            item["duration_min"] = en - st
+        normalize_item_clocks(item)
 
         if item.get("item_type") == "hotel" and factor != 1.0 and item.get("cost"):
             base = float(item["cost"])

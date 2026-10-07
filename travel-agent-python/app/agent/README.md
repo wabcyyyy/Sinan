@@ -48,7 +48,7 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 > 新增生成能力时先读这里，再决定放哪一层。
 > 生成域已迁入 `generation/`，域内四层：`rules → content → output → orchestration`
 > （层序由依赖图 SCC + 拓扑排序算出；机检 = pyproject 的 "Generation sublayers" 契约）。
-> 下表的平铺名对应关系：`generation_core`/`budget` → `rules/`；`generators`/`suggestions`/
+> 下表的平铺名对应关系：`generation_core`/`budget`/`transfer_time` → `rules/`（转场判据与生成后微调，2026-10-08）；`generators`/`suggestions`/
 > `reference_pool`/`narrative`/`day_prompts`/`landing` → `content/`；`reflect`/`route_matrix`/
 > `graph_state` → `content/`（`graph_state` 已随 PR-2 并入 `research/agent_state.py` 的
 > `UnifiedAgentState`，全仓唯一图状态定义）；`formatting/`（assembly/facts/prices/quality）/`critic`/

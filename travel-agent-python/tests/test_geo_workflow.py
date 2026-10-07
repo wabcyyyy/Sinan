@@ -1,6 +1,6 @@
 from app.agent.core.geo import haversine_meters, nearest_neighbor_order
-from app.agent.generation.content.reflect import parse_time
 from app.agent.generation.orchestration.workflow import needs_fix
+from app.agent.generation.rules.transfer_time import parse_time
 from app.agent.research.agent_state import UnifiedAgentState
 
 

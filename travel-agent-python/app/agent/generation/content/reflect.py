@@ -9,22 +9,24 @@
 - 全部为无副作用的确定性规则，配合 workflow 的“生成 → 校验 → 修复”循环；
 - 单日饱和度由阈值常量（MAX_DAILY_MINUTES / MAX_DAILY_ATTRACTIONS）控制。
 
-依赖：generation_core / geo / route_service（时长与路线口径共用唯一实现）。
+依赖：rules.generation_core / rules.transfer_time（时间解析与转场判据的唯一实现，
+2026-10-08 自本模块下沉——rules 是生成域最底层，生成后微调 fix_transfer_gaps
+与本层校验共用同一判据而不必复制常量）/ route_service（估算源判定与容差）。
 """
 
-import math
-import re
-
-from app.agent.core.geo import haversine_meters
 from app.agent.data.route_service import (
-    ROAD_DISTANCE_FACTOR,
     ROUTE_BUFFER_RATIO,
     ROUTE_ESTIMATE_TOLERANCE_MIN,
     ROUTE_FIXED_BUFFER_MIN,
-    ROUTE_SPEED_KMH,
     is_estimated,
 )
 from app.agent.generation.rules.generation_core import estimate_plans_total, has_double_lunch, meal_slot_of
+from app.agent.generation.rules.transfer_time import (
+    estimate_transfer_minutes,
+    item_end,
+    item_start,
+    parse_open_window,
+)
 
 MAX_DAILY_MINUTES = 480
 MAX_DAILY_ATTRACTIONS = 6
@@ -33,65 +35,6 @@ MIN_ACTIVE_MINUTES = 240
 # 预算超支 issue 的稳定标记（单一真源）：整趟终检的调用方据此从合并 issues 里认出
 # 预算项（BIZ-1），不许在别处再写字面量。
 BUDGET_OVERAGE_MARK = "超出预算"
-
-_TIME_RE = re.compile(r"^(\d{1,2}):(\d{2})$")
-
-
-def parse_time(value: str | None) -> int | None:
-    if not value:
-        return None
-    m = _TIME_RE.match(value.strip())
-    if not m:
-        return None
-    hour, minute = int(m.group(1)), int(m.group(2))
-    # "99:99" 之类非法时间必须拒绝，否则会被解析成 6039 分钟蒙混过冲突检测。
-    if hour > 23 or minute > 59:
-        return None
-    return hour * 60 + minute
-
-
-def _parse_open_window(open_time: str | None) -> tuple[int, int] | None:
-    if not open_time:
-        return None
-    ranges = re.findall(r"(\d{1,2}):(\d{2})\s*[-~至]\s*(\d{1,2}):(\d{2})", open_time)
-    if not ranges:
-        return None
-    start = int(ranges[0][0]) * 60 + int(ranges[0][1])
-    end = int(ranges[0][2]) * 60 + int(ranges[0][3])
-    # 跨午夜闭馆（如 18:00-02:00）：结束时间归一化到次日，避免误报"不符"。
-    if end <= start:
-        end += 24 * 60
-    return start, end
-
-
-def _item_start(item: dict) -> int:
-    return parse_time(item.get("start_time")) or 0
-
-
-def _item_end(item: dict) -> int:
-    end = parse_time(item.get("end_time"))
-    if end is not None:
-        return end
-    start = _item_start(item)
-    duration = item.get("duration_min")
-    return start + int(duration or 120)
-
-
-def estimate_transfer_minutes(first: dict, second: dict) -> int | None:
-    """按 POI 坐标估算保守换乘时间；缺坐标时返回 None，不猜路线。"""
-    coords = (first.get("latitude"), first.get("longitude"), second.get("latitude"), second.get("longitude"))
-    if any(value is None for value in coords):
-        return None
-    try:
-        # 0/0 是 RAG 缺失哨兵，不能当真实坐标算路程
-        if any(abs(float(value)) <= 1e-6 for value in coords):
-            return None
-        distance_m = haversine_meters(*(float(value) for value in coords))
-    except (TypeError, ValueError):
-        return None
-    base = max(5.0, distance_m * ROAD_DISTANCE_FACTOR / (ROUTE_SPEED_KMH * 1000 / 60))
-    # 固定 10 分钟处理离场、找出口/停车点，比例余量处理拥堵和地图误差。
-    return math.ceil(base * (1 + ROUTE_BUFFER_RATIO) + ROUTE_FIXED_BUFFER_MIN)
 
 
 def _route_from_matrix(first: dict, second: dict, route_matrix: dict | None) -> dict | None:
@@ -132,11 +75,11 @@ def validate_plans(
             continue
 
         timed = [it for it in items if it.get("item_type") in ("attraction", "food")]
-        timed.sort(key=_item_start)
+        timed.sort(key=item_start)
         for i in range(len(timed) - 1):
             prev, nxt = timed[i], timed[i + 1]
-            prev_end = _item_end(prev)
-            next_start = _item_start(nxt)
+            prev_end = item_end(prev)
+            next_start = item_start(nxt)
             if prev_end > next_start:
                 issues.append(
                     f"第 {day_no} 天时间冲突：{prev.get('poi_name')}({prev.get('start_time')}-{prev.get('end_time')}) "
@@ -173,9 +116,9 @@ def validate_plans(
         for it in items:
             if it.get("item_type") != "attraction":
                 continue
-            start = _item_start(it)
-            window = _parse_open_window(it.get("open_time"))
-            end = _item_end(it)
+            start = item_start(it)
+            window = parse_open_window(it.get("open_time"))
+            end = item_end(it)
             if window and not (window[0] <= start and end <= window[1]):
                 issues.append(
                     f"第 {day_no} 天开放时间不符：{it.get('poi_name')} 计划 "
@@ -187,7 +130,7 @@ def validate_plans(
         foods = [it for it in items if it.get("item_type") == "food"]
         active = [it for it in items if it.get("item_type") in ("attraction", "food")]
         # 负时长（end<start 的跨午夜脏数据）按 0 计，避免抵消其它项而掩盖超满。
-        total = sum(max(0, _item_end(it) - _item_start(it)) for it in active)
+        total = sum(max(0, item_end(it) - item_start(it)) for it in active)
         # 只有酒店/餐饮没有景点的行程不可交付：必须进反思循环修复，
         # 禁止以 READY_WITH_WARNINGS 交付。
         if not attractions and items:

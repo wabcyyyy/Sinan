@@ -14,7 +14,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 from app.agent.data.route_service import RouteService, default_route_service, is_estimated
-from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, parse_time
+from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES
+from app.agent.generation.rules.transfer_time import parse_time
 
 _OPEN_RE = re.compile(r"(\d{1,2}):(\d{2})\s*[-~至]\s*(\d{1,2}):(\d{2})")
 

@@ -291,17 +291,20 @@ def test_open_result_with_attractions_kept_when_route_validation_exhausted(monke
     monkeypatch.setattr(landing, "local_ground", lambda *_args, **_kwargs: None)
 
     def open_day(req, _used):
-        # 相邻两天各 1 景点+酒店；时间安排合法，制造路线类校验问题的 simplest 方式：
-        # 用开放时间越界以外的问题——直接用两个景点间隔过短。
+        # 相邻 1 景点+餐饮+酒店，制造**修不掉**的路线类校验问题：间隔过短
+        # （1 分钟 << 需约 123 分钟），且落在转场微调规则（rules/transfer_time）
+        # 的边界外——前条已在 30 分钟游览保底无从收缩、后条贴着当天 23:59
+        # 无顺延空间。可修复的缺口在生成后就地修掉了（2026-10-08），只有这种
+        # 边界外的违规才会走到「路线校验反复不过 → 保留原行程并如实降级」。
         return {
             "note": f"{req.city}行程",
             "items": [
                 {
                     "item_type": "attraction",
                     "poi_name": "玉龙雪山",
-                    "start_time": "09:00",
-                    "end_time": "14:00",
-                    "duration_min": 300,
+                    "start_time": "19:00",
+                    "end_time": "19:30",
+                    "duration_min": 30,
                     "latitude": 27.1164,
                     "longitude": 100.18,
                     "cost": 100,
@@ -309,9 +312,9 @@ def test_open_result_with_attractions_kept_when_route_validation_exhausted(monke
                 {
                     "item_type": "food",
                     "poi_name": "云雪丽餐厅",
-                    "start_time": "14:30",
-                    "end_time": "15:30",
-                    "duration_min": 60,
+                    "start_time": "19:31",
+                    "end_time": "23:59",
+                    "duration_min": 268,
                     "latitude": 26.87,
                     "longitude": 100.23,
                     "cost": 80,

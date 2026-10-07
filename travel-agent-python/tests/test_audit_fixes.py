@@ -13,9 +13,10 @@ import pytest
 
 from app.agent.generation.content import landing
 from app.agent.generation.content.reference_pool import ReferencePool
-from app.agent.generation.content.reflect import parse_time, validate_plans
+from app.agent.generation.content.reflect import validate_plans
 from app.agent.generation.orchestration import open_plans, workflow
 from app.agent.generation.orchestration.day_stream import llm_open_day
+from app.agent.generation.rules.transfer_time import parse_time
 from app.agent.grounding import facts as grounding
 from app.agent.grounding.existence import UNKNOWN, VERIFIED, ResolveResult
 from app.agent.grounding.facts import local_ground
