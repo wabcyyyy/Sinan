@@ -1261,6 +1261,14 @@
           "default": null,
           "title": "Hoteltier"
         },
+        "preferences": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Preferences",
+          "type": "array"
+        },
         "chosenHotel": {
           "anyOf": [
             {
@@ -1364,6 +1372,7 @@
         "perDayChain",
         "usedNames",
         "hotelTier",
+        "preferences",
         "chosenHotel",
         "needsHotel",
         "requirements",

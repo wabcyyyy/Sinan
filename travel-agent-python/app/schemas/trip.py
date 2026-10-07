@@ -363,6 +363,7 @@ class GenerateDayRequest(WireModel):
     # 条目数受参考资料池上限约束，这里给宽松但有限的边界。
     used_names: list[str] = Field(default_factory=list, max_length=200)
     hotel_tier: str | None = None
+    preferences: list[str] = Field(default_factory=list, max_length=20)
     chosen_hotel: str | None = None
     needs_hotel: bool = True
     requirements: str | None = Field(default=None, max_length=4000)  # 客户额外要求（自然语言）

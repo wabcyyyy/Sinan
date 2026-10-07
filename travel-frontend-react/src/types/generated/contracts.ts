@@ -156,6 +156,7 @@ export interface GenerateDayRequest {
   perDayChain: boolean
   usedNames: string[]
   hotelTier: string | null
+  preferences: string[]
   chosenHotel: string | null
   needsHotel: boolean
   requirements: string | null

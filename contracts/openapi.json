@@ -7577,6 +7577,14 @@
             ],
             "title": "Hoteltier"
           },
+          "preferences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Preferences"
+          },
           "chosenHotel": {
             "anyOf": [
               {
