@@ -140,6 +140,9 @@ def test_run_search_merges_task_intent_keywords_into_extras(monkeypatch):
 
     monkeypatch.setattr(tools, "search_attractions", fake_search)
     monkeypatch.setattr(web_search_mod, "search_places_via_web", fake_web)
+    # 补池闸门整体桩成开：生产闸门还要看 search 角色凭据与 addon（机器状态，
+    # CI 上凭据恒假），只靠默认 settings 会让本用例在 CI 假红。
+    monkeypatch.setattr(web_search_mod, "web_search_enabled", lambda: True)
     monkeypatch.setattr(reasoning, "plan_research", lambda task: {"extra_keywords": ["杭州 西湖"]})
     monkeypatch.setattr(
         reasoning, "evaluate_research", lambda task, items, round_no: {"sufficient": True, "extra_keywords": []}

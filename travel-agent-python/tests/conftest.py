@@ -111,6 +111,13 @@ def _disable_live_geocoding(monkeypatch):
     # 依赖"开发机恰好没配"。这里与上面几个收费源 key 同待遇钉死。
     monkeypatch.setattr(settings, "travelpayouts_token", "")
     monkeypatch.setattr(settings, "serpapi_key", "")
+    # LLM 凭据同样不能漂：开发机 .env 里有真 key、CI 上 LLM_API_KEY=''，凡是
+    # `configured(role)` 类闸门（联网补池、联网报价……）就会「本机绿 CI 红」
+    # （2026-10-07 实测 4 例）。这里把 settings 的 key 钉成空串 = 精确复刻 CI
+    # 条件，**不要**去替换整条闸门函数——self-managed 用例（如
+    # test_format_output_golden 的 stubbed fixture 自己钉 llm_api_key）必须
+    # 还能通过它把闸门撑开。
+    monkeypatch.setattr(settings, "llm_api_key", "")
     yield
 
 

@@ -189,10 +189,11 @@ def test_research_evaluate_insufficient_triggers_refine_round(monkeypatch):
 
     monkeypatch.setattr(tools, "search_attractions", fake_search)
     monkeypatch.setattr(web_search_mod, "search_places_via_web", fake_web)
-    # 补池前提是联网入口开着（autouse fixture 默认关）：以前这条用例是靠
-    # `_run_search` 不看哨兵、直接把补丁函数当真来通过的，等于断言了一个生产
-    # 不可能出现的状态；现在哨兵在调用点就生效，用例如实把它打开。
-    monkeypatch.setattr(web_search_mod.settings, "web_search_enabled", True)
+    # 补池前提是联网入口开着：本文件 autouse 的 _disable_web_refill 只关 settings
+    # 开关，而生产闸门（settings && search 角色凭据 && addon）的后两项是机器状态
+    # （开发机有 key、CI 上 LLM_API_KEY=''）——只钉 settings 会在 CI 假红。这里
+    # 把整个模块级闸门如实桩成开，等价于 test_m3_intent_pool 的同款桩法。
+    monkeypatch.setattr(web_search_mod, "web_search_enabled", lambda: True)
     monkeypatch.setattr(reasoning, "plan_research", lambda task: {})
     monkeypatch.setattr(
         reasoning,
@@ -396,7 +397,9 @@ def _drive_research_supplements(monkeypatch, *, max_research_calls: int):
     返回（证据包，实际补池的关键词，本次 run 的事件）。研究额度是这次改动加的，
     断言点在于：停下之后已有的证据照样交付，且停的原因进了 gaps。
     """
-    monkeypatch.setattr(web_search.settings, "web_search_enabled", True)
+    # 闸门整体桩成开（生产闸门 = settings && search 角色凭据 && addon，后两项是
+    # 机器状态）：不依赖开发机恰好配了凭据，CI（LLM_API_KEY=''）也能走同一分支。
+    monkeypatch.setattr(web_search, "web_search_enabled", lambda: True)
     monkeypatch.setattr(tools, "search_attractions", lambda *_a, **_k: [{"name": "西湖"}])
     monkeypatch.setattr(reasoning, "plan_research", lambda _task: {"extra_keywords": ["亲子", "夜游", "小众"]})
     monkeypatch.setattr(reasoning, "evaluate_research", lambda *_a, **_k: {"sufficient": True})
