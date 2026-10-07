@@ -3,7 +3,7 @@
     "type": "day",
     "plan": {
       "dayNo": 1,
-      "note": "巴塞罗那第1天行程",
+      "note": "09:00–10:30 巴塞罗那景点1；11:00–12:30 巴塞罗那景点2；18:00–19:00 巴塞罗那本地餐厅1；21:00–08:00 巴塞罗那舒适酒店1（价格为估算，请以现场或官方渠道为准）",
       "items": [
         {
           "itemType": "attraction",
@@ -102,7 +102,7 @@
           "factEvidence": {}
         }
       ],
-      "theme": null,
+      "theme": "巴塞罗那景点1 → 巴塞罗那景点2",
       "miniRoute": {},
       "backupPlan": [],
       "photoSpots": [],
@@ -116,7 +116,7 @@
     "type": "day",
     "plan": {
       "dayNo": 2,
-      "note": "巴塞罗那第2天行程",
+      "note": "09:00–10:30 巴塞罗那景点3；11:00–12:30 巴塞罗那景点4；18:00–19:00 巴塞罗那本地餐厅2（价格为估算，请以现场或官方渠道为准）",
       "items": [
         {
           "itemType": "attraction",
@@ -191,7 +191,7 @@
           "factEvidence": {}
         }
       ],
-      "theme": null,
+      "theme": "巴塞罗那景点3 → 巴塞罗那景点4",
       "miniRoute": {},
       "backupPlan": [],
       "photoSpots": [],
@@ -205,7 +205,7 @@
     "type": "day",
     "plan": {
       "dayNo": 3,
-      "note": "巴塞罗那第3天行程",
+      "note": "09:00–10:30 巴塞罗那景点5；11:00–12:30 巴塞罗那景点6；18:00–19:00 巴塞罗那本地餐厅3（价格为估算，请以现场或官方渠道为准）",
       "items": [
         {
           "itemType": "attraction",
@@ -280,7 +280,7 @@
           "factEvidence": {}
         }
       ],
-      "theme": null,
+      "theme": "巴塞罗那景点5 → 巴塞罗那景点6",
       "miniRoute": {},
       "backupPlan": [],
       "photoSpots": [],
@@ -294,7 +294,7 @@
     "type": "day_patch",
     "plan": {
       "dayNo": 2,
-      "note": "巴塞罗那第2天行程",
+      "note": "09:00–10:30 巴塞罗那景点3；11:00–12:30 巴塞罗那景点4；18:00–19:00 巴塞罗那本地餐厅2；19:00–19:30 巴塞罗那舒适酒店1（价格为估算，请以现场或官方渠道为准）",
       "items": [
         {
           "itemType": "attraction",
@@ -375,9 +375,9 @@
           "address": "巴塞罗那市中心1",
           "latitude": null,
           "longitude": null,
-          "startTime": "21:00",
-          "endTime": "08:00",
-          "durationMin": 90,
+          "startTime": "19:00",
+          "endTime": "19:30",
+          "durationMin": 30,
           "openTime": null,
           "cost": 350.0,
           "tag": "住宿",
@@ -393,7 +393,7 @@
           "factEvidence": {}
         }
       ],
-      "theme": null,
+      "theme": "巴塞罗那景点3 → 巴塞罗那景点4",
       "miniRoute": {},
       "backupPlan": [],
       "photoSpots": [],

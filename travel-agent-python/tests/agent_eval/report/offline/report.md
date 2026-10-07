@@ -2,7 +2,7 @@
 
 - 数据模式：固定权威 fixture + fallback 生成器（不依赖外部服务）
 - 用例数：13
-- 数据集：cases.json（sha256 6bf7ce311bf3…）
+- 数据集：cases.json（sha256 deb7abf771b7…）
 
 | 指标 | 结果 |
 | --- | ---: |

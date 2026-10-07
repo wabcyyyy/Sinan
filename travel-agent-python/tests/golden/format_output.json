@@ -134,11 +134,11 @@
           }
         ],
         "mini_route": {},
-        "note": "西湖线",
+        "note": "09:00–12:00 西湖；12:40–13:40 楼外楼",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": "湖景",
+        "theme": "西湖 → 楼外楼",
         "trip_theme": null
       }
     ],
@@ -436,11 +436,11 @@
           }
         ],
         "mini_route": {},
-        "note": "山线",
+        "note": "09:00–12:00 灵隐寺；12:40–13:40 素斋；14:20–16:20 永福寺",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "灵隐寺 → 素斋",
         "trip_theme": null
       }
     ],
@@ -745,11 +745,11 @@
           }
         ],
         "mini_route": {},
-        "note": "自由探索（价格为估算，请以现场或官方渠道为准）",
+        "note": "09:00–12:00 小众码头；12:40–13:40 社区面馆；14:10–16:10 旧仓库（价格为估算，请以现场或官方渠道为准）",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "小众码头 → 社区面馆",
         "trip_theme": "慢游杭州"
       }
     ],
@@ -1046,11 +1046,11 @@
           }
         ],
         "mini_route": {},
-        "note": "含酒店",
+        "note": "09:00–12:00 西溪湿地；12:40–13:40 农家菜；14:20–16:20 福堤",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "西溪湿地 → 农家菜",
         "trip_theme": null
       }
     ],
@@ -1298,11 +1298,11 @@
           }
         ],
         "mini_route": {},
-        "note": "无实时价",
+        "note": "09:00–14:00 玉龙雪山；14:40–15:40 云雪丽",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "玉龙雪山 → 云雪丽",
         "trip_theme": null
       }
     ],
@@ -1636,11 +1636,11 @@
           }
         ],
         "mini_route": {},
-        "note": "餐线",
+        "note": "09:00–11:00 河坊街；11:40–13:10 杭州本地餐厅1；13:40–14:40 无名小馆；15:10–17:10 南宋官窑",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "河坊街 → 杭州本地餐厅1",
         "trip_theme": null
       }
     ],
@@ -1948,11 +1948,11 @@
           }
         ],
         "mini_route": {},
-        "note": "D1",
+        "note": "09:00–12:00 西湖；12:40–13:40 楼外楼；18:00–18:30 杭州舒适酒店1",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "西湖 → 楼外楼",
         "trip_theme": null
       },
       {
@@ -2056,11 +2056,11 @@
           }
         ],
         "mini_route": {},
-        "note": "D2",
+        "note": "09:00–13:00 灵隐寺；13:40–14:40 素斋",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "灵隐寺 → 素斋",
         "trip_theme": null
       },
       {
@@ -2117,11 +2117,11 @@
           }
         ],
         "mini_route": {},
-        "note": "D3",
+        "note": "10:00–15:00 宋城",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "宋城",
         "trip_theme": null
       }
     ],
@@ -2404,7 +2404,7 @@
             "address": null,
             "cost": null,
             "duration_min": null,
-            "end_time": "worse",
+            "end_time": null,
             "fact_evidence": {
               "identity": {
                 "expires_at": null,
@@ -2430,7 +2430,7 @@
             "review_requirement": "before_departure",
             "source": "llm.open_day",
             "source_updated_at": null,
-            "start_time": "bad",
+            "start_time": null,
             "tag": null,
             "value_kind": "estimated",
             "verification_status": "unverified",
@@ -2438,11 +2438,11 @@
           }
         ],
         "mini_route": {},
-        "note": "混合",
+        "note": "10:00–11:00 丝绸店；龙井采茶；未定",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "丝绸店 → 龙井采茶",
         "trip_theme": null
       },
       {
@@ -2451,7 +2451,7 @@
         "day_options": [],
         "items": [],
         "mini_route": {},
-        "note": "空日",
+        "note": "第 2 天尚未生成可用行程",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
@@ -2466,7 +2466,7 @@
       "blocking_issues": [
         {
           "code": "ROUTE_OR_SCHEDULE_CONFLICT",
-          "message": "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+          "message": "第 1 天时间冲突：龙井采茶(None-None) 与 未定(None) 重叠",
           "path": null
         },
         {
@@ -2594,9 +2594,9 @@
     "validation_log": [
       "第 2 天无行程项",
       "发现 2 个问题：",
-      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(None) 重叠",
       "第 1 天未安排餐饮",
-      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(bad) 重叠",
+      "第 1 天时间冲突：龙井采茶(None-None) 与 未定(None) 重叠",
       "第 1 天未安排餐饮"
     ]
   },
@@ -2629,7 +2629,7 @@
         "day_options": [],
         "items": [],
         "mini_route": {},
-        "note": "只有酒店",
+        "note": "第 1 天尚未生成可用行程",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
@@ -2766,7 +2766,7 @@
         "day_options": [],
         "items": [],
         "mini_route": {},
-        "note": "草案",
+        "note": "第 1 天尚未生成可用行程",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
@@ -3047,11 +3047,11 @@
           }
         ],
         "mini_route": {},
-        "note": "带建议",
+        "note": "09:00–12:00 西湖；12:40–13:40 知味观；14:10–16:10 柳浪闻莺",
         "photo_spots": [],
         "practical_notes": [],
         "suggestions": [],
-        "theme": null,
+        "theme": "西湖 → 知味观",
         "trip_theme": null
       }
     ],

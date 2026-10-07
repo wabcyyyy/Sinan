@@ -11,7 +11,7 @@
         "note": "证据票背书率（D11A 口径）；mock 全票 = 1.0，掉了就是接地回归"
       },
       "poi_grounded_rate": {
-        "min": 0.6528,
+        "min": 0.7124,
         "note": "票+坐标双落地率；含 coords:false 无坐标变体，故不到 1"
       },
       "poi_refuted_count": {
@@ -73,7 +73,7 @@
         "note": "三域证据包规模合计（12+4+2 fixture）：结构计数"
       },
       "coord_valid_rate": {
-        "min": 0.6528,
+        "min": 0.7124,
         "note": "attraction/food/hotel 坐标有效率（C3.2）；含 coords:false 变体故不到 1"
       },
       "deeplink_resolvable_rate": {
