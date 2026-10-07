@@ -297,6 +297,10 @@ def _report_markdown(report: dict) -> str:
         f"open_day prompt：`{report['open_day_prompt_version']}` ｜ "
         f"open_trip prompt：`{report['open_trip_prompt_version']}`",
         f"- 用例数：{report['case_count']} ｜ 两遍一致率：{report['consistency_rate']:.2%}",
+        "- 两个口径别混读：`route_violation_rate` 量的是**业务终检前**的中间产物"
+        "（评测只调 run_generate_trip_stream，不跑落库后的 validate_plans）；"
+        "`terminal_reset_day_rate` 用生产同一判官算「生产会重置几成天」——"
+        "那才是用户实际会撞到的缺口信号（重置天要重烧一次 LLM，或最终落 PENDING）。",
         "",
     ]
     for detail in report["details"]:
@@ -324,6 +328,7 @@ def _report_markdown(report: dict) -> str:
             ("route_violation_rate", quality.get("route_violation_rate")),
             ("attraction_duplicate_rate", quality.get("attraction_duplicate_rate")),
             ("budget_deviation_rate", quality.get("budget_deviation_rate")),
+            ("terminal_reset_day_rate", quality.get("terminal_reset_day_rate")),
             ("coord_valid_rate", depth.get("coord_valid_rate")),
             ("deeplink_resolvable_rate", depth.get("deeplink_resolvable_rate")),
             ("category_reasonable_rate", depth.get("category_reasonable_rate")),

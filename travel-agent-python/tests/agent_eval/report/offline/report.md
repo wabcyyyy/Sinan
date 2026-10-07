@@ -14,6 +14,7 @@
 | route_violation_rate | 0.00% |
 | attraction_duplicate_rate | 0.00% |
 | budget_deviation_rate | 0.00% |
+| terminal_reset_day_rate | 1.54% |
 | success_status_rate | 0.00% |
 | degraded_status_rate | 100.00% |
 | failed_status_rate | 0.00% |

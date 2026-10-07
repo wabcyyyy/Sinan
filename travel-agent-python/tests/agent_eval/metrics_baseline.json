@@ -39,6 +39,10 @@
         "max": 0.0,
         "note": "预算偏差率（生产同口径期望）：越低越好"
       },
+      "terminal_reset_day_rate": {
+        "max": 0.0154,
+        "note": "生产终检会重置的天占比（validate_plans 逐日判，itinerary_generation.py:591-651）：越低越好；mock 现值 0.0154 按实测认账"
+      },
       "success_status_rate": {
         "min": 0.0,
         "max": 0.0,

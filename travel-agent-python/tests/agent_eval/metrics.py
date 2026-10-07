@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from typing import Any
 
 from app.agent.core.intent import build_intent_keywords
 from app.agent.data.map_link import map_directions_url
-from app.agent.generation.content.reflect import _item_end, _item_start, estimate_transfer_minutes
+from app.agent.data.route_service import ROUTE_ESTIMATE_TOLERANCE_MIN
+from app.agent.generation.content.reflect import (
+    _item_end,
+    _item_start,
+    estimate_transfer_minutes,
+    validate_plans,
+)
 from app.agent.grounding.grounding_evidence import lookup_ticket
 from app.agent.research.evidence import RESEARCH_DOMAINS
 
@@ -15,6 +22,32 @@ from app.agent.research.evidence import RESEARCH_DOMAINS
 # research.<domain> 的事件（节点/主线程工具）都归主泳道，排最后。
 _LANE_RANK_OF_NAME = {f"research.{domain}": rank for rank, domain in enumerate(RESEARCH_DOMAINS)}
 _MAIN_LANE_RANK = len(RESEARCH_DOMAINS)
+
+# terminal_reset_day_rate 的成因归类：(报告标签, issue 文案里的匹配串)。
+# 只报数字不知道成因，就等于把「七成天会被重置」当成结论交付——先能说清是哪条规则在响。
+# 一天可能同时中多条，各记一次（所以各标签计数之和 ≥ 重置天数）。
+# 未认领的 issue 由 _unlabeled_kind 兜底归一，新增规则不会静默漏出归因。
+_RESET_REASON_MARKERS: tuple[tuple[str, str], ...] = (
+    ("安排过稀", "安排过稀"),
+    ("行程过满", "行程过满"),
+    ("时间冲突", "时间冲突"),
+    ("转场时间不足", "路线时间不足"),
+    ("开放时间不符", "开放时间不符"),
+    ("无景点", "未安排任何景点"),
+    ("无餐饮", "未安排餐饮"),
+    ("景点过多", "景点过多"),
+    ("两顿午餐", "两顿午餐"),
+    ("餐饮未标价", "cost 为 0"),
+)
+
+
+def _unlabeled_kind(issue: str) -> str:
+    """没被标签表认领的 issue：按文案归一成可聚合的标签（去天数/括号/引号内容）。"""
+    text = re.sub(r"^第\s*\d+\s*天", "", issue)
+    text = re.sub(r"[（(][^）)]*[）)]", "", text)
+    text = re.sub(r"[「『][^」』]*[」』]", "", text)
+    text = re.sub(r"\d+", "", text)
+    return text.split("：")[0].split("；")[0].strip()[:20] or "其他"
 
 
 def _lane_rank_of_name(name: str) -> int | None:
@@ -225,7 +258,11 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
             required = estimate_transfer_minutes(previous, following)
             if required is not None:
                 route_pairs += 1
-                route_violations += following_start >= previous_end and following_start - previous_end < required
+                # 与生产判官同口径：本函数只用坐标估算（没有 route_matrix），而
+                # validate_plans 对估算路线给 ROUTE_ESTIMATE_TOLERANCE_MIN 分钟容差
+                # （reflect.py:156-161）。裸比会把 1-5 分钟的裕量差记成违规。
+                gap = following_start - previous_end
+                route_violations += following_start >= previous_end and gap + ROUTE_ESTIMATE_TOLERANCE_MIN < required
         attractions.extend(i.poi_name for i in plan.items if i.item_type == "attraction")
     duplicates.update(attractions)
     duplicate_count = sum(n - 1 for n in duplicates.values() if n > 1)
@@ -261,7 +298,19 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
         "酒店": round(selected_hotel * rooms, 2),
     }
     expected_total = sum(expected.values())
-    actual_total = sum(float(v) for v in response.budget_estimate.values())
+    # ⚠ 这个指标的能力边界，读的人必须知道（2026-10-07 实测厘清）：
+    # - 生产**显示给用户**的预算是落库后读时算的（itinerary_query.py:326 从 budget 行求和），
+    #   agent 流根本不产出它（done 事件无预算字段）。所以评测路径只能自己合成一个。
+    # - 合成用的是 estimate_plans_total（generation_core.py:308-314），而上面的 expected
+    #   复刻的是 prices.recompute_budget（prices.py:134-154）。两者对「无价餐饮」的处理
+    #   不同：estimate 按 0 计，expected 回落城市人均×2 餐。实测一条无价餐饮就能造出
+    #   62.75% 的偏差——那是**公式错配，不是产品问题**。
+    # - 结论：本指标只能当「合成口径 vs 期望口径」的漂移绊线用，**不能当产品预算质量**读；
+    #   要真测产品预算，评测必须跑业务层（落库后读时算的那条路），那是另一件事。
+    # 5 键形状（含「合计」便捷键）的重复计数是已修的历史 bug：裸 sum(values()) 会把明细
+    # 与合计各加一遍，任何预算都恒判 ~100% 偏差（实测一份完全正确的预算得 1.0）。
+    budget = response.budget_estimate or {}
+    actual_total = float(budget["合计"]) if "合计" in budget else sum(float(v) for v in budget.values())
 
     trace_events = trace.get("events", [])
     tool_events = [event for event in trace_events if event["kind"] == "tool"]
@@ -271,12 +320,41 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
     research_agents = research.get("agents") or {}
     research_rounds = sum((a or {}).get("rounds", 0) for a in research_agents.values())
     research_pack = sum((a or {}).get("count", 0) for a in research_agents.values())
+    # 生产终检口径：stream 落库天后业务侧逐天跑 validate_plans，违规天重置 PENDING
+    # 交逐日循环重生成（itinerary_generation.py:591-651）。评测只调
+    # run_generate_trip_stream、不跑那道终检，所以上面的 route_violation_rate 量的是
+    # 「终检前」的中间产物；这个指标用同一判官算出「生产会重置几天」，才是用户实际
+    # 会撞到的缺口信号——重置天意味着该天要重烧一次 LLM，或最终落 PENDING。
+    # 与生产一致：逐天调用 budget=None（reflect.py:229 有 budget is not None 前置）。
+    # ⚠ 这是**下界**：生产在逐天判定之外还叠了整趟预算 issue（_trip_budget_issues，
+    # 带 command.budget 与 settings.budget_hard_constraint），评测不复制那一层——
+    # 所以真实重置天数只会 ≥ 这里的值，不会更少。
+    reset_days = 0
+    reset_reasons: dict[str, int] = {}
+    for plan in response.daily_plans:
+        day = {"day_no": plan.day_no, "items": [item.model_dump() for item in plan.items]}
+        day_issues, _rule_log = validate_plans([day], budget=None, persons=int(case.get("persons") or 1))
+        if day_issues:
+            reset_days += 1
+            claimed: set[int] = set()
+            for label, marker in _RESET_REASON_MARKERS:
+                hits = [index for index, issue in enumerate(day_issues) if marker in issue]
+                if hits:
+                    reset_reasons[label] = reset_reasons.get(label, 0) + 1
+                    claimed.update(hits)
+            for index, issue in enumerate(day_issues):
+                if index not in claimed:
+                    other = _unlabeled_kind(issue)
+                    reset_reasons[other] = reset_reasons.get(other, 0) + 1
     return {
         "case": case,
         "status": response.status,
         "status_reason": response.status_reason,
         "days": len(response.daily_plans),
         "total_items": len(items),
+        "terminal_reset_day_rate": round(reset_days / max(len(response.daily_plans), 1), 4),
+        # 成因分解（按天计，一天中多条则各记一次）：让上面那个率可解释，而不是一个孤立数字
+        "terminal_reset_reasons": reset_reasons,
         "poi_authority_rate": round(len(authoritative) / max(len(poi_items), 1), 4),
         # 与 coord_valid_rate 成对看：只算坐标会给"模型自填坐标"记成功，
         # 只算票会漏掉"查到过但这一版没落上坐标"——两个一起才看得清接地质量。

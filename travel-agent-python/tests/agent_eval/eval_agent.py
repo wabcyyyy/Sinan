@@ -164,6 +164,9 @@ def build_report(cases: list[dict], dataset: dict | None = None) -> dict:
             "route_violation_rate": _average(results, "route_violation_rate"),
             "attraction_duplicate_rate": _average(results, "attraction_duplicate_rate"),
             "budget_deviation_rate": _average(results, "budget_deviation_rate"),
+            # 生产终检口径：业务侧对 stream 落库天跑 validate_plans，违规天重置重生成
+            # （itinerary_generation.py:591-651）。这个率 = 生产会重置几成天，越低越好。
+            "terminal_reset_day_rate": _average(results, "terminal_reset_day_rate"),
             "success_status_rate": round(sum(r["status"] == "success" for r in results) / max(len(results), 1), 4),
             "degraded_status_rate": round(sum(r["status"] == "degraded" for r in results) / max(len(results), 1), 4),
             "failed_status_rate": round(sum(r["status"] == "failed" for r in results) / max(len(results), 1), 4),
