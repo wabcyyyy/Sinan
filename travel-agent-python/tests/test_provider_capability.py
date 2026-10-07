@@ -156,6 +156,41 @@ def test_validate_passes_on_default_config(monkeypatch):
     model_registry.validate()
 
 
+def test_validate_warns_when_search_role_cannot_search(monkeypatch, caplog):
+    """search 角色落在没有联网能力的网关上，必须在启动日志里说出来。
+
+    2026-10-07 真实评测实测：只配 DeepSeek 时 search 角色就在这样的网关上，联网补池与
+    实时价整体降级为「未联网」。降级本身是设计（web_search 一次外呼不发、绝不用模型
+    记忆冒充检索结果），缺口在运维看不见——日志不提示就会以为联网开着，实际每个行程
+    都按无检索口径产出。与 main 未配 key 的警告同口径：只警告不 fail。
+    """
+    import logging
+
+    monkeypatch.setattr(settings, "agent_host", "0.0.0.0")
+    monkeypatch.setattr(settings, "llm_base_url", "https://api.deepseek.com")
+    for role in ("main", "fast", "vision", "judge", "search", "stt"):
+        monkeypatch.setattr(settings, f"llm_role_{role}", "")
+
+    with caplog.at_level(logging.WARNING):
+        model_registry.validate()
+
+    assert "没有联网能力" in caplog.text
+
+
+def test_validate_quiet_when_search_role_has_search_capability(monkeypatch, caplog):
+    """反例：search 角色真落在带 enable_search 的百炼兼容层上时不许误报。"""
+    import logging
+
+    monkeypatch.setattr(settings, "agent_host", "0.0.0.0")
+    monkeypatch.setattr(settings, "llm_provider_dashscope_base_url", DASHSCOPE)
+    monkeypatch.setattr(settings, "llm_role_search", "dashscope:qwen-plus")
+
+    with caplog.at_level(logging.WARNING):
+        model_registry.validate()
+
+    assert "没有联网能力" not in caplog.text
+
+
 def test_byok_route_overrides_every_role(monkeypatch):
     """BYOK 是用户自己的网关：它盖过部署默认的角色绑定。"""
     monkeypatch.setattr(settings, "llm_provider_dashscope_base_url", DASHSCOPE)

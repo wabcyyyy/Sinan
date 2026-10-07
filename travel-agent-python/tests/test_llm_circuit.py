@@ -503,14 +503,18 @@ def _registry_warnings(caplog) -> list:
 
 
 def test_boot_warns_non_loopback_without_main_key(monkeypatch, caplog):
-    """非回环绑定 + main 无 key：显式 warning（不是 fail，保有意缺 key 的部署）。"""
+    """非回环绑定 + main 无 key：显式 warning（不是 fail，保有意缺 key 的部署）。
+
+    刻意不钉警告总条数：同一次 validate 里还会响别的启动警告（如 search 角色无联网能力，
+    见 test_validate_warns_when_search_role_cannot_search）——钉条数会让两条规则互相绊倒，
+    这里只要求「main 缺 key 这一条在」。
+    """
     monkeypatch.setattr(settings, "agent_host", "0.0.0.0")
     monkeypatch.setattr(settings, "llm_api_key", "")
     with caplog.at_level("WARNING"):
         model_registry.validate()
-    warnings = _registry_warnings(caplog)
-    assert len(warnings) == 1
-    assert "LLM_API_KEY" in warnings[0].getMessage()
+    messages = [record.getMessage() for record in _registry_warnings(caplog)]
+    assert any("LLM_API_KEY" in message for message in messages), messages
 
 
 def test_boot_silent_on_loopback_without_key(monkeypatch, caplog):
@@ -523,9 +527,16 @@ def test_boot_silent_on_loopback_without_key(monkeypatch, caplog):
 
 
 def test_boot_silent_non_loopback_with_key(monkeypatch, caplog):
-    """非回环但 key 已配：健康形态，不警告。"""
+    """非回环 + key 已配 + search 角色真能联网：健康形态，一条警告都没有。
+
+    search 角色也要配到位：只配 main key、search 却落在无联网能力的网关上时，
+    validate 会（正确地）警告联网降级——那不是「健康形态」，见
+    test_validate_warns_when_search_role_cannot_search。
+    """
     monkeypatch.setattr(settings, "agent_host", "0.0.0.0")
     monkeypatch.setattr(settings, "llm_api_key", "sk-configured")
+    monkeypatch.setattr(settings, "llm_provider_dashscope_base_url", "https://dashscope.aliyuncs.com")
+    monkeypatch.setattr(settings, "llm_role_search", "dashscope:qwen-plus")
     with caplog.at_level("WARNING"):
         model_registry.validate()
     assert _registry_warnings(caplog) == []

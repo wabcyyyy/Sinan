@@ -237,3 +237,18 @@ def validate() -> None:
             "请在 .env 配置 LLM_API_KEY，或确认这是有意的不生成部署",
             settings.agent_host,
         )
+    # 与上一条同源（审计 §3.1.6 的「配置对了才谈得上质量」一类）：search 角色指向的
+    # 网关没有联网能力位时，联网补池与实时价静默降级为「未联网」——web_search 一次外呼
+    # 不发、也绝不用模型记忆冒充检索结果（这条纪律本身是对的，2026-10-07 真实评测实测
+    # 走的就是这个降级口径）。缺口在运维看不见：日志不提示就以为联网开着，实际每个行程
+    # 都按无检索产出。与 main 同口径只警告不 fail——自托管离线部署是有意形态。
+    search_bound = binding("search")
+    if settings.agent_host not in LOCAL_HOSTS and "search" not in search_bound.capabilities():
+        logger.warning(
+            "AGENT_HOST=%s 绑定非回环但 search 角色指向的 provider %s 没有联网能力"
+            "（网关不带 enable_search，只有百炼兼容层有）：联网补池与实时价将按「未联网」"
+            "降级，行程按无检索口径产出；需要联网请设 LLM_ROLE_SEARCH=dashscope:<模型> 并配"
+            " LLM_PROVIDER_DASHSCOPE_BASE_URL/API_KEY",
+            settings.agent_host,
+            search_bound.provider.name,
+        )
