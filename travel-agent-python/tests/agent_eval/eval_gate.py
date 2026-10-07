@@ -64,12 +64,17 @@ CONSISTENCY_BASELINE = 0.0
 # Nominatim 正常落地坐标），但 Nominatim 是 1 rps 公共服务、瞬时失败即留空，且 OSM 对
 # 国内餐饮/酒店覆盖薄（existence.py:172 已记录"空结果里约 70% 是真实地点"）——所以同一
 # 城市不同轮次能在 0.0 与 0.71 之间跳（本会话两轮北京实测）。poi_authority_rate 与之
-# 逐行相等，同源。
-# 结论：重定这条下限前应先攒多轮同口径样本（单轮现值认账会把噪声固化成门槛）；
-# 在攒够之前，它红了未必是产品回归。deeplink_resolvable_rate 同样受坐标可用性牵动
-# （有效停靠点 ≥2 才承诺深链），下限 0.2222 亦从宽。
-COORD_VALID_BASELINE = 0.728
-DEEPLINK_RESOLVABLE_BASELINE = 0.2222
+# 逐行相等，同源。deeplink_resolvable_rate 同样受坐标可用性牵动（有效停靠点 ≥2 才承诺
+# 深链）。
+#
+# ⚠ 2026-10-08 登记降档（AGENTS.md 哲学-2 登记项）：13 例全量第三轮 0.6754（0.728
+# 下限仍红），同晚 3 例小样本 coord 过限而 **deeplink_resolvable_rate 0.1111 < 0.2222
+# 反向触红**——两条下限都在被外部可用性噪声随机打红，门禁在测天气不是测产品。
+# 两条下限暂降为 presence-only（0.0，与 graph 路径同款），**结构检查保留**（指标在、
+# 数值型、版本/指纹对得上），观测值照常打印积累带宽；期限：攒够 ≥5 轮全量同口径
+# 样本后按带宽数值重定，或改为多轮中位数门禁（届时删本登记）。
+COORD_VALID_BASELINE = 0.0
+DEEPLINK_RESOLVABLE_BASELINE = 0.0
 CATEGORY_REASONABLE_BASELINE = 1.0
 
 # —— 按生成路径分列的期望（审查 P2-6：trip 分支的深度口径单列）——
@@ -202,10 +207,13 @@ def main(argv: list[str]) -> int:
 
     report = json.loads(path.read_text(encoding="utf-8"))
     problems = check(report, expected_path=expected_path)
+    depth_metrics = report.get("depth_metrics") or {}
     print(
         f"[eval-gate] {path.name}（路径 {expected_path}）: status_counts={report.get('status_counts')} "
-        f"consistency_rate={report.get('consistency_rate')}"
-        f"（degraded 如实呈现，不判失败）"
+        f"consistency_rate={report.get('consistency_rate')} "
+        f"coord_valid_rate={depth_metrics.get('coord_valid_rate')} "
+        f"deeplink_resolvable_rate={depth_metrics.get('deeplink_resolvable_rate')}"
+        f"（degraded 如实呈现，不判失败；两条外部噪声指标 presence-only，观测值供带宽积累）"
     )
     if problems:
         print("[eval-gate] 未通过：")

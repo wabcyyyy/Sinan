@@ -107,14 +107,16 @@ def test_graph_path_expectations_are_separate() -> None:
     """P2-6：trip 图路径的报告必须拿 graph 期望查，不能借 stream 的深度基线背书。"""
     graph_report = _report(
         generation_path="graph",
-        # graph 深度下限当前是 presence-only：同一份数值在两条路径下都该通过结构检查
+        # category_reasonable_rate 是 stream 路径唯一仍活跃的深度下限（1.0）：用它
+        # 验证「同一份低值报告在 graph 过、在 stream 红」——coord/deeplink 已按
+        # 2026-10-08 登记降为 presence-only，两边都是 0，分不出路径差异。
         depth_metrics={"coord_valid_rate": 0.1, "deeplink_resolvable_rate": 0.0, "category_reasonable_rate": 0.0},
     )
     assert eval_gate.check(graph_report, expected_path="graph") == []
     # 同一份报告拿去当 stream 报告查 → 路径漂移 + 深度低于 stream 基线，两条都要红
     problems = eval_gate.check(graph_report, expected_path="stream")
     assert any("generation_path" in problem for problem in problems)
-    assert any("coord_valid_rate" in problem for problem in problems)
+    assert any("category_reasonable_rate" in problem for problem in problems)
     # 未知路径不静默通过
     assert eval_gate.check(graph_report, expected_path="trip")
 
@@ -131,12 +133,43 @@ def test_resolve_picks_expectations_by_flag_and_filename() -> None:
     assert expected == "stream" and path is not None and path.name == "llm_report.json"
 
 
-def test_depth_metric_regression_is_flagged() -> None:
-    """C3.2：深度指标低于记录基线判红（防倒退，非达标线）。"""
-    report = _report(
-        depth_metrics={"coord_valid_rate": 0.5, "deeplink_resolvable_rate": 1.0, "category_reasonable_rate": 1.0}
+def test_depth_metric_regression_is_flagged(monkeypatch) -> None:
+    """C3.2：深度指标低于记录基线判红（防倒退，非达标线）。
+
+    2026-10-08 登记后 coord/deeplink 的 stream 下限是 presence-only（0.0，波动由
+    外部地理编码可用性主导，见 eval_gate 模块注与 AGENTS.md 登记项）：现值多低都
+    不再判红，这道绊线改用抬升后的期望验证机制本身（与上面一致率绊线同一打法）。
+    category_reasonable_rate（1.0，生成质量属性）是仍活跃的下限，直接用现值验证。
+    """
+    # 登记后的现行为（未抬期望）：coord/deeplink 任意低值不红（presence-only），
+    # category 仍活跃——先验这段，再抬期望验绊线（setitem 会污染后续断言）。
+    live = _report(
+        depth_metrics={"coord_valid_rate": 0.0, "deeplink_resolvable_rate": 0.0, "category_reasonable_rate": 1.0}
     )
-    problems = eval_gate.check(report)
+    assert eval_gate.check(live) == []
+    assert any(
+        "category_reasonable_rate" in problem
+        for problem in eval_gate.check(
+            _report(
+                depth_metrics={
+                    "coord_valid_rate": 1.0,
+                    "deeplink_resolvable_rate": 1.0,
+                    "category_reasonable_rate": 0.9,
+                }
+            )
+        )
+    )
+
+    monkeypatch.setitem(
+        eval_gate.PATH_EXPECTATIONS["stream"],
+        "depth",
+        {"coord_valid_rate": 0.8, "deeplink_resolvable_rate": 0.3, "category_reasonable_rate": 1.0},
+    )
+    problems = eval_gate.check(
+        _report(
+            depth_metrics={"coord_valid_rate": 0.5, "deeplink_resolvable_rate": 1.0, "category_reasonable_rate": 1.0}
+        )
+    )
     assert any("coord_valid_rate" in problem for problem in problems)
 
 

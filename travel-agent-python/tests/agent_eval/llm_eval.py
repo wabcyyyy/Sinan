@@ -475,8 +475,10 @@ def main() -> int:
     else:
         report_stem = "llm_report"
     report_path = REPORT_DIR / f"{report_stem}.json"
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    (REPORT_DIR / f"{report_stem}.md").write_text(_report_markdown(report), encoding="utf-8")
+    # newline="\n"：报告会入仓做证据，字节形态必须与平台无关（同 export_contracts
+    # 的教训——默认文本模式在 Windows 上写成 CRLF，刷新报告就是整文件假 diff）。
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+    (REPORT_DIR / f"{report_stem}.md").write_text(_report_markdown(report), encoding="utf-8", newline="\n")
     keys = ("mode", "generation_path", "model", "temperature", "prompt_version", "case_count", "consistency_rate")
     print(json.dumps({k: report[k] for k in keys}, ensure_ascii=False, indent=2))
     print(f"报告已生成：{report_path}")
