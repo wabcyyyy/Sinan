@@ -3,8 +3,8 @@
 口径必须与前端「每日费用」明细一致，两条曾经踩过的坑保留原注释：
 - 餐饮/门票 = 条目单价 × 人数；**不再**做"按城市基准价封顶"的展示层钳制，
   那会让分类合计与明细对不上、改价后总价看起来"不动"；离谱价格在 Agent 生成侧钳制。
-- 酒店按所选房型的容量算房间数（`ceil(persons / capacity)`），不假定每间住 2 人。
-- 餐饮/酒店被模型写成 0 视为无效，回落知识库权威价；免费景点保留 0。
+- 房型表退役后酒店统一按每间 2 人算房间数（`ceil(persons / 2)`）。
+- 餐饮/酒店缺价或为 0 如实缺省；免费景点保留 0。
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from app.db.models import (
     ItineraryMain,
 )
 from app.db.session import session_scope
+from app.services import itinerary_query
 
 DEFAULT_TRANSPORT_PER_DAY = Decimal("35.00")
 ZERO = Decimal("0")
@@ -33,7 +34,10 @@ def _money(value: Decimal) -> Decimal:
 
 def recalculate(itinerary_id: int) -> list[BudgetDetail]:
     with session_scope() as session:
-        main = session.get(ItineraryMain, itinerary_id)
+        # 同一行程的重算串行化；旧后台任务必须提交后，终态重算才读取最新条目。
+        main = session.execute(
+            select(ItineraryMain).where(ItineraryMain.id == itinerary_id).with_for_update()
+        ).scalar_one_or_none()
         if main is None:
             return []
         persons = main.persons or 1
@@ -97,7 +101,9 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
             session.add(detail)
             created.append(detail)
         session.flush()
-        return created
+    # 异步重算提交后再失效，避免生成时已缓存的旧合计持续展示 600 秒。
+    itinerary_query.evict_detail(main.user_id, itinerary_id)
+    return created
 
 
 def _is_zero_cost_for(item_type: str | None, cost: Decimal) -> bool:

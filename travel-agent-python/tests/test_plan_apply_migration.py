@@ -15,6 +15,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -165,6 +166,19 @@ def _draft(trip_id: int, plans: list[dict], *, hotel_options: list[dict] | None 
         session.add(message)
         session.flush()
         return message.id, revision
+
+
+def test_apply_draft_never_promotes_database_item_id_to_external_poi_id(client):
+    trip_id = _trip_id(client)
+    plans = jsonable_encoder(itinerary_chat.current_plans(trip_id))
+    before = {item["id"]: item.get("poi_id") for plan in plans for item in plan["items"]}
+    message_id, revision = _draft(trip_id, plans)
+    response = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
+    )
+    assert response.status_code == 200, response.text
+    after = {item["id"]: item["poiId"] for day in response.json()["data"]["dayList"] for item in day["items"]}
+    assert after == before
 
 
 def _live_items(day_no: int) -> list[str]:

@@ -41,7 +41,7 @@ from app.db.models import (
     ItineraryVersion,
     SysUser,
 )
-from app.schemas.trip import DailyPlan, TripItem
+from app.schemas.trip import DailyPlan, FactEvidence, TripItem
 from app.services import generation_gate, generation_recovery, itinerary_generation, state_and_sessions, user_service
 
 JWT_MATERIAL = "example-only-hs256-test-signing-material"
@@ -292,6 +292,103 @@ def test_hotel_only_on_stay_nights_and_sort_keeps_dense(client: TestClient, monk
     assert [item.sort_no for item in _items(days[1].id)] == [0], "跳过项不占 sort_no"
 
 
+@pytest.mark.parametrize("source_day", [1, 2, 3])
+def test_per_day_fallback_spreads_all_three_nights(client: TestClient, monkeypatch, source_day) -> None:
+    plans = [_plan(day_no, [f"景点{day_no}"] + (["酒店A"] if day_no == source_day else [])) for day_no in range(1, 5)]
+    hotel = next(item for item in plans[source_day - 1].items if item.item_type == "hotel")
+    hotel.fact_evidence = {"cost": FactEvidence(value_kind="estimated", verification_status="unverified")}
+    hotel.source = "llm_knowledge"
+    _fake_agents(monkeypatch, plans)
+    _run_inline(monkeypatch)
+    detail = _trip(client, {"city": CITY, "days": 4, "stayNights": 3})
+    _main, days = _rows(detail["id"])
+    for day in days[:3]:
+        items = _items(day.id)
+        hotels = [item for item in items if item.item_type == "hotel"]
+        assert len(hotels) == 1
+        assert hotels[0].poi_name == "酒店A" and hotels[0].cost == Decimal("300.00")
+        assert hotels[0].source == "llm_knowledge"
+        assert json.loads(hotels[0].fact_evidence_json)["cost"]["valueKind"] == "estimated"
+    assert [item.sort_no for item in items] == list(range(len(items)))
+    assert all(item.item_type != "hotel" for item in _items(days[3].id))
+    assert itinerary_generation.stay_hotels.spread_stay_hotels(detail["id"], 3) == 0
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_generation_cannot_silently_switch_selected_hotel(client: TestClient, monkeypatch, streaming):
+    plans = [_plan(day, [f"景点{day}", f"酒店{day}"]) for day in range(1, 5)]
+    for day, plan in enumerate(plans):
+        hotel = next(item for item in plan.items if item.item_type == "hotel")
+        hotel.poi_name = "广州大厦" if day == 0 else "白天鹅宾馆"
+        hotel.cost = 300 if day == 0 else 1100
+        hotel.source = "llm.baseline" if day == 0 else "llm.switched"
+    events = []
+    for plan in plans:
+        raw = _wire_plan(plan.day_no, [f"景点{plan.day_no}"])
+        hotel = next(item for item in plan.items if item.item_type == "hotel")
+        raw["items"].append({**hotel.model_dump(by_alias=True), "startTime": "21:00"})
+        events.append({"type": "day", "plan": raw})
+    events.append(
+        {
+            "type": "done",
+            "daysExpected": 4,
+            "daysEmitted": [1, 2, 3, 4],
+            "complete": True,
+            "tripTheme": None,
+            "message": None,
+        }
+    )
+    calls = _fake_agents(monkeypatch, plans, stream_events=events if streaming else None)
+    _run_inline(monkeypatch)
+    detail = _trip(client, {"city": CITY, "days": 4, "persons": 2})
+    hotels = [item for day in detail["dayList"] for item in day["items"] if item["itemType"] == "hotel"]
+    assert len(hotels) == 3
+    assert {(row["poiName"], row["cost"], row["source"]) for row in hotels} == {("广州大厦", 300, "llm.baseline")}
+    if streaming:
+        assert calls["day"] == [], "健康的流式天必须直接交付，不能靠重生成绕过断言"
+    assert all(item["itemType"] != "hotel" for item in detail["dayList"][3]["items"])
+    assert itinerary_generation.stay_hotels.spread_stay_hotels(detail["id"], 3) == 0
+
+
+def test_regeneration_keeps_only_hotel_before_soft_deleting_old_day(client: TestClient, monkeypatch) -> None:
+    initial = _wire_plan(1, [f"过满景点{i}" for i in range(7)])
+    initial["items"].append({"itemType": "hotel", "poiName": "酒店A", "cost": 300, "startTime": "21:00"})
+    events = (
+        [{"type": "day", "plan": initial}]
+        + [{"type": "day", "plan": _wire_plan(day_no, [f"景点{day_no}"])} for day_no in range(2, 5)]
+        + [
+            {
+                "type": "done",
+                "daysExpected": 4,
+                "daysEmitted": [1, 2, 3, 4],
+                "complete": True,
+                "tripTheme": None,
+                "message": None,
+            }
+        ]
+    )
+    calls = _fake_agents(monkeypatch, [_plan(1, ["修复后景点"])], stream_events=events)
+    _run_inline(monkeypatch)
+    detail = _trip(client, {"city": CITY, "days": 4, "stayNights": 3})
+    assert [req.day_no for req in calls["day"]] == [1]
+    _main, days = _rows(detail["id"])
+    assert [day.generation_status for day in days] == ["SUCCEEDED"] * 4
+    assert [item.poi_name for item in _items(days[0].id)] == ["修复后景点", "酒店A"]
+    assert [sum(item.item_type == "hotel" for item in _items(day.id)) for day in days] == [1, 1, 1, 0]
+
+
+def test_hotel_spreading_does_not_invent_source_or_ignore_zero_nights(client: TestClient, monkeypatch) -> None:
+    _fake_agents(monkeypatch, [_plan(day_no, [f"景点{day_no}"]) for day_no in range(1, 5)])
+    _run_inline(monkeypatch)
+    detail = _trip(client, {"city": CITY, "days": 4, "stayNights": 3})
+    _main, days = _rows(detail["id"])
+    assert all(item.item_type != "hotel" for day in days for item in _items(day.id))
+    _fake_agents(monkeypatch, [_plan(day_no, [f"景点{day_no}", "酒店A"]) for day_no in range(1, 5)])
+    detail = _trip(client, {"city": CITY, "days": 4, "stayNights": 0})
+    _main, days = _rows(detail["id"])
+    assert all(item.item_type != "hotel" for day in days for item in _items(day.id))
+
+
 def test_item_field_mapping_and_time_normalization(client: TestClient, monkeypatch) -> None:
     _fake_agents(monkeypatch, [_plan(1, ["西湖", "酒店A"])])
     _run_inline(monkeypatch)
@@ -305,7 +402,7 @@ def test_item_field_mapping_and_time_normalization(client: TestClient, monkeypat
     assert hotel.cost == Decimal("300.00") and hotel.item_type == "hotel"
     assert xihu.verification_status == "unverified" and xihu.value_kind == "generated"
     metadata = json.loads(days[0].metadata_json)
-    assert metadata["theme"] == "湖山线" and "miniRoute" not in metadata, "空集合不落库"
+    assert metadata["theme"] == "西湖" and "miniRoute" not in metadata, "空集合不落库"
     with db_session.session_scope() as session:
         trip_theme = session.get(ItineraryMain, detail["id"]).trip_theme
     assert trip_theme is None or trip_theme == "西子湖畔慢行"
@@ -510,6 +607,35 @@ def test_recovery_resubmits_zombie_generation(broken_trip: int, monkeypatch) -> 
     assert submitted == [broken_trip]
     with db_session.session_scope() as session:
         assert session.get(ItineraryMain, broken_trip).gen_resumed is False, "僵尸分支不算续跑，不该占用那一次性标记"
+
+
+def test_regenerating_early_day_excludes_retained_later_day_not_failed_or_deleted_drafts(broken_trip, monkeypatch):
+    with db_session.session_scope() as session:
+        days = session.scalars(
+            select(ItineraryDay).where(ItineraryDay.itinerary_id == broken_trip).order_by(ItineraryDay.day_no)
+        ).all()
+        days[1].generation_status = "SUCCEEDED"
+        for day, name, deleted in [(days[0], "失败草稿", 0), (days[1], "后天已安排", 0), (days[1], "已删除", 1)]:
+            session.add(
+                ItineraryItem(
+                    itinerary_id=broken_trip, day_id=day.id, item_type="attraction", poi_name=name, deleted=deleted
+                )
+            )
+    calls = _fake_agents(monkeypatch, [_plan(1, ["新景点", "酒店A"])])
+    command = _command(broken_trip)
+    itinerary_generation._generate_day_with_trace(
+        broken_trip,
+        command,
+        {},
+        1,
+        ["前面已安排"],
+        None,
+        f"day-{broken_trip}-1",
+        generation_gate.request_fingerprint(command),
+    )
+    assert calls["day"][0].used_names == ["前面已安排", "后天已安排"]
+    assert all(item.poi_name != "失败草稿" for item in _items(days[0].id))
+    assert [item.poi_name for item in _items(days[1].id)] == ["后天已安排"]
 
 
 def test_recovery_resumes_failed_trip_only_once(broken_trip: int, monkeypatch) -> None:

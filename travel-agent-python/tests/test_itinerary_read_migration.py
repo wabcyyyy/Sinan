@@ -189,7 +189,7 @@ def test_detail_top_level_shape(client: TestClient) -> None:
     trip_id = client.get("/api/itinerary").json()["data"][0]["id"]
     data = client.get(f"/api/itinerary/{trip_id}").json()["data"]
     assert data["schemaVersion"] == "1.0"
-    assert data["qualityRuleVersion"] == "travel-quality-1.1", "1.1 = 新增 NARRATIVE_HOTEL_MISMATCH 规则"
+    assert data["qualityRuleVersion"] == "travel-quality-1.2", "1.2 = 增加预算超支规则"
     assert data["validatedAt"] is None
     assert data["suggestions"] == [{"x": 1}]
     assert data["budgetList"] == [

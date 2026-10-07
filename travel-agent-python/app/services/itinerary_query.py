@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 DETAIL_CACHE_NAMESPACE = "itinerary:detail"
 DETAIL_CACHE_TTL_SECONDS = 600  # 与 Java RedisCacheConfig 的 itinerary:detail 10min 一致
-QUALITY_RULE_VERSION = "travel-quality-1.1"
+QUALITY_RULE_VERSION = "travel-quality-1.2"
 SCHEMA_VERSION = "1.0"
 
 _INCOMPLETE_DAY_STATUSES = {"PENDING", "RUNNING"}
@@ -311,7 +311,7 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
             "photoSpots": None,
             "practicalNotes": None,
             "dayOptions": None,
-            "items": [_item_vo(item, intro_by_name) for item in items_by_day.get(day.id, [])],
+            "items": [item_vo(item, intro_by_name) for item in items_by_day.get(day.id, [])],
         }
         metadata = _loads_object(day.metadata_json) or {}
         payload["theme"] = metadata.get("theme")
@@ -330,8 +330,14 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         if (item.review_requirement is None or item.review_requirement != "none") or item.freshness_status == "stale"
     )
     narrative_mismatches = _narrative_hotel_mismatches(main.plan_note, main.trip_theme, items)
-    quality_status = _quality_status(main.status, items, days, pending_facts, narrative_mismatches)
-    issues = _quality_issues(quality_status, days, items, pending_facts, narrative_mismatches)
+    budget_warning = (
+        f"当前估算总额 ￥{total_amount:.2f} 超出预算 ￥{main.budget:.2f}，"
+        f"超出 ￥{total_amount - main.budget:.2f}；请调整行程或预算，出发前核实价格"
+        if main.budget is not None and main.budget > 0 and total_amount > main.budget
+        else None
+    )
+    quality_status = _quality_status(main.status, items, days, pending_facts, narrative_mismatches, budget_warning)
+    issues = _quality_issues(quality_status, days, items, pending_facts, narrative_mismatches, budget_warning)
 
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -383,7 +389,7 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
     }
 
 
-def _item_vo(item: ItineraryItem, intro_by_name: dict[str, ItineraryItem]) -> dict[str, Any]:
+def item_vo(item: ItineraryItem, intro_by_name: dict[str, ItineraryItem]) -> dict[str, Any]:
     return {
         "id": item.id,
         "itemType": item.item_type,
@@ -422,6 +428,7 @@ def _quality_status(
     days: list[ItineraryDay],
     pending_facts: int,
     narrative_mismatches: list[str] | None = None,
+    budget_warning: str | None = None,
 ) -> str:
     has_failed_day = any(d.generation_status in _FAILED_DAY_STATUSES for d in days)
     has_incomplete_day = any(d.generation_status in _INCOMPLETE_DAY_STATUSES for d in days)
@@ -436,7 +443,7 @@ def _quality_status(
         return "STALE"
     # 叙事层与条目实体矛盾（planNote 提到的酒店 ≠ 实际住宿）与待复核事实同级：
     # 条目本身可用，但"以 XX 为据点"这类引导若指错酒店会误导出发安排
-    if narrative_mismatches or pending_facts > 0:
+    if narrative_mismatches or pending_facts > 0 or budget_warning:
         return "READY_WITH_WARNINGS"
     return "READY"
 
@@ -496,6 +503,7 @@ def _quality_issues(
     items: list[ItineraryItem],
     pending_facts: int,
     narrative_mismatches: list[str] | None = None,
+    budget_warning: str | None = None,
 ) -> list[dict[str, str]]:
     issues: list[dict[str, str]] = []
     if quality_status == "BLOCKED":
@@ -513,6 +521,8 @@ def _quality_issues(
         )
     if pending_facts > 0 and quality_status != "BLOCKED":
         issues.append({"code": "FACT_REQUIRES_REVIEW", "message": f"{pending_facts} 项事实需要出发前复核"})
+    if budget_warning:
+        issues.append({"code": "BUDGET_EXCEEDED", "message": budget_warning})
     return issues
 
 
@@ -521,7 +531,7 @@ def _quality_report(quality_status: str, issues: list[dict[str, str]], pending_f
         "qualityStatus": quality_status,
         "qualityRuleVersion": QUALITY_RULE_VERSION,
         "blockingIssues": issues if quality_status == "BLOCKED" else [],
-        "warnings": issues if quality_status in ("READY_WITH_WARNINGS", "STALE") else [],
+        "warnings": issues if quality_status != "BLOCKED" else [],
         "metrics": {"pendingFactCount": pending_facts},
     }
 

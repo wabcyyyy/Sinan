@@ -77,4 +77,4 @@ def test_clean_ready_trip_unaffected():
 
 
 def test_rule_version_bumped():
-    assert QUALITY_RULE_VERSION == "travel-quality-1.1"
+    assert QUALITY_RULE_VERSION == "travel-quality-1.2"

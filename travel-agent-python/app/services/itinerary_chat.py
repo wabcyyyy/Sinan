@@ -309,6 +309,7 @@ def invalidate_pending_actions(user_id: int, itinerary_id: int) -> None:
 def chat_history(user_id: int, itinerary_id: int) -> list[dict[str, Any]]:
     """最近 100 条，DB 按 id 倒序取、返回前翻正（与 Java 一致）。"""
     with session_scope() as session:
+        itinerary_query.require_main(session, user_id, itinerary_id)
         messages = (
             session.execute(
                 select(ItineraryChatMessage)

@@ -155,7 +155,8 @@ def _apply_plan_item(
     entity.itinerary_id = itinerary_id
     entity.item_type = item_type
     entity.poi_name = name
-    entity.poi_id = _str_or(raw_item.get("poi_id"), None) or _str_or(raw_item.get("id"), None)
+    if "poi_id" in raw_item:
+        entity.poi_id = _str_or(raw_item.get("poi_id"), None)
     entity.address = _str_or(raw_item.get("address"), entity.address)
     if _is_number(raw_item.get("latitude")):
         entity.latitude = Decimal(str(raw_item["latitude"]))

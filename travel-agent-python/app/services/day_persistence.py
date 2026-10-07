@@ -16,22 +16,23 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, time
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select, update
 
+from app.agent import sync_schedule_summary
 from app.common.envelope import FAIL_TRIP_NOTE, ApiError
+from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.trip import DailyPlan, FactEvidence
-from app.services import generation_gate
+from app.services import generation_gate, stay_hotels
 from app.services.day_delivery_gate import hard_delivery_blockers
 
 logger = logging.getLogger(__name__)
 
-# 旧实现把续跑标记写进 plan_note，这里只做一次性清洗
 LEGACY_RESUME_MARKER = "[已自动续跑一次]"
 MAX_ERROR_LENGTH = 500
 FALLBACK_DAY_ERROR = "每日生成失败"
@@ -60,6 +61,10 @@ def persist(
         if day.generation_status == "SUCCEEDED" and not allow_overwrite:
             return  # 幂等：已成功且不强制覆盖时一字不改
 
+        stay_nights = _stay_nights(request)
+        stay_hotels.fill_day_hotel(session, itinerary_id, day_no, stay_nights, plan)
+        plan.items = [item for item in plan.items if item.item_type != "hotel" or day_no <= stay_nights]
+        sync_schedule_summary(plan)
         day.generation_action_id = action_id
         day.generation_fingerprint = fingerprint
         day.generation_status = "RUNNING"
@@ -73,13 +78,8 @@ def persist(
             update(ItineraryItem).where(ItineraryItem.day_id == day.id, ItineraryItem.deleted == 0).values(deleted=1)
         )
 
-        stay_nights = _stay_nights(request)
-        sort_no = 0
-        for item in plan.items or []:
-            if item.item_type == "hotel" and day_no > stay_nights:
-                continue
+        for sort_no, item in enumerate(plan.items or []):
             session.add(_build_item(itinerary_id, day.id, item, sort_no))
-            sort_no += 1
 
         blockers = hard_delivery_blockers(day_no, plan)
         if blockers:
@@ -103,8 +103,8 @@ def _build_item(itinerary_id: int, day_id: int, item: Any, sort_no: int) -> Itin
         address=item.address,
         latitude=_decimal(item.latitude),
         longitude=_decimal(item.longitude),
-        start_time=_parse_time_safe(item.start_time),
-        end_time=_parse_time_safe(item.end_time),
+        start_time=parse_time_safe(item.start_time),
+        end_time=parse_time_safe(item.end_time),
         duration_min=item.duration_min,
         cost=_decimal(item.cost),
         tag=item.tag,
@@ -177,6 +177,22 @@ def existing_hotel(day_id: int) -> str | None:
             .scalars()
             .first()
         )
+
+
+def other_completed_names(itinerary_id: int, day_no: int) -> list[str]:
+    """修复早期一天时，也避开后面保留下来的成功日；失败草稿不占去重名额。"""
+    with session_scope() as session:
+        names = session.scalars(
+            select(ItineraryItem.poi_name)
+            .join(ItineraryDay, ItineraryDay.id == ItineraryItem.day_id)
+            .where(
+                ItineraryItem.itinerary_id == itinerary_id,
+                ItineraryDay.day_no != day_no,
+                ItineraryDay.generation_status == "SUCCEEDED",
+            )
+            .order_by(ItineraryDay.day_no, ItineraryItem.sort_no)
+        ).all()
+    return [name for name in names if name and name.strip()]
 
 
 def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:
@@ -367,21 +383,6 @@ def _decimal(value: Any) -> Decimal | None:
 
 def _default_str(value: str | None, fallback: str) -> str:
     return fallback if value is None or not value.strip() else value
-
-
-def _parse_time_safe(value: str | None) -> time | None:
-    """`LocalTime.parse` 口径；额外复刻 Java 的 `"24:00"` → `"00:00"` 归一。"""
-    if value is None or not (text := value.strip()):
-        return None
-    if text.startswith("24:"):
-        text = "00:" + text[3:]
-    if ":" not in text:
-        return None
-    try:
-        return time.fromisoformat(text)
-    except ValueError:
-        logger.debug("time value unparsable, left empty instead: %s", value)
-        return None
 
 
 def _parse_datetime_safe(value: str | None) -> datetime | None:

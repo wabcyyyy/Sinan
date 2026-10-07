@@ -32,6 +32,7 @@ from sqlalchemy import select, update
 
 from app.agent import (
     BUDGET_OVERAGE_MARK,
+    destination_problem,
     observe_run,
     run_generate_day,
     run_generate_trip_stream,
@@ -58,6 +59,7 @@ from app.services import (
     itinerary_query,
     itinerary_version,
     llm_gateway_service,
+    stay_hotels,
 )
 from app.services import preferences as preferences_service
 
@@ -291,6 +293,7 @@ def _generate_day_with_trace(
     action_id: str,
     fingerprint: str,
 ) -> DailyPlan:
+    retained_names = day_persistence.other_completed_names(itinerary_id, day_no)
     request = GenerateDayRequest(
         city=command.city,
         persons=command.persons,
@@ -301,8 +304,9 @@ def _generate_day_with_trace(
         # 选奢华档）；per_day_chain=True 保住单日链的重试预算（不再从 days 推断）
         days=command.days,
         per_day_chain=True,
-        used_names=list(used_names),
+        used_names=list(dict.fromkeys([*used_names, *retained_names])),
         hotel_tier=command.hotel_tier,
+        preferences=command.preferences,
         chosen_hotel=chosen_hotel,
         needs_hotel=day_no <= command.stay_nights,
         requirements=command.requirements,
@@ -312,8 +316,7 @@ def _generate_day_with_trace(
         action_id=action_id,
         context=context,
     )
-    # 注意：**不传 days**。`trip_graph` 里 `days>1` 会关掉单日反思重试（那是给整段流式用的），
-    # 逐日修复路径必须保留重试。Java 也是这么发的（generate-day payload 无 days 键）。
+    # days 用于预算分档；per_day_chain=True 保留逐日修复的反思重试预算。
     with use_scene("generate"), observe_run(request_id=f"itinerary-{itinerary_id}", action_id=action_id):
         plan = run_generate_day(request)
     day_persistence.persist(itinerary_id, command, day_no, plan, action_id, fingerprint)
@@ -338,6 +341,7 @@ def _plan_whole_trip(
         days=command.days,
         used_names=[],
         hotel_tier=command.hotel_tier,
+        preferences=command.preferences,
         chosen_hotel=None,
         needs_hotel=command.stay_nights > 0,
         requirements=command.requirements,
@@ -574,6 +578,9 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand) -> None:
     if main is None:
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
+    stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
+    # 最终预算是交付的一部分，不能依赖可能已满的后台富化队列。
+    budget_engine.recalculate(itinerary_id)
     all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
     day_persistence.complete_trip(itinerary_id, all_succeeded)
     version_id: int | None = None
@@ -590,7 +597,6 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand) -> None:
         day_persistence.unfinished_day_nos(itinerary_id),
         version_id,
     )
-    _submit_budget_recalculate(itinerary_id)
     try:
         enricher_pool.submit(itinerary_enricher.enrich_itinerary, user_id, itinerary_id, command)
     except TaskRejected as rejected:
@@ -691,6 +697,9 @@ def generate(user_id: int, body: GenerateTripRequest, idempotency_key: str | Non
     返回既有行程，不重复建壳（见 _reserve_idempotent）。
     """
     command = _validate(body)
+    problem = destination_problem(command.city)
+    if problem:
+        raise ApiError(400, problem)
     replay = _replay_if_known(user_id, _reserve_idempotent(user_id, idempotency_key), idempotency_key)
     if replay is not None:
         return replay

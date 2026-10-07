@@ -144,11 +144,28 @@ def diff(user_id: int, itinerary_id: int, from_id: int, to_id: int) -> dict[str,
         raise ApiError(500, "行程版本 Diff 失败") from exc
 
     changes: list[dict[str, Any]] = []
-    for field in ("city", "days", "budget"):
+    for field in (
+        "title",
+        "city",
+        "startDate",
+        "endDate",
+        "days",
+        "persons",
+        "budget",
+        "preferences",
+        "hotelTier",
+        "stayNights",
+        "tripTheme",
+        "planNote",
+    ):
         if before.get(field) != after.get(field):
             changes.append({"type": "updated", "key": field, "before": before.get(field), "after": after.get(field)})
-    before_items = _item_index(before.get("dayList") or [])
-    after_items = _item_index(after.get("dayList") or [])
+    _diff_index(changes, _day_index(before.get("dayList") or []), _day_index(after.get("dayList") or []))
+    _diff_index(changes, _item_index(before.get("dayList") or []), _item_index(after.get("dayList") or []))
+    return {"fromVersionId": from_id, "toVersionId": to_id, "changes": changes}
+
+
+def _diff_index(changes: list[dict[str, Any]], before_items: dict, after_items: dict) -> None:
     for key, value in before_items.items():
         if key not in after_items:
             changes.append({"type": "removed", "key": key, "before": value, "after": None})
@@ -157,7 +174,12 @@ def diff(user_id: int, itinerary_id: int, from_id: int, to_id: int) -> dict[str,
             changes.append({"type": "added", "key": key, "before": None, "after": value})
         elif before_items[key] != value:
             changes.append({"type": "updated", "key": key, "before": before_items[key], "after": value})
-    return {"fromVersionId": from_id, "toVersionId": to_id, "changes": changes}
+
+
+def _day_index(days: list[dict[str, Any]]) -> dict[str, Any]:
+    """按日序比较用户内容；行主键与生成态不属于行程编辑差异。"""
+    fields = ("travelDate", "note", "theme", "miniRoute", "backupPlan", "photoSpots", "practicalNotes", "dayOptions")
+    return {f"day:{day.get('dayNo')}": {field: day.get(field) for field in fields} for day in days}
 
 
 def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
