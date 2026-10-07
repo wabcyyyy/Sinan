@@ -21,15 +21,41 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
+	# 请求体上限（P0-4 边缘层，与 travel-frontend-react/nginx.conf 的
+	# client_max_body_size 互为镜像，改动必须同步）。口径：除上传端点外的全部路由
+	# 2MB（JSON API 足够）；multipart 上传按"服务侧文件本体上限 + 1MB 包裹余量"分档：
+	# 封面上传与图片意图 6MB（服务侧 read_upload_capped 截断在 5MB）、语音意图 9MB
+	# （服务侧 8MB，16k WAV 长录音常见 2-8MB）；全局一刀切 2MB 会把上传拦死在边缘。
+	# 应用侧 body 上限中间件将与此对齐（同一口径），两边谁先拦都是 413。
+	# 注意三个 matcher 必须互斥（not 对撞）：request_body 是层层包 MaxBytesReader，
+	# 若上传路径同时命中多道，后包的外层会以内层为准——上传就悄悄回到窄档。
+	# request_body 需 Caddy ≥2.10（caddy:2-alpine 现行 tag 满足；镜像缓存过旧
+	# 时先 docker compose build --pull caddy 再部署，否则 Caddyfile 解析失败部署即红）。
+	@upload_6mb path /api/itinerary/*/cover/upload /api/image-intent
+	@upload_9mb path /api/speech-intent
+	@body_capped {
+		not path /api/itinerary/*/cover/upload /api/image-intent /api/speech-intent
+	}
+
 	# route 块 = 显式保序（Caddy 规范序里 try_files 先于 respond/reverse_proxy，会把
 	# /api/** 先改写成 /index.html——预演实证；等价于 nginx 的 location 优先级语义）。
-	# 顺序即语义：先 deny（R1-8），再业务反代，再缓存头（只作用于其后的静态处理，
-	# 反代响应自带缓存语义、不被覆盖），最后 SPA fallback。
+	# 顺序即语义：先 deny（R1-8），再请求体上限，再业务反代，再缓存头（只作用于其后
+	# 的静态处理，反代响应自带缓存语义、不被覆盖），最后 SPA fallback。
 	route {
 		# R1-8：agent 面（自带 X-Agent-Token 鉴权、接受调用方自备 user_id）与 MCP 出口
 		# 只允许内网直连，绝不对公网开放——与 nginx.conf 的 deny all 同义。
 		respond /api/agent/* 403
 		respond /mcp* 403
+
+		request_body @upload_6mb {
+			max_size 6MB
+		}
+		request_body @upload_9mb {
+			max_size 9MB
+		}
+		request_body @body_capped {
+			max_size 2MB
+		}
 
 		# 业务面反代（SSE 长推与 300s 生成 deadline 都在此链路上：flush 立即、不设读超时）。
 		# header_up 显式替换 XFF：Caddy 默认就不信任来路 XFF，这里写明以防版本语义变化，

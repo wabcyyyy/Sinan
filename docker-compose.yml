@@ -30,6 +30,14 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+    # 日志轮转上限（审计 §3.5.5/P1-6）：Docker 默认 json-file 无大小限制，日志与
+    # MySQL 数据同盘会慢性写满。各服务统一 50m×5；生产叠加层（deploy/docker-compose.prod.yml）
+    # 不复制服务定义，经 compose 合并直接继承这里的配置。
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-travel_dev_only}"]
       interval: 10s
@@ -57,6 +65,11 @@ services:
       - ${REDIS_PASSWORD:-ta_dev_redis_only}
     volumes:
       - ta-redis-data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     healthcheck:
       # $$ 让 $REDIS_PASSWORD 留给容器内 shell 运行期展开（与 command 的 --requirepass
       # 同源 environment）。裸 $ 会被 compose 在解析期按宿主机 .env 插值——宿主机未设
@@ -114,6 +127,11 @@ services:
       # 只绑回环：前端经容器网络访问 agent-python:8000，宿主机端口留给调试。
       # 0.0.0.0:8000 会让 /api/agent/** 与 /mcp 绕过 nginx 直接暴露（R1-8）。
       - "127.0.0.1:8000:8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       mysql:
         condition: service_healthy
@@ -138,6 +156,11 @@ services:
     container_name: ta-frontend
     ports:
       - "5173:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       # M7-b 切流量：nginx.conf 里 /api/ 的上游已是 FastAPI，依赖跟着改
       - agent-python
@@ -168,6 +191,11 @@ services:
       # 证书与 ACME 账户状态：不挂卷则每次重建都重签（触发 Let's Encrypt 限速）
       - ta-caddy-data:/data
       - ta-caddy-config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       agent-python:
         condition: service_healthy

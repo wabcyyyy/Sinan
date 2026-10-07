@@ -1,24 +1,38 @@
 name: deploy
 
-# push 即部署：SSH 上 VPS 跑 deploy/deploy.sh（拉码 → 构建 → 滚动拉起 → 五行冒烟）。
+# CI 未通过不得部署（P0-1）：push 到 master 不再直接部署，改由 workflow_run 在
+# ci（同仓）成功结束后触发——ci 红了本 workflow 直接跳过。手动 workflow_dispatch
+# 保留给运维应急（人工拍板等同放行 CI）。只认 head_branch=master 的 ci 运行，
+# PR 触发的 ci 不部署。
+# 传给 VPS 的 DEPLOY_REF 是 ci 实际验证过的 head_sha：deploy.sh 检出该 commit 再
+# 构建，防「ci 绿的是 A、VPS git pull 拉到 B」的两棵树问题（审计 §3.5.3）。
 # 首次部署仍按 docs/上线教学-2026-09-27.md 手动做；本 workflow 只接管之后的日常升级。
 # 启用四件套（缺一则跳过，不会让每次 push 都红）：
 #   Secrets: VPS_HOST（公网 IP）/ VPS_USER（root）/ VPS_SSH_KEY（部署专用私钥全文）
 #   Variables: VPS_DEPLOY_ENABLED=1（总开关，首次部署跑通后再配）
+#              VPS_DEPLOY_DIR（可选；默认 /root/Sinan，与 deploy/README.md 的 clone
+#              目录一致。仓库已由 Travel-Assistant 更名 Sinan，旧 VPS 目录没搬的
+#              把它配成旧路径即可，不必搬目录）
 # 密钥建议专用一对 ed25519（生成步骤见教学文档 §8），泄露面最小、可单独吊销。
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [master]
   workflow_dispatch: {}
 
 concurrency:
-  # 连续 push 只部署最后一个 commit，与 ci.yml 的 G-0.4 取消语义一致
+  # 连续部署排队执行：deploy.sh 中途被 cancel 会跳过健康门失败时的自动回滚
+  # （P0-1），留下半新半旧状态——与 ci.yml 的 G-0.4「取消旧 run」不同，部署
+  # 取消不安全，故不 cancel-in-progress，让后一个部署完整跑完。
   group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    if: ${{ vars.VPS_DEPLOY_ENABLED == '1' }}
+    # workflow_run 触发时 conclusion 必须是 success（ci 红不部署）；
+    # workflow_dispatch 没有 workflow_run 上下文，短路放行（手动=人为拍板）
+    if: ${{ vars.VPS_DEPLOY_ENABLED == '1' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     # 本 job 只持 SSH 私钥上 VPS 跑脚本，不需要 GITHUB_TOKEN 的任何权限
     permissions: {}
@@ -35,5 +49,5 @@ jobs:
           # 任一命令非零即失败（deploy.sh 自带 set -euo pipefail，这里是双保险）
           script_stop: true
           script: |
-            cd /root/Travel-Assistant
-            bash deploy/deploy.sh
+            cd ${{ vars.VPS_DEPLOY_DIR || '/root/Sinan' }}
+            DEPLOY_REF="${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_sha) || '' }}" bash deploy/deploy.sh

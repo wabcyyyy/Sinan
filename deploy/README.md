@@ -39,8 +39,10 @@
 # 1. 装 Docker（VPS 上）
 curl -fsSL https://get.docker.com | sh
 
-# 2. 拉代码
-git clone <你的仓库地址> Travel-Assistant && cd Travel-Assistant
+# 2. 拉代码（目录名 Sinan 与 .github/workflows/deploy.yml 的 VPS_DEPLOY_DIR 默认值
+#    一致；旧 VPS 已按 Travel-Assistant 建目录的不必搬，配 GitHub Variable
+#    VPS_DEPLOY_DIR 指向旧路径即可）
+git clone <你的仓库地址> Sinan && cd Sinan
 
 # 3. 写环境变量（两份，职责不同；都在 .gitignore 里，绝不入库）
 cp .env.compose.example .env                      # compose 面：基础设施口令 + DOMAIN
@@ -81,8 +83,11 @@ bash deploy/deploy.sh
 冒烟门五项全过才算成功：边缘静态 200、`/api` 反代可达、`/api/agent` 403（R1-8）、
 无明文 Cookie 告警（叠加层漏加载的防呆）、Redis 连通（真 ping——REDIS_URL 显式错值会让
 吊销黑名单/登录锁静默降级为进程内，站点照常起，只有这里能拦住）。首启含建表迁移与 MySQL 初始化，最长等 180s。
-部署前预检同拦公开口令：`MYSQL_ROOT_PASSWORD` / `REDIS_PASSWORD` 缺失或仍等于 compose
-兜底默认值（`travel_dev_only` / `ta_dev_redis_only`）时，`deploy.sh` 直接拒绝部署。
+部署前预检同拦公开口令与占位密钥：`MYSQL_ROOT_PASSWORD` / `REDIS_PASSWORD` 缺失或仍等于
+compose 兜底默认值（`travel_dev_only` / `ta_dev_redis_only`）时拒绝部署；`JWT_SECRET` /
+`AGENT_INTERNAL_TOKEN`（`replace-with` 前缀占位串，JWT 还要求 ≥32 字符且非纯数字）与
+`LLM_API_KEY`（`your-` 前缀占位串）缺配或仍是 `.env.example` 公开占位值时同样拒绝——
+占位 JWT 密钥上产等于任何人可伪造会话票（审计 §3.4.2 / P0-5）。
 
 上线后打开 `https://<DOMAIN>` 注册账号即可（dev 库的测试账号不会带到生产）。
 
@@ -97,15 +102,22 @@ git checkout <上一个可用 tag 或 sha>
 SKIP_PULL=1 bash deploy/deploy.sh
 # ↑ checkout 后是 detached HEAD：下次升级前先 git checkout master && git reset --hard origin/master
 
+# 自动回滚（P0-1）：deploy.sh 每次部署前会把当前运行镜像打 rollback-keep 保留 tag，
+# 后端 180s 健康门失败时自动把容器回退到该镜像并以非零退出（源码树不回退——
+# 镜像级止损，下次部署照常重建；上面 git checkout 是代码级手动回滚）。
+
 # 看状态 / 日志
 docker compose -f docker-compose.yml --profile prod ps
 docker compose -f docker-compose.yml logs -f agent-python
 docker stats
 ```
 
-升级也可以全自动：`.github/workflows/deploy.yml` 在 push 到 master 时经 SSH 上 VPS 跑同一条
-`deploy.sh`（需配 Secrets `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` 与 Variables `VPS_DEPLOY_ENABLED=1`；
-启用步骤见 `docs/上线教学-2026-09-27.md` §8）。首次部署仍是手动的，自动化只接管日常升级。
+升级也可以全自动：`.github/workflows/deploy.yml` 不再由 push 直接触发，而是在 `ci` 工作流
+成功结束后经 workflow_run 触发（CI 未通过不得部署，P0-1），并锁定部署 ci 实际验证过的
+commit（防「CI 绿的是 A、拉码拉到 B」）；手动 workflow_dispatch 保留给运维应急。需配
+Secrets `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` 与 Variables `VPS_DEPLOY_ENABLED=1`，可选
+`VPS_DEPLOY_DIR`（默认 `/root/Sinan`，与首次部署的 clone 目录一致）。首次部署仍是手动的，
+自动化只接管日常升级。
 
 ### 备份
 
