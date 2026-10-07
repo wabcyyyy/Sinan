@@ -198,8 +198,11 @@ def render_ts() -> str:
 
 
 def _write(path: Path, content: str) -> None:
+    # newline="\n"：产物字节必须与平台无关。默认文本模式在 Windows 上把 \n 翻译成
+    # \r\n，CI（Linux）重导出得到 \n → drift 门禁把整个文件判成被手改（实测
+    # 2026-10-07）。单一真源的产物只允许一种字节形态。
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    path.write_text(content, encoding="utf-8", newline="\n")
     print(f"exported {path}")
 
 
