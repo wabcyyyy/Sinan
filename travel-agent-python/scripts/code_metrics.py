@@ -70,7 +70,7 @@ def main() -> int:
     if args.update:
         previous = load_limits() if LIMITS_PATH.exists() else {}
         shrunk = {key: min(current[key], previous.get(key, current[key])) for key in current}
-        LIMITS_PATH.write_text(json.dumps(shrunk, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        LIMITS_PATH.write_text(json.dumps(shrunk, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
         print(f"limits updated: {shrunk}")
         return 0
 

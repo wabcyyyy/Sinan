@@ -63,7 +63,7 @@ def main() -> int:
 
     current = current_errors()
     if args.update:
-        BASELINE.write_text("\n".join(current) + ("\n" if current else ""), encoding="utf-8")
+        BASELINE.write_text("\n".join(current) + ("\n" if current else ""), encoding="utf-8", newline="\n")
         print(f"baseline updated: {len(current)} errors frozen")
         return 0
 

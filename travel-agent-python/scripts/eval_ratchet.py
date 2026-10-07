@@ -161,7 +161,9 @@ def main(argv: list[str]) -> int:
 
     if args.update:
         rewritten = update(current, baseline)
-        baseline_path.write_text(json.dumps(rewritten, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        baseline_path.write_text(
+            json.dumps(rewritten, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
+        )
         for report_path, bounds_by_metric in rewritten["reports"].items():
             old_bounds = (baseline.get("reports") or {}).get(report_path) or {}
             for key, entry in bounds_by_metric.items():
