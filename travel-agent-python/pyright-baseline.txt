@@ -101,8 +101,6 @@ tests/test_admin_migration.py:reportOptionalMemberAccess:"role" is not a known a
 tests/test_admin_migration.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
 tests/test_admin_migration.py:reportOptionalMemberAccess:"username" is not a known attribute of "None"
 tests/test_admin_migration.py:reportOptionalSubscript:Object of type "None" is not subscriptable
-tests/test_atlas_api.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
-tests/test_atlas_api.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_audit_fixes.py:reportArgumentType:Argument of type "None" cannot be assigned to parameter "request" of type "Request" in function "__init__" |   "None" is not assignable to "Request"
 tests/test_audit_fixes.py:reportArgumentType:Argument of type "Resp400" cannot be assigned to parameter "response" of type "Response" in function "__init__" |   "Resp400" is not assignable to "Response"
 tests/test_auth_migration.py:reportArgumentType:Argument of type "_Req" cannot be assigned to parameter "request" of type "Request" in function "client_ip" |   "_Req" is not assignable to "Request"
