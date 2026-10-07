@@ -53,6 +53,13 @@ def _neutralize_ip_and_user_limits(monkeypatch):
     # 都被调用（test_itinerary_collab、_optimize_support 一族），同一 testserver 桶
     # 跨文件累积会随机 429。专项用例见 test_auth_migration（自行改回小值）。
     monkeypatch.setattr(settings, "login_ip_rate_per_minute", 100_000)
+    # 会话 Cookie 的 Secure 标志（2026-10-07 CI 修）：默认 true 是对外部署的安全
+    # 默认，但 TestClient 的 base_url 是 http://testserver，cookiejar 不回传 Secure
+    # Cookie——CI 上（无任何 .env）所有登录后请求 401（197 failed）。开发机之所以
+    # 绿，是 `uv run` 恰好把仓库根 .env 的 AUTH_COOKIE_SECURE=false 灌进了环境，
+    # 属"离线纪律不能依赖开发机恰好配过"的同类问题（见 _disable_live_geocoding）。
+    # 测 Secure 语义的用例自行 monkeypatch 回 True。
+    monkeypatch.setattr(settings, "auth_cookie_secure", False)
     yield
 
 
