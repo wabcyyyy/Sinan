@@ -34,7 +34,7 @@
         "preferences": [
           "人文历史"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -89,7 +89,7 @@
         "preferences": [
           "网红出片"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -146,7 +146,7 @@
         "preferences": [
           "自然风光"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -204,7 +204,7 @@
         "preferences": [
           "美食"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -263,7 +263,7 @@
         "preferences": [
           "人文历史"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -320,7 +320,7 @@
         "preferences": [
           "自然风光"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核；开放模式结果未通过全部约束校验（见校验日志），已保留但请复核当日时间安排；达到重试上限后仍存在行程约束问题",
@@ -391,7 +391,7 @@
         "preferences": [
           "美食"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -448,7 +448,7 @@
         "preferences": [
           "海滨"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -506,7 +506,7 @@
         "preferences": [
           "高迪建筑"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -564,7 +564,7 @@
         "preferences": [
           "城市观察"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -621,7 +621,7 @@
         "preferences": [
           "海岛"
         ],
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -681,7 +681,7 @@
           "无坐标边界"
         ],
         "coords": false,
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",
@@ -745,7 +745,7 @@
           "博物馆"
         ],
         "coords": false,
-        "prompt_version": "v1.3.localized/v1.2.localized"
+        "prompt_version": "v1.4.localized/v1.3.localized"
       },
       "status": "degraded",
       "status_reason": "已使用开放研究生成；关键事实需出发前复核",

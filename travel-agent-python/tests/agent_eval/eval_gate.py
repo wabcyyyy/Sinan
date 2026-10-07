@@ -35,8 +35,10 @@ GRAPH_REPORT = REPORT_DIR / "llm_report_graph.json"
 
 # —— 期望口径常量：改 Prompt 版本时必须同步这里（防静默漂移）——
 EXPECTED_PROMPT_VERSION = "workflow-v2-authority-route-20260828"
-EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.3.localized"
-EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.2.localized"
+# 2026-10-07（P1-4）：参考资料块定界化，版本 bump（open_day v1.3→v1.4、
+# open_trip v1.2→v1.3）；模板正文（prompt_text_sha256 覆盖面）未变。
+EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.4.localized"
+EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.3.localized"
 
 # 一致性基线（2026-09-23 重新认账）：流式路径真实小样本（qwen-plus，`llm_eval.py
 # --path stream --limit 3`，与 nightly 门禁同题同口径）实测两遍一致率 **0.0**

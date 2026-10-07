@@ -17,8 +17,10 @@
 
 import json
 
-OPEN_DAY_PROMPT_VERSION = "v1.3.localized"
-OPEN_TRIP_PROMPT_VERSION = "v1.2.localized"
+# 2026-10-07 v1.4/v1.3（P1-4）：动态追加的参考资料块改为三引号定界 + 可信/
+# 不可信分区渲染（reference_pool.block），两套生成 Prompt 的实际正文随之变化。
+OPEN_DAY_PROMPT_VERSION = "v1.4.localized"
+OPEN_TRIP_PROMPT_VERSION = "v1.3.localized"
 
 
 def open_day_system_prompt(

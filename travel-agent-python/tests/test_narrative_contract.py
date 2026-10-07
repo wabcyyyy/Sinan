@@ -190,8 +190,9 @@ def test_sanitize_narrative_keeps_why_this_of_non_attraction_items():
 
 
 def test_prompt_versions_current():
-    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.3.localized"
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.2.localized"
+    # 2026-10-07（P1-4）：参考资料块定界化，两版本同步 bump
+    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.4.localized"
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.3.localized"
 
 
 class _Mem:
