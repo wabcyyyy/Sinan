@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.agent.core.poi_identity import matches_any, same_entity
 from app.agent.grounding import existence
 from app.agent.grounding.existence import (
     NOT_FOUND,
@@ -20,11 +21,9 @@ from app.agent.grounding.existence import (
     VERIFIED,
     ResolveResult,
     city_center,
-    matches_any,
     providers_in_order,
     reset_existence_state,
     resolve_poi,
-    same_entity,
 )
 from app.agent.runtime.run_limits import begin_limits, end_limits
 from app.common.config import settings
@@ -270,6 +269,57 @@ def test_no_active_limits_means_no_cap(monkeypatch):
     assert existence._budget_allows() is True
 
 
+@pytest.mark.parametrize("first_raises", [False, True])
+def test_point_budget_covers_provider_fallback_and_failure(monkeypatch, first_raises):
+    class Provider:
+        authoritative_negative = False
+
+        def __init__(self, name):
+            self.name = name
+            self.calls = 0
+
+        def available(self):
+            return True
+
+        def resolve(self, name, city):
+            self.calls += 1
+            if self.name == "otm":
+                if first_raises:
+                    raise TimeoutError("source down")
+                return ResolveResult.unknown("not_found")
+            return ResolveResult(state=VERIFIED, provider="nominatim", name=name, latitude=30.2, longitude=120.1)
+
+    first, second = Provider("otm"), Provider("nominatim")
+    _install(monkeypatch, [first, second])
+    token = begin_limits()
+    try:
+        limits = existence.current_limits()
+        assert limits is not None
+        limits.max_existence_checks = 2
+        for name in ("灵隐寺", "净慈寺"):
+            assert resolve_poi(name, "杭州").grounded
+        assert limits.existence_checks == 2
+        assert first.calls == second.calls == 2
+        assert resolve_poi("灵隐寺", "杭州").grounded  # 已缓存的证实不扣额度
+        assert limits.existence_checks == 2
+        result = resolve_poi("河坊街", "杭州")
+        assert result.state == UNKNOWN and not result.deletable
+        assert first.calls == second.calls == 2
+    finally:
+        end_limits(token)
+
+
+def test_unconfigured_providers_do_not_charge_point_budget(monkeypatch):
+    _install(monkeypatch, [_FakeNominatim(None, available=False)])
+    token = begin_limits()
+    try:
+        assert resolve_poi("灵隐寺", "杭州").state == UNKNOWN
+        limits = existence.current_limits()
+        assert limits is not None and limits.existence_checks == 0
+    finally:
+        end_limits(token)
+
+
 # ---------- 5. 记忆化：同一个名字一次 run 只解析一次 ----------
 
 
@@ -289,7 +339,7 @@ def test_city_center_is_memoized(monkeypatch):
         calls.append(name)
         return {"latitude": 30.0, "longitude": 120.0}
 
-    monkeypatch.setattr(existence.places, "resolve_city_center", _geo)
+    monkeypatch.setattr(existence.city_center_data, "city_center", _geo)
     assert city_center("杭州") == (30.0, 120.0)
     assert city_center("杭州") == (30.0, 120.0)
     assert calls == ["杭州"]

@@ -56,6 +56,8 @@ def verify_suggestion_rows(
             stats["dropped"] += 1
             continue
         if result.grounded:
+            if result.localized_name:
+                row["name" if "name" in row else "poi_name"] = result.localized_name
             row["latitude"] = result.latitude
             row["longitude"] = result.longitude
             if result.address and not row.get("address"):

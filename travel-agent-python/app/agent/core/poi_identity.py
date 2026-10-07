@@ -10,7 +10,7 @@
 0/0 与非数值坐标判为 `inf`（缺失哨兵），调用方据此退化成纯名称判定；geo 版没有这个
 约定，且不做 `asin` 入参钳制。
 
-依赖：无（纯函数，不 import 任何 agent 兄弟模块），所以生成侧与解析侧都能直引。
+依赖：stdlib 与 common.config 的名称阈值；不 import 其他 agent 域，生成与解析共用。
 """
 
 from __future__ import annotations
@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 from math import asin, cos, radians, sin, sqrt
 from typing import Any
+
+from app.common.config import settings
 
 # 归一化去重键：剥括号注记（"圣家堂（Sagrada Família）"→"圣家堂"）、
 # 去空白与常见分隔标点、小写。模型对同一地点常输出名称变体（中英混注、
@@ -122,3 +124,60 @@ class PoiSeenRegistry:
             return
         if abs(lat) > 1e-6 and abs(lng) > 1e-6:
             self._coords.append((str(item_type or ""), lat, lng))
+
+
+_MIN_SHARED_CHARS = 4
+
+
+def same_entity(query: str, candidate: str) -> bool:
+    """同一实体判定：外部检索对任意输入都会尽力返回，不设门槛就会把
+    「不存在的景点」锚定到无关坐标（典型事故：西安「方所书店」→ 安徽某防治所）。
+
+    规则：归一（去空白/标点/大小写）后相等或互为包含 → 同一实体；否则要求
+    字符重叠率 ≥ `entity_name_similarity_min` **且** 共享字符 ≥ 4——只有比率
+    不够，短名（"老街"vs"老城"）比率高却不是同一处。
+    """
+
+    def norm(value: str) -> str:
+        return "".join(ch for ch in strip_name_annotation(value).lower() if ch.isalnum())
+
+    q, c = norm(query), norm(candidate)
+    if not q or not c:
+        return False
+    if q == c or q in c or c in q:
+        return True
+    overlap = len(set(q) & set(c))
+    union = len(set(q) | set(c))
+    return union > 0 and overlap / union >= settings.entity_name_similarity_min and overlap >= _MIN_SHARED_CHARS
+
+
+def matches_any(query: str, spellings: list[str] | tuple[str, ...] | None) -> bool:
+    """对 provider 返回的全部名称写法（本地名 + `name:xx` 别名）逐一判等。
+
+    跨脚本匹配只能靠别名：`淺草寺` 的 `name:ja` 是 `浅草寺`、`奧賽博物館` 的
+    `name:zh-Hans` 是 `奥赛博物馆`——简繁/中英写法差异占实测未判定的 56%。
+    """
+    return any(same_entity(query, text) for text in spellings or [])
+
+
+def replace_name_mentions(value: Any, aliases: dict[str, str]) -> Any:
+    """只替换已被实体解析确认的名称；不做字形猜测或自行翻译。"""
+    if not aliases:
+        return value
+    if isinstance(value, str):
+        pattern = re.compile("|".join(re.escape(name) for name in sorted(aliases, key=len, reverse=True)))
+        return pattern.sub(lambda hit: aliases[hit.group()], value)
+    if isinstance(value, list):
+        return [replace_name_mentions(item, aliases) for item in value]
+    if isinstance(value, dict):
+        return {key: replace_name_mentions(item, aliases) for key, item in value.items()}
+    return value
+
+
+def matches_city_name(city: str, row: dict) -> bool:
+    # 城市名只接受完整名称/别名（市/县后缀可省略）；POI 的模糊包含不能用于目的地。
+    def key(name: str) -> str:
+        return "".join(ch for ch in name.casefold() if ch.isalnum()).removesuffix("市").removesuffix("县")
+
+    spellings = [row.get("name") or "", *(row.get("aliases") or [])]
+    return any(key(city) == key(str(name)) for name in spellings if name)

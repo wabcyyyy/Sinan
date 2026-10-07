@@ -18,9 +18,55 @@ parse_llm_json 之后经过本函数，而知识/约束链的 items 由服务端
 
 import re
 
-from app.agent.core.poi_identity import norm_poi_key
-from app.agent.generation.rules.generation_core import has_model_claims, strip_model_claims
+from app.agent.core.poi_identity import norm_poi_key, replace_name_mentions
+from app.agent.generation.rules.generation_core import PRICE_ESTIMATE_NOTE_SUFFIX, has_model_claims, strip_model_claims
 from app.agent.runtime.trace import record_event
+from app.common.vo_json import iso_time, parse_time_safe
+from app.schemas.trip import DailyPlan
+
+
+def sync_schedule_summary(plan: DailyPlan, *, estimated: bool = True) -> None:
+    """概述只从最终排程派生；自由叙事不能承诺不存在的地点或时段。
+
+    景点介绍、实用提示与备选方案仍可由模型组织。此处仅收口描述已排日程的
+    theme/note，并在落地、住宿摊铺之后再次调用，防止它们与 items 各持一份事实。
+    时间使用落库同一转换规则；非法自由文本留空，不在概述中虚构可用时段。
+    """
+    stops = [item for item in plan.items if item.poi_name and item.poi_name.strip()]
+    if not stops:
+        plan.theme = None
+        plan.note = f"第 {plan.day_no} 天尚未生成可用行程"
+        return
+    visits = [item for item in stops if item.item_type != "hotel"] or stops
+    plan.theme = " → ".join(item.poi_name for item in visits[:2])[:NARRATIVE_THEME_MAX]
+    parts = []
+    for item in stops:
+        item.start_time = iso_time(parse_time_safe(item.start_time))
+        item.end_time = iso_time(parse_time_safe(item.end_time))
+        times = "–".join(time for time in (item.start_time, item.end_time) if time)
+        parts.append(f"{times} {item.poi_name}".strip())
+    plan.note = "；".join(parts) + (PRICE_ESTIMATE_NOTE_SUFFIX if estimated else "")
+
+
+def normalize_name_mentions(plan: dict, aliases: dict[str, str]) -> None:
+    """名称落地后同步叙事提及，避免主题/拍照点还保留被归一前的异体名称。"""
+    for field in (
+        "theme",
+        "note",
+        "trip_theme",
+        "photo_spots",
+        "practical_notes",
+        "backup_plan",
+        "day_options",
+        "suggestions",
+    ):
+        if field in plan:
+            plan[field] = replace_name_mentions(plan[field], aliases)
+    for item in plan.get("items") or []:
+        for field in ("why_this", "remark", "tag"):
+            if field in item:
+                item[field] = replace_name_mentions(item[field], aliases)
+
 
 # 叙事字段规模上限：与 open_generation 契约、app/schemas/trip.py 的截断口径
 # 一一对应。LLM 偶尔无视条数/长度约束，在 parse_llm_json 之后做轻量清洗兜底——

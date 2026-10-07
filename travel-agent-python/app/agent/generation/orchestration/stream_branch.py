@@ -33,6 +33,7 @@ from langgraph.config import get_stream_writer
 
 from app.agent.generation.content.day_prompts import DAY_ATTRACTION_CONTEXT_LIMIT, DAY_FOOD_CONTEXT_LIMIT
 from app.agent.generation.content.generators import pick_hotels
+from app.agent.generation.content.narrative import sync_schedule_summary
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.rules.budget import budget_tier
 from app.agent.research.agent_state import MODE_STREAM, UnifiedAgentState
@@ -48,7 +49,9 @@ logger = logging.getLogger(__name__)
 
 def _stream_plan_model(plan: dict) -> DailyPlan:
     """plan dict → 契约模型（与 generate-day 相同的字段定义，非法字段在此被拒/裁剪）。"""
-    return DailyPlan(**plan)
+    result = DailyPlan(**plan)
+    sync_schedule_summary(result)
+    return result
 
 
 def _stream_suggestion_models(rows: list[dict]) -> list[Suggestion]:
@@ -93,6 +96,7 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
         budget=req.budget,
         start_date=req.start_date,
         hotel_tier=req.hotel_tier,
+        preferences=req.preferences,
         requirements=req.requirements,
         intent=req.intent,
         region_hint=req.region_hint,

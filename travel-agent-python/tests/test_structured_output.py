@@ -23,8 +23,8 @@ from app.agent.core.json_utils import LlmJsonError, parse_llm_json, parse_llm_js
 from app.agent.generation.content.day_prompts import (
     open_day_output_schema,
     open_trip_output_schema,
-    parse_llm_json_with_repair,
 )
+from app.agent.generation.content.json_output import parse_llm_json_with_repair
 from app.common.config import settings
 from app.schemas.trip import GenerateDayRequest
 
@@ -74,7 +74,14 @@ class TestOutputSchemas:
         class _Capture:
             def complete(self, *args, **kwargs):
                 seen.append(kwargs)
-                return json.dumps({"trip_theme": "T", "daily_plans": [], "suggestions": []})
+                return json.dumps(
+                    {
+                        "trip_theme": "T",
+                        "daily_plans": [{"day_no": 1, "items": [{"poi_name": "A", "item_type": "attraction"}]}],
+                        "items": [{"poi_name": "A", "item_type": "attraction"}],
+                        "suggestions": [],
+                    }
+                )
 
             def chat(self, *args, **kwargs):
                 seen.append(kwargs)

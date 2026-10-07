@@ -15,9 +15,11 @@
 
 from __future__ import annotations
 
-import copy
 from collections.abc import Mapping
 from typing import Any, TypedDict
+
+from app.agent.core.poi_identity import replace_name_mentions
+from app.agent.generation.rules.hotel_schedule import hotel_for_day
 
 # 单日/兼容路径的校验修复次数
 MAX_FIX_ATTEMPTS = 2
@@ -135,10 +137,7 @@ def hotel_prompt_clause(needs_hotel: bool, days: int | None) -> str:
     d = int(days or 1)
     if needs_hotel and d > 1:
         last_stay = max(d - 1, 0)
-        return (
-            f"第 1 至第 {last_stay} 天每天都要有同一家酒店的入住项"
-            "（全程沿用同一家，默认不换店，仅前往远距离区域转点时可换），最后一天不安排入住"
-        )
+        return f"第 1 至第 {last_stay} 天每天都要有同一家酒店的入住项（全程沿用同一家，默认不换店），最后一天不安排入住"
     if needs_hotel:
         return "安排 1 家酒店"
     return "按需安排酒店"
@@ -159,7 +158,7 @@ def count_hotel_nights_in_budget(plan_day_no: int, days: int | None, item_type: 
 
 
 def spread_hotels(plans: list[dict], nights: int | None = None, days: int | None = None) -> int:
-    """全程同一家酒店：把首个酒店项复制到仍缺入住的晚次。
+    """全程同一家酒店：沿用首个住宿，补齐晚次并消除模型自行换店/重复入住。
 
     不改内容来源（仍是 LLM 选的那家店），只做确定性摊铺。
     """
@@ -168,7 +167,7 @@ def spread_hotels(plans: list[dict], nights: int | None = None, days: int | None
     if nights <= 0 or not plans:
         return 0
     source: dict | None = None
-    for plan in plans:
+    for plan in sorted(plans, key=lambda p: int(p.get("day_no") or 0)):
         for item in plan.get("items") or []:
             if item.get("item_type") == "hotel":
                 source = item
@@ -177,19 +176,44 @@ def spread_hotels(plans: list[dict], nights: int | None = None, days: int | None
             break
     if not source:
         return 0
-    added = 0
+    changed = 0
     for plan in plans:
         day_no = int(plan.get("day_no") or 0)
         if day_no < 1 or day_no > nights:
             continue
         items = plan.setdefault("items", [])
-        if any(it.get("item_type") == "hotel" for it in items):
+        local_hotel = next((it for it in items if it.get("item_type") == "hotel"), None)
+        clone = hotel_for_day(source, local_hotel, items)
+        if [it for it in items if it.get("item_type") == "hotel"] == [clone]:
             continue
-        clone = copy.deepcopy(source)
-        clone["sort_no"] = len(items)
-        items.append(clone)
-        added += 1
-    return added
+        hotel_at = next((i for i, it in enumerate(items) if it.get("item_type") == "hotel"), len(items))
+        # 实体/价格沿用首晚，入住时间属于当天；其余 hotel 是同晚重复计费。
+        normalized = [it for it in items if it.get("item_type") != "hotel"]
+        clone["sort_no"] = min(hotel_at, len(normalized))
+        normalized.insert(clone["sort_no"], clone)
+        if normalized != items:
+            plan["items"] = normalized
+            aliases = {
+                it["poi_name"]: source["poi_name"]
+                for it in items
+                if it.get("item_type") == "hotel"
+                and it.get("poi_name")
+                and source.get("poi_name")
+                and it["poi_name"] != source["poi_name"]
+            }
+            for field in (
+                "theme",
+                "note",
+                "trip_theme",
+                "practical_notes",
+                "photo_spots",
+                "backup_plan",
+                "day_options",
+            ):
+                if field in plan:
+                    plan[field] = replace_name_mentions(plan[field], aliases)
+            changed += 1
+    return changed
 
 
 def meal_slot_of(start_time: str | None, end_time: str | None = None) -> str | None:

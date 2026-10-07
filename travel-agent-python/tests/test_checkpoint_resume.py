@@ -265,7 +265,7 @@ def test_cleanup_old_threads_removes_expired_history(monkeypatch) -> None:
         day_workflow,
         "generate_day_once",
         lambda req, *, force_fallback=False: (
-            DailyPlan(day_no=1, note="待清理"),
+            DailyPlan(day_no=1, note="待清理", items=[TripItem(poi_name="测试景点", item_type="attraction")]),
             "llm",
         ),
     )

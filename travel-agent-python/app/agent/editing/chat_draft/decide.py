@@ -323,9 +323,10 @@ def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
                     date.fromisoformat(req.start_date) + timedelta(days=len(plans) - 1)
                 ).isoformat()
         return ChatTurnResponse(
-            reply=reply,
+            reply=reply + "\n\n以上为待应用草稿，点击「应用到行程」后才会保存修改。",
             plans=plans,
             changed=plans != req.plans,
+            requires_confirmation=plans != req.plans,
             plan_document=updated_document,
             operations=operations,
         )

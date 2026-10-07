@@ -68,7 +68,7 @@ def day_generate(state: UnifiedAgentState) -> dict:
 
     request: GenerateDayRequest = cast("GenerateDayRequest", state.day_request)
     feedback = state.feedback
-    if feedback and feedback != request.feedback:
+    if feedback != request.feedback:
         request = request.model_copy(update={"feedback": feedback})
     try:
         plan, source = dw.generate_day_once(request, force_fallback=state.force_fallback)
@@ -332,7 +332,7 @@ def run_day(req: GenerateDayRequest, *, thread_id: str | None = None) -> DailyPl
     # 进程重启后恢复侧找得到（PR-3）；一次性调用（无 action_id）退化为随机 thread。
     config = checkpoint.run_config(thread_id or req.action_id or f"day-{uuid4().hex}")
     result = unified_agent_graph.invoke(empty_day_state(req), config)
-    if result.get("plan") is None:
+    if result.get("plan") is None or not result["plan"].items:
         raise ValueError(result.get("error") or "单日行程生成失败")
     return result["plan"]
 

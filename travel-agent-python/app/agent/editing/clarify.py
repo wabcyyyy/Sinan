@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import date
 
+from app.agent.data.city_center import destination_problem
 from app.agent.data.city_reference import known_city_hits
 from app.common.llm_client import get_llm_client
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
@@ -153,6 +154,9 @@ def _respond(slots: dict, missing: list[str], question: str | None, options: lis
     # 必填齐备、即将就绪——两个确定性把关（矛盾预算/一天多城）依次过闸，
     # 各自只拦一次（slots 标记防循环，见各 gate 注）
     days_raw = slots.get("days")
+    problem = destination_problem(str(slots.get("city") or ""))
+    if problem:
+        return ClarifyResponse(slots=slots, missing=["city"], ready=False, blocked=True, question=problem, options=[])
     for gate in (_budget_gate, _multicity_gate):
         blocked = gate(slots, days_raw)
         if blocked is not None:

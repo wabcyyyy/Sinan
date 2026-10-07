@@ -9,6 +9,7 @@
 import logging
 from typing import cast
 
+from app.agent.generation.content.narrative import sync_schedule_summary
 from app.agent.generation.content.suggestions import activity_floor, build_suggestions, fill_suggestion_gaps
 from app.agent.generation.output.facts import (
     apply_item_facts,
@@ -110,6 +111,7 @@ def format_output(state: UnifiedAgentState) -> dict:
                 trip_theme=plan.get("trip_theme"),
             )
         )
+        sync_schedule_summary(daily_plans[-1], estimated=bool((state.schedule_report or {}).get("open_research")))
 
     budget_estimate = prices.recompute_budget(
         state.budget_estimate, daily_plans, hotel_total, attraction_total, consumption

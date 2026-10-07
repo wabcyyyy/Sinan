@@ -41,6 +41,8 @@ def local_ground(item: dict[str, Any], city: str) -> bool:
     result = resolve_poi(name, city)
     if not result.grounded:
         return False
+    if result.localized_name:
+        item["poi_name"] = result.localized_name
     item["latitude"] = result.latitude
     item["longitude"] = result.longitude
     if result.address and not item.get("address"):

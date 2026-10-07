@@ -17,8 +17,8 @@
 
 import json
 
-OPEN_DAY_PROMPT_VERSION = "v1.2.compact"
-OPEN_TRIP_PROMPT_VERSION = "v1.1.narrative"
+OPEN_DAY_PROMPT_VERSION = "v1.3.localized"
+OPEN_TRIP_PROMPT_VERSION = "v1.2.localized"
 
 
 def open_day_system_prompt(
@@ -78,7 +78,9 @@ def open_day_system_prompt(
             "名称必须真实存在可搜索到，禁止编造。"
         )
     return (
-        "你是资深当地导游。基于你的目的地知识为用户安排一天行程，只输出 JSON："
+        "你是资深当地导游。基于你的目的地知识为用户安排一天行程。"
+        "叙事一律用简体中文；地点统一采用正式或常用中文名，无可靠中文名保留正式原名，"
+        "禁止编造翻译，同一地点在 items、suggestions 与叙事中保持同一写法。只输出 JSON："
         f"{{{trip_theme_key}"
         '"theme":"当天主题叙事句(≤40 字，一句说清「当天怎么玩」的主线，'
         '如「老城街区漫步：大教堂—老市场—河岸步道」，禁止写成「A→B→C」纯路径串)",'
@@ -138,7 +140,9 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str) -> str:
     - hotel_clause：住宿口径条款（hotel_prompt_clause 产出）。
     """
     return (
-        "你是资深当地导游。基于目的地常识一次安排完整多日行程，只输出 JSON："
+        "你是资深当地导游。基于目的地常识一次安排完整多日行程。"
+        "叙事一律用简体中文；地点统一采用正式或常用中文名，无可靠中文名保留正式原名，"
+        "禁止编造翻译，同一地点在 items、suggestions 与叙事中保持同一写法。只输出 JSON："
         '{"trip_theme":"整趟主题标题(≤40 字，能串起全部天数的核心意象，'
         '如「目的地·核心意象＋主线气质（住宿据点为据点）」)",'
         '"daily_plans":[{"day_no":1,"theme":"当天主题叙事句(≤40 字，一句说清「当天怎么玩」的主线，'

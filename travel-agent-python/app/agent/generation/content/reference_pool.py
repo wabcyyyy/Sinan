@@ -11,12 +11,12 @@
 - 来源值域校验不可省：/v1/generate-day 的 context 由调用方传入属不可信输入，
   不做值域校验则调用方可伪造 "opentripmap" 让幻觉事实获得外部背书。
 
-依赖：existence（same_entity 名称门槛）、grounding_labels；无上层依赖。
+依赖：core.poi_identity（same_entity 名称门槛）、grounding_labels；无上层依赖。
 """
 
 import re
 
-from app.agent.grounding.existence import same_entity
+from app.agent.core.poi_identity import same_entity
 from app.agent.grounding.grounding_labels import (
     UNTRUSTED_SOURCE,
     apply_label,

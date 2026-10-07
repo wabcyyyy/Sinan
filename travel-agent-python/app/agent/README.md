@@ -61,13 +61,14 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 
 | 模块 | 一句话 |
 |---|---|
-| `generation_core.py` | 纯规则骨架：N-1 晚住宿节奏、摊铺、预算估算、脏项与模型申报字段清洗——不 import 上面任何模块 |
+| `generation_core.py` | 纯规则骨架：N-1 晚住宿节奏、摊铺、预算估算、脏项与模型申报字段清洗；每日入住排程委托同域 `hotel_schedule.py`，不 import 内容或编排层 |
+| `hotel_schedule.py` | 纯住宿排程：沿用酒店实体与报价，保留每天入住时间；漏排晚次接在当天活动后，午夜为上界 |
 | `core/poi_identity.py` | 点位同一性判定：名称归一、球面距离（0/0 判缺失）、跨天去重——域阶梯最底层，被生成与接地两侧共用 |
 | `budget.py` | 预算档位与约束句、餐价钳制、0 价补水 |
 | `suggestions.py` | 备选池：候选组装、类别地板与上限、缺口补齐 |
 | `suggestion_grounding.py` | 备选池的批量后验证（「发现更多」那 24-40 个名字唯一一次被外部数据检验） |
 | `reference_pool.py` | 参考资料池：把权威候选编成可引用的编号资料，并把模型引用落地回权威字段 |
-| `landing.py` | 两条生成链路共用的落地步骤：脏项过滤 → 引用/本地落地 → 证伪点删除 |
+| `landing.py` | 两条生成链路共用的落地步骤：脏项过滤 → 引用/本地落地 → 证伪点删除；单日 `drop_used_items` 在接地后复用 PoiSeenRegistry 去重 |
 | `existence.py` | 存在性解析器：可插拔 provider 的三值判定（证实/证伪/未判定）+ 同城硬闸 + 证据票签发 |
 | `existence_commercial.py` | 付费 provider（高德 / Google Places）：无 key 一律如实未判定，不占免费配额 |
 | `grounding_evidence.py` | 证据票：「本服务真的抓过这一行」的不可伪造凭据 |
@@ -76,8 +77,10 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `map_link.py` | 地图深链：关键词/路线两种 URL 与 GCJ-02 偏移 |
 | `open_plans.py` | 图路径的逐日草案：补池 → 落地 → 删证伪点 → 组装（与 `trip_stream` 产出同构） |
 | `generators.py` | 内容组装原语与对外面（纯函数优先，无编排） |
-| `narrative.py` | 叙事字段清洗：限值截断、类型降级、指令残留剥离、模型申报字段剥离 |
+| `narrative.py` | 叙事字段清洗及最终排程概述：限值、类型、指令残留与模型申报字段清洗；theme/note 由 items 派生 |
 | `day_prompts.py` | Prompt 组装：系统提示绑定、约束句拼装、日/整段两种入口的 LLM 调用 |
+| `json_output.py` | 生成输出骨架校验与携原请求的单次修复；空行程明确失败 |
+| `suggestion_quality.py` | 交通线路与旅游设施的语义区分；备选池各补齐路径共享准入检查 |
 | `day_stream.py` | 单日链路：一次生成的编排与落地（反思/重试不在此） |
 | `day_workflow.py` | 单日图的门面 |
 | `stream_parser.py` | 流式 JSON 解析：跨块拼装与逐天产出 |

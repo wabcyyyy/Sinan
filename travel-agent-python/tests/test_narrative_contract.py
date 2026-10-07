@@ -186,12 +186,12 @@ def test_sanitize_narrative_keeps_why_this_of_non_attraction_items():
     assert plan["items"][1]["why_this"] is None
 
 
-# ---------- 3. Prompt：v1.2.compact 契约 ----------
+# ---------- 3. Prompt：语言一致性契约 ----------
 
 
 def test_prompt_versions_current():
-    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.2.compact"
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.1.narrative"
+    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.3.localized"
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.2.localized"
 
 
 class _Mem:
@@ -308,7 +308,14 @@ def test_llm_open_day_returns_sanitized_narrative_fields(monkeypatch):
 
 
 def test_llm_open_day_day1_has_trip_theme_day2_not(monkeypatch):
-    client = _CapturingClient({"theme": "花园漫步", "note": "第2天", "items": [], "suggestions": []})
+    client = _CapturingClient(
+        {
+            "theme": "花园漫步",
+            "note": "第2天",
+            "items": [{"poi_name": "花园", "item_type": "attraction"}],
+            "suggestions": [],
+        }
+    )
     monkeypatch.setattr(day_stream, "get_llm_client", lambda: client)
 
     day1 = day_stream.llm_open_day(GenerateDayRequest(city="京都", day_no=1, days=2), set())
@@ -348,7 +355,9 @@ def test_generate_day_once_daily_plan_carries_all_narrative_fields(monkeypatch):
     )
     plan, source = day_stream.generate_day_once(GenerateDayRequest(city="京都", day_no=1, days=2, context={}))
     assert source == "open"
-    assert plan.theme == "街区巡礼"
+    assert plan.theme == "清水寺"  # 已排日程主题由最终 items 派生。
+    assert plan.note is not None
+    assert "09:00–11:00 清水寺" in plan.note
     assert plan.trip_theme == "京都·千恋万花圣地巡礼"  # day_no=1 含 trip_theme
     assert plan.items[0].why_this == "圣地巡礼核心打卡点"  # 随 TripItem 自然携带
     assert plan.day_options[0].label == "暴走版"
@@ -380,8 +389,14 @@ def test_llm_open_trip_sanitizes_plans_and_injects_trip_theme(monkeypatch):
         {
             "trip_theme": "题" * 60,
             "daily_plans": [
-                {"day_no": 1, "theme": "长" * 50, "note": "d1", "items": [], "practical_notes": ["n"] * 6},
-                {"day_no": 2, "note": "d2", "items": []},
+                {
+                    "day_no": 1,
+                    "theme": "长" * 50,
+                    "note": "d1",
+                    "items": [{"poi_name": "清水寺", "item_type": "attraction"}],
+                    "practical_notes": ["n"] * 6,
+                },
+                {"day_no": 2, "note": "d2", "items": [{"poi_name": "岚山", "item_type": "attraction"}]},
             ],
             "suggestions": [],
         }

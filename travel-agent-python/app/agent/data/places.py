@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib.parse import quote
 
+from app.agent.core.poi_identity import matches_any
 from app.common.config import settings
 from app.common.external_client import BACKGROUND, INTERACTIVE, ExternalClient, fetch_json, redact_secrets
 from app.common.http_client import api_client, contact_user_agent
@@ -135,7 +136,7 @@ def resolve_city_center(city_en: str) -> dict[str, Any] | None:
     if not isinstance(row, dict) or row.get("lat") is None or row.get("lon") is None:
         return None
     return {
-        "name": str(row.get("name") or name),
+        "name": str(row.get("name") or ""),
         "country": str(row.get("country") or ""),
         "country_code": str(row.get("country") or ""),
         "latitude": float(row["lat"]),
@@ -313,6 +314,10 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
                 "longitude": lng,
                 # 别名集合：任何一条名称标签都算同一个实体的写法
                 "aliases": sorted({str(v).strip() for v in details.values() if str(v or "").strip()}),
+                "localized_name": str(
+                    details.get("name:zh-Hans") or details.get("name:zh-CN") or details.get("name:zh") or ""
+                ).strip()
+                or None,
                 "country_code": str(item.get("country_code") or "").upper() or None,
                 "category": str(item.get("category") or ""),
                 "type": str(item.get("type") or ""),
@@ -324,5 +329,7 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
 
 def geocode_place(name: str, city: str | None = None) -> dict[str, Any] | None:
     """名称（可带城市）→ 单个坐标；OTM 是分类检索、兜不了"点名解析"，由 Nominatim 承担。"""
-    rows = geocode_place_rows(name, city)
-    return rows[0] if rows else None
+    rows = geocode_place_rows(name, city, namedetails=True)
+    return next(
+        (row for row in rows or [] if matches_any(name, [row.get("name", ""), *(row.get("aliases") or [])])), None
+    )

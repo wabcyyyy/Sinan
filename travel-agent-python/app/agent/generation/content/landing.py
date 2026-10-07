@@ -17,6 +17,7 @@
 
 from typing import Any
 
+from app.agent.core.poi_identity import PoiSeenRegistry
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.rules.generation_core import filter_dirty_items
 from app.agent.grounding.facts import local_ground
@@ -27,6 +28,26 @@ from app.agent.runtime.trace import record_event
 def filter_plan_items(items: list[Any] | None) -> list[dict]:
     """落地前的脏项过滤（两条链路共用的一份实现）。"""
     return filter_dirty_items(items)
+
+
+def drop_used_items(items: list[dict], used_names: list[str], *, day_no: int) -> list[dict]:
+    """单日接地后也走生成期判重；已安排名称和同日坐标共用 PoiSeenRegistry。
+
+    酒店豁免由登记表统一定义；去重清空日程时，交图的失败/修复边界处理。
+    """
+    seen = PoiSeenRegistry()
+    for name in used_names:
+        seen.register(name, None)
+    kept = []
+    for item in items:
+        name, kind = item["poi_name"], item["item_type"]
+        latitude, longitude = item.get("latitude"), item.get("longitude")
+        if seen.is_duplicate(name, kind, latitude, longitude):
+            record_event("decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name})
+            continue
+        seen.register(name, kind, latitude, longitude)
+        kept.append(item)
+    return kept
 
 
 def ground_item(item: dict, *, city: str, ref_pool: ReferencePool) -> bool:

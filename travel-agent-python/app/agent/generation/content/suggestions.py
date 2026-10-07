@@ -10,6 +10,7 @@ import logging
 
 from app.agent.core.poi_identity import norm_ws_key
 from app.agent.generation.content.suggestion_city import filter_suggestions_by_city
+from app.agent.generation.content.suggestion_quality import is_transport_corridor
 from app.agent.runtime.trace import record_event
 
 logger = logging.getLogger(__name__)
@@ -252,6 +253,9 @@ def build_suggestions(
             return False
         if (poi is None and not allow_external) or any(kw in name for kw in LOW_QUALITY_KEYWORDS):
             return False
+        if is_transport_corridor(name):
+            record_event("decision", "transport_corridor_suggestion_dropped", metadata={"name": name})
+            return False
         entry = _entry(name, poi or {}, raw)
         cat = entry["category"]
         if counts[cat] >= SUGGESTION_MAX_PER_CATEGORY:
@@ -308,18 +312,8 @@ def build_suggestions(
         for name, poi in pool_items:
             if remaining <= 0:
                 break
-            if name in used or name in seen:
-                continue
-            if any(kw in name for kw in LOW_QUALITY_KEYWORDS):
-                continue
-            entry = _entry(name, poi)
-            cat = entry["category"]
-            if counts[cat] >= SUGGESTION_MAX_PER_CATEGORY:
-                continue
-            seen.add(name)
-            buckets[cat].append(entry)
-            counts[cat] += 1
-            remaining -= 1
+            if _admit(name, poi):
+                remaining -= 1
 
     # 按品类分组输出，组间顺序 attraction → activity → food → hotel → shopping
     results: list[dict] = []

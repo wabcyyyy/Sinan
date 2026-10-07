@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from app.agent.editing.chat_draft import decide
 from app.agent.editing.chat_draft.hotel_intent import (
     HotelIntent,
@@ -260,6 +262,71 @@ def test_add_day_is_parsed_as_increase_by():
     # extension_requested 在 run_chat_turn 里正是用 _increase_target_days(req) is not None 判定
     assert _increase_target_days(_request("延长一天行程")) == 3
     assert _increase_target_days(_request("减少一些景点")) is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "补上第三天",
+        "补上第3天",
+        "增加第 3 天的景点",
+        "追加第三天的晚餐",
+        "第三天多玩一个景点",
+        "补上第三天的一整天",
+        "去掉第三天的景点",
+    ],
+)
+def test_ordinal_day_edits_do_not_resize_trip(message):
+    assert _requested_day_count(message, current_days=3) is None
+    assert _increase_target_days(_request(message)) is None
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("第三天太空了，再加一天", 4),
+        ("补上第三天，行程改成4天", 4),
+        ("第三天太赶了，整体缩短一天", 2),
+        ("延长 2 天", 5),
+    ],
+)
+def test_ordinal_reference_does_not_hide_explicit_duration_change(message, expected):
+    assert _requested_day_count(message, current_days=3) == expected
+
+
+def test_fill_third_day_draft_keeps_three_days_despite_model_target(monkeypatch):
+    request = _request("补上第三天")
+    request.days = 3
+    request.plans.append({"day_no": 3, "note": "第三天", "items": []})
+    _stub_decision(
+        monkeypatch,
+        {
+            "mode": "plan_update",
+            "reply": "已补上第三天",
+            "target_days": 6,
+            "operations": [],
+            "patches": [
+                {
+                    "op": "add",
+                    "day_no": 3,
+                    "item": {
+                        "item_type": "attraction",
+                        "poi_name": "浙江省博物馆",
+                        "start_time": "09:00",
+                        "end_time": "12:00",
+                        "duration_min": 180,
+                    },
+                }
+            ],
+        },
+    )
+    response = decide._chat_turn_response(request)
+    assert response.changed and response.plans
+    assert [plan["day_no"] for plan in response.plans] == [1, 2, 3]
+    assert response.plans[:2] == request.plans[:2]
+    assert response.plans[2]["items"][0]["poi_name"] == "浙江省博物馆"
+    assert response.requires_confirmation is True
+    assert "待应用草稿" in response.reply and "才会保存修改" in response.reply
 
 
 def test_fullday_activity_phrase_counts_as_one_more_day():

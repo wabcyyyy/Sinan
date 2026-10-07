@@ -11,7 +11,7 @@
 - OTM/Nominatim **没有票价/营业时间/评分**——这些字段恒为空，由 LLM 估价并按
   `estimated` 如实标注，行程页以地图深链引导用户出发前核实；
 - OTM 仅 en/ru 语言，返回名称为英文；中文名由生成链路的 LLM 对齐，
-  `existence.same_entity` 的字符重叠口径对中英混排仍然有效（英文名含于中文介绍时），
+  `core.poi_identity.same_entity` 的字符重叠口径对中英混排仍然有效（英文名含于中文介绍时），
   跨脚本写法（浅草寺/淺草寺）只有 provider 的 name:* 别名能对上。
 
 依赖：places（OTM/Nominatim/深链）、city_reference（城市字典/消费基准）、
@@ -24,9 +24,9 @@ web_search（联网补池）。**零本地语料、零向量库。**
 import logging
 import re
 
+from app.agent.core.poi_identity import same_entity
 from app.agent.data import city_reference, places, web_search
 from app.agent.data.city_center import city_center
-from app.agent.grounding.existence import same_entity
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.trace import traced
 from app.common.config import settings

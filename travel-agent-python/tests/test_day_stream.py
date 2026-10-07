@@ -58,7 +58,8 @@ def test_open_city_can_generate_after_workflow_enters_fallback(monkeypatch):
 
     assert source == "open"
     assert [item.poi_name for item in plan.items] == ["拙政园"]
-    assert plan.theme == "园林慢游"
+    assert plan.theme == "拙政园"
+    assert plan.note and "09:00–11:00 拙政园" in plan.note
     assert plan.mini_route == {"mode": "walking"}
     # M3-① 叙事层：backup_plan/photo_spots 升级为结构化子模型，
     # 旧 dict（{"name": ...}）经 BackupRule 前向兼容归一（缺 key 补空串）。
@@ -68,6 +69,43 @@ def test_open_city_can_generate_after_workflow_enters_fallback(monkeypatch):
     assert plan.items[0].source == "llm.open_day"
     assert plan.items[0].review_requirement == "before_departure"
     assert "identity" in plan.items[0].fact_evidence
+
+
+def test_day_regeneration_drops_used_poi_after_grounding_but_keeps_shared_hotel(monkeypatch):
+    monkeypatch.setattr(day_stream.settings, "llm_api_key", "configured")
+    name = "成都大熊猫繁育研究基地"
+    monkeypatch.setattr(
+        day_stream,
+        "llm_open_day",
+        lambda *args: {
+            "items": [
+                {"item_type": "attraction", "poi_name": name},
+                {"item_type": "attraction", "poi_name": "熊猫基地别名"},
+                {"item_type": "attraction", "poi_name": "文殊院"},
+                {"item_type": "hotel", "poi_name": "驻地酒店"},
+            ]
+        },
+    )
+
+    def ground(item, city):
+        if item["poi_name"] == "熊猫基地别名":
+            item["poi_name"] = name
+
+    monkeypatch.setattr(day_stream, "local_ground", ground)
+    monkeypatch.setattr(day_stream, "build_suggestions", lambda *args, **kwargs: [])
+    monkeypatch.setattr(day_stream, "fill_suggestion_gaps", lambda rows, *args, **kwargs: rows)
+    monkeypatch.setattr(day_stream, "drop_refuted_items", lambda rows, **kwargs: rows)
+    plan, _ = day_stream.generate_day_once(
+        GenerateDayRequest(
+            city="成都",
+            day_no=2,
+            days=4,
+            used_names=[name, "驻地酒店"],
+            context={"candidates": [], "foods": [], "hotels": []},
+        )
+    )
+    assert [item.poi_name for item in plan.items] == ["文殊院", "驻地酒店"]
+    assert plan.note is not None and name not in plan.note
 
 
 def test_resolved_item_is_endorsed_with_the_provider_that_ran(monkeypatch):
@@ -188,7 +226,7 @@ def test_degraded_gateway_gets_compact_prompt(monkeypatch):
 
     class _Client:
         def complete(self, *a, **k):
-            return '{"theme":"t","note":"n","items":[]}'
+            return '{"theme":"t","note":"n","items":[{"poi_name":"西湖","item_type":"attraction"}]}'
 
     monkeypatch.setattr(day_stream, "open_day_system_prompt", _spy_prompt)
     monkeypatch.setattr(day_stream, "json_response_format", lambda *a, **k: {"type": "json_object"})

@@ -20,12 +20,14 @@ stream 节点经 LangGraph custom stream 逐天转发 wire 事件；同步图路
 generation_core；不 import workflow（禁反向）。
 """
 
+import copy
 import logging
 from collections.abc import Callable
 
 from app.agent.core.poi_identity import PoiSeenRegistry
 from app.agent.generation.content.day_prompts import llm_open_trip
 from app.agent.generation.content.landing import drop_refuted_items, filter_plan_items, ground_item
+from app.agent.generation.content.narrative import normalize_name_mentions
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import activity_floor, floor_suggestions
 from app.agent.generation.orchestration.day_stream import llm_open_day
@@ -93,6 +95,7 @@ def _generate_drafts(
             days=req.days,
             used_names=[],
             hotel_tier=req.hotel_tier,
+            preferences=req.preferences,
             needs_hotel=True,
             context=context,
             requirements=req.requirements,
@@ -133,6 +136,7 @@ def _generate_drafts(
             days=req.days,
             used_names=sorted(used),
             hotel_tier=req.hotel_tier,
+            preferences=req.preferences,
             needs_hotel=day_no <= stay_nights(req.days),
             context=context,
             requirements=req.requirements,
@@ -157,6 +161,7 @@ def _generate_drafts(
         # 落地前过滤，否则 format_output 的 item.get / TripItem(**item) 崩溃。
         plan["items"] = filter_plan_items(plan.get("items"))
         kept_items: list[dict] = []
+        name_aliases: dict[str, str] = {}
         for item in plan["items"]:
             name = str(item.get("poi_name") or "").strip()
             item_type = str(item.get("item_type") or "")
@@ -164,6 +169,8 @@ def _generate_drafts(
                 record_event("decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name})
                 continue
             ground_item(item, city=req.city, ref_pool=ref_pool)
+            if name and item.get("poi_name") != name:
+                name_aliases[name] = item["poi_name"]
             if name and seen.is_duplicate(name, item_type, item.get("latitude"), item.get("longitude")):
                 # 落地后坐标通道判重命中（名称变体指向同一地点）
                 record_event(
@@ -173,6 +180,7 @@ def _generate_drafts(
             if name:
                 seen.register(name, item_type, item.get("latitude"), item.get("longitude"))
             kept_items.append(item)
+        normalize_name_mentions(plan, name_aliases)
         # 与本次行程矛盾的点位（解析到别处 / 权威源否证）在这里出局，剩下
         # 的"未判定"项保留——09-19 复评：免费源的"查不到"不足以删用户的点。
         plan["items"] = drop_refuted_items(kept_items, city=req.city, report=schedule_report)
@@ -228,11 +236,11 @@ def _postprocess_drafts(
     """
     # 后处理：酒店摊晚 + 0 价覆盖 + 备选池地板（不改变「LLM 决定内容」契约）
     stay_n = stay_nights(req.days)
-    sizes_before = [len(plan.get("items") or []) for plan in plans]
+    items_before = [copy.deepcopy(plan.get("items") or []) for plan in plans]
     hotels_added = spread_hotels(plans, stay_n)
     if on_patch is not None:
-        for before, plan in zip(sizes_before, plans, strict=True):
-            if len(plan.get("items") or []) != before:
+        for before, plan in zip(items_before, plans, strict=True):
+            if (plan.get("items") or []) != before:
                 on_patch(plan)
     price_lookup: dict[str, dict] = {}
     for poi in (candidates or []) + (foods or []) + (context_hotels or []):

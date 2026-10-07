@@ -89,7 +89,12 @@ def test_open_trip_prompt_uses_stay_nights_hotel_clause(monkeypatch):
     class FakeClient:
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
-            return json.dumps({"daily_plans": [{"day_no": 1, "items": []}], "suggestions": []})
+            return json.dumps(
+                {
+                    "daily_plans": [{"day_no": 1, "items": [{"item_type": "attraction", "poi_name": "丽江古城"}]}],
+                    "suggestions": [],
+                }
+            )
 
     monkeypatch.setattr("app.agent.generation.content.day_prompts.get_llm_client", lambda: FakeClient())
     req = GenerateDayRequest(city="丽江", day_no=1, days=3, needs_hotel=True)
@@ -135,8 +140,12 @@ def test_multi_day_open_failure_retries_once_and_returns_draft(monkeypatch):
     # deadline / 配额 / 解析失败全被盖在同一句话下面（排障时按它去查研究层就错了）。
     assert "llm down" in (response.status_reason or "")
     assert response.destination_status == "draft_only"
-    # 草案必须逐日带"待研究"标注，而不是空 plans
-    assert [day.note for day in response.daily_plans] == ["杭州第1天待研究", "杭州第2天待研究", "杭州第3天待研究"]
+    # 草案逐日明确尚未生成可用行程，不能承诺已排日程。
+    assert [day.note for day in response.daily_plans] == [
+        "第 1 天尚未生成可用行程",
+        "第 2 天尚未生成可用行程",
+        "第 3 天尚未生成可用行程",
+    ]
     # 0 个可交付项仍必须 BLOCKED，不得冒充可执行行程
     assert response.quality_report.quality_status == "BLOCKED"
 
@@ -230,7 +239,9 @@ def test_open_day_prompt_excludes_used_names(monkeypatch):
     class FakeClient:
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
-            return json.dumps({"note": "x", "items": [], "suggestions": []})
+            return json.dumps(
+                {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
+            )
 
     monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
     req = GenerateDayRequest(
@@ -494,7 +505,9 @@ def test_open_day_feedback_is_delimited(monkeypatch):
     class FakeClient:
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
-            return json.dumps({"note": "x", "items": [], "suggestions": []})
+            return json.dumps(
+                {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
+            )
 
     monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
     req = GenerateDayRequest(city="杭州", day_no=1, days=1, feedback="第1天时间冲突：A 与 B 重叠")
@@ -512,7 +525,9 @@ def test_region_hint_appears_in_destination_line(monkeypatch):
     class FakeClient:
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["user"] = user_prompt
-            return json.dumps({"note": "x", "items": [], "suggestions": []})
+            return json.dumps(
+                {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
+            )
 
     monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
     req = GenerateDayRequest(city="丽江", day_no=1, days=2, region_hint="云南")

@@ -12,6 +12,7 @@
 依赖：本包各子模块；本文件不得承载业务逻辑。
 """
 
+from app.agent.data.city_center import destination_problem
 from app.agent.data.live_quotes import quota_exhausted as live_quote_quota_exhausted
 from app.agent.data.weather import get_weather_forecast
 from app.agent.editing.chat_draft import run_chat_turn
@@ -22,6 +23,7 @@ from app.agent.editing.image_intent import run_image_intent
 from app.agent.editing.local_replan import run_local_replan
 from app.agent.editing.nl_edit import run_edit_ops
 from app.agent.generation.content.butler import run_butler_note, run_poi_intros
+from app.agent.generation.content.narrative import sync_schedule_summary
 from app.agent.generation.content.reflect import BUDGET_OVERAGE_MARK, validate_plans
 from app.agent.generation.orchestration.day_stream import run_generate_day
 from app.agent.generation.orchestration.plan_context import run_plan_context
@@ -29,6 +31,7 @@ from app.agent.generation.orchestration.stream_branch import run_generate_trip_s
 from app.agent.generation.orchestration.trip_graph import DayResume, resume_day
 from app.agent.generation.orchestration.workflow import run_adjust, run_generate
 from app.agent.generation.output.schedule_optimizer import optimize_daily_plan
+from app.agent.generation.rules.generation_core import spread_hotels
 from app.agent.grounding.existence import resolve_poi
 from app.agent.grounding.grounding_labels import is_authoritative_source
 from app.agent.grounding.suggestion_grounding import verify_suggestion_rows
@@ -46,6 +49,7 @@ __all__ = [
     "ToolInvocationError",
     "ToolSpec",
     "confirm_thread",
+    "destination_problem",
     "find_nearby_pois",
     "get_poi_detail",
     "get_weather_forecast",
@@ -76,6 +80,8 @@ __all__ = [
     "search_live_flight_quotes",
     "search_live_hotel_quotes",
     "shape_quote_for_wire",
+    "spread_hotels",
+    "sync_schedule_summary",
     "usage_store",
     "use_scene",
     "validate_plans",

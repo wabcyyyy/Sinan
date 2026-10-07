@@ -28,7 +28,8 @@ import logging
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
-from app.agent.core.poi_identity import haversine_m, strip_name_annotation
+from app.agent.core.poi_identity import haversine_m, matches_any, same_entity
+from app.agent.data import city_center as city_center_data
 from app.agent.data import places
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
@@ -40,10 +41,6 @@ VERIFIED = "verified"
 NOT_FOUND = "not_found"
 UNKNOWN = "unknown"
 
-# 名称匹配阈值：Jaccard 字符重叠 + 最少共享字符数。0.55/4 的取值理由见
-# `same_entity`（量测里把 overlap 放宽到 3 会放进「明婷小馆→报名大厅」这类误配）。
-_MIN_SHARED_CHARS = 4
-
 
 @dataclass(frozen=True)
 class ResolveResult:
@@ -52,6 +49,7 @@ class ResolveResult:
     state: str
     provider: str = ""
     name: str | None = None
+    localized_name: str | None = None
     external_id: str | None = None
     latitude: float | None = None
     longitude: float | None = None
@@ -89,37 +87,6 @@ class ExistenceProvider(Protocol):
     def resolve(self, name: str, city: str) -> ResolveResult: ...
 
 
-def same_entity(query: str, candidate: str) -> bool:
-    """同一实体判定：外部检索对任意输入都会尽力返回，不设门槛就会把
-    「不存在的景点」锚定到无关坐标（典型事故：西安「方所书店」→ 安徽某防治所）。
-
-    规则：归一（去空白/标点/大小写）后相等或互为包含 → 同一实体；否则要求
-    字符重叠率 ≥ `entity_name_similarity_min` **且** 共享字符 ≥ 4——只有比率
-    不够，短名（"老街"vs"老城"）比率高却不是同一处。
-    """
-
-    def norm(value: str) -> str:
-        return "".join(ch for ch in strip_name_annotation(value).lower() if ch.isalnum())
-
-    q, c = norm(query), norm(candidate)
-    if not q or not c:
-        return False
-    if q == c or q in c or c in q:
-        return True
-    overlap = len(set(q) & set(c))
-    union = len(set(q) | set(c))
-    return union > 0 and overlap / union >= settings.entity_name_similarity_min and overlap >= _MIN_SHARED_CHARS
-
-
-def matches_any(query: str, spellings: list[str] | tuple[str, ...] | None) -> bool:
-    """对 provider 返回的全部名称写法（本地名 + `name:xx` 别名）逐一判等。
-
-    跨脚本匹配只能靠别名：`淺草寺` 的 `name:ja` 是 `浅草寺`、`奧賽博物館` 的
-    `name:zh-Hans` 是 `奥赛博物馆`——简繁/中英写法差异占实测未判定的 56%。
-    """
-    return any(same_entity(query, text) for text in spellings or [])
-
-
 # ---- 目的地范围闸 -----------------------------------------------------------
 
 _center_memo: dict[str, tuple[float, float] | None] = {}
@@ -136,13 +103,9 @@ def city_center(city: str, memo: dict[str, Any] | None = None) -> tuple[float, f
     if name in store:
         return store[name]
     center: tuple[float, float] | None = None
-    geo = places.resolve_city_center(name)
+    geo = city_center_data.city_center(name)
     if geo:
         center = (float(geo["latitude"]), float(geo["longitude"]))
-    else:
-        hit = places.geocode_place(name)
-        if hit:
-            center = (float(hit["latitude"]), float(hit["longitude"]))
     if center is None:
         # 只记忆化成功解析。None 既可能是"这城市确实没有中心点"，也可能是 geocoder
         # 超时/并发下抢不到槽位（`places` 对这类负答案刻意配了 negative_ttl=300s，
@@ -246,6 +209,7 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
             state=VERIFIED,
             provider=provider,
             name=spellings[0] if spellings else row.get("name"),
+            localized_name=row.get("localized_name") or None,
             external_id=str(row.get("place_id") or row.get("external_id") or "") or None,
             latitude=south_east[0],
             longitude=south_east[1],
@@ -308,7 +272,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
         # 判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票
         issue_evidence(
             {
-                "name": result.name or target,
+                "name": result.localized_name or result.name or target,
                 "city": city,
                 "source": result.provider,
                 "external_id": result.external_id or "",
@@ -340,20 +304,23 @@ def reset_existence_state() -> None:
 def _run_providers(target: str, city: str) -> ResolveResult:
     unknowns: list[str] = []
     negative = False
+    charged = False
     for provider in providers_in_order():
         if not provider.available():
             unknowns.append(f"{provider.name}:not_configured")
             continue
-        if not _budget_allows():
-            unknowns.append("budget_exhausted")
-            break
+        if not charged:
+            if not _budget_allows():
+                return ResolveResult.unknown("budget_exhausted")
+            # 一次点位名解析扣一次；provider 失败与回退也属于这次解析。
+            _consume_budget()
+            charged = True
         try:
             result = provider.resolve(target, city)
         except Exception as exc:  # provider 故障绝不影响生成：按未判定处理
             logger.warning("existence provider %s failed: %s", provider.name, exc)
             unknowns.append(f"{provider.name}:error")
             continue
-        _consume_budget()
         if result.grounded:
             return result
         if result.out_of_area:
