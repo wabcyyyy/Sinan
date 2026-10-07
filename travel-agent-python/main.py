@@ -35,6 +35,7 @@ from app.api.security_headers import SecurityHeadersMiddleware
 from app.common import cron, model_registry, retention, timezone_check
 from app.common.config import settings
 from app.common.envelope import fail, install_exception_handlers
+from app.common.request_id import RequestIdMiddleware
 from app.db import migrate as db_migrate
 from app.services import export_service, generation_recovery, itinerary_chat, itinerary_generation
 
@@ -228,6 +229,11 @@ install_exception_handlers(app)
 app.add_middleware(RequestBodySizeLimitMiddleware)
 # 全站安全响应头（R1-3）：纯 ASGI 包装，只补头、不缓冲 SSE
 app.add_middleware(SecurityHeadersMiddleware)
+# 全站请求关联 id（审计 §3.5.1/P0-7）：每请求生成短 id → scope state + X-Request-ID
+# 响应头，envelope 的 500 兜底日志/响应头带同一 id。最后 add = 最外层：RequestBodySizeLimit
+# 就地短路的 413 响应同样带 id。500 兜底响应经 ServerErrorMiddleware（在用户中间件之外）
+# 直发，不经过这里的 send 包装，因此那个头由 envelope._handle_unexpected 就地补。
+app.add_middleware(RequestIdMiddleware)
 
 app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 

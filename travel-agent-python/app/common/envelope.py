@@ -11,14 +11,19 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.common.request_id import request_id_of
+
 CODE_SUCCESS = 200
 CODE_BAD_REQUEST = 400
 CODE_ERROR = 500
+
+logger = logging.getLogger(__name__)
 
 
 class ApiError(Exception):
@@ -92,5 +97,24 @@ def install_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # 500 兜底日志（审计 §3.5.1/P0-7，按复核附注修正后的口径）：堆栈 uvicorn 的
+        # error log 照打（starlette 注册 Exception handler 后仍 raise），这里补的是
+        # 应用层的结构化记录与**可关联上下文**——request_id 与响应头同源，用户报障
+        # 时按 id 能把这行日志、uvicorn 堆栈与 access log 归并到同一请求。
+        # 信封 body 维持三键原样（契约机检），id 只进头与日志，不进 body。
+        request_id = request_id_of(request)
+        logger.exception(
+            "unhandled_exception request_id=%s method=%s path=%s",
+            request_id or "-",
+            request.method,
+            request.url.path,
+        )
+        # 响应头在这里就地补而不是靠中间件：ServerErrorMiddleware 在全部用户中间件
+        # **之外**，本响应直发 ASGI 服务器、不经过 RequestIdMiddleware 的 send 包装。
+        headers = {"X-Request-ID": request_id} if request_id else None
         # 与 Java 兜底一致：不把内部异常细节回给客户端，但保留可追踪的 code
-        return JSONResponse(status_code=CODE_ERROR, content=fail(CODE_ERROR, "系统繁忙，请稍后重试"))
+        return JSONResponse(
+            status_code=CODE_ERROR,
+            content=fail(CODE_ERROR, "系统繁忙，请稍后重试"),
+            headers=headers,
+        )

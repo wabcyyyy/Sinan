@@ -51,6 +51,7 @@ from app.agent import (
     usage_store,
     use_scene,
 )
+from app.common import deep_health
 from app.common.config import settings
 from app.schemas.agent_ops import (
     ButlerNoteRequest,
@@ -249,6 +250,25 @@ def hello() -> ApiResponse[str]:
 @router.get("/health")
 def health() -> ApiResponse[dict]:
     return ApiResponse.ok({"status": "up"})
+
+
+@router.get("/health/deep")
+def health_deep() -> ApiResponse[dict]:
+    """深度探活（审计 §3.2.6/§3.5.4 → P1-6）：MySQL SELECT 1 + Redis ping，结果缓存 ~10s。
+
+    与浅探分工（报告拍板）：Dockerfile/compose 的 HEALTHCHECK 与部署等待继续打
+    /health（容器编排只关心进程活着，不打扰依赖抖动）；这里供部署冒烟与外部拨测
+    ——依赖挂掉时 503 + status=degraded（信封 data 带逐依赖状态），而不是把
+    「依赖不可用」伪装成健康。LLM 不探（深探是可用性检查，不为探活花钱）。
+    与 /health 同款匿名：边缘（Caddy/nginx）已把 /api/agent/** 对公网 403。
+    """
+    payload = deep_health.snapshot()
+    ok = payload.get("status") == deep_health.UP
+    body = ApiResponse.ok(payload) if ok else ApiResponse(code=503, message=deep_health.DEGRADED, data=payload)
+    return JSONResponse(
+        content=body.model_dump(mode="json", by_alias=True),
+        status_code=200 if ok else 503,
+    )
 
 
 @router.get("/v1/metrics")

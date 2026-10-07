@@ -43,11 +43,14 @@ _UNGUARDED_BUSINESS = frozenset(
 # 复核条件：日志面出现灌水即收回匿名性（改走强制会话），见 AGENTS.md 哲学 #2 注记。
 _ANONYMOUS_WRITES = _UNGUARDED_BUSINESS | frozenset({("POST", "/api/auth/logout-all"), ("POST", "/api/client-errors")})
 
-# agent 面走 X-Agent-Token 内部令牌，不是用户会话；两个探活端点必须匿名，
-# 否则 start-all.ps1 与 Dockerfile HEALTHCHECK 在拿到令牌前就判死。
+# agent 面走 X-Agent-Token 内部令牌，不是用户会话；探活端点必须匿名，否则
+# start-all.ps1 与 Dockerfile HEALTHCHECK（浅探 /health）在拿到令牌前就判死。
+# /health/deep（审计 P1-6 深探：MySQL+Redis，供冒烟与拨测）同待遇：边缘已把
+# /api/agent/** 对公网 403，且探测不消耗 LLM 配额——它只做 SELECT 1 / ping。
 _ANONYMOUS_AGENT = frozenset(
     {
         ("GET", "/api/agent/health"),
+        ("GET", "/api/agent/health/deep"),
         ("GET", "/api/agent/hello"),
     }
 )
