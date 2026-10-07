@@ -141,6 +141,9 @@ class Settings(BaseSettings):
     llm_provider_dashscope_api_key: str = ""
     llm_provider_mimo_base_url: str = "https://api.xiaomimimo.com/v1"
     llm_provider_mimo_api_key: str = ""
+    # main 备选链与通道告警（审计 P0-2；完整语义见 model_registry / llm_breaker 与 .env.example）
+    llm_main_fallback_provider: str = ""
+    llm_alert_webhook_url: str = ""
     llm_timeout: float = 240
     llm_pool_max_connections: int = 20
     llm_pool_max_keepalive: int = 10

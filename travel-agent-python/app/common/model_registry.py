@@ -20,6 +20,10 @@ web.search）、qwen-vl-plus 与 qwen-max 打到根本不提供它们的网关�
   按模型名判，DeepSeek 官方 2026-08 起 deepseek-flash 直接收图，主模型即看图。
 - **BYOK 优先**：用户自带网关（`llm_route` 的 ContextVar）生效时，它就是这个用户所有
   角色的通道；下面的角色键是**部署默认值**，不盖用户自己的选择。
+- **main 备选链**（审计 §3.1.1 / P0-2）：`LLM_MAIN_FALLBACK_PROVIDER`（provider:model，
+  留空 = 无备选）定义 main 角色的备选落点；主通道熔断开窗时**解析切到它**——切换
+  决策在 llm_client（熔断状态在 llm 侧的 llm_breaker，本模块不反向 import），本模块
+  只产出备选数据并在 `validate()` 校验它配得对。
 - 配置错误（未知 provider、缺模型名、provider 没配 base_url）由 `validate()` 在启动期
   一次性报出，不留到运行中的第一次调用。
 
@@ -29,10 +33,13 @@ web.search）、qwen-vl-plus 与 qwen-max 打到根本不提供它们的网关�
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
-from app.common.config import settings
+from app.common.config import LOCAL_HOSTS, settings
 from app.common.llm_route import current_route
+
+logger = logging.getLogger(__name__)
 
 #: 一次调用的用途。新增角色 = 这里加一项 + config.py 加一个 llm_role_<name> 键。
 ROLES: tuple[str, ...] = ("main", "fast", "vision", "judge", "search", "stt")
@@ -150,6 +157,26 @@ def binding(role: str) -> RoleBinding:
     return _parse(role, raw)
 
 
+def fallback_binding() -> RoleBinding | None:
+    """main 角色的备选通道（审计 §3.1.1 / P0-2）：`LLM_MAIN_FALLBACK_PROVIDER`。
+
+    值与角色键同构：`provider:model`（裸模型名 = default provider）；留空 = None
+    （默认，无备选，main 解析行为与现在完全一致）。只产出数据不做切换：主通道
+    熔断开窗时由 llm_client 的解析点（`_resolve_main_binding`）切到这里。备选也
+    必须指向配了 base_url 的 provider，`validate()` 启动期一并校验。
+    """
+    raw = settings.llm_main_fallback_provider.strip()
+    if not raw:
+        return None
+    name, sep, model = raw.partition(":")
+    if not sep:
+        name, model = "default", raw
+    model = model.strip()
+    if not model:
+        raise ValueError("LLM_MAIN_FALLBACK_PROVIDER 缺模型名：写成 provider:model 或裸模型名")
+    return RoleBinding("main", provider(name.strip()), model)
+
+
 def model_for(role: str) -> str:
     """该角色的模型名（调用点替掉过去的 settings.llm_fast_model / llm_vision_model）。"""
     return binding(role).model
@@ -189,3 +216,24 @@ def validate() -> None:
                 f"角色 {role} 指向 provider {bound.provider.name}，但它没配 base_url"
                 f"（LLM_PROVIDER_{bound.provider.name.upper()}_BASE_URL）"
             )
+    # main 备选链（P0-2）：配了就要解析得出且指向配了 base_url 的 provider——
+    # 备选是故障时刻才生效的通道，配错平时完全无症状，必须启动期拦。
+    fallback = fallback_binding()
+    if fallback is not None and not fallback.provider.available:
+        raise ValueError(
+            f"LLM_MAIN_FALLBACK_PROVIDER 指向 provider {fallback.provider.name}，"
+            f"但它没配 base_url（LLM_PROVIDER_{fallback.provider.name.upper()}_BASE_URL）"
+        )
+    # 审计 §3.1.6：绑定非回环但 main 角色没配 key——进程照常启动、探活通过，第一个
+    # 用户点生成才发现全量失败（与 §3.1.1 的 2026-10-05 事故同款「上线后才发现」
+    # 模式，根因在配置）。不是 fail：本地回环开发允许不配 key，这里只让部署日志
+    # 显式可见。落在 validate() 而不是 Settings.validate_boot 是 import 方向所致：
+    # registry 能看 settings，config 不能反向 import registry；main.py lifespan
+    # 对两者在同一启动序列里都有调用。
+    if settings.agent_host not in LOCAL_HOSTS and not configured("main"):
+        logger.warning(
+            "AGENT_HOST=%s 绑定非回环但 main 角色未配置 api_key（LLM_API_KEY 为空）："
+            "进程将健康启动、探活通过，但所有生成请求都会失败；"
+            "请在 .env 配置 LLM_API_KEY，或确认这是有意的不生成部署",
+            settings.agent_host,
+        )

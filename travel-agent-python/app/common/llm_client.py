@@ -16,6 +16,10 @@
   不匹配"的配置错（如把 qwen-vl-plus 发到 api.deepseek.com）；
 - complete 是单轮 user 提示的便捷封装；get_llm_client 提供进程内单例，
   BYOK 路由（app.common.llm_route 的 ContextVar）生效时改返回该路由的专属 client；
+- 通道级熔断 + main 备选链（审计 §3.1.1 / §3.2.2 / P0-2，2026-10-05 全量失败
+  2 小时事故的根因模式）：连续通道级失败开冷却窗（窗内快速失败不外呼、半开探测
+  恢复），状态与告警在 app/common/llm_breaker.py；主通道开窗且配了
+  LLM_MAIN_FALLBACK_PROVIDER 时 main 角色解析临时切到备选，冷却窗过后切回；
 - 结构化意图/草稿编辑走可配置 fast 通道（`model_registry.model_for("fast")`；默认与
   主模型同款，切档才省钱）；
 - stream_chat 支持流式输出，适用于多日整段生成场景。
@@ -39,7 +43,7 @@ from app.agent.runtime.observability import current_scene, metrics
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.agent.runtime.trace import current_run_id, record_event
 from app.agent.runtime.usage_store import usage_store
-from app.common import model_registry
+from app.common import llm_breaker, model_registry
 from app.common.config import settings
 from app.common.llm_route import LLMRoute, current_route
 
@@ -262,6 +266,26 @@ def _apply_provider_options(
             payload["reasoning_effort"] = effort
 
 
+def _resolve_main_binding() -> model_registry.RoleBinding:
+    """main 角色最终落点（P0-2 故障转移）：主通道熔断开窗且配了备选时切到备选。
+
+    切换点在 llm_client 而不是 model_registry：熔断状态在 llm 侧（llm_breaker），
+    registry 只产出数据、不反向 import（见其 docstring 的依赖方向约定）。备选
+    未配置（LLM_MAIN_FALLBACK_PROVIDER 默认空）或主通道健康时，返回值与
+    model_registry.binding("main") 完全一致——默认部署零行为差异。
+    BYOK 路由生效时**不切**（model_registry 的「BYOK 优先」口径）：用户自带网关
+    就是这个用户的通道，熔断也不得静默改烧运营方备选 key（llm_gateway_service
+    「失败响亮、不静默回退」拍板）——开窗时由 llm_breaker 快速失败如实上报。
+    """
+    main = model_registry.binding("main")
+    if current_route() is not None:
+        return main
+    fallback = model_registry.fallback_binding()
+    if fallback is not None and llm_breaker.is_open(main.base_url):
+        return fallback
+    return main
+
+
 class LLMClient:
     def __init__(
         self,
@@ -273,8 +297,11 @@ class LLMClient:
         max_attempts: int | None = None,
         follow_redirects: bool | None = None,
     ) -> None:
-        # 显式传入即覆盖（角色 client / BYOK 路由走这里），缺省 = main 角色（见 model_registry）
-        main = model_registry.binding("main")
+        # 显式传入即覆盖（角色 client / BYOK 路由走这里），缺省 = main 角色（见 model_registry）；
+        # main 的解析带熔断备选链（P0-2）：主通道开窗且配了 LLM_MAIN_FALLBACK_PROVIDER
+        # 时临时切到备选 provider，冷却窗过后自然切回（未配置/主通道健康时与
+        # model_registry.binding("main") 完全一致）。
+        main = _resolve_main_binding()
         self._base_url = base_url or main.base_url
         self._api_key = api_key or main.provider.api_key
         self._model = model or main.model
@@ -327,14 +354,18 @@ class LLMClient:
         if tool_choice is not None:
             payload["tool_choice"] = tool_choice
         limits = current_limits()
+        started = time.monotonic()
         try:
+            # 通道熔断（P0-2）：主网关宕机时不再每个请求都全额支付超时重试
+            # （2026-10-05 全量失败 2 小时事故的根因模式）；开窗中快速失败，
+            # 成败在下方收口计数（llm_breaker）。
+            llm_breaker.check(self._base_url)
             if limits:
                 limits.check("llm")
             timeout = self._timeout
             if limits and limits.deadline_seconds > 0:
                 remaining = limits.deadline_seconds - (time.monotonic() - limits.started_at)
                 timeout = min(timeout, max(0.1, remaining))
-            started = time.monotonic()
             for attempt in range(self._max_attempts):
                 try:
                     # 每次真实 HTTP 调用都消耗 run 预算，重试同样受限额约束。
@@ -366,11 +397,17 @@ class LLMClient:
                         metadata={"attempt": attempt + 1},
                     )
                     _retry_sleep(attempt)
+            # 成功收到响应：通道健康——清零连续失败计数；若此前开窗 = 半开探测通过，关窗
+            llm_breaker.note_success(self._base_url)
         except RunLimitExceeded as exc:
             record_event("llm", "llm.request", status="error", error=str(exc), metadata={"budget_exhausted": True})
             raise
         except Exception as exc:
             _record_usage(model, 0, 0, started, False, _describe_error(exc))
+            if _is_retryable(exc):
+                # 只有连接层错误 / 可重试白名单状态计入通道熔断；业务 4xx、内容审查
+                # （空 choices）是"这条请求的问题"，不计数（llm_breaker 口径）。
+                llm_breaker.note_failure(self._base_url, retryable=True)
             raise
         usage = body.get("usage") or {}
         # 全局 token 统计收口：无论是否处于 trace 上下文，每次真实调用都上报。
@@ -466,6 +503,9 @@ class LLMClient:
             # 已取消：连请求都不发起（调用方已在取消态）
             raise StreamCancelled("客户端已断开，未发起 LLM 请求")
 
+        # 通道熔断（P0-2）：流式路径同样吃通道级故障的全额超时，开窗中快速失败不外呼。
+        llm_breaker.check(self._base_url)
+
         limits = current_limits()
         if limits:
             limits.check("llm")
@@ -477,48 +517,57 @@ class LLMClient:
         started = time.monotonic()
         stream_usage: dict = {}
         content_length = 0
-        with _get_http_client().stream(
-            "POST",
-            url,
-            json=payload,
-            headers=headers,
-            timeout=_build_timeout(timeout),
-            follow_redirects=self._follow_redirects,
-        ) as resp:
-            resp.raise_for_status()
-            for line in resp.iter_lines():
-                if cancel is not None and cancel.is_set():
-                    # 深度取消：抛异常退出 with 块即断开在途 HTTP 流（网关侧停止生成）。
-                    # 用量分片未到（token 未知）故不写 usage 行；轨迹事件供成本排查。
-                    record_event(
-                        "llm",
-                        "llm.stream_request",
-                        status="cancelled",
-                        metadata={
-                            "model": model or self._model,
-                            "content_length": content_length,
-                            "duration_ms": int((time.monotonic() - started) * 1000),
-                        },
-                    )
-                    raise StreamCancelled("客户端断开，LLM 流已中断")
-                if not line or not line.startswith("data: "):
-                    continue
-                data_str = line[6:]
-                if data_str.strip() == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data_str)
-                except json.JSONDecodeError:
-                    continue
-                if chunk.get("usage"):
-                    stream_usage = chunk["usage"]
-                # usage-only 末分片的 choices 为空列表，注意防空。
-                delta = chunk.get("choices", [{}])[0].get("delta", {}) if chunk.get("choices") else {}
-                content = delta.get("content")
-                if content:
-                    content_length += len(content)
-                    yield content
-
+        try:
+            with _get_http_client().stream(
+                "POST",
+                url,
+                json=payload,
+                headers=headers,
+                timeout=_build_timeout(timeout),
+                follow_redirects=self._follow_redirects,
+            ) as resp:
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    if cancel is not None and cancel.is_set():
+                        # 深度取消：抛异常退出 with 块即断开在途 HTTP 流（网关侧停止生成）。
+                        # 用量分片未到（token 未知）故不写 usage 行；轨迹事件供成本排查。
+                        record_event(
+                            "llm",
+                            "llm.stream_request",
+                            status="cancelled",
+                            metadata={
+                                "model": model or self._model,
+                                "content_length": content_length,
+                                "duration_ms": int((time.monotonic() - started) * 1000),
+                            },
+                        )
+                        raise StreamCancelled("客户端断开，LLM 流已中断")
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+                    if chunk.get("usage"):
+                        stream_usage = chunk["usage"]
+                    # usage-only 末分片的 choices 为空列表，注意防空。
+                    delta = chunk.get("choices", [{}])[0].get("delta", {}) if chunk.get("choices") else {}
+                    content = delta.get("content")
+                    if content:
+                        content_length += len(content)
+                        yield content
+        except StreamCancelled:
+            # 客户端取消不是服务故障（StreamCancelled 类 docstring 口径）：不计通道失败
+            raise
+        except Exception as exc:
+            if _is_retryable(exc):
+                llm_breaker.note_failure(self._base_url, retryable=True)
+            raise
+        # 整段收流成功：通道健康——半开探测通过则关窗并发恢复事件
+        llm_breaker.note_success(self._base_url)
         prompt = int(stream_usage.get("prompt_tokens") or 0)
         completion = int(stream_usage.get("completion_tokens") or 0)
         metrics.record_llm_call(prompt, completion)
@@ -672,6 +721,10 @@ class LLMClient:
 
 
 _llm_client: LLMClient | None = None
+# 单例按 (provider, base_url, model) 记键（P0-2）：main 角色熔断切到备选 / 冷却后
+# 切回时重建单例；键不变（默认部署：无备选、通道健康）时与旧实现一样只构造一次、
+# 恒同一实例——既有"单例身份"契约（test_llm_route）不受影响。
+_llm_client_key: tuple[str, str, str] | None = None
 
 # BYOK 路由专属 client 缓存：键 = (base_url, model, sha256(api_key)[:16])——api_key 只以
 # 摘要形式进键，缓存本身不构成第二份明文落点。容量到顶整体清空重建：BYOK 是低频
@@ -703,13 +756,17 @@ def get_llm_client() -> LLMClient:
 
     名字与签名保持不变（agent 层 16 处调用与测试 mock 契约全靠它）；路由上下文由
     services 层的 route_scope 在 worker 入口设置（contextvars 不跨线程池传播）。
+    main 角色熔断切备选 / 冷却后切回时单例按解析键重建（键见 _llm_client_key）。
     """
-    global _llm_client
+    global _llm_client, _llm_client_key
     route = current_route()
     if route is not None:
         return _routed_client(route)
-    if _llm_client is None:
-        _llm_client = LLMClient()
+    bound = _resolve_main_binding()
+    key = (bound.provider.name, bound.base_url, bound.model)
+    if _llm_client is None or _llm_client_key != key:
+        _llm_client = LLMClient(base_url=bound.base_url, api_key=bound.provider.api_key, model=bound.model)
+        _llm_client_key = key
     return _llm_client
 
 
@@ -717,9 +774,10 @@ def get_role_client(role: str) -> LLMClient:
     """按角色取 client（model_registry 是唯一解析点）：judge / search / stt 等专用通道。
 
     不用 `get_llm_client` 的单例：角色可能指向另一个 provider（例如联网搜索留在百炼
-    而主模型在 DeepSeek），共用单例会把密钥与地址串味。
+    而主模型在 DeepSeek），共用单例会把密钥与地址串味。main 角色经熔断备选链解析
+    （P0-2）：主通道开窗且配了备选时这里同样切走。
     """
-    bound = model_registry.binding(role)
+    bound = _resolve_main_binding() if role == "main" else model_registry.binding(role)
     return LLMClient(base_url=bound.base_url, api_key=bound.provider.api_key, model=bound.model)
 
 

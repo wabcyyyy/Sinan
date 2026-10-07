@@ -153,6 +153,19 @@ def _reset_existence_memo():
 
 
 @pytest.fixture(autouse=True)
+def _reset_llm_circuit_state():
+    """LLM 通道熔断/告警状态（app.common.llm_breaker）是进程内的，跨用例会串味：
+    同一 base_url 上前一个用例攒下的通道级失败计数，会让后一个「少量失败后成功」
+    的重试类用例被熔断误伤。前后各清一次（P0-2）。
+    """
+    from app.common import llm_breaker
+
+    llm_breaker.reset_for_tests()
+    yield
+    llm_breaker.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
 def _reset_addon_state_cache():
     """addons.is_enabled 的进程内 TTL 缓存（5s）同样跨用例污染。
 
