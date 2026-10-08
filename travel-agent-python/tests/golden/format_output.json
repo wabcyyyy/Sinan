@@ -149,7 +149,7 @@
       "blocking_issues": [
         {
           "code": "ROUTE_OR_SCHEDULE_CONFLICT",
-          "message": "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）",
+          "message": "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 341 分钟（含 10 分钟固定缓冲和 25% 容错）",
           "path": null
         }
       ],
@@ -261,8 +261,8 @@
     "trip_theme": null,
     "validation_log": [
       "发现 1 个问题：",
-      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）",
-      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 70 分钟（含 10 分钟固定缓冲和 25% 容错）"
+      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 341 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 341 分钟（含 10 分钟固定缓冲和 25% 容错）"
     ]
   },
   "02_authoritative_missing_coords": {
@@ -982,8 +982,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "food",
-            "latitude": 30.26,
-            "longitude": 120.06,
+            "latitude": 30.2705,
+            "longitude": 120.0705,
             "open_time": null,
             "poi_id": null,
             "poi_name": "农家菜",
@@ -1029,8 +1029,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "attraction",
-            "latitude": 30.28,
-            "longitude": 120.05,
+            "latitude": 30.271,
+            "longitude": 120.071,
             "open_time": null,
             "poi_id": null,
             "poi_name": "福堤",
@@ -1313,7 +1313,7 @@
       "blocking_issues": [
         {
           "code": "ROUTE_OR_SCHEDULE_CONFLICT",
-          "message": "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）",
+          "message": "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 597 分钟（含 10 分钟固定缓冲和 25% 容错）",
           "path": null
         }
       ],
@@ -1425,8 +1425,8 @@
     "trip_theme": null,
     "validation_log": [
       "发现 1 个问题：",
-      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）",
-      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 116 分钟（含 10 分钟固定缓冲和 25% 容错）"
+      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 597 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 597 分钟（含 10 分钟固定缓冲和 25% 容错）"
     ]
   },
   "06_food_live_and_clamp": {
@@ -1572,8 +1572,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "food",
-            "latitude": 30.24,
-            "longitude": 120.16,
+            "latitude": 30.2495,
+            "longitude": 120.1695,
             "open_time": null,
             "poi_id": null,
             "poi_name": "无名小馆",
@@ -1619,8 +1619,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "attraction",
-            "latitude": 30.23,
-            "longitude": 120.15,
+            "latitude": 30.249,
+            "longitude": 120.169,
             "open_time": null,
             "poi_id": null,
             "poi_name": "南宋官窑",
@@ -1884,8 +1884,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "food",
-            "latitude": 30.25,
-            "longitude": 120.14,
+            "latitude": 30.2005,
+            "longitude": 120.1005,
             "open_time": null,
             "poi_id": null,
             "poi_name": "楼外楼",
@@ -3030,8 +3030,8 @@
             "freshness_status": "unknown",
             "image": null,
             "item_type": "attraction",
-            "latitude": 30.24,
-            "longitude": 120.16,
+            "latitude": 30.2505,
+            "longitude": 120.1505,
             "open_time": null,
             "poi_id": null,
             "poi_name": "柳浪闻莺",

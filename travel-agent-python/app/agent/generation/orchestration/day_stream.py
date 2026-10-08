@@ -42,11 +42,11 @@ from app.agent.generation.content.json_output import parse_llm_json_with_repair,
 from app.agent.generation.content.landing import drop_refuted_items, drop_used_items
 from app.agent.generation.content.narrative import normalize_name_mentions, sanitize_narrative, sync_schedule_summary
 from app.agent.generation.content.reference_pool import ReferencePool
-from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
 from app.agent.generation.output.facts import field_fact_evidence
 from app.agent.generation.rules.budget import budget_clause, budget_tier, clamp_meal_cost
+from app.agent.generation.rules.day_policy import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.generation_core import (
     day_hotel_clause,
     sanitize_itinerary_items,

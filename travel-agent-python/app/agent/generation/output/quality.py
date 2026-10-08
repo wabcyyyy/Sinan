@@ -82,6 +82,7 @@ def run_final_validation(
         persons=req.persons,
         consumption=consumption,
         budget_overage_ratio=settings.budget_overage_ratio,
+        requirements=getattr(req, "requirements_struct", None),
     )
     # critique_plans 是纯内存的轻量软评审，直接同步调用即可。
     # （此前每请求新建 ThreadPoolExecutor 且从不 shutdown，会泄漏常驻线程。）

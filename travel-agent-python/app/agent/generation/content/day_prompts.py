@@ -23,12 +23,12 @@ from app.agent.data.weather import trip_clause as trip_weather_clause
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_trip_output
 from app.agent.generation.content.narrative import NARRATIVE_THEME_MAX, sanitize_narrative
 from app.agent.generation.content.reference_pool import ReferencePool
-from app.agent.generation.content.reflect import MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.content.requirement_directives import (
     has_structured_requirements,
     requirements_directives_clause,
 )
 from app.agent.generation.rules.budget import budget_clause
+from app.agent.generation.rules.day_policy import MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.generation_core import hotel_prompt_clause
 from app.agent.runtime.trace import traced
 from app.common.config import settings

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import hashlib
 
-from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
+from app.agent.generation.rules.day_policy import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.generation_core import day_hotel_clause, hotel_prompt_clause
 from app.prompts.open_generation import open_day_system_prompt, open_trip_system_prompt
 

@@ -19,17 +19,13 @@ estimate_transfer_minutes / normalize_item_clocks / fix_transfer_gaps。
   留给校验反馈循环，不在这里硬掰。
 """
 
-import math
 import re
 from typing import Any
 
 from app.agent.core.geo import haversine_meters
 from app.agent.data.route_service import (
-    ROAD_DISTANCE_FACTOR,
-    ROUTE_BUFFER_RATIO,
     ROUTE_ESTIMATE_TOLERANCE_MIN,
-    ROUTE_FIXED_BUFFER_MIN,
-    ROUTE_SPEED_KMH,
+    estimate_duration_minutes,
 )
 
 # 微调保底游览时长：收缩前一条目时不低于 30 分钟——再短就从"逛得紧凑"变成
@@ -82,8 +78,13 @@ def item_end(item: dict) -> int:
     return start + int(duration or 120)
 
 
-def estimate_transfer_minutes(first: dict, second: dict) -> int | None:
-    """按 POI 坐标估算保守换乘时间；缺坐标时返回 None，不猜路线。"""
+def estimate_transfer_minutes(first: dict, second: dict, mode: str = "walking") -> int | None:
+    """按 POI 坐标估算保守换乘时间；缺坐标/0/0 哨兵返回 None（unknown，不当 0）。
+
+    M3（spec §8.1）：速度/缓冲统一走 route_service.estimate_duration_minutes
+    的 mode-aware 单一实现——本模块不再自持第二套估算；步行档 4.5km/h 规划
+    默认值（此前误用 25km/h 车速，估算结果一律标 estimated）。
+    """
     values: list[float] = []
     for raw in (first.get("latitude"), first.get("longitude"), second.get("latitude"), second.get("longitude")):
         if raw is None:
@@ -97,9 +98,7 @@ def estimate_transfer_minutes(first: dict, second: dict) -> int | None:
             return None
         values.append(value)
     distance_m = haversine_meters(*values)
-    base = max(5.0, distance_m * ROAD_DISTANCE_FACTOR / (ROUTE_SPEED_KMH * 1000 / 60))
-    # 固定 10 分钟处理离场、找出口/停车点，比例余量处理拥堵和地图误差。
-    return math.ceil(base * (1 + ROUTE_BUFFER_RATIO) + ROUTE_FIXED_BUFFER_MIN)
+    return estimate_duration_minutes(distance_m, mode)
 
 
 def normalize_item_clocks(item: dict) -> None:

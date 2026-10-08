@@ -64,16 +64,20 @@ def _expected_struct() -> TripRequirements:
 
 
 def _daily_plan(day_no: int, name: str) -> DailyPlan:
-    """逐日兜底链的替身产出：与 test_checkpoint_resume 同形状。"""
-    return DailyPlan(
-        day_no=day_no,
-        note=f"第 {day_no} 天",
-        theme="湖山线",
-        items=[
-            TripItem(poi_name=name, item_type="attraction", cost=45, start_time="09:00", end_time="11:30"),
-            TripItem(poi_name=f"知味观{day_no}", item_type="food", cost=40, start_time="11:30", end_time="13:00"),
-        ],
-    )
+    """逐日兜底链的替身产出：符合本文件声明的需求（day1 到达窗 14:00-20:00、
+    day2 必去灵隐寺）——M3 交付门会拦违例方案，桩必须给合规行程。"""
+    if day_no == 1:
+        items = [
+            TripItem(poi_name=name, item_type="attraction", cost=45, start_time="14:30", end_time="16:30"),
+            TripItem(poi_name=f"知味观{day_no}", item_type="food", cost=40, start_time="17:00", end_time="18:30"),
+        ]
+    else:
+        items = [
+            TripItem(poi_name="灵隐寺", item_type="attraction", cost=45, start_time="09:30", end_time="11:30"),
+            TripItem(poi_name=name, item_type="attraction", cost=45, start_time="13:00", end_time="15:00"),
+            TripItem(poi_name=f"知味观{day_no}", item_type="food", cost=40, start_time="17:30", end_time="19:00"),
+        ]
+    return DailyPlan(day_no=day_no, note=f"第 {day_no} 天", theme="湖山线", items=items)
 
 
 def _stub_orchestration(monkeypatch, captured: dict) -> None:

@@ -31,6 +31,8 @@ from app.agent.generation.orchestration.stream_branch import run_generate_trip_s
 from app.agent.generation.orchestration.trip_graph import DayResume, resume_day
 from app.agent.generation.orchestration.workflow import run_adjust, run_generate
 from app.agent.generation.output.schedule_optimizer import optimize_daily_plan
+from app.agent.generation.rules.constraint_checks import check_constraints
+from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import spread_hotels
 from app.agent.grounding.existence import resolve_poi
 from app.agent.grounding.grounding_labels import is_authoritative_source
@@ -48,7 +50,9 @@ __all__ = [
     "DayResume",
     "ToolInvocationError",
     "ToolSpec",
+    "check_constraints",
     "confirm_thread",
+    "day_policy_for",
     "destination_problem",
     "find_nearby_pois",
     "get_poi_detail",

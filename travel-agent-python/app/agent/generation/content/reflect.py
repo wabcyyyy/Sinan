@@ -20,6 +20,9 @@ from app.agent.data.route_service import (
     ROUTE_FIXED_BUFFER_MIN,
     is_estimated,
 )
+from app.agent.generation.rules.day_policy import (
+    day_policy_for,
+)
 from app.agent.generation.rules.generation_core import estimate_plans_total, has_double_lunch, meal_slot_of
 from app.agent.generation.rules.transfer_time import (
     estimate_transfer_minutes,
@@ -27,11 +30,8 @@ from app.agent.generation.rules.transfer_time import (
     item_start,
     parse_open_window,
 )
+from app.schemas.trip_requirements import TripRequirements
 
-MAX_DAILY_MINUTES = 480
-MAX_DAILY_ATTRACTIONS = 6
-# 白天有效活动窗口：约 09:00-19:00；排程过稀时要求回填
-MIN_ACTIVE_MINUTES = 240
 # 预算超支 issue 的稳定标记（单一真源）：整趟终检的调用方据此从合并 issues 里认出
 # 预算项（BIZ-1），不许在别处再写字面量。
 BUDGET_OVERAGE_MARK = "超出预算"
@@ -64,15 +64,21 @@ def validate_plans(
     persons: int = 1,
     consumption: dict | None = None,
     budget_overage_ratio: float = 0.08,
+    requirements: "TripRequirements | None" = None,
 ) -> tuple[list[str], list[str]]:
     issues: list[str] = []
     log: list[str] = []
+    # M3：预算房间口径——用户明确给出 rooms 则替代 ceil(persons/2) 猜测
+    rooms = requirements.lodging.rooms if requirements is not None and requirements.lodging else None
     for plan in daily_plans:
         day_no = plan.get("day_no")
         items = plan.get("items") or []
         if not items:
             log.append(f"第 {day_no} 天无行程项")
             continue
+        # M3（spec §8.2）：当日规则按有效需求派生——到达/返程日不要求凑满 240、
+        # 慢游降景点上限、窗口钳制时长上限；无需求 = 普通全天（现状基线不变）
+        policy = day_policy_for(requirements, int(day_no) if isinstance(day_no, int) else 1)
 
         timed = [it for it in items if it.get("item_type") in ("attraction", "food")]
         timed.sort(key=item_start)
@@ -132,17 +138,19 @@ def validate_plans(
         # 负时长（end<start 的跨午夜脏数据）按 0 计，避免抵消其它项而掩盖超满。
         total = sum(max(0, item_end(it) - item_start(it)) for it in active)
         # 只有酒店/餐饮没有景点的行程不可交付：必须进反思循环修复，
-        # 禁止以 READY_WITH_WARNINGS 交付。
-        if not attractions and items:
+        # 禁止以 READY_WITH_WARNINGS 交付。到达/返程日可用时间不足（不可游玩）
+        # 时"抵达/返程安排"是合法日类型（spec §8.2），不算伤。
+        if not attractions and items and policy.playable:
             issues.append(f"第 {day_no} 天未安排任何景点")
-        if len(attractions) > MAX_DAILY_ATTRACTIONS:
-            issues.append(f"第 {day_no} 天景点过多（{len(attractions)} 个，上限 {MAX_DAILY_ATTRACTIONS}）")
-        if total > MAX_DAILY_MINUTES:
-            issues.append(f"第 {day_no} 天行程过满（约 {total} 分钟，上限 {MAX_DAILY_MINUTES}）")
-        # 空白过多：白天有效活动过短（城市游常见问题：只有 2 个点、大片空档）
-        if attractions and total < MIN_ACTIVE_MINUTES:
+        if len(attractions) > policy.max_attractions:
+            issues.append(f"第 {day_no} 天景点过多（{len(attractions)} 个，上限 {policy.max_attractions}）")
+        if total > policy.max_daily_minutes:
+            issues.append(f"第 {day_no} 天行程过满（约 {total} 分钟，上限 {policy.max_daily_minutes}）")
+        # 空白过多：白天有效活动过短（城市游常见问题：只有 2 个点、大片空档）。
+        # 到离日不设下限（min_active=0，按可用窗口验收）
+        if attractions and total < policy.min_active_minutes:
             issues.append(
-                f"第 {day_no} 天安排过稀（有效活动约 {total} 分钟，建议 ≥{MIN_ACTIVE_MINUTES} 分钟）；"
+                f"第 {day_no} 天安排过稀（有效活动约 {total} 分钟，建议 ≥{policy.min_active_minutes} 分钟）；"
                 "请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
             )
         if not foods and attractions:
@@ -168,16 +176,21 @@ def validate_plans(
                     f"第 {day_no} 天餐饮「{it.get('poi_name')}」cost 为 0，请填写合理人均消费（免费/含在门票内除外）"
                 )
 
-    # 预算硬约束：估算合计超过用户预算一定比例时，要求换平价点/降酒店档
+    # 预算硬约束：估算合计超过用户预算一定比例时，要求换平价点/降酒店档。
+    # M3：hard_cap 是严格上限（无容差）；target 保持容差与超额警告。
     if budget is not None and float(budget) > 0 and daily_plans:
+        policy_mode = (
+            requirements.budget_policy.mode if requirements is not None and requirements.budget_policy else None
+        )
+        ratio = 0.0 if policy_mode == "hard_cap" else max(float(budget_overage_ratio), 0.0)
         try:
             est = estimate_plans_total(
-                daily_plans, persons=persons or 1, days=len(daily_plans), consumption=consumption
+                daily_plans, persons=persons or 1, days=len(daily_plans), consumption=consumption, rooms=rooms
             )
             total = float(est.get("合计") or 0)
             limit = float(budget)
             over = total - limit
-            if over > limit * max(float(budget_overage_ratio), 0.0):
+            if over > limit * ratio:
                 issues.append(
                     f"估算总价约 ¥{total:.0f}，{BUDGET_OVERAGE_MARK} ¥{limit:.0f} 约 ¥{over:.0f}。"
                     "请压缩花费：优先更换高价酒店/餐饮为预算内选项，减少付费体验，"

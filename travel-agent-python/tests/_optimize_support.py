@@ -75,7 +75,9 @@ def _seed() -> None:
         second = ItineraryDay(itinerary_id=trip.id, day_no=2, generation_status="SUCCEEDED")
         session.add_all([first, second])
         session.flush()
-        # 共线三点、故意乱序：甲(经度 0.0) 丙(0.2) 乙(0.1) —— 唯一最优路径为 甲 → 乙 → 丙
+        # 共线三点、故意乱序：甲(经度 0.0) 丙(0.02) 乙(0.01) —— 唯一最优路径为 甲 → 乙 → 丙。
+        # M3 步行 4.5km/h：0.2°(≈21km) 邻点转场 226 分钟会把第三点挤出单日窗口，
+        # 收拢到 0.02°(≈1.9km、转场约 53 分钟) 保持"唯一最优序"的断言意图。
         session.add_all(
             [
                 ItineraryItem(
@@ -93,7 +95,7 @@ def _seed() -> None:
                     item_type="attraction",
                     poi_name="丙点",
                     latitude=Decimal("30.000000"),
-                    longitude=Decimal("120.200000"),
+                    longitude=Decimal("120.020000"),
                     sort_no=1,
                 ),
                 ItineraryItem(
@@ -102,7 +104,7 @@ def _seed() -> None:
                     item_type="attraction",
                     poi_name="乙点",
                     latitude=Decimal("30.000000"),
-                    longitude=Decimal("120.100000"),
+                    longitude=Decimal("120.010000"),
                     sort_no=2,
                 ),
             ]

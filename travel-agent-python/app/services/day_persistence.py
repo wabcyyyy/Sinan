@@ -81,11 +81,9 @@ def persist(
         for sort_no, item in enumerate(plan.items or []):
             session.add(_build_item(itinerary_id, day.id, item, sort_no))
 
-        blockers = hard_delivery_blockers(day_no, plan)
+        blockers = hard_delivery_blockers(day_no, plan, requirements=getattr(request, "requirements_struct", None))
         if blockers:
-            logger.warning(
-                "day %s of %s delivered with hard blockers, kept PENDING: %s", day_no, itinerary_id, blockers
-            )
+            logger.warning("day %s kept PENDING (hard blockers): %s", f"{itinerary_id}.{day_no}", blockers)
             day.generation_status = "PENDING"
             day.generation_error = "；".join(blockers)[:MAX_ERROR_LENGTH] or None
         else:

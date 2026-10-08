@@ -211,8 +211,12 @@ def test_regenerated_sparse_day_overwrites_old_items_and_stays_pending(db):
     assert _item_count(2) == 3, "旧景点软删、住宿沿用；仍过稀，不能因补住宿而变成完成态"
 
 
-def test_time_conflict_alone_does_not_block_delivery(db):
-    """软问题（时间冲突/预算）不拦：reflect 循环已尽力，剩余项走质量告警。"""
+def test_time_conflict_blocks_delivery_since_m3(db):
+    """M3（spec §8.2）：时间冲突升级为首期硬检查之一——有硬违例不可标 SUCCEEDED。
+
+    （旧行为"冲突告警交付"被 spec 反转：交付门的硬伤集 = 结构伤 + 需求违例，
+    时间冲突属后者；reflect 循环仍是第一道修复，剩余冲突不再冒充完成。）
+    """
     plan = _healthy_plan().model_copy(
         update={
             "day_no": 2,
@@ -224,5 +228,6 @@ def test_time_conflict_alone_does_not_block_delivery(db):
         }
     )
     day_persistence.persist(1, _Request(), 2, plan, "day-1-2", "fp", allow_overwrite=True)
-    status, _error = _day_status(2)
-    assert status == "SUCCEEDED", "时间冲突是告警级问题，不是不可交付硬伤"
+    status, error = _day_status(2)
+    assert status == "PENDING", "时间冲突自 M3 起是硬违例"
+    assert "time_conflict" in (error or "")

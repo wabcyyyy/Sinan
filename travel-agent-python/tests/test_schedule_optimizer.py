@@ -29,9 +29,14 @@ def test_optimizer_uses_real_route_time_and_reorders_to_fit():
     }
     result = optimize_daily_plan({"day_no": 1, "items": [a, b, c]}, route_matrix=matrix)
     names = [item["poi_name"] for item in result.plan["items"]]
-    assert names == ["A", "C", "B"] or names == ["B", "C", "A"]
+    # M3 目标序（spec §8.3）：硬约束优先 → 路程 → 变更范围 → 可选数量最后——
+    # A 的窗口（09:00-12:00）使含 A 的排列必须走 180 分钟的 A↔B 边或超窗被删，
+    # 路程最优解是 [B, C]（travel 30）；真实路线时长仍是排序的驱动因子。
+    assert names == ["B", "C"], "路程优先于可选数量：A 被删而不是为凑数走 180 分钟边"
     assert result.violations == []
-    assert result.travel_time_total_min == 60
+    assert result.travel_time_total_min == 30
+    assert result.removed_candidates[0]["name"] == "A"
+    assert "营业时间" in result.removed_candidates[0]["reason"]
     assert result.degraded is False
 
 

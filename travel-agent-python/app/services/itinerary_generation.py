@@ -665,37 +665,71 @@ def _revalidate_stream_days(itinerary_id: int, command: GenerateCommand, fingerp
                 items_by_day.setdefault(row.day_id, []).append(_item_rule_dict(row))
             checks = [(day, {"day_no": day.day_no, "items": items_by_day.get(day.id, [])}) for day in days]
         budget = float(command.budget) if settings.budget_hard_constraint and command.budget else None
-        budget_issues = _trip_budget_issues(checks, budget, command.persons)
+        requirements = command.requirements_struct
+        budget_issues = _trip_budget_issues(checks, budget, command.persons, requirements)
+        # M3（spec §8.3）：整趟预算不归因到每一天——hard_cap 超支定向 reset 最贵天，
+        # target 超容差只警告（不承诺严格上限）
+        budget_reset_day = _hard_cap_reset_day(checks, budget_issues, requirements)
+        if budget_issues and budget_reset_day is None:
+            logger.warning(
+                "stream trip budget over target for itinerary %s (target mode): kept as warnings, no reset",
+                itinerary_id,
+            )
         for day, raw in checks:
             issues, _log = validate_plans(
                 [raw],
                 budget=None,
                 persons=command.persons,
                 budget_overage_ratio=settings.budget_overage_ratio,
+                requirements=requirements,
             )
-            issues = [*issues, *budget_issues]
+            if day.day_no == budget_reset_day:
+                issues = [*issues, *budget_issues]
             if not issues:
                 continue
-            action_id = f"day-{itinerary_id}-{day.day_no}"
-            reason = "; ".join(issues[:2])
-            logger.warning(
-                "stream day %s of %s failed final validation, reset for per-day regeneration: %s",
-                day.day_no,
-                itinerary_id,
-                reason,
-            )
-            day_persistence.reset_day_pending(day.id, action_id, fingerprint, reason)
+            _reset_stream_day(itinerary_id, day, fingerprint, issues)
     except Exception as validate_exc:
         logger.warning("stream final validation skipped for itinerary %s: %s", itinerary_id, validate_exc)
+
+
+def _reset_stream_day(itinerary_id: int, day: ItineraryDay, fingerprint: str, issues: list[str]) -> None:
+    """终检违规天退回 PENDING 交逐日兜底重生成（不含预算 issue 的天不受牵连）。"""
+    action_id = f"day-{itinerary_id}-{day.day_no}"
+    reason = "; ".join(issues[:2])
+    logger.warning(
+        "stream day %s of %s failed final validation, reset for per-day regeneration: %s",
+        day.day_no,
+        itinerary_id,
+        reason,
+    )
+    day_persistence.reset_day_pending(day.id, action_id, fingerprint, reason)
+
+
+def _hard_cap_reset_day(
+    checks: list[tuple[ItineraryDay, dict[str, Any]]],
+    budget_issues: list[str],
+    requirements: TripRequirements | None,
+) -> int | None:
+    """M3（spec §8.3）：hard_cap 超支定向 reset 单日估算最贵天；target 无 reset。"""
+    if not budget_issues:
+        return None
+    mode = requirements.budget_policy.mode if requirements is not None and requirements.budget_policy else None
+    if mode == "hard_cap" and checks:
+        return max(checks, key=lambda pair: sum(float(it.get("cost") or 0) for it in pair[1]["items"]))[0].day_no
+    return None
 
 
 def _trip_budget_issues(
     checks: list[tuple[ItineraryDay, dict[str, Any]]],
     budget: float | None,
     persons: int,
+    requirements: TripRequirements | None = None,
 ) -> list[str]:
     """整趟口径判预算超支（BIZ-1）：单天列表 days=1 的估算够不到整趟预算门槛，
-    全量天一次校验，只认领预算 issue（时间规则由逐天校验定位，避免重复计数）。"""
+    全量天一次校验，只认领预算 issue（时间规则由逐天校验定位，避免重复计数）。
+
+    M3：rooms 用户口径 + hard_cap/target 分层由 validate_plans 内部按需求处理。
+    """
     if budget is None or not checks:
         return []
     trip_issues, _log = validate_plans(
@@ -703,6 +737,7 @@ def _trip_budget_issues(
         budget=budget,
         persons=persons,
         budget_overage_ratio=settings.budget_overage_ratio,
+        requirements=requirements,
     )
     return [issue for issue in trip_issues if BUDGET_OVERAGE_MARK in issue]
 

@@ -13,8 +13,8 @@ def _plan() -> DailyPlan:
                 start_time="09:00",
                 end_time="12:00",
                 duration_min=180,
-                latitude=30.0,
-                longitude=120.0,
+                latitude=30.0005,
+                longitude=120.0005,
             ),
             TripItem(
                 item_type="food",
@@ -22,8 +22,8 @@ def _plan() -> DailyPlan:
                 start_time="12:20",
                 end_time="13:20",
                 duration_min=60,
-                latitude=30.01,
-                longitude=120.01,
+                latitude=30.0008,
+                longitude=120.0008,
             ),
             TripItem(
                 item_type="attraction",
@@ -31,8 +31,8 @@ def _plan() -> DailyPlan:
                 start_time="13:50",
                 end_time="16:50",
                 duration_min=180,
-                latitude=30.02,
-                longitude=120.02,
+                latitude=30.0011,
+                longitude=120.0011,
             ),
         ],
     )

@@ -13,11 +13,16 @@ import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-from app.agent.data.route_service import RouteService, default_route_service, is_estimated
-from app.agent.generation.content.reflect import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES
-from app.agent.generation.rules.transfer_time import parse_time
+from app.agent.data.route_service import ESTIMATE_SOURCE, RouteService, default_route_service, is_estimated
+from app.agent.generation.rules.day_policy import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES
+from app.agent.generation.rules.transfer_time import estimate_transfer_minutes, parse_time
 
 _OPEN_RE = re.compile(r"(\d{1,2}):(\d{2})\s*[-~至]\s*(\d{1,2}):(\d{2})")
+
+# M3（spec §8.1）：矩阵缺路段时先走坐标估算；连坐标都缺（unknown）按保守罚分
+# 参与排序——unknown 不能变成 0 分钟并作为最优解，也不能被算作达到步行上限。
+UNKNOWN_ROUTE_SOURCE = "unknown-route"
+UNKNOWN_ROUTE_PENALTY_MIN = 45
 
 
 def _window(value: str | None) -> tuple[int, int] | None:
@@ -52,7 +57,7 @@ def _time(value: int) -> str:
     return f"{value // 60:02d}:{value % 60:02d}"
 
 
-def _route_minutes(first: dict, second: dict, matrix: dict[tuple[str, str], dict]) -> tuple[int, dict | None]:
+def _matrix_route(first: dict, second: dict, matrix: dict[tuple[str, str], dict]) -> dict | None:
     first_key, second_key = _key(first), _key(second)
     route = matrix.get((first_key, second_key))
     if route is None:
@@ -60,12 +65,30 @@ def _route_minutes(first: dict, second: dict, matrix: dict[tuple[str, str], dict
         route = matrix.get(
             (str(first.get("poi_name") or first.get("name")), str(second.get("poi_name") or second.get("name")))
         )
-    if route is None:
-        return 0, None
-    try:
+    if isinstance(route, dict):
+        raw = route.get("duration_min")
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            return None
+        return route
+    return None
+
+
+def _route_minutes(
+    first: dict, second: dict, matrix: dict[tuple[str, str], dict], estimates: dict[tuple[str, str], int]
+) -> tuple[int, dict | None]:
+    """路段时长：真实矩阵 → 坐标估算（预计算表）→ unknown 保守罚分。
+
+    unknown（缺坐标）不是 0 也不假装可达：罚分让含未知路段的排列在排序中
+    劣于可估排列，source=unknown-route 如实进入 route_sources（degraded）。
+    """
+    route = _matrix_route(first, second, matrix)
+    if route is not None:
         return max(int(route.get("duration_min") or 0), 0), route
-    except (AttributeError, TypeError, ValueError):
-        return 0, None
+    pair = (_key(first), _key(second))
+    estimated = estimates.get(pair)
+    if estimated is not None:
+        return estimated, {"source": ESTIMATE_SOURCE, "duration_min": estimated}
+    return UNKNOWN_ROUTE_PENALTY_MIN, None
 
 
 @dataclass
@@ -139,6 +162,19 @@ def optimize_daily_plan(
     original_order = {id(item): index for index, item in enumerate(active)}
     orders = itertools.permutations(active) if len(active) <= 7 else (tuple(active),)
 
+    # 坐标估算预计算（≤7 点两两 ≤42 对）：估算便宜但不能在 5040 个排列里重复算。
+    estimates: dict[tuple[str, str], int] = {}
+    for first in active:
+        for second in active:
+            if first is second:
+                continue
+            pair = (_key(first), _key(second))
+            if pair in estimates:
+                continue
+            value = estimate_transfer_minutes(first, second, mode)
+            if value is not None:
+                estimates[pair] = value
+
     best: tuple[tuple[int, int, int, int], list[dict], list[str], list[dict], int, list[str]] | None = None
     start_min = parse_time(day_start) or 540
     end_min = parse_time(day_end) or 1230
@@ -160,7 +196,7 @@ def optimize_daily_plan(
         active_duration_total = 0
 
         for item in order:
-            travel, route = (0, None) if previous is None else _route_minutes(previous, item, matrix)
+            travel, route = (0, None) if previous is None else _route_minutes(previous, item, matrix, estimates)
             window = _window(item.get("open_time"))
             start = max(cursor + travel, window[0] if window else cursor + travel)
             finish = start + _duration(item)
@@ -188,22 +224,25 @@ def optimize_daily_plan(
             normalized["end_time"] = _time(finish)
             normalized["duration_min"] = _duration(item)
             scheduled.append(normalized)
-            if route:
+            if route is not None:
                 sources.append(str(route.get("source") or "unknown"))
+            elif previous is not None:
+                sources.append(UNKNOWN_ROUTE_SOURCE)
             travel_total += travel
             spent += float(item.get("cost") or 0)
             active_duration_total += _duration(item)
             cursor = finish
             previous = item
 
-        # 评分优先保证可安排数量和必去点，再减少换乘、删除和顺序扰动。
+        # M3（spec §8.3）目标序：可行硬约束优先 → 体力/路程 → 变更范围 → 可选数量。
+        # 不能为了增加数量丢必去点（violations/required_missing 排在数量之前）。
         required_missing = sum(1 for name in required if name not in {item.get("poi_name") for item in scheduled})
         order_change = sum(abs(index - original_order[id(item)]) for index, item in enumerate(order))
         rank = (
-            len(scheduled),
             -len(violations) - required_missing,
             -travel_total,
             -len(removed) - order_change,
+            len(scheduled),
         )
         if best is None or rank > best[0]:
             best = (rank, scheduled, violations, removed, travel_total, sources)
@@ -224,5 +263,5 @@ def optimize_daily_plan(
         removed_candidates=removed,
         travel_time_total_min=travel_total,
         route_sources=sources,
-        degraded=any(is_estimated(source) for source in sources) and bool(sources),
+        degraded=any(is_estimated(source) or source == UNKNOWN_ROUTE_SOURCE for source in sources) and bool(sources),
     )

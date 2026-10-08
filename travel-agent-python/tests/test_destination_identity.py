@@ -5,7 +5,7 @@ import pytest
 from app.agent.data import city_center, places
 from app.agent.editing import clarify
 from app.agent.generation.content.day_prompts import open_trip_prompt
-from app.agent.generation.content.reflect import (
+from app.agent.generation.rules.day_policy import (
     MAX_DAILY_ATTRACTIONS,
     MAX_DAILY_MINUTES,
     MIN_ACTIVE_MINUTES,

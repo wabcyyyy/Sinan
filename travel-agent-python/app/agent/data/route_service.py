@@ -25,16 +25,33 @@ ESTIMATE_SOURCE = "coordinate-estimate"
 # 路线估算常量的唯一声明（G-1.3 ②）：原 reflect.py 重复副本已删除并改从本模块
 # import——两处数值漂移会让「路线服务估算」与「reflect 校验」对同一路段给出
 # 不一致的时长判断。ROAD_DISTANCE_FACTOR：直线距离 → 城市道路距离的折算系数；
-# 25 km/h 为非实时路况下的城市均速；BUFFER 给安全余量，避免"理论刚好可达"。
-ROUTE_SPEED_KMH = 25.0
+# BUFFER 给安全余量，避免"理论刚好可达"。
+# M3（spec §8.1）：速度按交通档位分档——步行 4.5km/h 的规划默认值（此前误用
+# 25km/h 城市车均速，步行时长被严重低估）；驾驶/公交/混合共用 32km/h 保守均速，
+# 公交/混合没有真实供应商路线也绝不伪称（source 恒为 ESTIMATE_SOURCE）。
+# 参数以回归钉住（tests/test_m3_rules.py），表述一律是估算，不是"精准交通时间"。
 ROAD_DISTANCE_FACTOR = 1.35
 ROUTE_BUFFER_RATIO = 0.25
 ROUTE_FIXED_BUFFER_MIN = 10
+MODE_SPEED_KMH = {"walking": 4.5, "driving": 32.0, "transit": 32.0, "mixed": 32.0}
+DEFAULT_MODE_SPEED_KMH = 32.0
 # 坐标估算源的判定容差（分钟，P2 逐日兜底空天 2026-10-05）：估算式含固定+比例
 # 两层缓冲，下限即 ceil(5×1.25+10)=17 分钟——相邻点位只留 15 分钟必判不足，
 # 与实际距离无关。validate_plans 改按「留白+容差 < 估算需求」判不足，避免
 # 1-2 分钟级裕量差触发整日重生成（空天链路的共同前件）；真实路线源不走容差。
 ROUTE_ESTIMATE_TOLERANCE_MIN = 5
+
+
+def estimate_duration_minutes(distance_m: float, mode: str = "walking") -> int:
+    """mode-aware 保守交通估算（分钟）：直线 × 绕行系数 ÷ 档位速度 + 两层缓冲。
+
+    所有估算调用方（coordinate_estimate / transfer_time / 优化器）共用此唯一
+    实现；结果一律标 ESTIMATE_SOURCE（估算，不是精准交通时间）。
+    """
+    speed_kmh = MODE_SPEED_KMH.get(mode, DEFAULT_MODE_SPEED_KMH)
+    base = max(5.0, distance_m * ROAD_DISTANCE_FACTOR / (speed_kmh * 1000 / 60))
+    return math.ceil(base * (1 + ROUTE_BUFFER_RATIO) + ROUTE_FIXED_BUFFER_MIN)
+
 
 RouteFetcher = Callable[[dict, dict, str, str | None], dict | None]
 
@@ -149,9 +166,7 @@ def coordinate_estimate(
     if first_coords is None or second_coords is None:
         return None
     distance_m = haversine_meters(*first_coords, *second_coords)
-    speed_kmh = 25.0 if mode == "walking" else 32.0
-    base = max(5.0, distance_m * ROAD_DISTANCE_FACTOR / (speed_kmh * 1000 / 60))
-    duration = math.ceil(base * (1 + ROUTE_BUFFER_RATIO) + ROUTE_FIXED_BUFFER_MIN)
+    duration = estimate_duration_minutes(distance_m, mode)
     return _base_result(
         first,
         second,

@@ -130,8 +130,9 @@ def test_route_constraint_uses_coordinates_and_reports_tolerant_gap():
                     "poi_name": "近点B",
                     "start_time": "10:20",
                     "end_time": "12:00",
-                    "latitude": 30.005,
-                    "longitude": 120.005,
+                    # M3 步行 4.5km/h：~290m 邻点估算 ≈ 17 分钟，20 分钟留白 + 5 容差足
+                    "latitude": 30.002,
+                    "longitude": 120.002,
                 },
             ],
         }

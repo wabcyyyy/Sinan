@@ -11,12 +11,12 @@
 import json
 
 from app.agent.generation.content import day_prompts, narrative
-from app.agent.generation.content.reflect import (
+from app.agent.generation.orchestration import day_stream
+from app.agent.generation.rules.day_policy import (
     MAX_DAILY_ATTRACTIONS,
     MAX_DAILY_MINUTES,
     MIN_ACTIVE_MINUTES,
 )
-from app.agent.generation.orchestration import day_stream
 from app.prompts import open_generation
 from app.schemas.trip import (
     BackupRule,

@@ -106,7 +106,9 @@ def day_reflect(state: UnifiedAgentState) -> dict:
     # **整趟口径**终检负责：业务面 _revalidate_stream_days 把全部天聚合成一次
     # validate_plans（BUDGET_OVERAGE_MARK 认领预算 issue），agent 面 trip 模式
     # reflect 节点全量校验。本节点维持时间/营业时段/饱和度的单天规则。
-    issues, log = validate_plans([raw], persons=persons)
+    # M3：结构化需求进单日校验（到达/返程日不凑 240、慢游上限、rooms 口径）
+    requirements = getattr(request, "requirements_struct", None)
+    issues, log = validate_plans([raw], persons=persons, requirements=requirements)
     # 空天必须进 issues：validate_plans 对无 items 只记 log（落库时由
     # day_delivery_gate 拦成 PENDING），但那样下面的 retry/fallback 环永远不触发
     # ——json_object 降级档的间歇空天（P2）就是空 plan 一次过直达 PARTIAL。
