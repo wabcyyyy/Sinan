@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  assistantReply,
   clearIntake,
-  extractPreferencesFromText,
-  guessDateFromText,
-  isDatePending,
-  isSkipOrDirectStart,
+  INTAKE_STORAGE_KEY,
+  INTAKE_STORAGE_VERSION,
   loadIntake,
   mergeSlots,
-  READY_TEXT,
   saveIntake,
   seedFromQuery,
   SLOT_DEFS,
@@ -150,44 +146,6 @@ describe('toGenerateInput（槽位 → 生成请求）', () => {
   })
 })
 
-describe('assistantReply（clarify 响应 → 助手话术）', () => {
-  it('就绪给确认引导，不带 chips（选择交给确认条）', () => {
-    const reply = assistantReply(true, null, ['x'])
-    expect(reply?.text).toBe(READY_TEXT)
-    expect(reply?.options).toBeUndefined()
-  })
-  it('缺槽透传追问与 chips', () => {
-    const reply = assistantReply(false, '几个人一起出发呀？', ['2 人', '4 人'])
-    expect(reply?.text).toBe('几个人一起出发呀？')
-    expect(reply?.options).toEqual(['2 人', '4 人'])
-  })
-  it('没有追问就没有话术', () => {
-    expect(assistantReply(false, null, undefined)).toBeNull()
-  })
-  it('核心三槽齐但缺日期：AI 主动在对话中追问出发日期', () => {
-    const reply = assistantReply(true, null, [], { city: '成都', days: 3, persons: 2 })
-    expect(reply?.text).toContain('打算大概哪天出发呢')
-    expect(reply?.options).toContain('日期待定')
-  })
-  it('日期确认但缺偏好：AI 主动在对话中追问偏好', () => {
-    const reply = assistantReply(true, null, [], { city: '成都', days: 3, persons: 2, start_date: '2026-10-01' })
-    expect(reply?.text).toContain('这次行程有什么特别的偏好吗')
-    expect(reply?.options).toContain('特色美食 · 慢节奏')
-  })
-  it('全要素齐备：输出拟人化方案总结', () => {
-    const reply = assistantReply(true, null, [], {
-      city: '成都',
-      days: 3,
-      persons: 2,
-      start_date: '2026-10-01',
-      preferences: ['美食', '慢节奏'],
-    })
-    expect(reply?.text).toContain('已为你理清行程要素')
-    expect(reply?.text).toContain('成都 · 3天 · 2人')
-    expect(reply?.text).toContain('2026-10-01')
-  })
-})
-
 describe('seedFromQuery（入口首句预填）', () => {
   it('?city=&days= 合成首句', () => {
     expect(seedFromQuery(new URLSearchParams('city=杭州&days=2'))).toBe('想去杭州玩 2 天，帮我安排一下')
@@ -237,28 +195,33 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
     sessionStorage.setItem('sinan-intake-v1', JSON.stringify({ ...JSON.parse(raw!), messages: ['junk'] }))
     expect(loadIntake()).toBeNull()
   })
-})
-
-describe('NLP 日期与偏好智能推导工具（对话免点标签）', () => {
-  it('guessDateFromText：支持明天、后天、周末、下周五推导 YYYY-MM-DD', () => {
-    const tomorrow = guessDateFromText('明天出发')
-    expect(tomorrow).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    const weekend = guessDateFromText('近期周末出发')
-    expect(weekend).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    const friday = guessDateFromText('下周五去')
-    expect(friday).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(guessDateFromText('不知道什么时候')).toBeNull()
-  })
-  it('extractPreferencesFromText：从自然对话提取偏好标签', () => {
-    expect(extractPreferencesFromText('主要是想吃各种地道特色小吃，行程慢一点别太赶')).toEqual(['美食', '慢节奏'])
-    expect(extractPreferencesFromText('带娃亲子游，少走路轻松点')).toEqual(['少走路', '亲子友好'])
-    expect(extractPreferencesFromText('去看看大自然风光山水')).toEqual(['自然风光'])
-  })
-  it('isSkipOrDirectStart 与 isDatePending 嗅探意图', () => {
-    expect(isSkipOrDirectStart('直接开始规划吧')).toBe(true)
-    expect(isSkipOrDirectStart('就这样安排')).toBe(true)
-    expect(isDatePending('日期待定')).toBe(true)
-    expect(isDatePending('还没定好呢')).toBe(true)
-    expect(isDatePending('明天出发')).toBe(false)
+  it('写入带版本号 v；缺版本或旧版本的记录一律不恢复（=会话重开，重新走一次确认）', () => {
+    saveIntake({
+      messages: [{ id: 'a', role: 'assistant', text: 'ok' }],
+      slots: { city: '成都' },
+      firstMessage: '',
+    })
+    expect(JSON.parse(sessionStorage.getItem(INTAKE_STORAGE_KEY)!).v).toBe(INTAKE_STORAGE_VERSION)
+    // 旧格式（M2 之前，无 v 字段）
+    sessionStorage.setItem(
+      INTAKE_STORAGE_KEY,
+      JSON.stringify({
+        messages: [{ id: 'a', role: 'assistant', text: '旧格式' }],
+        slots: { city: '成都' },
+        firstMessage: '',
+      }),
+    )
+    expect(loadIntake()).toBeNull()
+    // 旧版本号
+    sessionStorage.setItem(
+      INTAKE_STORAGE_KEY,
+      JSON.stringify({
+        v: INTAKE_STORAGE_VERSION - 1,
+        messages: [{ id: 'a', role: 'assistant', text: '旧版本' }],
+        slots: { city: '成都' },
+        firstMessage: '',
+      }),
+    )
+    expect(loadIntake()).toBeNull()
   })
 })

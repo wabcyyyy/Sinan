@@ -5,11 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clarifyItinerary, generateItinerary, getItineraryDetail, ReactApiError, streamItineraryEvents, waitForItinerary } from '../../api/sinan'
 import type { ItineraryDetail } from '../../types/itinerary'
-import type { IntakeState } from '../../types/generated/contracts'
+import type { ClarifyResponse, IntakeState } from '../../types/generated/contracts'
 import type { useHomePlanning } from './useHomePlanning'
 import { useIntakeChat } from './useIntakeChat'
 import type { IntakeChat } from './useIntakeChat'
-import { GREETING } from './intakeSlots'
+import { GREETING, saveIntake } from './intakeSlots'
 import { ChatIntake } from './ChatIntake'
 import { HomeStudio } from './HomeStudio'
 import { TripBoard } from './TripBoard'
@@ -51,11 +51,13 @@ const fakeChat = (overrides: Partial<IntakeChat>): IntakeChat =>
     slots: {},
     firstMessage: '',
     ready: false,
+    needsReconfirm: false,
     sending: false,
     error: '',
     needsLogin: false,
-    send: async () => undefined,
+    send: async () => false,
     updateSlots: () => undefined,
+    reconfirm: async () => false,
     reset: () => undefined,
     ...overrides,
   }) as IntakeChat
@@ -78,11 +80,12 @@ describe('HomeStudio（首页 phase 状态机）', () => {
     expect(html).not.toContain('trip-preview')
   })
   it('有对话历史即 active 双栏（sessionStorage 恢复同理）：右栏出收集进度', () => {
-    sessionStorage.setItem('sinan-intake-v1', JSON.stringify({
+    // M2 存储带版本号：走 saveIntake 统一写入（手写 JSON 缺 v 字段会被 loadIntake 拒收）
+    saveIntake({
       messages: [{ id: 'greeting', role: 'assistant', text: 'hi' }, { id: 'u1', role: 'user', text: '想去成都' }],
       slots: { city: '成都' },
       firstMessage: '想去成都',
-    }))
+    })
     const html = renderToStaticMarkup(createElement(HomeStudio, { query: new URLSearchParams() }))
     expect(html).toContain('home-studio is-active')
     expect(html).toContain('home-studio-panel')
@@ -139,6 +142,12 @@ describe('TripPanel（active 右栏容器）', () => {
     expect(html).toContain('成都')
     expect(html).toContain('intake-start')
     expect(html).toContain('就这样，开始规划')
+  })
+  it('confirm（needsReconfirm）：表单改动后留在确认卡，开工键切换为重验话术（M2）', () => {
+    const html = panel({}, { ready: false, needsReconfirm: true, slots: { city: '成都', days: 4, persons: 2 } })
+    expect(html).toContain('trip-confirm')
+    expect(html).toContain('信息已更新，重新确认')
+    expect(html).not.toContain('就这样，开始规划')
   })
   it('generating：四段阶段进度（SSE 文案）+ 逐日生长卡（原 TripPreview 逻辑卡4 迁入）', () => {
     const draft = {
@@ -285,21 +294,39 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
     optionalAsked: [],
     optionalPending: [],
     negotiations: {},
+    acceptances: {},
     ...base,
   }
 }
 
-describe('HomeStudio「重新说」锁（mock api 交互）', () => {
-  const clarifyReady = {
-    slots: { city: '成都', days: 4, persons: 2 },
-    state: intakeState({ city: '成都', days: 4, persons: 2 }),
-    missing: [] as string[],
+/** M2 起契约要求 reply/replyFor/next 必备：fixture 统一从工厂出，形状随生成类型走。 */
+function clarifyFixture(overrides: Partial<ClarifyResponse> = {}): ClarifyResponse {
+  return {
+    slots: {},
+    state: intakeState(),
+    missing: [],
     question: null,
-    ready: true,
-    options: [] as string[],
+    ready: false,
+    options: [],
     blocked: false,
     degraded: false,
+    reply: null,
+    replyFor: null,
+    next: null,
+    ...overrides,
   }
+}
+
+describe('HomeStudio「重新说」锁（mock api 交互）', () => {
+  const clarifyReady = clarifyFixture({
+    slots: { city: '成都', days: 4, persons: 2 },
+    state: intakeState({ city: '成都', days: 4, persons: 2 }),
+    missing: [],
+    ready: true,
+    reply: '成都 4 天 2 人的要素齐了，确认一下就开工。',
+    replyFor: 'confirm',
+    next: 'confirm',
+  })
   const roots: Array<{ root: Root; container: HTMLDivElement }> = []
 
   /** 异步链（clarify/generate 的 promise 落状态）补空 act 窗口，避免 act 告警。 */
@@ -440,16 +467,15 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
 describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
   const PENDING_KEY = 'sinan-intake-pending'
   const SENT_TEXT = '国庆想去成都玩 4 天，两个人'
-  const clarifyAskDays = {
+  const clarifyAskDays = clarifyFixture({
     slots: { city: '成都' },
     state: intakeState({ city: '成都' }),
     missing: ['days', 'persons'],
     question: '玩几天？',
     options: ['3 天'],
-    ready: false,
-    blocked: false,
-    degraded: false,
-  }
+    replyFor: 'days',
+    next: 'days',
+  })
 
   function IntakeHarness() {
     const chat = useIntakeChat()
@@ -535,5 +561,246 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
     await mountHarness()
     await flushAutoSend()
     expect(clarifyMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+/** M2 后端就绪权威（spec §7.2）：ready 只信 clarify 响应的 ready && !blocked；
+ * 初始化/恢复会话不落 ready；表单编辑后到达的迟到响应整体丢弃；blocked 硬阻断
+ * 任何路径解不了锁。hook 级行为用 probe 组件真挂载驱动（同前两块 mock api 交互纪律）。 */
+describe('useIntakeChat 后端就绪权威与迟到守卫（M2 mock api 交互）', () => {
+  const completeSlots = { city: '成都', days: 4, persons: 2 }
+
+  /** hook 状态探针：把就绪/重验/槽位投影成 JSON，供断言读取。 */
+  function ChatProbe({ text }: { text: string }) {
+    const chat = useIntakeChat()
+    return createElement('div', null,
+      createElement('button', { type: 'button', className: 'probe-send', onClick: () => void chat.send(text) }, 'send'),
+      createElement('button', { type: 'button', className: 'probe-edit', onClick: () => chat.updateSlots({ days: 2 }) }, 'edit'),
+      createElement('output', { className: 'probe-state' }, JSON.stringify({
+        ready: chat.ready,
+        needsReconfirm: chat.needsReconfirm,
+        city: chat.slots.city ?? null,
+        days: chat.slots.days ?? null,
+        msgs: chat.messages.length,
+      })),
+    )
+  }
+
+  const roots: Array<{ root: Root; container: HTMLDivElement }> = []
+
+  async function mountProbe(text: string) {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    roots.push({ root, container })
+    await act(async () => { root.render(createElement(ChatProbe, { text })) })
+    return container
+  }
+
+  const stateOf = (container: HTMLDivElement) =>
+    JSON.parse(container.querySelector('.probe-state')!.textContent ?? '{}') as {
+      ready: boolean
+      needsReconfirm: boolean
+      city: string | null
+      days: number | null
+      msgs: number
+    }
+
+  beforeEach(() => {
+    ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+    sessionStorage.clear()
+    clarifyMock.mockReset()
+    generateMock.mockReset(); generateMock.mockResolvedValue({ id: 7 } as unknown as ItineraryDetail)
+  })
+
+  afterEach(async () => {
+    for (const { root, container } of roots.splice(0)) {
+      await act(async () => { root.unmount() })
+      container.remove()
+    }
+    sessionStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  it('① ready 只信后端：恢复的会话槽位再齐也不落 ready，须本轮响应 ready&&!blocked', async () => {
+    // 版本合法的历史会话、必填槽位已齐——旧 slotsReady 推导会直接解锁，M2 一律先视为未就绪
+    saveIntake({
+      messages: [GREETING, { id: 'u1', role: 'user', text: '想去成都玩 4 天，两个人' }],
+      slots: completeSlots,
+      firstMessage: '想去成都玩 4 天，两个人',
+    })
+    const container = await mountProbe('那就 10 月 1 号出发')
+    expect(stateOf(container)).toMatchObject({ ready: false, needsReconfirm: false })
+
+    // 本轮响应后端仍说不就绪：ready=false 不得解锁（哪怕槽位已齐）
+    clarifyMock.mockResolvedValue(clarifyFixture({
+      slots: completeSlots,
+      state: intakeState(completeSlots),
+      ready: false,
+      question: '大概哪天出发？',
+      replyFor: 'start_date',
+      next: 'start_date',
+    }))
+    await act(async () => { (container.querySelector('.probe-send') as HTMLButtonElement).click() })
+    await act(async () => {})
+    expect(stateOf(container).ready).toBe(false)
+  })
+
+  it('③ 迟到响应不覆盖新修改：表单编辑后到达的 clarify 响应整体丢弃', async () => {
+    let resolveLater!: (value: ClarifyResponse) => void
+    clarifyMock.mockImplementationOnce(() => new Promise<ClarifyResponse>((resolve) => { resolveLater = resolve }))
+    const container = await mountProbe('想去成都')
+    await act(async () => { (container.querySelector('.probe-send') as HTMLButtonElement).click() })
+    // 响应未回时用户改了表单：seq 自增，在途响应作废
+    await act(async () => { (container.querySelector('.probe-edit') as HTMLButtonElement).click() })
+    expect(stateOf(container)).toMatchObject({ ready: false, needsReconfirm: true, days: 2 })
+    // 迟到响应带着齐槽 + ready=true 回来了：slots/ready/needsReconfirm 不被覆盖，消息不追加
+    await act(async () => {
+      resolveLater(clarifyFixture({
+        slots: completeSlots,
+        state: intakeState(completeSlots),
+        ready: true,
+        reply: '齐了，确认一下就开工。',
+        replyFor: 'confirm',
+        next: 'confirm',
+      }))
+    })
+    expect(stateOf(container)).toMatchObject({ ready: false, needsReconfirm: true, city: null, days: 2, msgs: 2 })
+    expect(clarifyMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('④ blocked 硬阻断：即便响应带 ready=true，blocked=true 也不解锁', async () => {
+    clarifyMock.mockResolvedValue(clarifyFixture({
+      slots: completeSlots,
+      state: intakeState(completeSlots),
+      ready: true,
+      blocked: true,
+      reply: '单程最多排 7 天，改一下天数再出发。',
+      replyFor: 'days_limit',
+      next: 'days_limit',
+    }))
+    const container = await mountProbe('想去成都玩 10 天')
+    await act(async () => { (container.querySelector('.probe-send') as HTMLButtonElement).click() })
+    await act(async () => {})
+    expect(stateOf(container).ready).toBe(false)
+    // 未就绪就不会进生成：生成接口一次都没被打
+    expect(generateMock).not.toHaveBeenCalled()
+  })
+})
+
+/** M2 表单重验全链路（spec §7.2「内容改动后就绪失效，经过后端重验才允许生成」）：
+ * 确认卡改表单 → ready 失效 + 待重验（开工键切换重验话术）→ 点开工先打一轮
+ * clarify 重验，ready 恢复才真正 submit 生成；重验不过不触发生成、留在待重验态。 */
+describe('M2 表单重验（mock api 交互）', () => {
+  const clarifyReady = clarifyFixture({
+    slots: { city: '成都', days: 4, persons: 2 },
+    state: intakeState({ city: '成都', days: 4, persons: 2 }),
+    ready: true,
+    reply: '要素齐了，确认一下就开工。',
+    replyFor: 'confirm',
+    next: 'confirm',
+  })
+  const clarifyBudgetLow = clarifyFixture({
+    slots: { city: '成都', days: 4, persons: 2 },
+    state: intakeState({ city: '成都', days: 4, persons: 2 }),
+    ready: false,
+    question: '预算有点紧：人均每天不到 100，接受按估算排吗？',
+    replyFor: 'budget_low',
+    next: 'budget_low',
+  })
+
+  const roots: Array<{ root: Root; container: HTMLDivElement }> = []
+
+  /** 异步链（clarify/generate 的 promise 落状态）补空 act 窗口，避免 act 告警。 */
+  async function flush() {
+    await act(async () => {})
+  }
+
+  async function mountStudio() {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    roots.push({ root, container })
+    await act(async () => { root.render(createElement(HomeStudio, { query: new URLSearchParams() })) })
+    await flush()
+    return { root, container }
+  }
+
+  /** happy-dom 下写受控 input：走原型 value setter 触发 React 的 onChange。 */
+  function setInput(input: HTMLInputElement, value: string) {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    setter?.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  async function say(container: HTMLDivElement, text: string) {
+    await act(async () => {
+      setInput(container.querySelector('input[aria-label="说说你的旅行想法"]') as HTMLInputElement, text)
+      ;(container.querySelector('.intake-composer button[type="submit"]') as HTMLButtonElement).click()
+    })
+    await flush()
+  }
+
+  beforeEach(() => {
+    ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+    sessionStorage.clear()
+    vi.spyOn(Element.prototype, 'animate').mockReturnValue({ cancel: () => {} } as unknown as Animation)
+    clarifyMock.mockReset()
+    generateMock.mockReset(); generateMock.mockResolvedValue({ id: 7 } as unknown as ItineraryDetail)
+    waitForMock.mockReset(); waitForMock.mockResolvedValue({
+      id: 7, status: 2, city: '成都', days: 1, persons: 2,
+      dayList: [day(1, ['西湖'])], budgetList: [], totalAmount: 0,
+    } as unknown as ItineraryDetail)
+    getDetailMock.mockReset(); getDetailMock.mockResolvedValue({
+      id: 7, status: 2, city: '成都', days: 1, persons: 2,
+      dayList: [day(1, ['西湖'])], budgetList: [], totalAmount: 0,
+    } as unknown as ItineraryDetail)
+    streamMock.mockReset(); streamMock.mockResolvedValue(undefined)
+  })
+
+  afterEach(async () => {
+    for (const { root, container } of roots.splice(0)) {
+      await act(async () => { root.unmount() })
+      container.remove()
+    }
+    sessionStorage.clear()
+    vi.clearAllMocks()
+  })
+
+  /** 走到 confirm 态并改动一次表单（微调抽屉点一个偏好 chip → updateSlots）。 */
+  async function reachDirtyConfirm(container: HTMLDivElement) {
+    await say(container, '国庆想去成都玩 4 天，两个人')
+    expect(container.querySelector('.intake-confirm')).not.toBeNull()
+    await act(async () => { (container.querySelector('.intake-tune-toggle') as HTMLButtonElement).click() })
+    await act(async () => { (container.querySelector('.intake-prefs button') as HTMLButtonElement).click() })
+    expect((container.querySelector('.intake-start') as HTMLButtonElement).textContent).toContain('信息已更新，重新确认')
+    expect(clarifyMock).toHaveBeenCalledTimes(1)
+  }
+
+  it('② 表单修改后 ready 失效：开工先重验，重验成功（ready 恢复）才触发生成', async () => {
+    clarifyMock.mockResolvedValue(clarifyReady)
+    const { container } = await mountStudio()
+    await reachDirtyConfirm(container)
+
+    // 点开工：先打一轮 clarify 重验，ready 恢复后才 submit 生成
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(clarifyMock).toHaveBeenCalledTimes(2)
+    expect(clarifyMock.mock.calls[1][0]).toBe('我更新了行程信息，请重新确认')
+    expect(generateMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('②b 重验未过保持禁用：不触发生成，确认卡留在待重验态可再次重验', async () => {
+    clarifyMock.mockResolvedValueOnce(clarifyReady).mockResolvedValueOnce(clarifyBudgetLow)
+    const { container } = await mountStudio()
+    await reachDirtyConfirm(container)
+
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(clarifyMock).toHaveBeenCalledTimes(2)
+    expect(generateMock).not.toHaveBeenCalled()
+    // needsReconfirm 兜住 confirm 态：确认卡还在，开工键回到待重验话术（可再次重验）
+    expect(container.querySelector('.intake-confirm')).not.toBeNull()
+    expect((container.querySelector('.intake-start') as HTMLButtonElement).textContent).toContain('信息已更新，重新确认')
   })
 })

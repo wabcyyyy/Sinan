@@ -2,27 +2,38 @@ import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { fallbackCities } from '../data'
 import { Icon } from '../shared/Icon'
-import { INTAKE_PREFERENCES, slotsReady } from './intakeSlots'
+import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
 
 /** 出发前确认卡（PLAN §3.3，落位 active 右栏 TripPanel）：
  * 优先展示 AI 对话梳理生成的「行程方案就绪卡」，实现「对话完成一切，
  * 减少用户对标签按钮的繁琐操作」；同时提供折叠的轻量微调面板，
- * 兼顾极致对话体验与精准手工修改。 */
+ * 兼顾极致对话体验与精准手工修改。
+ * M2（spec §7.2）就绪门后置：ready/needsReconfirm 由后端 clarify 权威给出——
+ * 表单改动后（needsReconfirm）开工键先走 onReconfirm 后端重验，ready 恢复才
+ * 触发 onStart；重验未过保持禁用，任何前端路径都不在 !ready 时触发生成。 */
 export function IntakeConfirm({
   slots,
   busy,
+  ready,
+  needsReconfirm,
   onSlots,
   onReset,
+  onReconfirm,
   onStart,
 }: {
   slots: IntakeSlots
   busy: boolean
+  ready: boolean
+  needsReconfirm: boolean
   onSlots: (patch: Partial<IntakeSlots>) => void
   onReset: () => void
+  onReconfirm: () => Promise<boolean>
   onStart: () => void
 }) {
   const [showDrawer, setShowDrawer] = useState(false)
+  // 重验在途：与 busy 一起禁用开工键，防重入（重验本身也是一轮 clarify）
+  const [verifying, setVerifying] = useState(false)
   const preferences = slots.preferences || []
   const custom = preferences.filter((item) => !INTAKE_PREFERENCES.includes(item))
   const toggle = (item: string) => {
@@ -34,6 +45,25 @@ export function IntakeConfirm({
     const raw = event.target.value
     const parsed = Number(raw)
     onSlots({ [key]: raw !== '' && Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined })
+  }
+
+  const startLocked = !ready && !needsReconfirm
+  const handleStart = async () => {
+    if (busy || verifying || startLocked) return
+    if (ready && !needsReconfirm) {
+      onStart()
+      return
+    }
+    // needsReconfirm：先请后端重验当前表单，ready 恢复才开工；未过保持禁用
+    setVerifying(true)
+    let ok = false
+    try {
+      ok = await onReconfirm()
+    } finally {
+      setVerifying(false)
+    }
+    if (!ok) return
+    onStart()
   }
 
   const city = slots.city?.trim() || '目的地'
@@ -48,8 +78,8 @@ export function IntakeConfirm({
         <div className="intake-confirm-title">
           <h3>出发前确认</h3>
           <span className="intake-confirm-badge">
-            <Icon name="check" size={12} />
-            AI 对话已梳理就绪
+            <Icon name={needsReconfirm ? 'clock' : 'check'} size={12} />
+            {needsReconfirm ? '信息已更新，待重新确认' : 'AI 对话已梳理就绪'}
           </span>
         </div>
         <button className="text-action" type="button" onClick={onReset} title="退出对话，返回首页">
@@ -110,14 +140,14 @@ export function IntakeConfirm({
         </div>
       </div>
 
-      {/* 核心 CTA：用户一眼看清方案，直接开工 */}
+      {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
       <button
         className="button button-primary intake-start"
         type="button"
-        disabled={busy || !slotsReady(slots)}
-        onClick={onStart}
+        disabled={busy || verifying || startLocked}
+        onClick={() => void handleStart()}
       >
-        就这样，开始规划
+        {needsReconfirm ? (verifying ? '正在重新确认…' : '信息已更新，重新确认') : '就这样，开始规划'}
         <Icon name="arrow" size={16} />
       </button>
 

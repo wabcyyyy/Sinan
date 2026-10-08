@@ -6979,6 +6979,41 @@
             "type": "boolean",
             "title": "Degraded",
             "default": false
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "replyFor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replyfor"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
           }
         },
         "type": "object",
@@ -8838,6 +8873,13 @@
             },
             "type": "object",
             "title": "Negotiations"
+          },
+          "acceptances": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Acceptances"
           }
         },
         "type": "object",
@@ -8986,6 +9028,13 @@
             },
             "type": "object",
             "title": "Negotiations"
+          },
+          "acceptances": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Acceptances"
           }
         },
         "type": "object",

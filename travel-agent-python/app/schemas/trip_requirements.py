@@ -117,6 +117,10 @@ class IntakeState(WireModel):
     optional_asked: list[str] = Field(default_factory=list, max_length=10)
     optional_pending: list[str] = Field(default_factory=list, max_length=10)
     negotiations: dict[str, bool] = Field(default_factory=dict)
+    #: M2 §7.2：用户对协商的**明确接受**，与"已提示"（negotiations）分开记录；
+    #: 值 = 被协商参数摘要（如 "budget=3000/persons=2/days=5"）——参数一变旧接受
+    #: 随摘要失配自动失效，不需要时间戳
+    acceptances: dict[str, str] = Field(default_factory=dict)
 
 
 def requirements_issues(req: TripRequirements, *, days: int | None = None) -> list[str]:

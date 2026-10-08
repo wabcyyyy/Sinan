@@ -39,12 +39,14 @@ export function TripPanel({ planning, chat, onStart }: {
   chat: IntakeChat
   onStart: (input: GenerateInput) => void
 }) {
-  // creating/planning 用 status 判（语义同 planning.busy，但能让 TS 收窄到兜底态）
+  // creating/planning 用 status 判（语义同 planning.busy，但能让 TS 收窄到兜底态）。
+  // M2：confirm 态门槛 = ready（后端权威）或 needsReconfirm（表单改后待重验）——
+  // 后者留在确认卡走「开工先重验」通道（IntakeConfirm 内把门），不弹回收集态。
   const state: TripPanelState =
     planning.status === 'creating' || planning.status === 'planning'
       ? 'generating'
       : planning.status === 'idle'
-        ? (chat.ready ? 'confirm' : 'collecting')
+        ? (chat.ready || chat.needsReconfirm ? 'confirm' : 'collecting')
         : planning.status
   const step = STEP_INDEX[state]
   return <section className="trip-panel" aria-label="行程工作面板" aria-busy={planning.busy}>
@@ -61,8 +63,11 @@ export function TripPanel({ planning, chat, onStart }: {
       <IntakeConfirm
         slots={chat.slots}
         busy={chat.sending || planning.busy}
+        ready={chat.ready}
+        needsReconfirm={chat.needsReconfirm}
         onSlots={chat.updateSlots}
         onReset={chat.reset}
+        onReconfirm={chat.reconfirm}
         onStart={() => onStart(toGenerateInput(chat.slots, chat.firstMessage, chat.serverState?.requirements))}
       />
     )}

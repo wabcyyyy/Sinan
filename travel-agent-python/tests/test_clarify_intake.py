@@ -1,7 +1,9 @@
 """CH1 intake 升级：clarify 多轮收集器的分支行为（LLM 全 mock，不打真实模型）。"""
 
 from app.agent.editing import clarify as clarify_mod
+from app.agent.editing import clarify_policy as policy
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
+from app.schemas.trip_requirements import IntakeState
 
 
 class _FakeClient:
@@ -16,19 +18,24 @@ class _FakeClient:
         return self._raw
 
 
-def _run(monkeypatch, raw: str | Exception, slots: dict | None = None) -> ClarifyResponse:
+def _run(
+    monkeypatch, raw: str | Exception, slots: dict | None = None, state: "IntakeState | None" = None
+) -> ClarifyResponse:
     monkeypatch.setattr(clarify_mod, "get_llm_client", lambda: _FakeClient(raw))
-    return clarify_mod.run_clarify(ClarifyRequest(message="想去玩", slots=slots or {}))
+    return clarify_mod.run_clarify(ClarifyRequest(message="想去玩", slots=slots or {}, state=state))
 
 
 def test_merges_slots_and_reports_ready(monkeypatch) -> None:
+    """M2：必填齐即就绪；就绪轮由服务端发出最重要的可选追问（start_date），chips 同目标。"""
     raw = '{"city":"成都","origin_city":"北京","days":3,"persons":2,"budget":3000,"question":null,"options":null}'
     res = _run(monkeypatch, raw, slots={"city": "成都"})
-    assert res.ready is True
+    assert res.ready is True, "可选信息不阻断生成"
     assert res.blocked is False
     assert res.degraded is False, "正常抽取轮不得带降级标记"
-    assert res.question is None
-    assert res.options == []
+    assert res.question == policy.OPTIONAL_ASK["start_date"][0], "服务端主动追问未问过的可选槽位"
+    assert res.options == policy.OPTIONAL_ASK["start_date"][1]
+    assert res.next == "start_date"
+    assert res.state.optional_asked == ["start_date"], "问过即记入会话状态，不重复追问"
     assert res.slots["origin_city"] == "北京"
     assert res.slots["days"] == 3
 
@@ -57,12 +64,23 @@ def test_optional_slot_never_shadows_required(monkeypatch) -> None:
 
 
 def test_ready_ignores_llm_question(monkeypatch) -> None:
-    """必填集齐即就绪：就绪分支恒不带追问，LLM 给了也不透传。"""
+    """LLM 的自由追问不透传：就绪轮的问题由服务端按目标生成（F10 语义保留）。"""
     raw = '{"city":"成都","days":3,"persons":2,"question":"还想问点什么","options":["a"]}'
     res = _run(monkeypatch, raw)
     assert res.ready is True
+    assert res.question == policy.OPTIONAL_ASK["start_date"][0], "是服务端的追问，不是 LLM 那句"
+    assert res.options == policy.OPTIONAL_ASK["start_date"][1]
+
+
+def test_ready_goes_confirm_after_optional_asked(monkeypatch) -> None:
+    """可选槽位已问过/已填则不再问，进入确认分支（每轮最多一个主要追问）。"""
+    raw = '{"city":"成都","days":3,"persons":2,"question":null,"options":null}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.ready is True
+    assert res.next == "confirm"
+    assert res.reply == policy.CONFIRM_REPLY
     assert res.question is None
-    assert res.options == []
 
 
 def test_llm_failure_flags_degraded_with_honest_copy(monkeypatch) -> None:
@@ -151,7 +169,7 @@ def test_tight_but_sane_budget_does_not_block(monkeypatch) -> None:
 
 
 def _stub_hits(monkeypatch, hits: list[str]) -> None:
-    monkeypatch.setattr(clarify_mod, "known_city_hits", lambda text: hits)
+    monkeypatch.setattr(policy, "known_city_hits", lambda text: hits)
 
 
 def test_four_cities_one_day_warns_once(monkeypatch) -> None:
@@ -190,3 +208,81 @@ def test_multicity_check_fails_open_without_dictionary(monkeypatch) -> None:
     raw = '{"city":"北京上海广州深圳","days":1,"persons":2,"question":null,"options":null}'
     res = _run(monkeypatch, raw)
     assert res.ready is True and res.blocked is False
+
+
+# ---------- M2：自然回复与协商接受（spec §7） ----------
+
+
+def test_reply_adopted_only_when_target_matches(monkeypatch) -> None:
+    """reply 采用规则：服务端重算目标与模型声明的 reply_for 一致才采用。"""
+    raw = '{"city":"成都","days":3,"persons":2,"reply":"成都 3 天 2 人，带上爸妈我会排松一点。","reply_for":"confirm"}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.ready is True and res.next == "confirm"
+    assert res.reply == "成都 3 天 2 人，带上爸妈我会排松一点。", "目标一致 → 采用模型回复"
+
+
+def test_reply_falls_back_when_target_mismatch(monkeypatch) -> None:
+    """模型声明的目标与服务器重算不一致 → 规则回退话术，不用模型那句。"""
+    raw = '{"city":"成都","days":3,"persons":2,"reply":"不如去西藏？","reply_for":"city"}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.ready is True and res.next == "confirm"
+    assert res.reply == policy.CONFIRM_REPLY, "目标不符（声明 city 实为 confirm）→ 规则回退"
+
+
+def test_reply_overlong_falls_back(monkeypatch) -> None:
+    """超长 reply 视为越界：规则回退（无第二次润色调用）。"""
+    long_reply = "啊" * 600
+    raw = '{"city":"成都","days":3,"persons":2,"reply":"' + long_reply + '","reply_for":"confirm"}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.reply == policy.CONFIRM_REPLY
+
+
+def test_budget_acceptance_unblocks_and_caution_when_not_accepted(monkeypatch) -> None:
+    """BIZ-4 × M2：低预算提示一次；明确接受（摘要匹配）后放行且不再带提示。"""
+    # 第一轮：拦截协商
+    raw1 = '{"city":"成都","days":5,"persons":2,"budget":800,"question":null,"options":null}'
+    res1 = _run(monkeypatch, raw1)
+    assert res1.blocked is True and res1.next == "budget_low"
+    # 第二轮：用户接受（模型声明 accepted）
+    raw2 = '{"days":5,"reply":"好，就按这个预算来。","reply_for":"budget_low","accepted":"budget_low"}'
+    res2 = _run(monkeypatch, raw2, state=res1.state)
+    assert res2.ready is True and res2.blocked is False
+    assert res2.state.acceptances.get("budget_low") == policy.negotiation_summary(res2.state)
+    assert res2.reply != policy.BUDGET_CAUTION_REPLY, "已接受 → 不再带估算提示"
+
+
+def test_budget_caution_reply_when_warned_but_not_accepted(monkeypatch) -> None:
+    """提示过但未明确接受：ready 放行（估算草案），回复带预算提示。"""
+    raw = '{"city":"成都","days":5,"persons":2,"budget":800,"question":null,"options":null}'
+    res1 = _run(monkeypatch, raw)
+    assert res1.blocked is True
+    raw2 = '{"days":5,"question":null,"options":null}'
+    res2 = _run(monkeypatch, raw2, state=res1.state)
+    assert res2.ready is True and res2.reply == policy.BUDGET_CAUTION_REPLY
+
+
+def test_budget_acceptance_invalidated_by_param_change(monkeypatch) -> None:
+    """预算/天数改变后旧接受失配失效：重新变低 → 重新带提示（不重复 blocked）。"""
+    raw1 = '{"city":"成都","days":5,"persons":2,"budget":800,"question":null,"options":null}'
+    res1 = _run(monkeypatch, raw1)
+    accepted = res1.state
+    accepted.acceptances["budget_low"] = policy.negotiation_summary(accepted)
+    # 用户改预算为 600（摘要变化）→ 旧接受失配 → ready 回复带提示
+    raw2 = '{"budget":600,"question":null,"options":null}'
+    res2 = _run(monkeypatch, raw2, state=accepted)
+    assert res2.ready is True
+    assert res2.state.budget == 600
+    assert res2.reply == policy.BUDGET_CAUTION_REPLY, "参数已变，旧接受失效，提示恢复"
+
+
+def test_days_limit_cannot_be_skipped_by_confirm_reply(monkeypatch) -> None:
+    """超天数是硬阻断：模型声明 reply_for=confirm 也不采用，任何话术不改变 blocked。"""
+    raw = '{"city":"成都","days":14,"persons":2,"reply":"没问题，可以开始。","reply_for":"confirm"}'
+    res = _run(monkeypatch, raw)
+    assert res.blocked is True and res.ready is False
+    assert res.reply is None, "目标不符（blocked 分支）→ 不采用"
+    assert res.next == "days_limit"
+    assert res.state.days == 14, "超限原值保留"

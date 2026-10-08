@@ -253,6 +253,7 @@ export interface IntakeState {
   optionalAsked: string[]
   optionalPending: string[]
   negotiations: Record<string, boolean>
+  acceptances: Record<string, string>
 }
 
 export interface ClarifyRequest {
@@ -270,6 +271,9 @@ export interface ClarifyResponse {
   options: string[]
   blocked: boolean
   degraded: boolean
+  reply: string | null
+  replyFor: string | null
+  next: string | null
 }
 
 export interface EditOpRequest {

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { destinations, inspirationTemplates } from '../data'
 import { HomeShowcase, SHOWCASE_CITIES, SHOWCASE_TEMPLATES, showcaseCityHref, showcaseTemplateHref } from './HomeShowcase'
 import { HomeStudio } from './HomeStudio'
+import { saveIntake } from './intakeSlots'
 
 /**
  * 首页 idle 轻展示区（PLAN 2026-10-03 §2.2）静态断言：切片口径、深链拼串格式
@@ -64,11 +65,12 @@ describe('HomeStudio × HomeShowcase（idle-only 挂载）', () => {
   })
 
   it('active（有会话历史恢复）：双栏工作台不渲染展示区', () => {
-    sessionStorage.setItem('sinan-intake-v1', JSON.stringify({
+    // M2 存储带版本号：走 saveIntake 统一写入（手写 JSON 缺 v 字段会被 loadIntake 拒收）
+    saveIntake({
       messages: [{ id: 'greeting', role: 'assistant', text: 'hi' }, { id: 'u1', role: 'user', text: '想去成都' }],
       slots: { city: '成都' },
       firstMessage: '想去成都',
-    }))
+    })
     const html = renderToStaticMarkup(createElement(HomeStudio, { query: new URLSearchParams() }))
     expect(html).toContain('home-studio is-active')
     expect(html).toContain('home-studio-panel')

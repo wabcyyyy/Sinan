@@ -12,9 +12,12 @@ import { inspirationTemplates } from '../data'
 
 export const INTAKE_STORAGE_KEY = 'sinan-intake-v1'
 
-export const INTAKE_PREFERENCES = ['美食', '自然风光', '人文历史', '慢节奏', '少走路', '亲子友好']
+/** M2（spec §7.2）会话存储版本：saveIntake 写入带 v 标记的记录，loadIntake 校验——
+ * 缺版本或版本不符的旧记录一律返回 null（=会话重开，重新走一次确认），
+ * 不由「槽位齐了」自动解锁。 */
+export const INTAKE_STORAGE_VERSION = 2
 
-export const READY_TEXT = '信息齐了！下面确认一下，要改哪项直接点。'
+export const INTAKE_PREFERENCES = ['美食', '自然风光', '人文历史', '慢节奏', '少走路', '亲子友好']
 
 export interface IntakeSlots {
   city?: string
@@ -190,139 +193,13 @@ function addDays(isoDate: string, offset: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-/** 自然语言推导就近日期（如「下周五」「这周末」），零依赖纯函数。 */
-export function guessDateFromText(text: string): string | null {
-  const today = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-
-  const trimmed = text.trim()
-  if (trimmed.includes('明天')) {
-    const d = new Date(today)
-    d.setDate(d.getDate() + 1)
-    return toIso(d)
-  }
-  if (trimmed.includes('后天')) {
-    const d = new Date(today)
-    d.setDate(d.getDate() + 2)
-    return toIso(d)
-  }
-  if (trimmed.includes('周末') || trimmed.includes('周六')) {
-    const d = new Date(today)
-    const day = d.getDay()
-    const diff = day === 6 ? 7 : 6 - day
-    d.setDate(d.getDate() + diff)
-    return toIso(d)
-  }
-  if (trimmed.includes('下周五')) {
-    const d = new Date(today)
-    const day = d.getDay()
-    const diff = ((5 - day + 7) % 7) + 7
-    d.setDate(d.getDate() + diff)
-    return toIso(d)
-  }
-  return null
-}
-
-/** 从用户回复中提取旅行偏好关键词，辅助对话免去用户手动点选。 */
-export function extractPreferencesFromText(text: string): string[] {
-  const result: string[] = []
-  if (/美食|吃|小吃|餐饮|餐厅/.test(text)) result.push('美食')
-  if (/自然|风光|风景|山水|户外/.test(text)) result.push('自然风光')
-  if (/人文|历史|古迹|博物馆|寺庙|古镇/.test(text)) result.push('人文历史')
-  if (/慢节奏|慢一点|休闲|闲逛|放松|散步|不赶|节奏慢/.test(text)) result.push('慢节奏')
-  if (/少走路|不累|打车|轻松/.test(text)) result.push('少走路')
-  if (/亲子|带娃|孩子|宝宝|家庭/.test(text)) result.push('亲子友好')
-  return result
-}
-
-export function isSkipOrDirectStart(text: string): boolean {
-  return /直接开始|开始规划|就这样|随便|直接排|不用问|差不多了/.test(text)
-}
-
-export function isDatePending(text: string): boolean {
-  return /待定|还没定|暂定|不限|还没想好|看情况/.test(text)
-}
-
-export interface AssistantTurnContext {
-  dateAsked?: boolean
-  prefsAsked?: boolean
-  userSkipped?: boolean
-}
-
-/** clarify 响应 → 下一句助手话术（id 由 hook 赋）：
- * 1. 核心槽位未齐或天数超限时：透传后端的 question 与 options 协商；
- * 2. 核心槽位齐备后：主动贴心追问未确认的关键信息（出发日期、旅行偏好），
- *    践行「尽量做到对话完成一切，减少用户对标签按钮的操作」；
- * 3. 当全部确认完毕或用户表达直接开始时：输出拟人化行程总括，引导右栏一键开工。
- */
-export function assistantReply(
-  ready: boolean,
-  question: string | null,
-  options: string[] | undefined,
-  slots?: IntakeSlots,
-  context?: AssistantTurnContext,
-): IntakeMessage | null {
-  if (!ready) {
-    if (question) return { id: '', role: 'assistant', text: question, options: options?.length ? [...options] : undefined }
-    return null
-  }
-
-  // 无 slots 传入时（旧单测兼容模式）：走默认确认文案
-  if (!slots || !slots.city) {
-    return { id: '', role: 'assistant', text: READY_TEXT }
-  }
-
-  const city = slots.city
-  const days = slots.days || 3
-  const persons = slots.persons || 2
-
-  // 1. 用户明确表达直接开始或跳过
-  if (context?.userSkipped) {
-    const prefsText = slots.preferences?.length ? slots.preferences.join('、') : '经典全景深度游'
-    return {
-      id: '',
-      role: 'assistant',
-      text: `太棒了！已为你理清行程要素：\n📍 ${city} · ${days}天 · ${persons}人\n📅 出发时间：${slots.start_date || '日期待定'}\n✨ 旅行偏好：${prefsText}\n\n右侧方案已为你准备好，确认无误即可开启规划！`,
-    }
-  }
-
-  // 2. 核心槽位齐，但出发日期尚未确认：AI 主动追问日期
-  if (!slots.start_date && !context?.dateAsked) {
-    return {
-      id: '',
-      role: 'assistant',
-      text: `去${city}玩 ${days} 天，${persons} 个人～打算大概哪天出发呢？（还没定好也可以说暂定）`,
-      options: ['下周五出发', '近期周末出发', '日期待定', '直接开始规划'],
-    }
-  }
-
-  // 3. 出发日期已确认（或已暂定），但偏好尚未确认：AI 主动追问偏好
-  if ((!slots.preferences || slots.preferences.length === 0) && !context?.prefsAsked) {
-    const dateText = slots.start_date ? `${slots.start_date} 出发～` : ''
-    return {
-      id: '',
-      role: 'assistant',
-      text: `收到！${dateText}这次行程有什么特别的偏好吗？比如特色美食、慢节奏休闲、自然风光，或者少走路？`,
-      options: ['特色美食 · 慢节奏', '自然风光 · 拍照', '经典打卡', '直接开始规划'],
-    }
-  }
-
-  // 4. 全部关键信息在对话中均已确认
-  const prefsText = slots.preferences?.length ? slots.preferences.join('、') : '经典全景深度游'
-  const dateText = slots.start_date ? slots.start_date : '日期待定'
-  return {
-    id: '',
-    role: 'assistant',
-    text: `太棒了！已为你理清行程要素：\n📍 ${city} · ${days}天 · ${persons}人\n📅 出发时间：${dateText}\n✨ 旅行偏好：${prefsText}\n\n右侧方案已为你准备好，确认无误即可开启规划！`,
-  }
-}
-
 export function loadIntake(): IntakeState | null {
   try {
     const raw = sessionStorage.getItem(INTAKE_STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<IntakeState>
+    const parsed = JSON.parse(raw) as { v?: unknown } & Partial<IntakeState>
+    // M2 版本校验：缺版本（旧格式）或版本不符 → 不恢复，调用方落回对话态重新确认
+    if (parsed.v !== INTAKE_STORAGE_VERSION) return null
     if (!Array.isArray(parsed.messages)) return null
     const messages = parsed.messages.filter(
       (item): item is IntakeMessage =>
@@ -350,7 +227,7 @@ export function loadIntake(): IntakeState | null {
 
 export function saveIntake(state: IntakeState): void {
   try {
-    sessionStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify(state))
+    sessionStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify({ v: INTAKE_STORAGE_VERSION, ...state }))
   } catch {
     // 存储不可用（隐私模式等）：对话退化为页内存态，刷新重来可接受
   }

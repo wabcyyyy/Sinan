@@ -335,6 +335,23 @@ class ClarifyResponse(WireModel):
     # AILIVE-2：本轮 LLM 抽取失败（调用失败或输出不可解析）——槽位零进展且服务降级，
     # question 已换成如实告知的兜底话术，前端据此提示而非无标记地继续追问
     degraded: bool = False
+    # M2（spec §7.1）：自然回复——与抽取同一次 LLM 调用产出；仅当服务端应用
+    # patch 后重算的目标与模型声明的 reply_for 一致才采用，否则规则回退话术
+    reply: str | None = None
+    # 模型声明的回复目标（下一问槽位/协商原因/确认分支）；服务端校验字段
+    reply_for: str | None = Field(default=None, max_length=32)
+    # 服务端权威下一问目标/协商原因/确认分支（规则策略唯一计算点，前端不再推断）
+    next: str | None = Field(default=None, max_length=32)
+
+    @model_validator(mode="after")
+    def _ready_blocked_combination(self) -> "ClarifyResponse":
+        # M2 §7.2：ready/blocked/degraded 组合在服务器（schema 层）校验——
+        # ready 与 blocked 互斥；blocked 必须带协商话术（question 或 reply）
+        if self.ready and self.blocked:
+            raise ValueError("ready 与 blocked 互斥")
+        if self.blocked and not (self.question or self.reply):
+            raise ValueError("blocked 必须携带协商话术")
+        return self
 
 
 class EditOpRequest(WireModel):

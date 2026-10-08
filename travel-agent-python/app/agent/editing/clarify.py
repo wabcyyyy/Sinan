@@ -1,9 +1,10 @@
-"""意图确认节点：多轮对话收集行程条件与偏好（M1a：累计状态权威化到 IntakeState）。
+"""意图确认节点（LLM 半边）：抽取、状态播种/回写与出口编排。
 
-状态语义（spec 2026-10-08 §5.2）：ClarifyRequest.state 是服务端权威累计状态，
-模型输出解析成有类型 patch（set/unset/add/remove，目标只允许预定义枚举）后
-确定性应用，响应返回**完整规范化状态**，客户端不再重复做语义合并。未提及 =
-不更新；明确删除/取消 = 清空；空数组 = 清空；"改成四天"替换三天。
+状态语义（spec 2026-10-08 §5.2/M2 §7）：ClarifyRequest.state 是服务端权威累计
+状态，模型输出解析成有类型 patch（set/unset/add/remove）后确定性应用；出口
+策略（目标计算/协商闸/自然回复采用）是纯规则，在 clarify_policy.respond——
+本模块只做 LLM 调用、解析与状态搬运，每轮恰好一次 complete（无第二次润色）。
+
 老前端兼容：ClarifyResponse.slots 继续携带基础槽位投影（含一次性协商标记），
 老客户端随轮回传 slots 的行为不破坏；state 传入时以 state 为准。
 未支持或冲突的要求不丢弃：被拒 patch 追加进 requirements.unresolved_requests。
@@ -13,8 +14,13 @@ import json
 import logging
 from datetime import date
 
-from app.agent.data.city_center import destination_problem
-from app.agent.data.city_reference import known_city_hits
+from app.agent.editing.clarify_policy import (
+    BUDGET_WARN_SLOT,
+    MULTICITY_WARN_SLOT,
+    REQUIRED_SLOTS,
+    apply_acceptance,
+    respond,
+)
 from app.common.llm_client import get_llm_client
 from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
@@ -22,9 +28,8 @@ from app.schemas.trip_requirements import IntakeState
 
 logger = logging.getLogger(__name__)
 
-_REQUIRED = ["city", "days", "persons"]
 _KNOWN = [
-    *_REQUIRED,
+    *REQUIRED_SLOTS,
     "start_date",
     "stay_nights",
     "budget",
@@ -32,31 +37,13 @@ _KNOWN = [
     "preferences",
     "origin_city",
 ]
-_LABELS = {"city": "目的地城市", "days": "出行天数", "persons": "出行人数"}
 _INT_SLOTS = ("days", "persons")
-_DEFAULT_OPTIONS = {
-    "city": ["帮我推荐目的地"],
-    "days": ["3 天", "5 天", "7 天"],
-    "persons": ["2 人", "4 人", "一家人"],
-}
-_BLOCKED_OPTIONS = [f"改成 {MAX_TRIP_DAYS} 天以内", "拆成两段行程"]
-_NEGOTIATION = f"单次行程最多排 {MAX_TRIP_DAYS} 天哦～要不要改成 {MAX_TRIP_DAYS} 天以内，或者拆成两段分开规划？"
-# BIZ-4（2026-10-06）：矛盾预算前置提示。人均每天低于该地板线时，就绪前先协商
-# 一次——「100 元游瑞士 10 天」这类输入此前被静默放行，事后只剩泛化 degraded
-# 文案。budget_tier 的节俭档地板是 ¥150/天，低于 100 连国内基础食宿都难覆盖。
-_BUDGET_WARN_PPD = 100.0
-_BUDGET_WARN_SLOT = "_budget_warned"  # 一次性协商闸标记：随 state.negotiations 往返，只拦一次
-# 残留③（2026-10-06）：行程级荒谬预检——「一天四城」类输入此前被静默放行，下游
-# 研究与终检只能兜成 degraded 文案。确定性判据：城市槽位命中的字典城市数 > 2 且
-# days=1（双城一日如苏杭是常见可行玩法，不拦）。同样只协商一次。
-_MULTICITY_MAX_PER_DAY = 2
-_MULTICITY_WARN_SLOT = "_multicity_warned"
 # AILIVE-2：LLM 失败曾双层静默吞掉（_ask 返回空串 + _extract 等同没抽到），用户面对
 # 无提示的追问循环。降级轮的话术必须如实告知服务不稳并给出出路（右侧补填 / 稍后再试）。
 _DEGRADED_NOTICE = (
     "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～可以在右侧直接补齐出发信息，或稍后再说一次试试。"
 )
-# F10：追问文本与点选选项由系统按必填优先顺序自动生成（缺槽分支强制同槽对齐），
+# F10：追问文本与点选选项由系统按必填优先顺序自动生成（clarify_policy.respond），
 # LLM 的 question/options 只保留一个用途——天数超上限时的协商话术。
 _EXTRACT_SPEC = (
     '只输出 JSON：{"city":"城市名或null","origin_city":"出发城市或null",'
@@ -66,6 +53,12 @@ _EXTRACT_SPEC = (
     '"preferences":["偏好"]或null,'
     '"patches":[{"op":"set/unset/add/remove","target":"目标枚举","value":值或null,'
     '"name":名称或null,"day_no":数字或null}]或null,'
+    '"reply":"给用户的自然回复或null：一句话、简短口语、接住这条消息的具体诉求；'
+    '不要重列用户已给过的参数，不要宣称行程已生成或已满足全部要求",'
+    '"reply_for":"这句回复对应的目标或null：city/days/persons/start_date/preferences/confirm/'
+    'days_limit/budget_low/multicity，须与 reply 同时给出",'
+    '"accepted":"用户明确接受的合作协商或null：仅当用户表示就按当前预算/天数继续'
+    '（如「就按这个预算试试」「可以就这样」）时给 budget_low，否则null",'
     '"question":"仅当用户要的天数超过上限时给一句自然口语的协商话术，否则null",'
     '"options":["仅协商时给配合question的2~4个短选项，否则null"]}。'
     "patches 只在用户表达了基础槽位之外的需求时输出，目标只允许这些枚举："
@@ -80,9 +73,12 @@ _EXTRACT_SPEC = (
 _SYSTEM_PROMPT = (
     "你是旅行规划的信息收集助手。从用户最新一句话中抽取槽位，与已有槽位合并。"
     "追问哪个槽位、给哪些点选选项由系统按必填优先（目的地→天数→人数，可选槽位靠后）"
-    "自动生成，你只负责抽取，不要替系统编追问或选项。"
+    "自动生成，你只负责抽取和给一句自然回复，不要替系统编追问或选项。"
     f"{_EXTRACT_SPEC}"
     "没提到的字段一律 null，不要猜测。"
+    "reply 的语气：简短、自然、不油腻；接住用户这句话里的具体诉求（如「带爸妈」→"
+    "回应省力安排），不要每轮重复罗列已有信息，不要使用「太棒了」「正式落库」这类话；"
+    "每轮最多回应一个重点。"
     f"单次行程天数上限 {MAX_TRIP_DAYS} 天：用户要超过时 days 照实抽取，"
     f"但此时 question 必须说明最多 {MAX_TRIP_DAYS} 天，并协商改天数或拆成两段。"
 )
@@ -141,7 +137,7 @@ def _seed_state(req: ClarifyRequest) -> IntakeState:
     prefs = slots.get("preferences")
     if isinstance(prefs, list):
         state.preferences = [str(p) for p in prefs if str(p).strip()][:10]
-    for marker in (_BUDGET_WARN_SLOT, _MULTICITY_WARN_SLOT):
+    for marker in (BUDGET_WARN_SLOT, MULTICITY_WARN_SLOT):
         if slots.get(marker):
             state.negotiations[marker] = True
     return state
@@ -179,11 +175,15 @@ def _ask(req: ClarifyRequest, slots: dict, state: IntakeState) -> str | None:
         return None
 
 
-def _extract(raw: str, slots: dict) -> tuple[str | None, list[str] | None, bool, list[RequirementPatch]]:
-    """解析 LLM 输出：槽位并入 slots、patch 结构化，返回 (question, options, 解析是否成功, patches)。
+def _extract(
+    raw: str, slots: dict
+) -> tuple[str | None, list[str] | None, bool, list[RequirementPatch], str | None, str | None, str | None]:
+    """解析 LLM 输出：槽位并入 slots、patch/reply/reply_for/accepted 结构化。
 
+    返回 (question, options, 解析是否成功, patches, reply, reply_for, accepted)；
     解析失败等同没抽到；单条 patch 形状非法只跳过该条（记日志），不否定整轮。
-    语义性拒绝（词表外类别、超界值）由 apply_intake_patches 处理并入 unresolved。
+    语义性拒绝（词表外类别、超界值）由 apply_intake_patches 处理并入 unresolved；
+    reply 的目标校验在 clarify_policy.respond（服务端重算 next 后比对）。
     """
     patches: list[RequirementPatch] = []
     try:
@@ -206,113 +206,16 @@ def _extract(raw: str, slots: dict) -> tuple[str | None, list[str] | None, bool,
                     patches.append(RequirementPatch.model_validate(item))
                 except Exception as e:
                     logger.warning("clarify patch invalid: %s | item=%s", e, str(item)[:120])
-        return data.get("question") or None, options, True, patches
+        reply = data.get("reply")
+        reply = str(reply).strip() if isinstance(reply, str) and reply.strip() else None
+        reply_for = data.get("reply_for")
+        reply_for = str(reply_for).strip() if isinstance(reply_for, str) and reply_for.strip() else None
+        accepted = data.get("accepted")
+        accepted = str(accepted).strip() if isinstance(accepted, str) and accepted.strip() else None
+        return data.get("question") or None, options, True, patches, reply, reply_for, accepted
     except Exception as e:
         logger.warning("clarify parse failed: %s | raw=%s", e, raw[:200])
-        return None, None, False, []
-
-
-def _respond(
-    state: IntakeState, missing: list[str], question: str | None, options: list[str] | None
-) -> ClarifyResponse:
-    """三级出口：超天协商 > 缺槽追问 > 就绪（就绪时不带追问，选择交给确认条）。
-
-    F10：缺槽追问的问题与选项一律按 ``missing[0]`` 槽位现生成——问哪个槽位就给哪个
-    槽位的候选，且必填（city→days→persons）未齐前可选槽位不可能成为追问对象；
-    LLM 自由发挥的 question/options 只在超天协商分支透传，杜绝「问出发城市却给
-    天数选项」「出发日期先于人数被问」。
-    """
-    if isinstance(state.days, int) and state.days > MAX_TRIP_DAYS:
-        # 上限是产品红线：不静默截断，天数原样保留、协商话术交回对话
-        return ClarifyResponse(
-            state=state,
-            slots=_slots_projection(state),
-            missing=missing,
-            question=question or _NEGOTIATION,
-            ready=False,
-            options=options or _BLOCKED_OPTIONS,
-            blocked=True,
-        )
-    if missing:
-        # 文本与 chips 强制同槽：不再让 LLM 的自由追问/选项越过 missing[0]
-        slot = missing[0]
-        return ClarifyResponse(
-            state=state,
-            slots=_slots_projection(state),
-            missing=missing,
-            question=f"还想确认一下{_LABELS[slot]}～",
-            ready=False,
-            options=_DEFAULT_OPTIONS.get(slot, []),
-        )
-    # 必填齐备、即将就绪——两个确定性把关（矛盾预算/一天多城）依次过闸，
-    # 各自只拦一次（negotiations 标记防循环，见各 gate 注）
-    problem = destination_problem(str(state.city or ""))
-    if problem:
-        return ClarifyResponse(
-            state=state,
-            slots=_slots_projection(state),
-            missing=["city"],
-            ready=False,
-            blocked=True,
-            question=problem,
-            options=[],
-        )
-    for gate in (_budget_gate, _multicity_gate):
-        blocked = gate(state)
-        if blocked is not None:
-            return blocked
-    return ClarifyResponse(
-        state=state, slots=_slots_projection(state), missing=[], question=None, ready=True, options=[]
-    )
-
-
-def _budget_gate(state: IntakeState) -> ClarifyResponse | None:
-    """BIZ-4：矛盾预算前置提示。人均每天低于地板线时就绪前先协商一次——
-    「100 元游瑞士 10 天」这类输入此前被静默放行，事后只剩泛化 degraded 文案。"""
-    budget_raw = state.budget
-    days_raw = state.days
-    persons: int = state.persons if isinstance(state.persons, int) and state.persons > 0 else 1
-    if (
-        isinstance(budget_raw, (int, float))
-        and isinstance(days_raw, int)
-        and days_raw > 0
-        and float(budget_raw) / persons / days_raw < _BUDGET_WARN_PPD
-        and not state.negotiations.get(_BUDGET_WARN_SLOT)
-    ):
-        state.negotiations[_BUDGET_WARN_SLOT] = True
-        ppd = float(budget_raw) / persons / days_raw
-        return ClarifyResponse(
-            state=state,
-            slots=_slots_projection(state),
-            missing=[],
-            ready=False,
-            blocked=True,
-            question=f"这趟预算人均每天约 ¥{ppd:.0f}，可能连基础的住宿和餐饮都覆盖不了哦～要调整预算或天数吗？",
-            options=["提高预算", "减少天数", "就按这个预算试试"],
-        )
-    return None
-
-
-def _multicity_gate(state: IntakeState) -> ClarifyResponse | None:
-    """残留③：行程级荒谬预检——城市槽位命中的字典城市数超线且 days=1（一天四城类
-    输入此前被静默放行，下游研究与终检只能兜成 degraded 文案）。双城一日如苏杭是
-    常见可行玩法，不拦；同样只协商一次。"""
-    city_text = state.city
-    if isinstance(city_text, str) and state.days == 1 and not state.negotiations.get(_MULTICITY_WARN_SLOT):
-        hits = known_city_hits(city_text)
-        if len(hits) > _MULTICITY_MAX_PER_DAY:
-            state.negotiations[_MULTICITY_WARN_SLOT] = True
-            preview = "、".join(hits[:4])
-            return ClarifyResponse(
-                state=state,
-                slots=_slots_projection(state),
-                missing=[],
-                ready=False,
-                blocked=True,
-                question=f"一天串完「{preview}」基本全程都在赶路哦～要调整天数或只挑一两座城市深玩吗？",
-                options=["延长到多天分城玩", "只挑 1-2 座城市", "就按一天多城试试"],
-            )
-    return None
+        return None, None, False, [], None, None, None
 
 
 def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
@@ -321,16 +224,20 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
     raw = _ask(req, slots, state)
     if raw is None:
         question, options, parsed, patches = None, None, False, []
+        llm_reply, reply_for, accepted = None, None, None
     else:
-        question, options, parsed, patches = _extract(raw, slots)
+        question, options, parsed, patches, llm_reply, reply_for, accepted = _extract(raw, slots)
     for key in _INT_SLOTS:
         _normalize_int(slots, key)
     if patches:
         # 有类型 patch 确定性应用；被拒条目进 unresolved_requests（不丢弃）
         apply_intake_patches(state, patches)
+    apply_acceptance(state, accepted)
     _sync_base_from_slots(state, slots)
-    missing = [k for k in _REQUIRED if k not in slots or slots[k] in (None, "")]
-    response = _respond(state, missing, question, options)
+    missing = [k for k in REQUIRED_SLOTS if k not in slots or slots[k] in (None, "")]
+    response = respond(state, missing, question, options, llm_reply, reply_for)
+    # 投影最后做：出口内的协商闸标记（budget/multicity warned）必须进当轮 slots
+    response.slots = _slots_projection(state)
     if raw is None or not parsed:
         # AILIVE-2：本轮 LLM 调用失败或输出不可解析 = 槽位零进展且服务降级，必须
         # 如实透出（degraded 标记 + 兜底话术），不再伪装成正常的缺槽追问让用户
@@ -338,4 +245,5 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
         response.degraded = True
         if not response.ready and not response.blocked:
             response.question = _DEGRADED_NOTICE
+            response.reply = None
     return response

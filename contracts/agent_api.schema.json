@@ -2119,6 +2119,13 @@
           },
           "title": "Negotiations",
           "type": "object"
+        },
+        "acceptances": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Acceptances",
+          "type": "object"
         }
       },
       "title": "IntakeState",
@@ -2137,7 +2144,8 @@
         "requirements",
         "optionalAsked",
         "optionalPending",
-        "negotiations"
+        "negotiations",
+        "acceptances"
       ]
     },
     "ClarifyRequest": {
@@ -2221,6 +2229,44 @@
           "default": false,
           "title": "Degraded",
           "type": "boolean"
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reply"
+        },
+        "replyFor": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replyfor"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next"
         }
       },
       "required": [
@@ -2231,7 +2277,10 @@
         "ready",
         "options",
         "blocked",
-        "degraded"
+        "degraded",
+        "reply",
+        "replyFor",
+        "next"
       ],
       "title": "ClarifyResponse",
       "type": "object"

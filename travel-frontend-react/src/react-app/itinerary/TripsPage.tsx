@@ -8,6 +8,7 @@ import { SmartImg } from '../shared/SmartImg'
 import { PageHeader } from '../shared/PageHeader'
 import { EmptyBlock, ErrorBlock, OfflineBadge } from '../shared/States'
 import { deleteIntakeSession, formatSessionTime, listIntakeSessions } from '../home/intakeHistory'
+import { saveIntake } from '../home/intakeSlots'
 import type { IntakeSessionRecord } from '../home/intakeHistory'
 
 type Filter = 'all' | 'active' | 'done' | 'draft'
@@ -78,14 +79,9 @@ export function TripsPage() {
   )
 
   const handleResumeDraft = (draft: IntakeSessionRecord) => {
-    sessionStorage.setItem(
-      'sinan-intake-v1',
-      JSON.stringify({
-        messages: draft.messages,
-        slots: draft.slots,
-        firstMessage: draft.firstMessage,
-      }),
-    )
+    // M2：走 saveIntake 统一写入带版本的会话记录——手写 JSON 会缺版本号，
+    // 首页 loadIntake 按版本校验会拒收，恢复条就白点了
+    saveIntake({ messages: draft.messages, slots: draft.slots, firstMessage: draft.firstMessage })
     navigate('/')
   }
 

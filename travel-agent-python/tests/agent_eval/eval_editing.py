@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.agent.editing import city_guide as city_guide_mod
 from app.agent.editing import clarify as clarify_mod
+from app.agent.editing import clarify_policy as clarify_policy
 from app.agent.editing import local_replan as local_replan_mod
 from app.agent.editing import nl_edit as nl_edit_mod
 from app.agent.tools import impl as tools
@@ -115,7 +116,17 @@ def _case_clarify(reply: str, message: str, slots: dict, expected_filled: list[s
     with _patch(clarify_mod, reply):
         response = clarify_mod.run_clarify(ClarifyRequest(message=message, slots=slots))
     filled = sum(1 for key in expected_filled if response.slots.get(key) not in (None, "", "null"))
-    question_ok = bool(response.question) if expect_question else response.question is None
+    # M2 口径（spec §7.1）：question 只允许两种形态——
+    # ① 非 ready：缺槽/协商必须有追问（expect_question）、无槽可缺时不得瞎问；
+    # ② ready：仅服务端可选追问（question 与 next 槽位严格同源）或 confirm 分支不带。
+    # 比旧口径（就绪=无 question）更严：ready 轮 question 文本错槽也算不合格。
+    if response.ready:
+        optional = clarify_policy.OPTIONAL_ASK
+        question_ok = (response.next in optional and response.question == optional[response.next][0]) or (
+            response.next == "confirm" and response.question is None
+        )
+    else:
+        question_ok = bool(response.question) if expect_question else response.question is None
     return {
         "slot_filled": filled,
         "slot_expected": len(expected_filled),
