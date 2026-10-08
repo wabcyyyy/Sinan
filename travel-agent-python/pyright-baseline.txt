@@ -93,40 +93,14 @@ app/services/state_and_sessions.py:reportAttributeAccessIssue:Cannot access attr
 app/services/state_and_sessions.py:reportAttributeAccessIssue:Cannot access attribute "zset" for class "object" |   Attribute "zset" is unknown
 tests/agent_eval/eval_research.py:reportArgumentType:Argument of type "str" cannot be assigned to parameter "domain" of type "ResearchDomain" in function "__init__" |   Type "str" is not assignable to type "ResearchDomain" |     "str" is not assignable to type "Literal['hotel']" |     "str" is not assignable to type "Literal['attraction']" |     "str" is not assignable to type "Literal['food']"
 tests/agent_eval/test_themed_eval.py:reportArgumentType:Argument of type "str" cannot be assigned to parameter "verification_status" of type "Literal['verified', 'partially_verified', 'unverified']" in function "__init__" |   Type "str" is not assignable to type "Literal['verified', 'partially_verified', 'unverified']" |     "str" is not assignable to type "Literal['verified']" |     "str" is not assignable to type "Literal['partially_verified']" |     "str" is not assignable to type "Literal['unverified']"
-tests/test_admin_migration.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
-tests/test_admin_migration.py:reportOptionalMemberAccess:"phone" is not a known attribute of "None"
-tests/test_admin_migration.py:reportOptionalMemberAccess:"role" is not a known attribute of "None"
-tests/test_admin_migration.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
-tests/test_admin_migration.py:reportOptionalMemberAccess:"username" is not a known attribute of "None"
-tests/test_admin_migration.py:reportOptionalSubscript:Object of type "None" is not subscriptable
 tests/test_audit_fixes.py:reportArgumentType:Argument of type "None" cannot be assigned to parameter "request" of type "Request" in function "__init__" |   "None" is not assignable to "Request"
 tests/test_audit_fixes.py:reportArgumentType:Argument of type "Resp400" cannot be assigned to parameter "response" of type "Response" in function "__init__" |   "Resp400" is not assignable to "Response"
 tests/test_auth_migration.py:reportArgumentType:Argument of type "_Req" cannot be assigned to parameter "request" of type "Request" in function "client_ip" |   "_Req" is not assignable to "Request"
 tests/test_auth_migration.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
 tests/test_chat_draft_safety.py:reportOptionalIterable:Object of type "None" cannot be used as iterable value
 tests/test_chat_draft_safety.py:reportOptionalSubscript:Object of type "None" is not subscriptable
-tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__init__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
-tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__new__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
-tests/test_export_migration.py:reportOptionalMemberAccess:"error_msg" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"file_path" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"finished_at" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"id" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"task_type" is not a known attribute of "None"
-tests/test_export_migration.py:reportOptionalMemberAccess:"user_id" is not a known attribute of "None"
 tests/test_itinerary_read_migration.py:reportOptionalMemberAccess:"metadata_json" is not a known attribute of "None"
 tests/test_itinerary_write_migration.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
-tests/test_plan_apply_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
-tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"days" is not a known attribute of "None"
-tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"end_date" is not a known attribute of "None"
-tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"hotel_tier" is not a known attribute of "None"
-tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"plans_json" is not a known attribute of "None"
-tests/test_plan_apply_migration.py:reportOptionalMemberAccess:"title" is not a known attribute of "None"
-tests/test_redis_breaker.py:reportAttributeAccessIssue:"exceptions" is not a known attribute of module "redis"
-tests/test_redis_breaker.py:reportAttributeAccessIssue:Cannot access attribute "connection_pool" for class "object" |   Attribute "connection_pool" is unknown
-tests/test_redis_breaker.py:reportAttributeAccessIssue:Cannot access attribute "exists" for class "object" |   Attribute "exists" is unknown
-tests/test_redis_breaker.py:reportOptionalMemberAccess:"connection_pool" is not a known attribute of "None"
-tests/test_redis_breaker.py:reportOptionalMemberAccess:"exists" is not a known attribute of "None"
 tests/test_reflect.py:reportOptionalOperand:Operator ">" not supported for "None"
 tests/test_research_agents.py:reportArgumentType:Argument of type "str" cannot be assigned to parameter "domain" of type "ResearchDomain" in function "__init__" |   Type "str" is not assignable to type "ResearchDomain" |     "str" is not assignable to type "Literal['hotel']" |     "str" is not assignable to type "Literal['attraction']" |     "str" is not assignable to type "Literal['food']"
 tests/test_retirement_readiness.py:reportArgumentType:Argument of type "ModuleSpec | None" cannot be assigned to parameter "spec" of type "ModuleSpec" in function "module_from_spec" |   Type "ModuleSpec | None" is not assignable to type "ModuleSpec" |     "None" is not assignable to "ModuleSpec"
@@ -135,10 +109,4 @@ tests/test_retirement_readiness.py:reportOptionalMemberAccess:"loader" is not a 
 tests/test_schema_bootstrap_migration.py:reportReturnType:Type "str | None" is not assignable to return type "str" |   Type "str | None" is not assignable to type "str" |     "None" is not assignable to "str"
 tests/test_soft_delete_scope.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
 tests/test_soft_delete_scope.py:reportOptionalMemberAccess:"title" is not a known attribute of "None"
-tests/test_sse_chat_migration.py:reportArgumentType:Argument of type "Literal['data:']" cannot be assigned to parameter "prefix" of type "ReadableBuffer" in function "removeprefix" |   "Literal['data:']" is incompatible with protocol "Buffer" |     "__buffer__" is not present
-tests/test_sse_chat_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
-tests/test_sse_chat_migration.py:reportAttributeAccessIssue:Cannot access attribute "aclose" for class "AsyncContentStream" |   Attribute "aclose" is unknown
 tests/test_stream_cancel.py:reportOptionalSubscript:Object of type "None" is not subscriptable
-tests/test_stream_contract.py:reportArgumentType:Argument of type "Literal['day_patch']" cannot be assigned to parameter "type" of type "Literal['day']" in function "__init__" |   "Literal['day_patch']" is not assignable to type "Literal['day']"
-tests/test_stream_contract.py:reportArgumentType:Argument of type "list[dict[str, str]]" cannot be assigned to parameter "items" of type "list[TripItem]" in function "__init__"
-tests/test_stream_contract.py:reportCallIssue:Arguments missing for parameters "days_emitted", "trip_theme", "message"

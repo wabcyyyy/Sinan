@@ -23,7 +23,7 @@ from app.schemas.stream_events import (
     export_schema,
     to_wire,
 )
-from app.schemas.trip import DailyPlan, Suggestion
+from app.schemas.trip import DailyPlan, Suggestion, TripItem
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = REPO_ROOT / "contracts" / "stream_events.schema.json"
@@ -35,7 +35,7 @@ class TestEventWireShape:
         assert to_wire(ErrorEvent(type="error", message="boom")) == {"type": "error", "message": "boom"}
 
     def test_day_event_plan_wire_shape(self):
-        plan = DailyPlan(day_no=2, items=[{"poi_name": "圣家堂", "item_type": "attraction"}])
+        plan = DailyPlan(day_no=2, items=[TripItem(poi_name="圣家堂", item_type="attraction")])
         event = to_wire(DayEvent(type="day", plan=plan))
         assert event["type"] == "day"
         assert event["plan"]["dayNo"] == 2
@@ -74,11 +74,13 @@ class TestEventWireShape:
 
     def test_type_literal_mismatch_rejected(self):
         with pytest.raises(ValidationError):
-            DayEvent(type="day_patch", plan=DailyPlan(day_no=1))
+            # dict-splat 绕过类型层的 Literal 检查，运行时仍由 pydantic 拒绝（负例意图不变）
+            DayEvent(**{"type": "day_patch", "plan": DailyPlan(day_no=1)})
 
     def test_missing_required_field_rejected(self):
         with pytest.raises(ValidationError):
-            DoneEvent(type="done", days_expected=1, complete=True)  # 缺 days_emitted 等
+            # 同上：运行时仍缺必填字段，ValidationError 意图不变
+            DoneEvent(**{"type": "done", "days_expected": 1, "complete": True})  # 缺 days_emitted 等
 
 
 class TestSchemaContract:

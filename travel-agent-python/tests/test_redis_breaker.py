@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 import redis
+from redis.exceptions import RedisError
 
 from app.common import cache_store, redis_client, token_revocation
 from app.common.config import settings
@@ -29,6 +30,7 @@ def isolated_dead_redis(monkeypatch):
 
 def test_shared_client_sets_fast_fail_timeouts():
     client = redis_client.client()
+    assert isinstance(client, redis.Redis)  # 熔断未开，共享客户端必然就绪
     kwargs = client.connection_pool.connection_kwargs
     assert kwargs["socket_connect_timeout"] == redis_client.CONNECT_TIMEOUT_SECONDS
     assert kwargs["socket_timeout"] == redis_client.CONNECT_TIMEOUT_SECONDS
@@ -38,8 +40,10 @@ def test_shared_client_sets_fast_fail_timeouts():
 
 
 def test_failed_command_opens_breaker_and_client_returns_none():
-    with pytest.raises(redis.exceptions.RedisError):
-        redis_client.client().exists("probe")
+    with pytest.raises(RedisError):
+        client = redis_client.client()
+        assert isinstance(client, redis.Redis)
+        client.exists("probe")
     redis_client.note_failure(RuntimeError("connection refused"))
     assert redis_client.is_down() is True
     assert redis_client.client() is None

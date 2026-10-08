@@ -254,6 +254,7 @@ def test_apply_plans_replaces_items_keeps_identity_and_soft_deletes_rest(client:
     with db_session.session_scope() as session:
         day1 = session.execute(select(ItineraryDay).where(ItineraryDay.day_no == 1)).scalar_one()
         # 元数据整份覆盖：旧主题与旧备选都要消失
+        assert day1.metadata_json is not None
         assert json.loads(day1.metadata_json) == {"theme": "西湖晨游"}
         assert day1.note == "湖山线"
         lingyin = session.execute(select(ItineraryItem).where(ItineraryItem.poi_name == "灵隐寺")).scalar_one()
@@ -294,6 +295,7 @@ def test_apply_plans_drops_missing_days_and_rewrites_trip_shape(client: TestClie
     client.post(f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision})
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
         days = (
             session.execute(
                 select(ItineraryDay).execution_options(include_deleted=True).where(ItineraryDay.itinerary_id == trip_id)
@@ -314,6 +316,7 @@ def test_create_missing_days_when_plan_is_longer(client: TestClient) -> None:
     with db_session.session_scope() as session:
         created = session.execute(select(ItineraryDay).where(ItineraryDay.day_no == 3)).scalar_one()
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
         assert created.note == "宽松安排" and created.city == "杭州"
         assert str(created.travel_date) == "2026-04-22", "起始日 + (dayNo-1)"
         assert main.days == 3 and str(main.end_date) == "2026-04-22"
@@ -345,6 +348,7 @@ def test_revision_ladder_returns_the_same_409_wording(client: TestClient) -> Non
     with db_session.session_scope() as session:
         stale_attempt = session.get(ItineraryChatMessage, second_id)
         superseded_row = session.get(ItineraryChatMessage, first_id)
+        assert stale_attempt is not None and superseded_row is not None
     # Java 的 requirePendingAction 在同一个 @Transactional 里「先消费、再抛 409」，
     # 回滚把消费也一起撤掉 → 草稿仍在，直到下一次成功写入才被失效。迁移保持同语义。
     assert stale_attempt.plans_json != "[]" and superseded_row.plans_json != "[]"
@@ -493,6 +497,7 @@ def test_hotel_option_prices_by_room_type_season_and_writes_remark(client: TestC
         assert len(hotels) == 2 and {item.poi_name for item in hotels} == {HOTEL_NAME}
         assert {item.cost for item in hotels} == {Decimal("900.00")}, "4 月平季、系数 1（房价取自候选卡片）"
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
         assert main.hotel_tier == "豪华型", "所选晚次覆盖全部已有酒店日 → 档次写回主表"
     assert _operations(trip_id) == ["apply_hotel", "apply_hotel"]
 

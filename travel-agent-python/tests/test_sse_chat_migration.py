@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncGenerator
 from datetime import date, time
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from fastapi import FastAPI
@@ -258,14 +260,15 @@ def test_events_endpoint_streams_in_process_frames() -> None:
         assert response.headers["x-accel-buffering"] == "no"
         assert event_hub.subscriber_count(TRIP) == 1
         event_publisher.publish_event(TRIP, "complete", {"status": 2})
-        frames = response.body_iterator.__aiter__()
+        # starlette stub 把 body_iterator 标成 bytes，实际产出是 event_frames 的 str 帧
+        frames = cast(AsyncGenerator[str], response.body_iterator).__aiter__()
         first = json.loads((await frames.__anext__()).removeprefix("data:").strip())
         # 终态帧后服务端收尾流（R3-F4）。旧预期"终态后下一个周期补心跳"就是缺陷本身：
         # 终态后连接的唯一产出是无限心跳，把 MAX_SUBSCRIBERS_PER_ITINERARY 的槽占到
         # 客户端自己断开——改为断言迭代器在终态帧后排空收尾。
         with pytest.raises(StopAsyncIteration):
             await frames.__anext__()
-        await response.body_iterator.aclose()
+        await cast(AsyncGenerator[str], response.body_iterator).aclose()
         return first
 
     first = asyncio.run(scenario())
@@ -283,7 +286,7 @@ def test_chat_edit_stream_endpoint_sends_event_frames(monkeypatch) -> None:
             TRIP, ChatEditBody(message="再加一天", history=[]), user=_AuthUser(id=OWNER, username="alice", role="user")
         )
         kinds = []
-        async for chunk in response.body_iterator:
+        async for chunk in cast(AsyncGenerator[str], response.body_iterator):
             kinds.append(json.loads(chunk.removeprefix("data:").strip())["type"])
         return response, kinds
 
@@ -395,6 +398,7 @@ def test_chat_edit_persists_both_rows_and_invalidates_older_drafts(monkeypatch) 
         # changed=True 或带酒店提案 → 旧草稿一律消费掉（同 Java 的失效时机）
         assert (older.plans_json, older.hotel_options_json, older.changed) == ("[]", "[]", 0)
         newest = rows[-1]
+        assert newest.plans_json is not None and newest.hotel_options_json is not None
         assert json.loads(newest.plans_json)[0]["_baseRevision"]
         assert json.loads(newest.hotel_options_json)[0]["baseRevision"]
 

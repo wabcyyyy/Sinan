@@ -176,7 +176,9 @@ def anon() -> TestClient:
 @pytest.fixture
 def trip_id() -> int:
     with db_session.session_scope() as session:
-        return session.execute(select(ItineraryMain).where(ItineraryMain.user_id == 1)).scalars().first().id
+        row = session.execute(select(ItineraryMain).where(ItineraryMain.user_id == 1)).scalars().first()
+        assert row is not None
+        return row.id
 
 
 def _run_inline(monkeypatch) -> None:
@@ -193,6 +195,7 @@ def _no_render(monkeypatch) -> list:
 def _set_status(task_id: int, status: str, file_path: str | None = None) -> None:
     with db_session.session_scope() as session:
         task = session.get(ExportTask, task_id)
+        assert task is not None
         task.status = status
         task.file_path = file_path
         task.finished_at = datetime(2026, 9, 14, 8, 0) if status != "RUNNING" else None
@@ -213,6 +216,7 @@ def test_create_returns_running_task_without_download_url(client: TestClient, tr
     assert data["itineraryId"] == trip_id and data["downloadUrl"] is None
     with db_session.session_scope() as session:
         row = session.get(ExportTask, data["id"])
+        assert row is not None
         assert (row.status, row.task_type, row.user_id) == ("RUNNING", "PDF", 1)
 
 
@@ -227,6 +231,7 @@ def test_create_rejects_foreign_and_soft_deleted_itinerary(client: TestClient, m
             .scalars()
             .first()
         )
+        assert foreign is not None and gone is not None
     for doomed in (foreign.id, gone.id):
         resp = client.post(f"/api/export/pdf/{doomed}")
         # 归属与软删都收敛成同一个 404 文案，不暴露资源是否存在（同 Java）
@@ -256,8 +261,10 @@ def test_render_produces_real_pdf_and_publishes_export_done(client: TestClient, 
 
     with db_session.session_scope() as session:
         task = session.get(ExportTask, data["id"])
+        assert task is not None
         assert task.status == "DONE"
         assert task.error_msg is None and task.finished_at is not None
+        assert task.file_path is not None
         target = Path(task.file_path)
     assert target.parent == Path(settings.export_dir) and target.name == f"itinerary_{data['id']}.pdf"
     raw = target.read_bytes()
@@ -288,7 +295,9 @@ def test_pool_saturation_renders_inline_instead_of_failing(client: TestClient, t
     data = client.post(f"/api/export/pdf/{trip_id}").json()["data"]
     assert data["status"] == "DONE" and data["downloadUrl"] is None
     with db_session.session_scope() as session:
-        assert session.get(ExportTask, data["id"]).status == "DONE"
+        task = session.get(ExportTask, data["id"])
+        assert task is not None
+        assert task.status == "DONE"
 
 
 def _raise_rejected(task, *args):

@@ -347,6 +347,7 @@ def test_update_status_flips_the_status_only(admin: TestClient) -> None:
     assert resp.status_code == 200 and resp.json() == {"code": 200, "message": "success", "data": None}
     with db_session.session_scope() as session:
         bob = session.get(SysUser, BOB_ID)
+        assert bob is not None
         assert int(bob.status) == 1
         assert bob.username == "bob" and bob.role == "user" and bob.phone == "13800000000"
     assert admin.get("/api/admin/stats").json()["data"]["disabledUsers"] == 0
@@ -360,6 +361,7 @@ def test_delete_user_is_soft_and_refuses_self(admin: TestClient) -> None:
     assert admin.delete("/api/admin/users/3").json()["code"] == 200
     with db_session.session_scope() as session:
         row = session.get(SysUser, BOB_ID, execution_options={"include_deleted": True})
+        assert row is not None
         assert row.deleted == 1, "@TableLogic 语义：deleteById 是 UPDATE deleted=1"
     # 软删后从列表、计数与登录侧一并消失
     assert admin.get("/api/admin/users").json()["data"]["total"] == 3
@@ -408,6 +410,7 @@ def test_admin_delete_itinerary_cascades_without_a_snapshot(admin: TestClient, a
     assert admin.delete(f"/api/admin/itineraries/{TRIP_ID}").json()["code"] == 200
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, TRIP_ID, execution_options={"include_deleted": True})
+        assert main is not None
         assert main.deleted == 1, "主表软删"
         for model in (ItineraryDay, ItineraryItem, BudgetDetail):
             rows = (
@@ -484,6 +487,7 @@ def test_llm_usage_matches_the_agent_endpoint_payload(admin: TestClient) -> None
 
     # 同一份取数：内部 agent 端点也必须给归一化后的窗口（M6 把这段逻辑收敛进 usage_store）
     payload = agent_api.agent_usage(range="7d").data
+    assert payload is not None
     assert payload["range"] == "7d" and payload["bucket"] == 86400
     unknown = admin.get("/api/admin/llm-usage", params={"range": "yesterday"}).json()["data"]
     assert unknown["range"] == "24h" and unknown["bucket"] == 3600, "未知 range 回落 24h"
