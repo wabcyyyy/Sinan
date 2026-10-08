@@ -16,6 +16,7 @@ Java 用 `@Scheduled(fixedDelay=60s, initialDelay=60s)` + `ApplicationReadyEvent
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from sqlalchemy import and_, or_, select, update
@@ -233,7 +234,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     return failed_resume or resumed_any
 
 
-def _resumable_failed_trip(days: list[ItineraryDay]) -> bool:
+def _resumable_failed_trip(days: Sequence[ItineraryDay]) -> bool:
     """可续跑的失败行程：至少还有一天没成功（有活可干就值得续跑一次）。
 
     R2-F7（2026-10-05 拍板：恢复侧收窄）：旧口径要求"每一天都 FAILED 且失败原因

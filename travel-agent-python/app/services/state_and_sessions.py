@@ -16,6 +16,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from typing import cast
 
 from app.common import redis_client
 
@@ -130,12 +131,12 @@ def sliding_hit(key: str, window_seconds: int) -> int:
     """记一次事件，返回窗口内事件数（含本次）。"""
     now = time.time()
     try:
-        zset = _redis().zset
+        redis = _redis()
         member = f"{int(now * 1000)}:{uuid.uuid4().hex[:8]}"
-        zset.add(key, {member: now * 1000})
-        zset.remrangebyscore(key, 0, (now - window_seconds) * 1000)
-        _redis().expire(key, window_seconds + 1)
-        return int(zset.card(key) or 0)
+        redis.zadd(key, {member: now * 1000})
+        redis.zremrangebyscore(key, 0, (now - window_seconds) * 1000)
+        redis.expire(key, window_seconds + 1)
+        return int(cast(int, redis.zcard(key)) or 0)
     except Exception as exc:
         redis_client.note_failure(exc)
         logger.debug("sliding_hit redis fallback (%s): %s", key, exc)
@@ -154,7 +155,7 @@ def sliding_hit(key: str, window_seconds: int) -> int:
 def sliding_count(key: str, window_seconds: int) -> int:
     try:
         now = time.time()
-        return int(_redis().zcount(key, (now - window_seconds) * 1000, "+inf") or 0)
+        return int(cast(int, _redis().zcount(key, (now - window_seconds) * 1000, "+inf")) or 0)
     except Exception as exc:
         redis_client.note_failure(exc)
         logger.debug("sliding_count redis fallback (%s): %s", key, exc)
@@ -286,8 +287,8 @@ def revoke_all(username: str) -> int:
     try:
         redis = _redis()
         key = SESSION_KEY_PREFIX + username
-        for jti in list(redis.smembers(key) or set()):
-            token = redis.get(f"{SESSION_KEY_PREFIX}tok:{jti}")
+        for jti in list(cast("set[str]", redis.smembers(key)) or set()):
+            token = cast("str | None", redis.get(f"{SESSION_KEY_PREFIX}tok:{jti}"))
             if token:
                 token_revocation.revoke(token, 86_400)  # 拿不到剩余寿命，按 1 天兜底（同 Java）
                 revoked += 1

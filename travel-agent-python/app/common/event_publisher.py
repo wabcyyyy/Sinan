@@ -22,6 +22,7 @@ import json
 import logging
 import threading
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 import redis
 
@@ -108,7 +109,7 @@ def _next_seq(itinerary_id: int) -> int:
         return _advance_seq(int(itinerary_id), 1)
     try:
         client = _get_client()
-        seq = client.incr(key)
+        seq = cast(int, client.incr(key))
         client.expire(key, _SEQ_TTL_SECONDS)
         return _advance_seq(int(itinerary_id), int(seq))
     except Exception as exc:

@@ -14,20 +14,24 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from app.common.config import settings
+
+if TYPE_CHECKING:
+    from redis import Redis  # 延迟导入：离线单测不需要 Redis，类型层引用即可
 
 logger = logging.getLogger(__name__)
 
 CONNECT_TIMEOUT_SECONDS = 0.5
 BREAKER_COOLDOWN_SECONDS = 5.0
 
-_client = None
+_client: Redis | None = None
 _down_until = 0.0
 _lock = threading.Lock()
 
 
-def client() -> object | None:
+def client() -> Redis | None:
     """返回共享客户端；熔断窗口内返回 None，调用方按 Redis 不可用处理。"""
     global _client
     if is_down():

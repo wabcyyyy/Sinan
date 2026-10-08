@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -131,9 +132,9 @@ def _expired(expires_at: datetime | None) -> bool:
 
 def _shared_vo(
     main: ItineraryMain,
-    days: list[ItineraryDay],
-    items: list[ItineraryItem],
-    budgets: list[BudgetDetail],
+    days: Sequence[ItineraryDay],
+    items: Sequence[ItineraryItem],
+    budgets: Sequence[BudgetDetail],
 ) -> dict[str, Any]:
     items_by_day: dict[int, list[ItineraryItem]] = {}
     for item in items:

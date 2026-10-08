@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -54,7 +55,7 @@ def build_atlas(user_id: int, scope: str | None = None) -> dict[str, Any]:
         if normalized != "all":
             mains = [main for main in mains if trip_scopes[main.id] == normalized]
 
-        items: list[ItineraryItem] = []
+        items: Sequence[ItineraryItem] = []
         if mains:
             items = (
                 session.execute(

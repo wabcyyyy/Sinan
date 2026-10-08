@@ -424,8 +424,8 @@ def item_vo(item: ItineraryItem, intro_by_name: dict[str, ItineraryItem]) -> dic
 
 def _quality_status(
     status: int | None,
-    items: list[ItineraryItem],
-    days: list[ItineraryDay],
+    items: Sequence[ItineraryItem],
+    days: Sequence[ItineraryDay],
     pending_facts: int,
     narrative_mismatches: list[str] | None = None,
     budget_warning: str | None = None,
@@ -499,8 +499,8 @@ def _narrative_hotel_mismatches(
 
 def _quality_issues(
     quality_status: str,
-    days: list[ItineraryDay],
-    items: list[ItineraryItem],
+    days: Sequence[ItineraryDay],
+    items: Sequence[ItineraryItem],
     pending_facts: int,
     narrative_mismatches: list[str] | None = None,
     budget_warning: str | None = None,
@@ -536,7 +536,7 @@ def _quality_report(quality_status: str, issues: list[dict[str, str]], pending_f
     }
 
 
-def _destination_status(items: list[ItineraryItem]) -> str:
+def _destination_status(items: Sequence[ItineraryItem]) -> str:
     """口径对齐 grounding_labels.is_authoritative_source（opentripmap/nominatim/web.search 前缀）：
     存在权威来源行 → researched；否则 draft_only。
 
@@ -551,7 +551,7 @@ def _destination_status(items: list[ItineraryItem]) -> str:
     return "draft_only"
 
 
-def _source_records(items: list[ItineraryItem]) -> list[dict[str, Any]]:
+def _source_records(items: Sequence[ItineraryItem]) -> list[dict[str, Any]]:
     records: dict[str, dict[str, Any]] = {}
     for item in items:
         source = item.source

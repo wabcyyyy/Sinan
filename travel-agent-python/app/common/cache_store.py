@@ -15,7 +15,7 @@ import json
 import logging
 import threading
 import time
-from typing import Any
+from typing import Any, cast
 
 from app.common import redis_client
 
@@ -51,7 +51,7 @@ def get_json(namespace: str, key: str) -> Any | None:
     """返回缓存值；未命中返回 None。空结果哨兵转成 None（调用方按未命中处理但不再打外网）。"""
     full = full_key(namespace, key)
     try:
-        raw = _get_client().get(full)
+        raw = cast("str | None", _get_client().get(full))
     except Exception as exc:
         redis_client.note_failure(exc)
         logger.debug("cache redis miss/unavailable (%s): %s", namespace, exc)
