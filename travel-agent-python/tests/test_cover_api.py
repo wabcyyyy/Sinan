@@ -207,7 +207,9 @@ def test_set_unsplash_cover_snapshots_locally(client: TestClient, uploads_dir: P
 
     with db_session.session_scope() as session:
         row = session.get(ItineraryMain, trip_id)
+        assert row is not None
         assert row.cover_source == "unsplash" and row.cover_ref == "abc"
+        assert row.cover_credit is not None  # credit 必写：非空才能进 json.loads
         credit = json.loads(row.cover_credit)
         assert credit["author"] == "Ada" and credit["source"] == "unsplash"
     assert (42, trip_id) in evicted, "写路径必须精确失效详情缓存"
@@ -333,6 +335,7 @@ def test_default_clears_columns_and_keeps_file(client: TestClient, uploads_dir: 
     assert data["coverUrl"] is None and data["coverSource"] is None
     with db_session.session_scope() as session:
         row = session.get(ItineraryMain, trip_id)
+        assert row is not None
         assert row.cover_url is None and row.cover_source is None
         assert row.cover_ref is None and row.cover_credit is None
     assert stored.is_file(), "无 GC：恢复默认不删已落盘文件"

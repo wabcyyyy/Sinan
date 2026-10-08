@@ -186,6 +186,7 @@ def _trip(client: TestClient, body: dict) -> dict:
 def _rows(trip_id: int) -> tuple[ItineraryMain, list[ItineraryDay]]:
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
         days = (
             session.execute(
                 select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id).order_by(ItineraryDay.day_no)
@@ -308,7 +309,9 @@ def test_per_day_fallback_spreads_all_three_nights(client: TestClient, monkeypat
         assert len(hotels) == 1
         assert hotels[0].poi_name == "酒店A" and hotels[0].cost == Decimal("300.00")
         assert hotels[0].source == "llm_knowledge"
-        assert json.loads(hotels[0].fact_evidence_json)["cost"]["valueKind"] == "estimated"
+        evidence = hotels[0].fact_evidence_json
+        assert evidence is not None  # fact_evidence_json 列可空，生成链路必写
+        assert json.loads(evidence)["cost"]["valueKind"] == "estimated"
     assert [item.sort_no for item in items] == list(range(len(items)))
     assert all(item.item_type != "hotel" for item in _items(days[3].id))
     assert itinerary_generation.stay_hotels.spread_stay_hotels(detail["id"], 3) == 0
@@ -398,13 +401,18 @@ def test_item_field_mapping_and_time_normalization(client: TestClient, monkeypat
     xihu, hotel = items[0], items[1]
     assert xihu.why_note == "离西湖步行十分钟" and xihu.image_url == "https://example.com/a.jpg"
     assert xihu.start_time == datetime.strptime("09:30", "%H:%M").time()
+    assert hotel.start_time is not None
     assert hotel.start_time.strftime("%H:%M") == "00:00", "Java 的 24:00 → 00:00 归一"
     assert hotel.cost == Decimal("300.00") and hotel.item_type == "hotel"
     assert xihu.verification_status == "unverified" and xihu.value_kind == "generated"
-    metadata = json.loads(days[0].metadata_json)
+    metadata_json = days[0].metadata_json
+    assert metadata_json is not None
+    metadata = json.loads(metadata_json)
     assert metadata["theme"] == "西湖" and "miniRoute" not in metadata, "空集合不落库"
     with db_session.session_scope() as session:
-        trip_theme = session.get(ItineraryMain, detail["id"]).trip_theme
+        main = session.get(ItineraryMain, detail["id"])
+        assert main is not None
+        trip_theme = main.trip_theme
     assert trip_theme is None or trip_theme == "西子湖畔慢行"
 
 
@@ -425,6 +433,7 @@ def test_already_succeeded_day_is_not_rewritten(client: TestClient, monkeypatch)
     _main, days = _rows(detail["id"])
     with db_session.session_scope() as session:
         day = session.get(ItineraryDay, days[0].id)
+        assert day is not None
         day.generation_status = "SUCCEEDED"
     calls = _fake_agents(monkeypatch, [_plan(1, ["第二次"])])
     _run_inline(monkeypatch)
@@ -456,6 +465,8 @@ def test_stream_path_persists_days_and_suggestion_pool(client: TestClient, monke
     assert calls["day"] == [], "整段流式已覆盖全部天 → 逐日循环只做幂等登记"
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, detail["id"])
+        assert main is not None
+        assert main.suggestions_json is not None
         assert json.loads(main.suggestions_json)[0]["name"] == "河坊街"
         assert main.trip_theme == "西子湖畔慢行"
 
@@ -525,6 +536,7 @@ def test_day_failure_marks_day_and_trip_failed(client: TestClient, monkeypatch) 
     assert main.plan_note == "行程生成失败，请稍后重试或调整条件重新生成（错误码 ValueError）"
     # 单天异常会中止整个逐日循环（同 Java）：第二天根本没被尝试，停在 PENDING
     assert days[0].generation_status == "FAILED" and days[1].generation_status == "PENDING"
+    assert days[0].generation_error is not None
     assert len(days[0].generation_error) <= 500, "日级失败原因按列宽截断"
 
 
@@ -561,6 +573,7 @@ def test_bounded_pool_rejects_after_capacity(monkeypatch) -> None:
 def _command(trip_id: int) -> itinerary_generation.GenerateCommand:
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
     return generation_recovery.rebuild_request(main)
 
 
@@ -593,6 +606,7 @@ def broken_trip(client: TestClient, monkeypatch) -> int:
         for day in session.execute(select(ItineraryDay)).scalars().all():
             day.generation_status = "PENDING"
         main = session.get(ItineraryMain, detail["id"])
+        assert main is not None
         main.status, main.gen_state = 1, "GENERATING"
         main.updated_at = datetime.now() - timedelta(minutes=30)
     return detail["id"]
@@ -606,7 +620,9 @@ def test_recovery_resubmits_zombie_generation(broken_trip: int, monkeypatch) -> 
     assert generation_recovery.recover() == 0
     assert submitted == [broken_trip]
     with db_session.session_scope() as session:
-        assert session.get(ItineraryMain, broken_trip).gen_resumed is False, "僵尸分支不算续跑，不该占用那一次性标记"
+        main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
+        assert main.gen_resumed is False, "僵尸分支不算续跑，不该占用那一次性标记"
 
 
 def test_regenerating_early_day_excludes_retained_later_day_not_failed_or_deleted_drafts(broken_trip, monkeypatch):
@@ -641,6 +657,7 @@ def test_regenerating_early_day_excludes_retained_later_day_not_failed_or_delete
 def test_recovery_resumes_failed_trip_only_once(broken_trip: int, monkeypatch) -> None:
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         main.status, main.gen_state = 3, "FAILED"
         for day in session.execute(select(ItineraryDay)).scalars().all():
             day.generation_status, day.generation_error = "FAILED", "模型超时"
@@ -653,6 +670,7 @@ def test_recovery_resumes_failed_trip_only_once(broken_trip: int, monkeypatch) -
     assert submitted == [broken_trip]
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         assert main.gen_resumed is True and main.status == 1 and main.gen_state == "GENERATING"
 
     # 旧版断言在 _ACTIVE_PLANNING stub 下假绿：fixture 的 submit 是 no-op，plan_days 永不
@@ -665,6 +683,7 @@ def test_recovery_resumes_failed_trip_only_once(broken_trip: int, monkeypatch) -
     submitted.clear()
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         main.status, main.gen_state = 3, "FAILED"
         for day in session.execute(select(ItineraryDay)).scalars().all():
             day.generation_status, day.generation_error = "FAILED", "模型超时"
@@ -683,12 +702,14 @@ def test_recovery_completes_trip_whose_days_are_done(broken_trip: int, monkeypat
     assert submitted == [], "数据齐了只需补终态，不该重新花钱生成"
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         assert main.status == 2 and main.gen_state == "COMPLETED" and main.title == "杭州2日游"
 
 
 def test_recovery_skips_trip_with_active_day(broken_trip: int, monkeypatch) -> None:
     with db_session.session_scope() as session:
         first = session.execute(select(ItineraryDay).order_by(ItineraryDay.day_no)).scalars().first()
+        assert first is not None
         first.generation_status = "RUNNING"
         first.updated_at = datetime.now()
     submitted: list[int] = []
@@ -787,7 +808,9 @@ def test_recovery_six_day_stream_break_resumes_without_whole_rerun(client: TestC
     with db_session.session_scope() as session:
         for row in session.execute(select(ItineraryDay)).scalars().all():
             row.updated_at = datetime.now() - timedelta(minutes=30)
-        session.get(ItineraryMain, trip_id).updated_at = datetime.now() - timedelta(minutes=30)
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        main.updated_at = datetime.now() - timedelta(minutes=30)
 
     # 重启后续跑：兜底排程在池里同步执行
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: task(*args))
@@ -813,6 +836,7 @@ def test_recovery_resumes_partially_failed_trip_once(broken_trip: int, monkeypat
     """
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         main.status, main.gen_state = 3, "FAILED"
         days = session.execute(select(ItineraryDay).order_by(ItineraryDay.day_no)).scalars().all()
         days[0].generation_status, days[0].generation_error = "SUCCEEDED", None
@@ -825,6 +849,7 @@ def test_recovery_resumes_partially_failed_trip_once(broken_trip: int, monkeypat
     assert submitted == [broken_trip], "部分失败行程必须命中恢复（旧口径两分支都不命中）"
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         assert main.gen_resumed is True and main.gen_state == "GENERATING"
 
     # 恢复后再失败：与全失败行程同一面闸——gen_resumed=1 封顶，不重拉
@@ -833,6 +858,7 @@ def test_recovery_resumes_partially_failed_trip_once(broken_trip: int, monkeypat
     submitted.clear()
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, broken_trip)
+        assert main is not None
         main.status, main.gen_state = 3, "FAILED"
         main.updated_at = datetime.now() - timedelta(minutes=30)
     generation_recovery.recover()

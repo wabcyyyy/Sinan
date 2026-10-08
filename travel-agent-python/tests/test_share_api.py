@@ -246,7 +246,9 @@ def test_unknown_expired_revoked_deleted_share_are_uniform_404(client: TestClien
 
     expired_token = _create_share(client, trip_id)
     with db_session.session_scope() as session:
-        session.get(ItineraryMain, trip_id).share_expires_at = datetime.now() - timedelta(days=1)
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        main.share_expires_at = datetime.now() - timedelta(days=1)
     expired = client.get(f"/api/share/{expired_token}")
     messages.append((expired.status_code, expired.json()["message"]))
 
@@ -257,7 +259,9 @@ def test_unknown_expired_revoked_deleted_share_are_uniform_404(client: TestClien
 
     deleted_token = _create_share(client, trip_id)
     with db_session.session_scope() as session:
-        session.get(ItineraryMain, trip_id).deleted = 1
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        main.deleted = 1
     deleted = client.get(f"/api/share/{deleted_token}")
     messages.append((deleted.status_code, deleted.json()["message"]))
 

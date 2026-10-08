@@ -105,11 +105,6 @@ tests/test_auth_migration.py:reportArgumentType:Argument of type "_Req" cannot b
 tests/test_auth_migration.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
 tests/test_chat_draft_safety.py:reportOptionalIterable:Object of type "None" cannot be used as iterable value
 tests/test_chat_draft_safety.py:reportOptionalSubscript:Object of type "None" is not subscriptable
-tests/test_cover_api.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
-tests/test_cover_api.py:reportOptionalMemberAccess:"cover_credit" is not a known attribute of "None"
-tests/test_cover_api.py:reportOptionalMemberAccess:"cover_ref" is not a known attribute of "None"
-tests/test_cover_api.py:reportOptionalMemberAccess:"cover_source" is not a known attribute of "None"
-tests/test_cover_api.py:reportOptionalMemberAccess:"cover_url" is not a known attribute of "None"
 tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__init__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
 tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__new__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
 tests/test_export_migration.py:reportOptionalMemberAccess:"error_msg" is not a known attribute of "None"
@@ -119,19 +114,6 @@ tests/test_export_migration.py:reportOptionalMemberAccess:"id" is not a known at
 tests/test_export_migration.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
 tests/test_export_migration.py:reportOptionalMemberAccess:"task_type" is not a known attribute of "None"
 tests/test_export_migration.py:reportOptionalMemberAccess:"user_id" is not a known attribute of "None"
-tests/test_generation_migration.py:reportArgumentType:Argument of type "ItineraryMain | None" cannot be assigned to parameter "main" of type "ItineraryMain" in function "rebuild_request" |   Type "ItineraryMain | None" is not assignable to type "ItineraryMain" |     "None" is not assignable to "ItineraryMain"
-tests/test_generation_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "obj" of type "Sized" in function "len" |   Type "str | None" is not assignable to type "Sized" |     "None" is incompatible with protocol "Sized" |       "__len__" is not present
-tests/test_generation_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"gen_resumed" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"gen_state" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"generation_status" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"strftime" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"suggestions_json" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"title" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"trip_theme" is not a known attribute of "None"
-tests/test_generation_migration.py:reportOptionalMemberAccess:"updated_at" is not a known attribute of "None"
-tests/test_generation_migration.py:reportReturnType:Type "tuple[ItineraryMain | None, list[ItineraryDay]]" is not assignable to return type "tuple[ItineraryMain, list[ItineraryDay]]" |   Type "ItineraryMain | None" is not assignable to type "ItineraryMain" |     "None" is not assignable to "ItineraryMain"
 tests/test_itinerary_read_migration.py:reportOptionalMemberAccess:"metadata_json" is not a known attribute of "None"
 tests/test_itinerary_write_migration.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
 tests/test_plan_apply_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
@@ -151,8 +133,6 @@ tests/test_retirement_readiness.py:reportArgumentType:Argument of type "ModuleSp
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"exec_module" is not a known attribute of "None"
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"loader" is not a known attribute of "None"
 tests/test_schema_bootstrap_migration.py:reportReturnType:Type "str | None" is not assignable to return type "str" |   Type "str | None" is not assignable to type "str" |     "None" is not assignable to "str"
-tests/test_share_api.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
-tests/test_share_api.py:reportOptionalMemberAccess:"share_expires_at" is not a known attribute of "None"
 tests/test_soft_delete_scope.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
 tests/test_soft_delete_scope.py:reportOptionalMemberAccess:"title" is not a known attribute of "None"
 tests/test_sse_chat_migration.py:reportArgumentType:Argument of type "Literal['data:']" cannot be assigned to parameter "prefix" of type "ReadableBuffer" in function "removeprefix" |   "Literal['data:']" is incompatible with protocol "Buffer" |     "__buffer__" is not present
