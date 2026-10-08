@@ -30,10 +30,12 @@ from app.agent.generation.content.day_prompts import (
     DAY_FOOD_CONTEXT_LIMIT,
     GENERATION_TEMPERATURE,
     destination_line,
+    has_structured_requirements,
     intent_clause,
     open_day_output_schema,
     preferences_clause,
     requirements_clause,
+    requirements_directives_clause,
 )
 from app.agent.generation.content.generators import pick_hotels
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_day_output
@@ -127,9 +129,8 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         max_daily_attractions=MAX_DAILY_ATTRACTIONS,
         compact_output=response_format.get("type") != "json_schema",
     )
-    # intent 注入点：用户旅行意图是最高优先级信号，必须排在 reference block
-    # 之前，让选点与节奏优先围绕意图组织。
-    intent_text = intent_clause(req.intent)
+    # intent 注入点：最高优先级信号排 reference 前；有结构化需求时跳过 distill（M1b §6.6）
+    intent_text = intent_clause(req.intent, skip_distill=has_structured_requirements(req))
     if intent_text:
         system += intent_text
     system += preferences_clause(req.preferences, req.hotel_tier)
@@ -142,6 +143,10 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     requirements_text = requirements_clause(req.requirements)
     if requirements_text:
         system += requirements_text
+    # M1b：结构化需求硬约束块按 day_no 投影（整趟需求不变）
+    directives_text = requirements_directives_clause(req.requirements_struct, day_no=req.day_no)
+    if directives_text:
+        system += directives_text
     # 城市级天气（C3.1）：该日落预报窗内才注入；数据而非指令，缺失即无此行。
     weather_text = weather_day_clause(req.context, req.start_date, req.day_no)
     if weather_text:

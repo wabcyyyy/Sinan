@@ -17,7 +17,7 @@ from app.common.event_publisher import (
     publish_research_done,
     publish_research_start,
 )
-from app.schemas.trip import PlanContextRequest
+from app.schemas.trip import GenerateRequest, PlanContextRequest
 
 
 @pytest.fixture()
@@ -55,7 +55,7 @@ def _successful_context() -> dict:
 def test_plan_context_success_publishes_start_and_done(events, monkeypatch):
     monkeypatch.setattr(plan_context, "run_research_context", lambda req: _successful_context())
 
-    result = plan_context.run_plan_context("杭州", ["亲子"], itinerary_id=88)
+    result = plan_context.run_plan_context(GenerateRequest(city="杭州", preferences=["亲子"]), itinerary_id=88)
 
     assert [e[1] for e in events] == ["research_start", "research_done"]
     start = events[0]
@@ -76,7 +76,16 @@ def test_plan_context_success_publishes_start_and_done(events, monkeypatch):
     assert not any(e[1] == "degraded" for e in events)
     # 返回契约：四键研究上下文 + C3.1 天气键（无日期入参时恒为 None）
     # + L14 航班报价键（无出发地时恒为空列表，缺席原因由工具层留痕）
-    assert set(result) == {"candidates", "foods", "hotels", "consumption", "weather", "flight_quotes"}
+    # M1b：research_report（各域降级证据）不再在投影时丢弃
+    assert set(result) == {
+        "candidates",
+        "foods",
+        "hotels",
+        "consumption",
+        "weather",
+        "flight_quotes",
+        "research_report",
+    }
     assert result["weather"] is None
     assert result["flight_quotes"] == []
 
@@ -94,7 +103,7 @@ def test_plan_context_degraded_pack_publishes_degraded_event(events, monkeypatch
     }
     monkeypatch.setattr(plan_context, "run_research_context", lambda req: context)
 
-    plan_context.run_plan_context("杭州", [], itinerary_id=88)
+    plan_context.run_plan_context(GenerateRequest(city="杭州"), itinerary_id=88)
 
     types = [e[1] for e in events]
     assert types == ["research_start", "research_done", "degraded"]
@@ -115,7 +124,7 @@ def test_plan_context_exception_publishes_degraded_and_reraises(events, monkeypa
     monkeypatch.setattr(plan_context, "run_research_context", _boom)
 
     with pytest.raises(ValueError):
-        plan_context.run_plan_context("杭州", [], itinerary_id=88)
+        plan_context.run_plan_context(GenerateRequest(city="杭州"), itinerary_id=88)
 
     assert [e[1] for e in events] == ["research_start", "degraded"]
     degraded = events[1]
@@ -126,7 +135,7 @@ def test_plan_context_exception_publishes_degraded_and_reraises(events, monkeypa
 def test_plan_context_without_itinerary_id_publishes_nothing(events, monkeypatch):
     monkeypatch.setattr(plan_context, "run_research_context", lambda req: _successful_context())
 
-    plan_context.run_plan_context("杭州", [])
+    plan_context.run_plan_context(GenerateRequest(city="杭州"))
 
     assert events == []
 
@@ -144,7 +153,7 @@ def test_research_event_stats_without_report_falls_back_to_list_lengths(events, 
         },
     )
 
-    plan_context.run_plan_context("杭州", [], itinerary_id=1)
+    plan_context.run_plan_context(GenerateRequest(city="杭州"), itinerary_id=1)
 
     done = events[1][2]
     assert done["evidenceCount"] == 3
@@ -196,7 +205,7 @@ def test_plan_context_events_carry_trace_run_id(monkeypatch):
     monkeypatch.setattr(plan_context, "run_research_context", lambda req: _successful_context())
 
     with trace_run("run-plan-context") as recorder:
-        plan_context.run_plan_context("杭州", [], itinerary_id=88)
+        plan_context.run_plan_context(GenerateRequest(city="杭州"), itinerary_id=88)
 
     payloads = [json.loads(p) for p in published]
     assert [p["type"] for p in payloads] == ["research_start", "research_done"]
@@ -211,7 +220,7 @@ def test_plan_context_events_without_trace_have_no_run_id(monkeypatch):
     published = _fake_redis_recorder(monkeypatch)
     monkeypatch.setattr(plan_context, "run_research_context", lambda req: _successful_context())
 
-    plan_context.run_plan_context("杭州", [], itinerary_id=88)
+    plan_context.run_plan_context(GenerateRequest(city="杭州"), itinerary_id=88)
 
     assert published
     for payload in (json.loads(p) for p in published):

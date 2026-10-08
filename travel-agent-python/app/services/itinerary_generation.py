@@ -49,7 +49,7 @@ from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.business.itinerary import GenerateTripRequest
 from app.schemas.stream_events import StreamEvent
-from app.schemas.trip import MAX_TRIP_DAYS, DailyPlan, GenerateDayRequest
+from app.schemas.trip import MAX_TRIP_DAYS, DailyPlan, GenerateDayRequest, GenerateRequest
 from app.schemas.trip_requirements import (
     TripRequirements,
     canonical_requirements_payload,
@@ -153,6 +153,28 @@ class GenerateCommand:
             return self.intent.strip()
         return self.requirements or ""
 
+    def to_generate_request(self) -> GenerateRequest:
+        """编排 → 研究层的完整请求投影（M1b）。
+
+        此前 run_plan_context 只收 city/preferences 并在内部以 persons=1 重建
+        GenerateRequest——研究层永远看不见真实人数/预算/酒店档次/结构化需求。
+        现在由 command 单点转换，int 沿命令的真实值透传，不留丢字段适配。
+        """
+        return GenerateRequest(
+            city=self.city,
+            days=self.days,
+            persons=self.persons,
+            budget=None if self.budget is None else float(self.budget),
+            start_date=None if self.start_date is None else self.start_date.isoformat(),
+            preferences=self.preferences,
+            hotel_tier=self.hotel_tier,
+            requirements=self.requirements,
+            intent=self.resolved_intent(),
+            region_hint=self.region_hint,
+            origin_city=self.origin_city,
+            requirements_struct=self.requirements_struct,
+        )
+
 
 def submit_planning(
     user_id: int, itinerary_id: int, command: GenerateCommand, context: dict[str, Any] | None = None
@@ -174,6 +196,9 @@ def submit_planning(
 
 
 # ---------- 编排主体（工作线程内） ----------
+
+#: 研究上下文里的需求指纹键（M1b）：plan_days 新研究后写入，恢复复用前比对
+_CONTEXT_FP_KEY = "_requirements_fp"
 
 
 def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context: dict[str, Any] | None = None) -> None:
@@ -203,20 +228,23 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             chosen_hotel: str | None = None
             first_day_suggestions: list[Any] | None = None
             fingerprint = generation_gate.request_fingerprint(command)
+            # M1b（spec §6.5）：恢复复用研究上下文前校验需求指纹——参数/需求变了就弃用
+            # 旧 context 重新研究，不相干的证据不能续用到新需求上。旧 checkpoint 的
+            # context 无此键（部署前生成），按旧宽容口径继续可用。
+            if context is not None and context.get(_CONTEXT_FP_KEY) not in (None, fingerprint):
+                logger.warning(
+                    "research context fingerprint mismatch for itinerary %s; discarding stale context", itinerary_id
+                )
+                context = None
             if context is None:
                 # 不包 observe_run：与迁移前的 /v1/plan-context 口径一致（研究事件不带 runId）。
                 # 但 scene 必须归位（P1-7）：研究段的 LLM 调用此前落 scene="other"，
                 # 用量报表把"生成的研究成本"记到匿名桶里。
-                # start_date+days 供城市级天气一次取整趟预报窗（C3.1）；无日期自然为 None。
+                # M1b：完整请求进研究层（真实 persons/budget/hotel_tier/结构化需求，
+                # 不再由 plan_context 内部 persons=1 重建）。
                 with use_scene("research"):
-                    context = run_plan_context(
-                        command.city,
-                        command.preferences,
-                        itinerary_id=itinerary_id,
-                        start_date=command.start_date.isoformat() if command.start_date else None,
-                        days=command.days,
-                        origin_city=command.origin_city,
-                    )
+                    context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
+                context[_CONTEXT_FP_KEY] = fingerprint
             # L14：报价随研究上下文一次落库；空即写 NULL（续跑取回的 context 同样带它）
             day_persistence.save_flight_quotes(itinerary_id, context.get("flight_quotes"))
             day_persistence.save_origin_city(itinerary_id, command.origin_city)
@@ -323,6 +351,8 @@ def _generate_day_with_trace(
         needs_hotel=day_no <= command.stay_nights,
         requirements=command.requirements,
         intent=command.resolved_intent(),
+        # M1b：结构化需求随逐日请求进图状态/checkpoint，prompt 层按 day_no 投影渲染
+        requirements_struct=command.requirements_struct,
         region_hint=command.region_hint,
         request_id=f"itinerary-{itinerary_id}",
         action_id=action_id,
@@ -420,14 +450,8 @@ def _regenerate_day_core(
             # （恢复腿 submit_planning(context=None) 也是这么做的），保证补齐天
             # 与首次生成同一质量；scene 归位口径同 plan_days。
             with use_scene("research"):
-                context = run_plan_context(
-                    command.city,
-                    command.preferences,
-                    itinerary_id=itinerary_id,
-                    start_date=command.start_date.isoformat() if command.start_date else None,
-                    days=command.days,
-                    origin_city=command.origin_city,
-                )
+                context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
+            context[_CONTEXT_FP_KEY] = fingerprint
             _generate_day_with_trace(itinerary_id, command, context, day_no, [], chosen_hotel, action_id, fingerprint)
     except ApiError as api_exc:
         # BYOK 路由坏（409）等用户可读失败：原样透出，不裹成 502。
@@ -480,6 +504,8 @@ def _plan_whole_trip(
         needs_hotel=command.stay_nights > 0,
         requirements=command.requirements,
         intent=command.resolved_intent(),
+        # M1b：结构化需求随整段流式请求贯通
+        requirements_struct=command.requirements_struct,
         region_hint=command.region_hint,
         request_id=f"itinerary-{itinerary_id}",
         context=context,

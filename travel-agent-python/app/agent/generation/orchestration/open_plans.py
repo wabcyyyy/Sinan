@@ -101,6 +101,8 @@ def _generate_drafts(
             context=context,
             requirements=req.requirements,
             intent=req.intent,
+            # M1b：整趟结构化需求随请求贯通（prompt 层按 day_no 投影渲染）
+            requirements_struct=req.requirements_struct,
             region_hint=req.region_hint,
             feedback=feedback,
         )
@@ -142,6 +144,8 @@ def _generate_drafts(
             context=context,
             requirements=req.requirements,
             intent=req.intent,
+            # M1b：逐日带整趟需求（同引用，不改写原需求）
+            requirements_struct=req.requirements_struct,
             region_hint=req.region_hint,
             feedback=feedback,
         )

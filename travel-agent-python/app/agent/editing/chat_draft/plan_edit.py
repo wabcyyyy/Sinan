@@ -26,6 +26,7 @@ from app.schemas.trip import (
     MAX_TRIP_DAYS,
     ChatTurnRequest,
     GenerateDayRequest,
+    GenerateRequest,
 )
 
 from .document import _extract_document_plans
@@ -277,7 +278,19 @@ def _deterministic_extend(req: ChatTurnRequest, target_days: int) -> list[dict]:
     plans = deepcopy(req.plans)
     used: set[str] = {it.get("poi_name") for plan in plans for it in plan.get("items") or [] if it.get("poi_name")}
     try:
-        ctx = run_plan_context(req.city, req.preferences)
+        # M1b：完整请求进研究层（加天兜底与主链路同质量，不再只带 city/preferences）
+        ctx = run_plan_context(
+            GenerateRequest(
+                city=req.city,
+                days=target_days,
+                persons=req.persons,
+                budget=req.budget,
+                start_date=req.start_date,
+                preferences=req.preferences,
+                hotel_tier=req.hotel_tier,
+                requirements_struct=req.requirements_struct,
+            )
+        )
     except Exception as exc:
         logger.warning("deterministic extend context failed: %s", exc)
         ctx = {}
@@ -287,9 +300,12 @@ def _deterministic_extend(req: ChatTurnRequest, target_days: int) -> list[dict]:
                 GenerateDayRequest(
                     city=req.city,
                     day_no=day_no,
+                    days=target_days,
                     persons=req.persons,
+                    budget=req.budget,
                     hotel_tier=req.hotel_tier,
                     preferences=req.preferences,
+                    requirements_struct=req.requirements_struct,
                     context=ctx,
                     used_names=list(used),
                     start_date=req.start_date,

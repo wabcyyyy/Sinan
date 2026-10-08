@@ -358,6 +358,17 @@ class PlanContextRequest(WireModel):
     # 行程会话 ID（wire 名 itineraryId）：用于进度事件发布到对应 Redis 通道；
     # 可选兼容旧调用方，缺失时 Python 侧不发布任何事件。
     itinerary_id: int | None = None
+    # M1b：调试端点与主链路同口径——以下字段缺省时与旧请求等价，齐备时研究层
+    # 可见真实人数/预算/酒店档次/结构化需求（服务端组装 GenerateRequest）
+    days: int = Field(default=1, ge=1, le=MAX_TRIP_DAYS)
+    persons: int = Field(default=1, ge=1, le=20)
+    budget: float | None = None
+    start_date: str | None = None
+    hotel_tier: str | None = None
+    requirements: str | None = Field(default=None, max_length=4000)
+    intent: str | None = Field(default=None, max_length=4000)
+    origin_city: str | None = Field(default=None, max_length=64)
+    requirements_struct: TripRequirements | None = None
 
 
 class GenerateDayRequest(WireModel):

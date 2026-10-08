@@ -36,6 +36,9 @@ REQUIREMENTS_SCHEMA_VERSION = 1
 #: 在 patch 应用时拒绝并记入 unresolved_requests，不静默丢弃。
 SUPPORTED_EXCLUDED_CATEGORIES: tuple[str, ...] = ("museum",)
 
+#: 词表的展示名（prompt 渲染用）；与受控词表同点维护，不另建第二份词表。
+EXCLUDED_CATEGORY_LABELS: dict[str, str] = {"museum": "博物馆"}
+
 _BoundedStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 _FreeText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)]
 _TimeHhMm = Annotated[str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]

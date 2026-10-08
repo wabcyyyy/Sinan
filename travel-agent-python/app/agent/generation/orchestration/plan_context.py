@@ -64,19 +64,18 @@ def _research_event_stats(context: dict) -> tuple[int, bool, list[dict], str | N
     return evidence_count, degraded, domains, reason
 
 
-def run_plan_context(
-    city: str,
-    preferences: list[str],
-    itinerary_id: int | None = None,
-    *,
-    start_date: str | None = None,
-    days: int = 1,
-    origin_city: str | None = None,
-) -> dict:
+def run_plan_context(request: GenerateRequest, *, itinerary_id: int | None = None) -> dict:
     """构建单日生成上下文：Supervisor 并行派发三个研究 Agent 产出证据。
 
-    与整段生成的 search 节点共用同一条研究链路（多 Agent 编排），
-    返回形状保持 {candidates, foods, hotels, consumption, weather} 不变。
+    M1b（spec §6.1）：入参升级为**完整规范化 GenerateRequest**（itinerary_id
+    作为独立追踪参数）——此前内部以 persons=1 重建请求，研究层永远看不见
+    真实人数/预算/酒店档次/结构化需求；不保留丢字段的旧参数适配，调用方
+    一律就地迁移。与整段生成的 search 节点共用同一条研究链路。
+
+    返回形状 = synthesize 投影 + research_report：{candidates, foods, hotels,
+    consumption, weather, flight_quotes, research_report}。research_report
+    （各域 EvidencePack.to_dict()，含 count/gaps/degraded 降级证据）不再在
+    投影时丢弃——逐日链路的研究降级必须与整段链路同样可观测。
 
     start_date（行程首日）+ days（总天数）用于城市级天气（C3.1）：一次取
     整趟预报窗，逐日消费按 day_no 挑行；缺省（调试端点、chat 重排）不带
@@ -93,16 +92,7 @@ def run_plan_context(
     run_id = current_run_id()
     publish_research_start(itinerary_id, list(_RESEARCH_EVENT_DOMAINS), run_id=run_id)
     try:
-        req = GenerateRequest(
-            city=city,
-            days=max(days, 1),
-            persons=1,
-            preferences=preferences,
-            start_date=start_date,
-            # L14：有出发地才查航班（研究阶段由 synthesize 直取报价）
-            origin_city=origin_city,
-        )
-        context = run_research_context(req)
+        context = run_research_context(request)
     except Exception as exc:
         # 兜底口径：研究失败时 HTTP 层会转错误信封，由编排器决定重试
         publish_degraded(
@@ -123,6 +113,8 @@ def run_plan_context(
         "weather": context.get("weather"),
         # L14：往返报价（无出发地/未映射/无报价时为空列表，缺席已由工具层留痕）
         "flight_quotes": context.get("flight_quotes") or [],
+        # M1b：研究降级证据随投影带出（gaps/degraded 按 EvidencePack.to_dict 保留）
+        "research_report": context.get("research_report") or {},
     }
 
 

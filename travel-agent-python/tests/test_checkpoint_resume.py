@@ -286,8 +286,8 @@ def _stub_orchestration(monkeypatch, *, deaths: dict | None = None) -> dict:
     """打桩编排层三入口 + 池同步内联；`deaths` 非 None 时整段流式在第 2 天落地后死。"""
     calls: dict = {"context": [], "day": []}
 
-    def fake_context(city, prefs, *, itinerary_id=None, start_date=None, days=None, origin_city=None, **kwargs):
-        calls["context"].append({"origin_city": origin_city, "city": city})
+    def fake_context(request, *, itinerary_id=None, **kwargs):  # M1b：完整 GenerateRequest
+        calls["context"].append({"origin_city": request.origin_city, "city": request.city})
         return {
             "candidates": [{"name": "西湖"}],
             "foods": [],

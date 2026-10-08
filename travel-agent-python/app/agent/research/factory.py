@@ -123,6 +123,8 @@ def _run_search(state: UnifiedAgentState) -> dict:
     extras = list(dict.fromkeys((plan.get("extra_keywords") or []) + (state.extra_keywords or [])))
     # M3-②（AD5）最小增量：任务卡携带的意图关键词并入补池链（新旧行为兼容，仅追加）
     extras = list(dict.fromkeys(extras + list(task.intent_keywords or [])))
+    # M1b：用户点名必去的地点单独补池查证（必去项不在主检索结果里时兜底）
+    extras = list(dict.fromkeys(extras + list(task.required_names or [])))
     from app.agent.data.web_search import search_places_via_web, web_search_enabled
 
     quota_note = state.quota_note or ""

@@ -99,7 +99,7 @@ def _fake_agents(monkeypatch, per_day: list[DailyPlan] | None = None) -> dict:
     """打桩研究/逐日两个 agent 入口（记录调用）；富化池空转（富化与本文件断言无关）。"""
     calls: dict = {"context": 0, "day": []}
 
-    def fake_context(city, prefs, *, itinerary_id=None, **kwargs):
+    def fake_context(request, *, itinerary_id=None, **kwargs):  # M1b：完整 GenerateRequest
         calls["context"] += 1
         return {"candidates": [{"name": "西湖"}], "foods": [], "hotels": [], "consumption": None}
 

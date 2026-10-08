@@ -36,6 +36,7 @@ from app.db.models import (
 )
 from app.db.session import session_scope
 from app.schemas.trip import ChatTurnRequest
+from app.schemas.trip_requirements import TripRequirements
 from app.services import expense_service, itinerary_city, itinerary_query, llm_gateway_service
 
 logger = logging.getLogger(__name__)
@@ -406,6 +407,11 @@ def build_chat_turn_context(
             "end_date": None if main.end_date is None else str(main.end_date),
             "preferences": [] if not main.preferences else main.preferences.split(","),
             "hotel_tier": main.hotel_tier,
+            # M1b（spec §6.4）：主表需求快照（V13）作为编辑硬约束上下文——已确认
+            # 需求优先于模型对聊天历史的再猜测；主表当前值即最新生效修订（M4 前）
+            "requirements_struct": TripRequirements.model_validate(main.requirements_json)
+            if main.requirements_json
+            else None,
             "plans": _json_numbers(plans),
             "history": effective[-HISTORY_WINDOW:],
             "message": message or "",

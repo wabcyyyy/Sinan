@@ -233,10 +233,12 @@ def _run_stream_once(case: dict, suffix: str, catalog: dict) -> tuple[dict, str]
     empty_trace = {"run_id": run_id, "events": []}
     try:
         context = run_plan_context(
-            city,
-            case.get("preferences") or [],
-            start_date=case.get("start_date"),
-            days=days,
+            GenerateRequest(
+                city=city,
+                days=days,
+                start_date=case.get("start_date"),
+                preferences=case.get("preferences") or [],
+            )
         )
     except Exception as exc:
         return _failed_record(run_id, empty_trace, exc)

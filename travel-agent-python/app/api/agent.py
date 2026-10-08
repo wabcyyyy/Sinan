@@ -369,8 +369,26 @@ def edit_ops(req: EditOpRequest, _auth: None = Depends(require_internal_token)) 
 @router.post("/v1/plan-context")
 @scene("assist")
 def plan_context(req: PlanContextRequest, _auth: None = Depends(require_internal_token)) -> ApiResponse[dict]:
-    # itinerary_id 透传给研究链路发布进度事件；旧调用方不传则不发布
-    return ApiResponse.ok(run_plan_context(req.city, req.preferences, itinerary_id=req.itinerary_id))
+    # M1b：调试端点与主链路同口径——组装完整 GenerateRequest 进研究层
+    # （itinerary_id 仍作独立追踪参数透传研究事件；不传则不发布）
+    return ApiResponse.ok(
+        run_plan_context(
+            GenerateRequest(
+                city=req.city,
+                days=req.days,
+                persons=req.persons,
+                budget=req.budget,
+                start_date=req.start_date,
+                preferences=req.preferences,
+                hotel_tier=req.hotel_tier,
+                requirements=req.requirements,
+                intent=req.intent,
+                origin_city=req.origin_city,
+                requirements_struct=req.requirements_struct,
+            ),
+            itinerary_id=req.itinerary_id,
+        )
+    )
 
 
 @router.post("/v1/generate-day")

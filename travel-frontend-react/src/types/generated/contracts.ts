@@ -291,6 +291,15 @@ export interface PlanContextRequest {
   city: string
   preferences: string[]
   itineraryId: number | null
+  days: number
+  persons: number
+  budget: number | null
+  startDate: string | null
+  hotelTier: string | null
+  requirements: string | null
+  intent: string | null
+  originCity: string | null
+  requirementsStruct: TripRequirements | null
 }
 
 export interface LocalReplanRequest {

@@ -31,10 +31,15 @@ class ResearchTask:
     budget: float | None = None
     hotel_tier: str | None = None
     limit: int = 30
-    # M1 意图贯通：仅铺设字段，研究链路暂不消费；从 intent 抽关键词补池
-    # （intent_keywords）留 M3 接入。
+    # M1 意图贯通：intent 驱动补池检索关键词（intent_keywords）与意图覆盖评估。
     intent: str | None = None
     intent_keywords: list[str] = field(default_factory=list)
+    # M1b（spec §6.2）：研究层消费完整需求——人数（酒店域房间口径）、
+    # 明确必去（attraction 域并入补池检索词）/排除地点与类别（任务卡随行）。
+    persons: int = 1
+    required_names: list[str] = field(default_factory=list)
+    excluded_names: list[str] = field(default_factory=list)
+    excluded_categories: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.domain not in RESEARCH_DOMAINS:

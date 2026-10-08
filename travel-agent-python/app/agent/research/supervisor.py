@@ -35,10 +35,30 @@ from app.schemas.trip import GenerateRequest
 logger = logging.getLogger(__name__)
 
 
+def _requirement_fields(req: GenerateRequest) -> dict:
+    """从请求抽取结构化需求的研究投影（M1b）：必去/排除/人数。
+
+    必去地点名并入 attraction 域补池检索词（必去项就是该查证的检索关键词）；
+    排除随任务卡携带，供检索侧避免主动推荐。
+    """
+    struct = req.requirements_struct
+    required = [p.name for p in struct.required_places] if struct is not None else []
+    return {
+        "persons": req.persons if req.persons and req.persons > 0 else 1,
+        "required_names": required,
+        "excluded_names": list(struct.excluded_places) if struct is not None else [],
+        "excluded_categories": list(struct.excluded_categories) if struct is not None else [],
+    }
+
+
 def decompose(req: GenerateRequest) -> list[ResearchTask]:
     """按用户请求分解研究任务；各域规模支撑「发现更多」候选池。"""
     # M3-②（AD5）：intent 纯规则抽词随任务卡下发，驱动补池检索与意图覆盖评估。
     intent_keywords = build_intent_keywords(req.intent)
+    fields = _requirement_fields(req)
+    # M1b：必去地点并入 attraction 检索关键词（去重保序）——主检索/补池都
+    # 优先查证用户点名必去的地方，而不是等生成层凭空排入。
+    attraction_keywords = list(dict.fromkeys([*intent_keywords, *fields["required_names"]]))
     return [
         ResearchTask(
             domain="attraction",
@@ -47,7 +67,8 @@ def decompose(req: GenerateRequest) -> list[ResearchTask]:
             budget=req.budget,
             limit=40,
             intent=req.intent,
-            intent_keywords=intent_keywords,
+            intent_keywords=attraction_keywords,
+            **fields,
         ),
         ResearchTask(
             domain="food",
@@ -56,6 +77,7 @@ def decompose(req: GenerateRequest) -> list[ResearchTask]:
             limit=16,
             intent=req.intent,
             intent_keywords=intent_keywords,
+            **fields,
         ),
         ResearchTask(
             domain="hotel",
@@ -65,6 +87,7 @@ def decompose(req: GenerateRequest) -> list[ResearchTask]:
             limit=10,
             intent=req.intent,
             intent_keywords=intent_keywords,
+            **fields,
         ),
     ]
 
@@ -188,6 +211,12 @@ def run_refill(domain: ResearchDomain, req: GenerateRequest) -> EvidencePack:
         budget=req.budget,
         hotel_tier=req.hotel_tier,
         limit=60,
+        # M1b：补查与主研究同一需求口径（intent 检索词 + 必去并入 + 人数/排除随卡）
+        intent=req.intent,
+        intent_keywords=list(
+            dict.fromkeys([*build_intent_keywords(req.intent), *_requirement_fields(req)["required_names"]])
+        ),
+        **_requirement_fields(req),
     )
     return run_research(task)
 

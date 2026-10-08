@@ -2364,12 +2364,121 @@
           ],
           "default": null,
           "title": "Itineraryid"
+        },
+        "days": {
+          "default": 1,
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "persons": {
+          "default": 1,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Persons",
+          "type": "integer"
+        },
+        "budget": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget"
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "hotelTier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hoteltier"
+        },
+        "requirements": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirements"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "originCity": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origincity"
+        },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "city",
         "preferences",
-        "itineraryId"
+        "itineraryId",
+        "days",
+        "persons",
+        "budget",
+        "startDate",
+        "hotelTier",
+        "requirements",
+        "intent",
+        "originCity",
+        "requirementsStruct"
       ],
       "title": "PlanContextRequest",
       "type": "object"

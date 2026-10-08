@@ -100,6 +100,9 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
         requirements=req.requirements,
         intent=req.intent,
         region_hint=req.region_hint,
+        # M1b：结构化需求经整段请求贯通（此前反向重建时静默丢弃；
+        # origin_city 不在 GenerateDayRequest 上，出发地由研究上下文的报价承载）
+        requirements_struct=req.requirements_struct,
     )
     emitted: list[int] = []
     plans: list[dict] = []
