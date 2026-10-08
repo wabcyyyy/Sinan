@@ -100,6 +100,9 @@ def render_pdf(task_id: int) -> None:
         export_pdf.build_pdf(model, target)
         with session_scope() as session:
             task = session.get(_task_model(), task_id)
+            if task is None:
+                logger.error("export task not found: %s", task_id)
+                return
             task.status = "DONE"
             task.file_path = str(target)
             task.finished_at = datetime.now()
@@ -234,6 +237,8 @@ def _task_model():
 def _to_vo(task_id: int, include_download_url: bool) -> dict[str, Any]:
     with session_scope() as session:
         task = session.get(_task_model(), task_id)
+        if task is None:  # 调用方 _require_owned_task 已验过，这里只防跨事务竞态
+            raise ApiError(404, "导出任务不存在")
         # 与 Java 的一处有意差异：`createPdf` 里 Java 直接回显刚插入的内存实体，
         # 于是 status 恒为 RUNNING、createdAt 恒为 null（MyBatis-Plus 不回填 server default）。
         # 这里从库里重读，池满走 CallerRuns 就地渲染时首次响应就能拿到 DONE。

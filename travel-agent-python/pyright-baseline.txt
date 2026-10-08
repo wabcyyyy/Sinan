@@ -30,23 +30,7 @@ app/services/atlas_service.py:reportArgumentType:Argument of type "Decimal | Non
 app/services/export_pdf.py:reportArgumentType:Argument of type "Paragraph" cannot be assigned to parameter "object" of type "Table" in function "append" |   "Paragraph" is not assignable to "Table"
 app/services/export_pdf.py:reportArgumentType:Argument of type "float" cannot be assigned to parameter "size" of type "int" in function "_style" |   "float" is not assignable to "int"
 app/services/export_pdf.py:reportArgumentType:Argument of type "list[Table]" cannot be assigned to parameter "flowables" of type "list[Flowable]" in function "build" |   "list[Table]" is not assignable to "list[Flowable]" |     Type parameter "_T@list" is invariant, but "Table" is not the same as "Flowable" |     Consider switching from "list" to "Sequence" which is covariant
-app/services/export_service.py:reportOptionalMemberAccess:"created_at" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"error_msg" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"file_path" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"finished_at" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"id" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"itinerary_id" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"status" is not a known attribute of "None"
-app/services/export_service.py:reportOptionalMemberAccess:"task_type" is not a known attribute of "None"
 app/services/itinerary_city.py:reportCallIssue:No parameter named "user_input"
-app/services/itinerary_command.py:reportArgumentType:Argument of type "ItineraryItem | None" cannot be assigned to parameter "item" of type "ItineraryItem" in function "_move_to_day" |   Type "ItineraryItem | None" is not assignable to type "ItineraryItem" |     "None" is not assignable to "ItineraryItem"
-app/services/itinerary_command.py:reportArgumentType:Argument of type "ItineraryItem | None" cannot be assigned to parameter "target" of type "ItineraryItem" in function "_copy_optional" |   Type "ItineraryItem | None" is not assignable to type "ItineraryItem" |     "None" is not assignable to "ItineraryItem"
-app/services/itinerary_command.py:reportArgumentType:Argument of type "int | None" cannot be assigned to parameter "target_day_id" of type "int" in function "_move_to_day" |   Type "int | None" is not assignable to type "int" |     "None" is not assignable to "int"
-app/services/itinerary_command.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
-app/services/itinerary_command.py:reportOptionalMemberAccess:"item_type" is not a known attribute of "None"
-app/services/itinerary_command.py:reportOptionalMemberAccess:"metadata_json" is not a known attribute of "None"
-app/services/itinerary_command.py:reportOptionalMemberAccess:"poi_name" is not a known attribute of "None"
-app/services/itinerary_command.py:reportOptionalMemberAccess:"sort_no" is not a known attribute of "None"
 app/services/itinerary_enricher.py:reportAttributeAccessIssue:Cannot access attribute "model_dump" for class "dict[Unknown, Unknown]" |   Attribute "model_dump" is unknown
 app/services/itinerary_plan_apply.py:reportArgumentType:Argument of type "Any | None" cannot be assigned to parameter "x" of type "ConvertibleToInt" in function "__new__" |   Type "Any | None" is not assignable to type "ConvertibleToInt" |     Type "None" is not assignable to type "ConvertibleToInt" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "Buffer" |         "__buffer__" is not present |       "None" is incompatible with protocol "SupportsInt" |         "__int__" is not present |       "None" is incompatible with protocol "SupportsIndex"
 app/services/itinerary_plan_apply.py:reportArgumentType:Argument of type "Any | None" cannot be assigned to parameter "x" of type "ConvertibleToInt" in function "__new__" |   Type "Any | None" is not assignable to type "ConvertibleToInt" |     Type "None" is not assignable to type "ConvertibleToInt" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "Buffer" |         "__buffer__" is not present |       "None" is incompatible with protocol "SupportsInt" |         "__int__" is not present |       "None" is incompatible with protocol "SupportsIndex" |   ...

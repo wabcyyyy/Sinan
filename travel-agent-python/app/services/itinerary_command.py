@@ -124,7 +124,9 @@ def update_item(user_id: int, item_id: int, request: ItemUpsertRequest | None) -
         _validate(request)
         itinerary_id = item.itinerary_id
         target_day = None
+        target_day_id: int | None = None
         if request.dayId is not None and request.dayId != item.day_id:
+            target_day_id = request.dayId
             target_day = session.execute(
                 select(ItineraryDay).where(ItineraryDay.id == request.dayId, ItineraryDay.itinerary_id == itinerary_id)
             ).scalar_one_or_none()
@@ -141,13 +143,15 @@ def update_item(user_id: int, item_id: int, request: ItemUpsertRequest | None) -
     itinerary_version.create_snapshot(user_id, itinerary_id, operation, before_summary)
     with session_scope() as session:
         item = session.get(ItineraryItem, item_id)
+        if item is None:  # 前一事务 _require_item 已验过，这里只防跨事务竞态
+            raise ApiError(404, "行程项不存在")
         if request.itemType is not None:
             item.item_type = request.itemType
         if request.poiName is not None and request.poiName.strip():
             item.poi_name = request.poiName
         _copy_optional(item, request)
-        if move_to_day_no is not None:
-            _move_to_day(session, item, request.dayId)
+        if target_day_id is not None:
+            _move_to_day(session, item, target_day_id)
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
@@ -166,6 +170,14 @@ def _move_to_day(session, item: ItineraryItem, target_day_id: int) -> None:
     item.sort_no = next_sort
 
 
+def _bump_sort(session, item_id: int, index: int) -> None:
+    """重取行程项并写位次（reorder/optimize 共用）；跨事务竞态丢失时按既有口径 404。"""
+    item = session.get(ItineraryItem, item_id)
+    if item is None:
+        raise ApiError(404, "行程项不存在")
+    item.sort_no = index
+
+
 def delete_item(user_id: int, item_id: int) -> dict[str, Any]:
     with session_scope() as session:
         item = _require_item(session, user_id, item_id)
@@ -175,7 +187,10 @@ def delete_item(user_id: int, item_id: int) -> dict[str, Any]:
     itinerary_version.create_snapshot(user_id, itinerary_id, "delete_item", "删除行程项前快照")
     with session_scope() as session:
         # @TableLogic 下 deleteById 是软删
-        session.get(ItineraryItem, item_id).deleted = 1
+        doomed = session.get(ItineraryItem, item_id)
+        if doomed is None:  # 前一事务已验过，防跨事务竞态
+            raise ApiError(404, "行程项不存在")
+        doomed.deleted = 1
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
@@ -203,7 +218,7 @@ def reorder_items(user_id: int, itinerary_id: int, day_id: int | None, item_ids:
     itinerary_version.create_snapshot(user_id, itinerary_id, "reorder", "调整行程顺序前快照")
     with session_scope() as session:
         for index, item_id in enumerate(item_ids):
-            session.get(ItineraryItem, item_id).sort_no = index
+            _bump_sort(session, item_id, index)
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
@@ -275,7 +290,7 @@ def optimize_day(user_id: int, itinerary_id: int, day_id: int) -> dict[str, Any]
     itinerary_version.create_snapshot(user_id, itinerary_id, "optimize", f"优化路线前快照（第 {day_no} 天）")
     with session_scope() as session:
         for index, row_id in enumerate(ordered_ids):
-            session.get(ItineraryItem, row_id).sort_no = index
+            _bump_sort(session, row_id, index)
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "optimize", f"优化路线完成（第 {day_no} 天）")
@@ -299,6 +314,8 @@ def update_day(user_id: int, itinerary_id: int, day_id: int, theme: str | None) 
     itinerary_version.create_snapshot(user_id, itinerary_id, "update_day", f"编辑日标题前快照（第 {day_no} 天）")
     with session_scope() as session:
         day = session.get(ItineraryDay, day_id)
+        if day is None:  # 前一事务已验过，防跨事务竞态
+            raise ApiError(404, "日期不存在")
         metadata = _parse_metadata(day.metadata_json)
         if cleaned:
             metadata["theme"] = cleaned
