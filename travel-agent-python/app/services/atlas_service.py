@@ -21,7 +21,7 @@ import logging
 from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 
@@ -76,8 +76,10 @@ def build_atlas(user_id: int, scope: str | None = None) -> dict[str, Any]:
         entry = cities.setdefault(main.city, {"trips": [], "coords": []})
         entry["trips"].append(main)
         for item in items_by_trip.get(main.id, []):
-            if _valid_coord(item.latitude, item.longitude):
-                entry["coords"].append((float(item.latitude), float(item.longitude)))
+            lat, lon = item.latitude, item.longitude
+            if _valid_coord(lat, lon):
+                # _valid_coord 已排除 None；cast appease float() 的 ConvertibleToFloat stub
+                entry["coords"].append((float(cast(Decimal, lat)), float(cast(Decimal, lon))))
 
     pins: list[dict[str, Any]] = []
     unknown_cities: list[dict[str, str]] = []

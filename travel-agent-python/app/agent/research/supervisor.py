@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import date, timedelta
 
 from app.agent.core.intent import build_intent_keywords
@@ -80,7 +80,7 @@ def run_research_parallel(tasks: list[ResearchTask]) -> dict[ResearchDomain, Evi
     # 避免并行检索把高德/RAG 的等待从串行叠加放大。调用期读 settings
     # （PR-11 并发配置化，原硬编码 3），monkeypatch 单点可注入。
     with ThreadPoolExecutor(max_workers=settings.research_workers, thread_name_prefix="research-agent") as pool:
-        futures: dict[ResearchDomain, object] = {}
+        futures: dict[ResearchDomain, Future[EvidencePack]] = {}
         for task in tasks:
             context = contextvars.copy_context()
             futures[task.domain] = pool.submit(context.run, lambda t=task: run_research(t))

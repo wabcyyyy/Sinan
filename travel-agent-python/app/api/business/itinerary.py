@@ -104,14 +104,14 @@ def post_generate(
 
 
 @router.get("/preferences")
-def get_preferences(user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def get_preferences(user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(top_preferences(user.id))
 
 
 @router.post("/preferences/signals")
 def post_preference_signals(
     body: PreferenceSignalsBody,
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     preferences.record_signals(
         user.id,
@@ -125,7 +125,7 @@ def post_preference_signals(
 
 
 @router.get("/preferences/signals")
-def get_preference_signals(user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def get_preference_signals(user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(preferences.signals(user.id, 50))
 
 
@@ -133,7 +133,7 @@ def get_preference_signals(user: AuthUser | None = Depends(enforce_business_auth
 def list_itineraries(
     view: str | None = Query(None, description="all|active|done|favorite|archived"),
     q: str | None = Query(None, description="按标题或城市模糊过滤"),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_query.list_summaries(user.id, view, q))
 
@@ -141,7 +141,7 @@ def list_itineraries(
 @router.get("/{id}")
 def get_itinerary(
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_query.detail(user.id, id))
 
@@ -158,7 +158,7 @@ def top_preferences(user_id: int, limit: int = 5) -> list[str]:
 def add_item(
     request: ItemUpsertRequest,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.add_item(user.id, id, request))
 
@@ -167,7 +167,7 @@ def add_item(
 def update_item(
     request: ItemUpsertRequest,
     itemId: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.update_item(user.id, itemId, request))
 
@@ -176,7 +176,7 @@ def update_item(
 def post_optimize(
     body: OptimizeDayBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
     _addon: None = Depends(require_addon("schedule_optimizer")),
 ) -> dict:
     """按路线重排某天（v2.6 W3）：确定性优化器，全量重排、不做锁定项、不删除点位。
@@ -193,7 +193,7 @@ def patch_day(
     body: UpdateDayBody,
     id: int = Path(..., ge=1),
     dayId: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """编辑日副标题（复用 metadata_json.theme；空串 = 清空回退派生标题）。"""
     return ok(itinerary_command.update_day(user.id, id, dayId, body.theme))
@@ -230,7 +230,7 @@ def post_nl_edit(
 def post_apply_plans(
     body: ApplyPlansBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_plan_apply.apply_plans(user.id, id, body.actionMessageId, body.baseRevision))
 
@@ -239,7 +239,7 @@ def post_apply_plans(
 def post_hotel_option(
     body: HotelOptionRequest,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_plan_apply.apply_hotel_option(user.id, id, body))
 
@@ -248,7 +248,7 @@ def post_hotel_option(
 def post_live_quotes(
     body: LiveQuotesBody | None = Body(default=None),
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """按需查航班实时价（L14，SerpApi）。
 
@@ -273,7 +273,7 @@ def post_live_quotes(
 def post_live_hotel_quotes(
     body: LiveQuotesBody | None = Body(default=None),
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """按需查酒店实时价（LA2，SerpApi google_hotels）。
 
@@ -295,7 +295,7 @@ def post_live_hotel_quotes(
 
 
 @router.delete("/items/{itemId}")
-def delete_item(itemId: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def delete_item(itemId: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(itinerary_command.delete_item(user.id, itemId))
 
 
@@ -305,32 +305,30 @@ def reorder_items(
     item_ids: list[int],
     id: int = Path(..., ge=1),
     dayId: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.reorder_items(user.id, id, dayId, item_ids))
 
 
 @router.delete("/{id}")
-def delete_itinerary(id: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def delete_itinerary(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     itinerary_command.delete_itinerary(user.id, id)
     return ok()
 
 
 @router.get("/{id}/chat-history")
-def chat_history(id: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def chat_history(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(itinerary_chat.chat_history(user.id, id))
 
 
 @router.delete("/{id}/chat-history")
-def clear_chat_history(id: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def clear_chat_history(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     itinerary_chat.clear_history(user.id, id)
     return ok()
 
 
 @router.get("/{id}/events")
-async def events(
-    id: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)
-) -> StreamingResponse:
+async def events(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> StreamingResponse:
     """订阅生成进度事件流（进程内 SSE；取代 Java 的「Redis pub/sub → SseEmitter」转发桥）。"""
     # 归属查询进线程池，登记订阅必须在事件循环里做（要捕获 loop 才能跨线程投递）
     main = await run_in_threadpool(itinerary_query.find_readable_main, user.id, id)
@@ -367,7 +365,7 @@ async def chat_edit_stream(
 
 
 @router.get("/{id}/versions")
-def list_versions(id: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def list_versions(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(itinerary_version.list_versions(user.id, id))
 
 
@@ -376,7 +374,7 @@ def versions_diff(
     fromVersionId: int = Query(..., ge=1),
     toVersionId: int = Query(..., ge=1),
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_version.diff(user.id, id, fromVersionId, toVersionId))
 
@@ -385,7 +383,7 @@ def versions_diff(
 def create_version(
     body: VersionBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_version.create_snapshot(user.id, id, body.operation, body.summary))
 
@@ -394,7 +392,7 @@ def create_version(
 def restore_version(
     id: int = Path(..., ge=1),
     versionId: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_version.restore(user.id, id, versionId))
 
@@ -406,7 +404,7 @@ def restore_version(
 def set_cover(
     body: CoverBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """封面三来源：unsplash=服务端 snapshot 落盘；default=四个 cover 列置 NULL。"""
     if body.source == "unsplash":
@@ -420,7 +418,7 @@ def set_cover(
 def upload_cover(
     file: UploadFile = File(...),
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """用户上传（jpeg/png，≤5MB——S0-3 在服务层流式截断）；文件名一律不使用（uuid 落盘）。"""
     data = cover_service.read_upload_capped(file.file, settings.cover_upload_max_bytes)
@@ -433,7 +431,7 @@ def upload_cover(
 def set_favorite(
     body: FavoriteBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.set_favorite(user.id, id, body.favorite))
 
@@ -442,7 +440,7 @@ def set_favorite(
 def set_archived(
     body: ArchiveBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.set_archived(user.id, id, body.archived))
 
@@ -454,7 +452,7 @@ def set_archived(
 def create_share(
     body: ShareCreateBody,
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     """创建/轮换分享链接（重复创建会让旧链接立即失效）。"""
     return ok(share_service.create_share(user.id, id, body.expireDays))
@@ -463,7 +461,7 @@ def create_share(
 @router.get("/{id}/share")
 def get_share(
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(share_service.get_share(user.id, id))
 
@@ -471,7 +469,7 @@ def get_share(
 @router.delete("/{id}/share")
 def remove_share(
     id: int = Path(..., ge=1),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     share_service.remove_share(user.id, id)
     return ok()

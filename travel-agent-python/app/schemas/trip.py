@@ -14,7 +14,7 @@
 - app.schemas.common.WireModel。
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import BeforeValidator, Field, model_validator
 
@@ -171,14 +171,13 @@ class Suggestion(WireModel):
     used: bool = False
 
     @model_validator(mode="after")
-    @classmethod
-    def _strip_shopping_cost(cls, model: "Suggestion") -> "Suggestion":
+    def _strip_shopping_cost(self) -> Self:
         # 购物类不估价：花多少取决于用户自己买什么，固定「人均 ¥5000」
         # 只会削弱可信度（前端展示「按店内消费为准」）。契约层统一兜底，
         # 覆盖候选池/联网补齐/模型建议等所有组装路径。
-        if model.category in ("shopping", "souvenir") and model.estimated_cost is not None:
-            model.estimated_cost = None
-        return model
+        if self.category in ("shopping", "souvenir") and self.estimated_cost is not None:
+            self.estimated_cost = None
+        return self
 
 
 class PhotoSpot(WireModel):

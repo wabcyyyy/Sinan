@@ -40,7 +40,8 @@ def _apply_decision_patches(data: dict, req: ChatTurnRequest) -> list[dict] | No
     requested_days = _requested_day_count(req.message, req.days)
     try:
         # 模型给的 target_days 只做合法性探测（坏值放弃补丁）；用户原话解析的天数才是权威。
-        _ = int(data.get("target_days")) if data.get("target_days") is not None else None
+        raw_target_days = data.get("target_days")
+        _ = int(raw_target_days) if raw_target_days is not None else None
     except (TypeError, ValueError):
         return None
     # 用户原话解析出的目标天数优先；若模型给出的 target_days 不一致，仍以用户意图为准继续执行，
@@ -56,7 +57,7 @@ def _apply_decision_patches(data: dict, req: ChatTurnRequest) -> list[dict] | No
     )
 
     plans = deepcopy(req.plans)
-    by_day = {int(plan.get("day_no")): plan for plan in plans if isinstance(plan.get("day_no"), int)}
+    by_day = {int(day_no): plan for plan in plans if isinstance(day_no := plan.get("day_no"), int)}
     if set(by_day) != set(range(1, req.days + 1)):
         return None
     if target_days > req.days:

@@ -23,6 +23,7 @@ router = APIRouter(
 @router.get("")
 def get_atlas(
     scope: str | None = Query(None, description="all|planned|visited"),
-    user: AuthUser | None = Depends(enforce_business_auth),
+    # router 级 enforce 已对匿名 401，受保护路由里 user 必非 None（类型层面为真）
+    user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(atlas_service.build_atlas(user.id, scope))

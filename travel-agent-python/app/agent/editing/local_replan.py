@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 from app.agent.generation.output.schedule_optimizer import optimize_daily_plan
 from app.agent.runtime.run_limits import current_limits
@@ -78,7 +78,8 @@ def run_local_replan(req: LocalReplanRequest) -> dict[str, Any]:
             continue
         raw_day = plan.get("day_no")
         try:
-            by_day[int(raw_day)] = plan
+            # except 分支承担 None/坏值的真实处理，这里 cast 只是 appease stub 的 ConvertibleToInt
+            by_day[int(cast(int, raw_day))] = plan
         except (TypeError, ValueError) as exc:
             raise ValueError(f"plans 中存在缺少或非法的 day_no：{raw_day!r}") from exc
     missing_days = [day_no for day_no in affected if day_no not in by_day]

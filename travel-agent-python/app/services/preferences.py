@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import select
 
@@ -73,7 +74,7 @@ def _record_one(session, user_id: int, labels, source, confidence, is_negative: 
         existing.negative = 1 if is_negative else 0
         existing.hard_constraint = 1 if (is_hard or existing.hard_constraint == 1) else 0
         existing.source = (source or "").strip() or "explicit"
-        existing.confidence = max(0.0, min(1.0, float(confidence)))
+        existing.confidence = Decimal(str(max(0.0, min(1.0, float(confidence)))))
         existing.last_seen_at = datetime.now()
 
 

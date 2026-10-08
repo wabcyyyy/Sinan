@@ -24,7 +24,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Table, TableStyle
+from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Table, TableStyle
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def build_pdf(model: dict[str, Any], target: Path) -> int:
         bottomMargin=16 * mm,
         title=str(model.get("title") or "行程单"),
     )
-    story = [_masthead(model)]
+    story: list[Flowable] = [_masthead(model)]
     for day in model.get("dayList") or []:
         story.extend(_day_block(day))
     story.extend(_budget_appendix(model))
@@ -100,7 +100,7 @@ def build_pdf(model: dict[str, Any], target: Path) -> int:
     return doc.page
 
 
-def _style(name: str, size: int, color: colors.Color, **extra: Any) -> ParagraphStyle:
+def _style(name: str, size: float, color: colors.Color, **extra: Any) -> ParagraphStyle:
     return ParagraphStyle(name, fontName=FONT_NAME, fontSize=size, leading=size * 1.6, textColor=color, **extra)
 
 

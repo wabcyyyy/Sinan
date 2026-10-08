@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 
@@ -233,7 +234,7 @@ def build_research_graph(domain: ResearchDomain):
     return graph.compile()
 
 
-_research_graphs: dict[ResearchDomain, object] = {domain: build_research_graph(domain) for domain in RESEARCH_DOMAINS}
+_research_graphs: dict[ResearchDomain, Any] = {domain: build_research_graph(domain) for domain in RESEARCH_DOMAINS}
 
 
 def run_research(task: ResearchTask) -> EvidencePack:

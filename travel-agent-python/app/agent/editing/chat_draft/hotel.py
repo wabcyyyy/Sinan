@@ -93,14 +93,14 @@ def _hotel_options(req: ChatTurnRequest, hotels: list[dict], intent: HotelIntent
         non_hotel_total = max((req.current_total or 0) - (req.current_hotel_total or 0), 0)
         budget_capacity = max(req.budget - non_hotel_total, 0)
     current_cost_by_day = {
-        int(plan.get("day_no")): sum(
+        int(day_no): sum(
             float(item.get("cost"))
             for item in (plan.get("items") or [])
             if item.get("item_type") == "hotel" and isinstance(item.get("cost"), (int, float))
         )
         * rooms
         for plan in req.plans
-        if isinstance(plan.get("day_no"), int)
+        if isinstance(day_no := plan.get("day_no"), int)
     }
     if intent.requested_day_nos:
         current_scope_total = sum(current_cost_by_day.get(day_no, 0) for day_no in intent.requested_day_nos)
@@ -349,7 +349,8 @@ def _resolve_hotel_names(values: list, query: str, hotels: list[dict]) -> tuple[
 
 
 def _hotel_intent_from_decision(req: ChatTurnRequest, hotels: list[dict], data: dict) -> HotelIntent:
-    hotel_request = data.get("hotel_request") if isinstance(data.get("hotel_request"), dict) else {}
+    raw_hotel_request = data.get("hotel_request")
+    hotel_request = raw_hotel_request if isinstance(raw_hotel_request, dict) else {}
     base_tier = _current_hotel_tier(req, hotels)
     action = str(hotel_request.get("action") or "same")
     if action not in _INTENT_LABELS:
@@ -357,8 +358,9 @@ def _hotel_intent_from_decision(req: ChatTurnRequest, hotels: list[dict], data: 
     target = str(hotel_request.get("target_tier") or "")
     intent = _normalized_hotel_intent(action, target, base_tier)
     candidate_mode = str(hotel_request.get("candidate_mode") or "recommend")
+    raw_names = hotel_request.get("hotel_names")
     names = _resolve_hotel_names(
-        hotel_request.get("hotel_names") if isinstance(hotel_request.get("hotel_names"), list) else [],
+        raw_names if isinstance(raw_names, list) else [],
         str(hotel_request.get("hotel_query") or ""),
         hotels,
     )
@@ -384,7 +386,7 @@ def _hotel_intent_from_decision(req: ChatTurnRequest, hotels: list[dict], data: 
         )
     )
     try:
-        night_count = int(hotel_request.get("night_count"))
+        night_count = int(hotel_request.get("night_count") or 0)  # falsy 一律落 0，与原 TypeError 路径等价
     except (TypeError, ValueError):
         night_count = 0
     if day_numbers:

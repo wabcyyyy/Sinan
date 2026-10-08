@@ -184,7 +184,8 @@ def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
         )
 
     mode = str(decision.get("mode") or "no_change")
-    operations = decision.get("operations") if isinstance(decision.get("operations"), list) else []
+    raw_operations = decision.get("operations")
+    operations = raw_operations if isinstance(raw_operations, list) else []
     # 明确酒店请求必须优先进入候选流程。模型有时会把“我想换个酒店”
     # 误判成普通 plan_update（甚至带空 patches），这时不能返回一句无操作的
     # 普通回复，更不能让普通补丁绕过酒店/房型确认。

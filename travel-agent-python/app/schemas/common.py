@@ -13,7 +13,7 @@
 - pydantic；无内部依赖。
 """
 
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -35,5 +35,7 @@ class ApiResponse(WireModel, Generic[T]):
         return cls(code=200, message=message, data=data)
 
     @classmethod
-    def fail(cls, message: str, code: int = 500) -> "ApiResponse[None]":
+    def fail(cls, message: str, code: int = 500) -> "ApiResponse[Any]":
+        # Any 而非 None：失败响应可赋给任何 ApiResponse[X] 注解的返回位（data 恒为 None），
+        # 调用方 except 分支的 `return ApiResponse.fail(...)` 不必逐个 cast。
         return cls(code=code, message=message, data=None)

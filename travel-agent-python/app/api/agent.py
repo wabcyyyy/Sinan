@@ -25,6 +25,7 @@ import queue
 import threading
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
+from typing import cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
@@ -318,14 +319,21 @@ def generate(
         with observe_run(request_id=x_request_id) as trace:
             result = run_generate(req)
         payload = ApiResponse.ok(result)
-        return JSONResponse(
-            content=payload.model_dump(mode="json", by_alias=True),
-            headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+        # 为了带 X-Agent-Run-ID 头刻意直返 JSONResponse；wire 与 ApiResponse 完全一致
+        return cast(
+            ApiResponse[GenerateResponse],
+            JSONResponse(
+                content=payload.model_dump(mode="json", by_alias=True),
+                headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+            ),
         )
     except Exception as e:
         payload = _fail_payload(e, "generate")
         headers = {"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id} if trace is not None else None
-        return JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers)
+        return cast(
+            ApiResponse[GenerateResponse],
+            JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers),
+        )
 
 
 @router.post("/v1/adjust")
@@ -373,14 +381,20 @@ def generate_day(
         with observe_run(request_id=req.request_id or x_request_id, action_id=req.action_id) as trace:
             result = run_generate_day(req)
         payload = ApiResponse.ok(result)
-        return JSONResponse(
-            content=payload.model_dump(mode="json", by_alias=True),
-            headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+        return cast(
+            ApiResponse[DailyPlan],
+            JSONResponse(
+                content=payload.model_dump(mode="json", by_alias=True),
+                headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+            ),
         )
     except Exception as e:
         payload = _fail_payload(e, "generate-day")
         headers = {"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id} if trace is not None else None
-        return JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers)
+        return cast(
+            ApiResponse[DailyPlan],
+            JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers),
+        )
 
 
 @router.post("/v1/generate-stream")
@@ -432,14 +446,20 @@ def replan_local(
         with observe_run(request_id=req.request_id or x_request_id, action_id=req.action_id) as trace:
             result = run_local_replan(req)
         payload = ApiResponse.ok(result)
-        return JSONResponse(
-            content=payload.model_dump(mode="json", by_alias=True),
-            headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+        return cast(
+            ApiResponse[dict],
+            JSONResponse(
+                content=payload.model_dump(mode="json", by_alias=True),
+                headers={"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id},
+            ),
         )
     except Exception as exc:
         payload = _fail_payload(exc, "replan-local")
         headers = {"X-Agent-Run-ID": trace.run_id, "X-Request-ID": trace.request_id} if trace is not None else None
-        return JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers)
+        return cast(
+            ApiResponse[dict],
+            JSONResponse(content=payload.model_dump(mode="json", by_alias=True), headers=headers),
+        )
 
 
 @router.post("/v1/chat-turn")

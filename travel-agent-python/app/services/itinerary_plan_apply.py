@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypeGuard
 
 from sqlalchemy import select
 
@@ -167,8 +167,9 @@ def _apply_plan_item(
 
     entity.start_time = _parse_time(raw_item.get("start_time"))
     entity.end_time = _parse_time(raw_item.get("end_time"))
-    if _is_number(raw_item.get("duration_min")):
-        entity.duration_min = int(raw_item["duration_min"])
+    duration_min = raw_item.get("duration_min")
+    if _is_number(duration_min):
+        entity.duration_min = int(duration_min)
     entity.tag = _str_or(raw_item.get("tag"), entity.tag)
     entity.remark = _str_or(raw_item.get("remark"), entity.remark)
     # 草稿自带的证据字段优先；没带就沿用候选 POI 的权威来源，
@@ -201,6 +202,7 @@ def _apply_plan_item(
 def apply_hotel_option(user_id: int, itinerary_id: int, request: HotelOptionRequest | None) -> dict[str, Any]:
     request = request or HotelOptionRequest()
     _validate_hotel_request(request)
+    room_type = request.roomType or ""  # _validate_hotel_request 已拒空房型，此处必非空
     with session_scope() as session:
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
         message = itinerary_chat.require_pending_action(
@@ -271,8 +273,7 @@ def apply_hotel_option(user_id: int, itinerary_id: int, request: HotelOptionRequ
         for day_no in selected_day_nos:
             day = day_by_no[day_no]
             item = next((existing for existing in hotel_items if existing.day_id == day.id), None)
-            is_new = item is None
-            if is_new:
+            if item is None:
                 item = ItineraryItem(
                     itinerary_id=itinerary_id,
                     day_id=day.id,
@@ -286,7 +287,7 @@ def apply_hotel_option(user_id: int, itinerary_id: int, request: HotelOptionRequ
             item.poi_name = hotel_name
             item.address = _str_or(option.get("address"), None)
             item.cost = season_price.apply(room_base_price, stay_date)
-            item.remark = _hotel_price_remark(request.roomType, room_base_price, stay_date, room_description)
+            item.remark = _hotel_price_remark(room_type, room_base_price, stay_date, room_description)
 
         if set(selected_day_nos) >= existing_hotel_day_nos and request.tier and request.tier.strip():
             main.hotel_tier = request.tier
@@ -330,9 +331,12 @@ def _validate_plans(plans: list[dict[str, Any]]) -> None:
     valid_days = set(range(1, len(plans) + 1))
     seen_days: set[int] = set()
     for plan in plans:
-        if not isinstance(plan, dict) or not _is_number(plan.get("day_no")):
+        if not isinstance(plan, dict):
             raise ApiError(400, "行程草稿日期格式错误，未应用任何修改")
-        day_no = int(plan["day_no"])
+        day_no_raw = plan.get("day_no")
+        if not _is_number(day_no_raw):
+            raise ApiError(400, "行程草稿日期格式错误，未应用任何修改")
+        day_no = int(day_no_raw)
         if day_no not in valid_days or day_no in seen_days:
             raise ApiError(400, "行程草稿日期重复或越界，未应用任何修改")
         seen_days.add(day_no)
@@ -391,7 +395,7 @@ def _persist_day_metadata(day: ItineraryDay, plan: dict[str, Any]) -> None:
         day.metadata_json = None
 
 
-def _is_number(value: Any) -> bool:
+def _is_number(value: Any) -> TypeGuard[int | float]:
     """Java 的 `instanceof Number` 不收布尔与字符串数字，这里同口径。"""
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 

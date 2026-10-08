@@ -23,17 +23,17 @@ router = APIRouter(
 
 
 @router.post("/pdf/{itineraryId}")
-def create_pdf(itineraryId: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def create_pdf(itineraryId: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(export_service.create_pdf(user.id, itineraryId))
 
 
 @router.get("/tasks/{taskId}")
-def get_task(taskId: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> dict:
+def get_task(taskId: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(export_service.get_task(user.id, taskId))
 
 
 @router.get("/download/{taskId}")
-def download(taskId: int = Path(..., ge=1), user: AuthUser | None = Depends(enforce_business_auth)) -> FileResponse:
+def download(taskId: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> FileResponse:
     path = export_service.pdf_file(user.id, taskId)
     # filename 让 Starlette 自己发 `Content-Disposition: attachment`，不要再手写一遍
     return FileResponse(path, media_type="application/pdf", filename=f"itinerary_{taskId}.pdf")

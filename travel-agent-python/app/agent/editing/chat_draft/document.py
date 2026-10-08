@@ -168,7 +168,7 @@ def _extract_document_plans(data: dict, req: ChatTurnRequest) -> list[dict] | No
     if not isinstance(plans, list) or len(plans) != target_days:
         return None
     valid_days = {
-        int(plan.get("day_no")) for plan in plans if isinstance(plan, dict) and isinstance(plan.get("day_no"), int)
+        int(day_no) for plan in plans if isinstance(plan, dict) and isinstance(day_no := plan.get("day_no"), int)
     }
     if valid_days != set(range(1, target_days + 1)):
         return None
