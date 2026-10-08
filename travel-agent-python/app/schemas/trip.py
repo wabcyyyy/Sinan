@@ -19,8 +19,11 @@ from typing import Annotated, Literal, Self
 from pydantic import BeforeValidator, Field, model_validator
 
 from app.schemas.common import WireModel
-
-MAX_TRIP_DAYS = 7
+from app.schemas.trip_requirements import (
+    MAX_TRIP_DAYS,  # 常量真源在 trip_requirements（M1a），trip.py 引用并保持既有导入路径可用
+    IntakeState,
+    TripRequirements,
+)
 
 
 def _clip_text(limit: int):
@@ -120,6 +123,9 @@ class GenerateRequest(WireModel):
     # 可选出发地（城市名，L13 契约先行；L14 接线进 agent state）。**有 origin
     # 才查航班**——未填/未映射 IATA 时航段整段如实缺席，不冒充。
     origin_city: str | None = Field(default=None, max_length=64)
+    # 结构化需求（M1a 单一真源）：只记录现有参数未覆盖的语义（窗口/必去/排除/
+    # 节奏/交通/预算口径/住宿），与自然语言 requirements 原话并存，语义以本字段为准
+    requirements_struct: TripRequirements | None = None
 
 
 class TripItem(WireModel):
@@ -308,10 +314,16 @@ class ClarifyRequest(WireModel):
     # 上限对齐 ChatTurnRequest.message=2000（审计 §3.3.5）：message 原样拼进 clarify
     # prompt，无上限时配额内单次可塞数百 KB 文本；一句话意图收集用不到 2000 之外的空间。
     message: str = Field(min_length=1, max_length=2000)
+    # slots 是 state 的兼容投影（老前端继续随轮回传）；state 传入时以 state 为权威
     slots: dict = Field(default_factory=dict)
+    # 累计收集状态（M1a）：服务端权威合并 patch 后随响应返回完整规范化状态，
+    # 客户端不再重复做语义合并；未传时服务端从 slots 播种
+    state: IntakeState | None = None
 
 
 class ClarifyResponse(WireModel):
+    # state 是权威完整规范化状态；slots 为其兼容投影（老前端只读 slots 不破坏）
+    state: IntakeState
     slots: dict = Field(default_factory=dict)
     missing: list[str] = Field(default_factory=list)
     question: str | None = None
@@ -368,6 +380,8 @@ class GenerateDayRequest(WireModel):
     chosen_hotel: str | None = None
     needs_hotel: bool = True
     requirements: str | None = Field(default=None, max_length=4000)  # 客户额外要求（自然语言）
+    # 结构化需求（M1a）：与 GenerateRequest.requirements_struct 同义
+    requirements_struct: TripRequirements | None = None
     # 用户一句话旅行意图（M1 意图贯通）：上限与 requirements 对齐 4000
     # （Java 兜底 intent=requirements 时可达 4000）。
     intent: str | None = Field(default=None, max_length=4000)
@@ -391,6 +405,8 @@ class LocalReplanRequest(WireModel):
     # 实际已花费（C3.4 透传，与 budget 同币种）：由外部调用方投喂，服务端不读库；
     # 与 budget 同时提供时以剩余预算（budget - spent）作为重排的预算约束。
     spent: float | None = None
+    # 结构化需求（M1a）：重规划时随请求携带，约束受影响日的重排
+    requirements_struct: TripRequirements | None = None
     request_id: str | None = Field(default=None, max_length=128)
     action_id: str | None = Field(default=None, max_length=128)
 
@@ -414,6 +430,9 @@ class ChatTurnRequest(WireModel):
     plans: list[dict] = Field(default_factory=list, max_length=MAX_TRIP_DAYS)
     history: list[dict] = Field(default_factory=list, max_length=20)
     message: str = Field(min_length=1, max_length=2000)
+    # 结构化需求（M1a）：对话编辑上下文里的硬约束（必去/排除/窗口等），
+    # 编辑决策不得违反；由调用方从行程存档的需求快照带入
+    requirements_struct: TripRequirements | None = None
 
 
 class HotelRoomOption(WireModel):

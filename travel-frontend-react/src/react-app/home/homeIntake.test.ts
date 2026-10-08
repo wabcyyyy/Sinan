@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clarifyItinerary, generateItinerary, getItineraryDetail, ReactApiError, streamItineraryEvents, waitForItinerary } from '../../api/sinan'
 import type { ItineraryDetail } from '../../types/itinerary'
+import type { IntakeState } from '../../types/generated/contracts'
 import type { useHomePlanning } from './useHomePlanning'
 import { useIntakeChat } from './useIntakeChat'
 import type { IntakeChat } from './useIntakeChat'
@@ -255,9 +256,43 @@ describe('ChatIntake（对话壳静态冒烟）', () => {
  * 「重新说」须清对话、清生成态并清掉保留的 generationId（唯一清空点），停回 idle
  * 居中、新消息进会话才解锁回双栏；done 后「刷新」（卸载重挂）靠保留的 id 经
  * resume 恢复 ready+draft 呈现 TripBoard，不再落 confirm 可重复生成（F4）。 */
+/** M1a 起服务端 clarify 响应携带完整规范化累计状态；测试 fixture 用空态 + 基础槽位。 */
+function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'>> = {}): IntakeState {
+  return {
+    schemaVersion: 1,
+    city: null,
+    days: null,
+    persons: null,
+    budget: null,
+    startDate: null,
+    stayNights: null,
+    preferences: [],
+    hotelTier: null,
+    originCity: null,
+    requirements: {
+      schemaVersion: 1,
+      dayWindows: [],
+      requiredPlaces: [],
+      excludedPlaces: [],
+      excludedCategories: [],
+      pace: null,
+      transportPreference: null,
+      maxWalkMinutesPerLeg: null,
+      budgetPolicy: null,
+      lodging: null,
+      unresolvedRequests: [],
+    },
+    optionalAsked: [],
+    optionalPending: [],
+    negotiations: {},
+    ...base,
+  }
+}
+
 describe('HomeStudio「重新说」锁（mock api 交互）', () => {
   const clarifyReady = {
     slots: { city: '成都', days: 4, persons: 2 },
+    state: intakeState({ city: '成都', days: 4, persons: 2 }),
     missing: [] as string[],
     question: null,
     ready: true,
@@ -407,6 +442,7 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
   const SENT_TEXT = '国庆想去成都玩 4 天，两个人'
   const clarifyAskDays = {
     slots: { city: '成都' },
+    state: intakeState({ city: '成都' }),
     missing: ['days', 'persons'],
     question: '玩几天？',
     options: ['3 天'],

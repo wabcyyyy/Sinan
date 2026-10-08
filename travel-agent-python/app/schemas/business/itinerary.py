@@ -24,6 +24,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.schemas.common import WireModel
+from app.schemas.trip_requirements import TripRequirements
 
 
 class GenerateTripRequest(WireModel):
@@ -51,6 +52,9 @@ class GenerateTripRequest(WireModel):
     # requirements 上界 10000 字（API-2，_validate 判定；Text 列 64KB 字节防溢出）
     requirements: str | None = None
     intent: str | None = None
+    # 结构化需求（M1a 单一真源）：只记录现有参数未覆盖的语义；合法性由
+    # _validate 经 requirements_issues 确定性判定（收集阶段的超限/冲突走 clarify 协商）
+    requirementsStruct: TripRequirements | None = None
 
 
 class LiveQuotesBody(WireModel):

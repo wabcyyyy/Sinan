@@ -110,13 +110,22 @@ export interface GenerateInput {
   hotelTier?: string
   regionHint?: string
   requirements?: string
+  /** M1a：结构化需求（clarify 累积的权威状态原样随生成请求入壳） */
+  requirementsStruct?: Contracts.TripRequirements
 }
 
-export function clarifyItinerary(message: string, slots: Record<string, unknown>, signal?: AbortSignal) {
+/** M1a：state 是服务端权威累计状态（上一轮响应的 state 原样回传，null=首轮）；
+ * slots 仍随行供服务端做老客户端兼容投影。 */
+export function clarifyItinerary(
+  message: string,
+  slots: Record<string, unknown>,
+  state: Contracts.IntakeState | null,
+  signal?: AbortSignal,
+) {
   return apiRequest<Contracts.ClarifyResponse>('/itinerary/clarify', {
     method: 'POST',
     signal,
-    body: JSON.stringify({ message, slots }),
+    body: JSON.stringify({ message, slots, state }),
   })
 }
 

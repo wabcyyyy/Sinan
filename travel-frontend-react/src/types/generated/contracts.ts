@@ -4,6 +4,46 @@
 // 键名为后端 wire 键（camelCase / 显式别名），与 JSON 序列化结果逐键一致。
 
 // ===== agent_api =====
+export interface BudgetPolicy {
+  mode: "target" | "hard_cap" | null
+  includeIntercityTransport: boolean | null
+}
+
+export interface DayWindow {
+  dayNo: number
+  kind: "full" | "arrival" | "departure"
+  notBefore: string | null
+  finishBy: string | null
+  sourceTurnId: string | null
+}
+
+export interface LodgingRequirements {
+  rooms: number | null
+  lockedHotelIdentity: string | null
+  stayNightsExplicit: boolean
+}
+
+export interface RequiredPlace {
+  constraintId: string
+  name: string
+  dayNo: number | null
+  sourceTurnId: string | null
+}
+
+export interface TripRequirements {
+  schemaVersion: number
+  dayWindows: DayWindow[]
+  requiredPlaces: RequiredPlace[]
+  excludedPlaces: string[]
+  excludedCategories: string[]
+  pace: "normal" | "relaxed" | null
+  transportPreference: "walking" | "driving" | "mixed" | "unspecified" | null
+  maxWalkMinutesPerLeg: number | null
+  budgetPolicy: BudgetPolicy | null
+  lodging: LodgingRequirements | null
+  unresolvedRequests: string[]
+}
+
 export interface GenerateRequest {
   city: string
   days: number
@@ -16,6 +56,7 @@ export interface GenerateRequest {
   intent: string | null
   regionHint: string | null
   originCity: string | null
+  requirementsStruct: TripRequirements | null
 }
 
 export interface BackupRule {
@@ -160,6 +201,7 @@ export interface GenerateDayRequest {
   chosenHotel: string | null
   needsHotel: boolean
   requirements: string | null
+  requirementsStruct: TripRequirements | null
   intent: string | null
   regionHint: string | null
   feedback: string
@@ -196,12 +238,31 @@ export interface AdjustResponse {
   recommendations: PoiOption[]
 }
 
+export interface IntakeState {
+  schemaVersion: number
+  city: string | null
+  days: number | null
+  persons: number | null
+  budget: number | null
+  startDate: string | null
+  stayNights: number | null
+  preferences: string[]
+  hotelTier: string | null
+  originCity: string | null
+  requirements: TripRequirements
+  optionalAsked: string[]
+  optionalPending: string[]
+  negotiations: Record<string, boolean>
+}
+
 export interface ClarifyRequest {
   message: string
   slots: Record<string, unknown>
+  state: IntakeState | null
 }
 
 export interface ClarifyResponse {
+  state: IntakeState
   slots: Record<string, unknown>
   missing: string[]
   question: string | null
@@ -241,6 +302,7 @@ export interface LocalReplanRequest {
   plans: (Record<string, unknown>)[]
   budget: number | null
   spent: number | null
+  requirementsStruct: TripRequirements | null
   requestId: string | null
   actionId: string | null
 }
@@ -262,6 +324,7 @@ export interface ChatTurnRequest {
   plans: (Record<string, unknown>)[]
   history: (Record<string, unknown>)[]
   message: string
+  requirementsStruct: TripRequirements | null
 }
 
 export interface HotelOption {
@@ -447,6 +510,7 @@ export interface GenerateTripRequest {
   originCity: string | null
   requirements: string | null
   intent: string | null
+  requirementsStruct: TripRequirements | null
 }
 
 export interface ItemUpsertRequest {

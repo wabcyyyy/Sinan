@@ -14,12 +14,14 @@ BigDecimal → 带标度的 "2000.00"、LocalDate → ISO）都在 `_java_string
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from app.common.envelope import ApiError
 from app.db.models import ItineraryDay
+from app.schemas.trip_requirements import TripRequirements, canonical_requirements_payload
 from app.services import state_and_sessions
 
 logger = logging.getLogger(__name__)
@@ -61,12 +63,23 @@ def verify_action(day: ItineraryDay, action_id: str, fingerprint: str) -> None:
 def request_fingerprint(request: Any) -> str:
     """生成参数指纹：同参数重试/续跑指纹一致可幂等续写，参数变了则拒绝覆写旧天。
 
-    `request` 可以是 `GenerateRequest` 模型或等值 dict（恢复任务从库里重建时也是这个形状）。
+    `request` 可以是 `GenerateCommand`/`GenerateRequest` 模型或等值 dict
+    （恢复任务从库里重建时也是这个形状）。
 
     budget 标度归一（恢复保真）：首次生成侧是请求 JSON 反序列化的 Decimal
     （"2000"），恢复重建侧是 DECIMAL(12,2) 列回读的 Decimal（"2000.00"）——
     不归一的话带预算的行程一进恢复就被幂等门 409 拒掉。按列标度 quantize
     （ROUND_HALF_UP 对齐 MySQL 的入列舍入），两侧同过此函数，形状必然一致。
+
+    指纹口径（M1a 双版本）：
+    - v1（迁移前口径，9 段）：city/days/persons/stay_nights/budget/start_date/
+      end_date/hotel_tier/preferences。**旧行程恢复专用**：`legacy_fingerprint=True`
+      （rebuild 依据 requirements_json IS NULL 判定）时按 v1 计算，与存量指纹
+      逐字节一致——口径升级不能把存量行程的恢复/重生成打成 409；
+    - v2（新行程口径 = 完整输入身份）：v1 基础段 + intent + requirements 原文 +
+      origin_city + 规范化结构化需求（canonical JSON）。带 "v2|" 版本前缀进
+      hash，与 v1 值域天然不相交。改变到达窗口/必去指定日/出发地/有效意图
+      都会改变指纹；全默认需求与 None 在 canonical（exclude_defaults）下等价。
     """
 
     def field(*names: str) -> Any:
@@ -91,7 +104,25 @@ def request_fingerprint(request: Any) -> str:
         _java_string(field("hotel_tier", "hotelTier"), empty_is_null=True),
         ",".join(str(preference) for preference in preferences),
     )
-    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    if field("legacy_fingerprint"):
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    struct = field("requirements_struct", "requirementsStruct")
+    if isinstance(struct, dict):
+        struct = TripRequirements.model_validate(struct)
+    canonical = json.dumps(
+        canonical_requirements_payload(struct if isinstance(struct, TripRequirements) else None),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    v2_parts = (
+        *parts,
+        _java_string(field("intent"), empty_is_null=True),
+        _java_string(field("requirements"), empty_is_null=True),
+        _java_string(field("origin_city"), empty_is_null=True),
+        canonical,
+    )
+    return hashlib.sha256(("v2|" + "|".join(v2_parts)).encode("utf-8")).hexdigest()
 
 
 def _java_string(value: Any, *, empty_is_null: bool = False) -> str:

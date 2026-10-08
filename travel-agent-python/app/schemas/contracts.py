@@ -105,6 +105,7 @@ from app.schemas.trip import (
     LocalReplanRequest,
     PlanContextRequest,
 )
+from app.schemas.trip_requirements import IntakeState, TripRequirements
 from app.schemas.weather import WeatherDay, WeatherVO
 
 #: 契约组 → 该端面的全部线级模型（声明顺序即导出顺序；嵌套模型无需重复登记，
@@ -138,6 +139,10 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
         CityGuideRequest,
         CityGuideSuggestion,
         CityGuideResponse,
+        # M1a 需求单一真源：DayWindow/RequiredPlace/BudgetPolicy/LodgingRequirements
+        # 由 $defs 经 TripRequirements/IntakeState 递归带入，无需逐个登记
+        TripRequirements,
+        IntakeState,
     ),
     # 业务面核心端点（/api/auth/**、/api/itinerary/** 写路径，G-1.1 取舍范围）
     "business_api": (

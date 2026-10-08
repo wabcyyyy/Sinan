@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { clarifyItinerary, isOfflineError, isUnauthorized } from '../../api/sinan'
+import type { IntakeState as ContractIntakeState } from '../../types/generated/contracts'
 import {
   assistantReply,
   clearIntake,
@@ -69,13 +70,18 @@ export function useIntakeChat() {
   // 登录回来恢复后接着聊。
   const [needsLogin, setNeedsLogin] = useState(false)
   const controller = useRef<AbortController | null>(null)
+  // M1a：服务端权威累计状态随轮往返——上一轮响应的 state 原样回传，需求
+  // （必去/排除/节奏等 patch 结果）跨轮累积不丢；会话记录里同步持久化
+  const serverState = useRef<ContractIntakeState | null>(
+    (restored?.serverState as ContractIntakeState | undefined) ?? null,
+  )
 
   useEffect(() => () => controller.current?.abort(), [])
 
   useEffect(() => {
     const isFresh = messages.length === 1 && messages[0].id === GREETING.id && !firstMessage
     if (isFresh) clearIntake()
-    else saveIntake({ messages, slots, firstMessage })
+    else saveIntake({ messages, slots, firstMessage, serverState: serverState.current ?? undefined })
   }, [messages, slots, firstMessage])
 
   const send = useCallback(
@@ -118,7 +124,8 @@ export function useIntakeChat() {
       const activeSlots = { ...slots, ...clientPatches }
 
       try {
-        const res = await clarifyItinerary(trimmed, activeSlots, ask.signal)
+        const res = await clarifyItinerary(trimmed, activeSlots, serverState.current, ask.signal)
+        serverState.current = res.state
         const merged = mergeSlots(activeSlots, res.slots)
         setSlots(merged)
         setReady(slotsReady(merged))
@@ -180,6 +187,7 @@ export function useIntakeChat() {
   const reset = useCallback(() => {
     controller.current?.abort()
     controller.current = null
+    serverState.current = null
     clearIntake()
     clearPendingMessage()
     setMessages([GREETING])
@@ -198,9 +206,11 @@ export function useIntakeChat() {
     slots: IntakeSlots
     firstMessage: string
     generationId?: string | null
+    serverState?: ContractIntakeState
   }) => {
     controller.current?.abort()
     controller.current = null
+    serverState.current = record.serverState ?? null
     setMessages(record.messages)
     setSlots(record.slots)
     setFirstMessage(record.firstMessage)
@@ -210,7 +220,12 @@ export function useIntakeChat() {
     setError('')
     setNeedsLogin(false)
     setSending(false)
-    saveIntake({ messages: record.messages, slots: record.slots, firstMessage: record.firstMessage })
+    saveIntake({
+      messages: record.messages,
+      slots: record.slots,
+      firstMessage: record.firstMessage,
+      serverState: record.serverState,
+    })
     if (record.generationId) {
       try {
         sessionStorage.setItem('sinan-intake-generation', record.generationId)
@@ -220,7 +235,8 @@ export function useIntakeChat() {
     }
   }, [])
 
-  return { messages, slots, firstMessage, ready, sending, error, needsLogin, send, updateSlots, reset, restoreSession }
+  // serverState 为 ref 快照：只在「点开始」瞬间读取传给生成请求，不驱动渲染
+  return { messages, slots, firstMessage, ready, sending, error, needsLogin, send, updateSlots, reset, restoreSession, serverState: serverState.current }
 }
 
 export type IntakeChat = ReturnType<typeof useIntakeChat>

@@ -64,10 +64,21 @@ def get_supported_cities() -> dict:
 
 @router.post("/clarify")
 def post_clarify(body: dict[str, Any], user: AuthUser = Depends(enforce_business_auth)) -> dict:
-    """槽位澄清：纯解析，不落库（同 Java `ItineraryCityService.clarify`）。"""
+    """槽位澄清：纯解析，不落库（同 Java `ItineraryCityService.clarify`）。
+
+    M1a：body.state 为上一轮的权威累计状态，随轮回传实现多轮需求累积。
+    """
     quota_service.enforce_llm_budget(user.id)
     slots = body.get("slots")
-    return ok(itinerary_city.clarify(user.id, str(body.get("message") or ""), slots if isinstance(slots, dict) else {}))
+    state = body.get("state")
+    return ok(
+        itinerary_city.clarify(
+            user.id,
+            str(body.get("message") or ""),
+            slots if isinstance(slots, dict) else {},
+            state if isinstance(state, dict) else None,
+        )
+    )
 
 
 @router.post("/city-guide")

@@ -15,10 +15,12 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
 
-#: 全仓允许的 *State 类：图状态唯一定义 + db 层的 addon 表模型（非图状态，仅同名尾缀）。
+#: 全仓允许的 *State 类：图状态唯一定义 + db 层 addon 表模型 + clarify 收集状态
+#: （后两者非图状态，仅同名尾缀；IntakeState 是 M1a 的 wire schema）。
 EXPECTED_STATE_CLASSES = {
     ("agent/research/agent_state.py", "UnifiedAgentState"),
     ("db/models.py", "AddonState"),
+    ("schemas/trip_requirements.py", "IntakeState"),
 }
 
 #: 图状态定义不准带的 dict 兼容访问器（带回 = 节点属性访问的迁移白做）。

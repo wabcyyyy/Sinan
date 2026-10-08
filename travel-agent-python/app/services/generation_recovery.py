@@ -26,6 +26,7 @@ from app.common import cron
 from app.common.envelope import ApiError
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
+from app.schemas.trip_requirements import TripRequirements
 from app.services import day_persistence, generation_gate, itinerary_generation, itinerary_query, llm_gateway_service
 
 logger = logging.getLogger(__name__)
@@ -43,12 +44,19 @@ def rebuild_request(main: ItineraryMain) -> itinerary_generation.GenerateCommand
     恢复保真（P0-3）：origin_city / intent / requirements 一并读回——前两者
     直接重建命令，续跑的逐日生成与首次跑同一质量；缺了它们，续跑天会静默
     丢出发地（不查航班）与一句话意图（意图关键词研究全空）。
+
+    M1a：requirements_json 非空（新行程）时读回结构化需求，指纹走 v2 口径；
+    NULL（V13 前旧行程）按旧默认规则置 None 并标 legacy_fingerprint——不反推
+    用户没说过的约束，指纹按迁移前口径重算以匹配存量，恢复不被 409。
     """
     preferences = (
         []
         if not main.preferences or not main.preferences.strip()
         else [part for part in main.preferences.split(",") if part.strip()]
     )
+    requirements_struct: TripRequirements | None = None
+    if main.requirements_json:
+        requirements_struct = TripRequirements.model_validate(main.requirements_json)
     return itinerary_generation.GenerateCommand(
         city=main.city,
         days=main.days,
@@ -63,6 +71,8 @@ def rebuild_request(main: ItineraryMain) -> itinerary_generation.GenerateCommand
         requirements=main.requirements,
         intent=main.intent,
         origin_city=main.origin_city,
+        requirements_struct=requirements_struct,
+        legacy_fingerprint=main.requirements_json is None,
     )
 
 

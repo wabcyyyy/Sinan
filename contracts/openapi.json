@@ -1425,7 +1425,7 @@
           "itinerary"
         ],
         "summary": "Post Clarify",
-        "description": "槽位澄清：纯解析，不落库（同 Java `ItineraryCityService.clarify`）。",
+        "description": "槽位澄清：纯解析，不落库（同 Java `ItineraryCityService.clarify`）。\n\nM1a：body.state 为上一轮的权威累计状态，随轮回传实现多轮需求累积。",
         "operationId": "post_clarify_api_itinerary_clarify_post",
         "requestBody": {
           "content": {
@@ -6368,6 +6368,39 @@
         ],
         "title": "Body_upload_cover_api_itinerary__id__cover_upload_post"
       },
+      "BudgetPolicy": {
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "target",
+                  "hard_cap"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "includeIntercityTransport": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Includeintercitytransport"
+          }
+        },
+        "type": "object",
+        "title": "BudgetPolicy",
+        "description": "预算口径：金额本身仍取现有 budget 字段，不重复保存 total。"
+      },
       "ButlerNoteRequest": {
         "properties": {
           "city": {
@@ -6699,6 +6732,16 @@
             "maxLength": 2000,
             "minLength": 1,
             "title": "Message"
+          },
+          "requirementsStruct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6870,6 +6913,16 @@
           "slots": {
             "type": "object",
             "title": "Slots"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeState-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6880,6 +6933,9 @@
       },
       "ClarifyResponse": {
         "properties": {
+          "state": {
+            "$ref": "#/components/schemas/IntakeState-Output"
+          },
           "slots": {
             "type": "object",
             "title": "Slots"
@@ -6926,6 +6982,9 @@
           }
         },
         "type": "object",
+        "required": [
+          "state"
+        ],
         "title": "ClarifyResponse"
       },
       "ClientErrorReport": {
@@ -7152,6 +7211,68 @@
         ],
         "title": "DayOption",
         "description": "当日可选方案（M3-① 叙事层）：方案名 + 概述 + 取舍说明。\n\n每日 0-2 组，仅当天存在值得取舍的分叉（如「暴走版 vs 休闲版」）时输出；\n意图为空时模型可整体省略。items 为该方案对应的点位引用（开放结构，\nM3 仅承接不消费）。"
+      },
+      "DayWindow": {
+        "properties": {
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "full",
+              "arrival",
+              "departure"
+            ],
+            "title": "Kind",
+            "default": "full"
+          },
+          "notBefore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notbefore"
+          },
+          "finishBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishby"
+          },
+          "sourceTurnId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceturnid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dayNo"
+        ],
+        "title": "DayWindow",
+        "description": "单日时间窗口：kind 决定窗口语义（full=全天、arrival=到达、departure=离开）。"
       },
       "EditOpRequest": {
         "properties": {
@@ -7692,6 +7813,16 @@
             ],
             "title": "Requirements"
           },
+          "requirementsStruct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "intent": {
             "anyOf": [
               {
@@ -7866,6 +7997,16 @@
               }
             ],
             "title": "Origincity"
+          },
+          "requirementsStruct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8156,6 +8297,16 @@
               }
             ],
             "title": "Intent"
+          },
+          "requirementsStruct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8544,6 +8695,302 @@
           "withinBudget"
         ],
         "title": "HotelRoomOption"
+      },
+      "IntakeState-Input": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "persons": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persons"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "startDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startdate"
+          },
+          "stayNights": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staynights"
+          },
+          "preferences": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Preferences"
+          },
+          "hotelTier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoteltier"
+          },
+          "originCity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origincity"
+          },
+          "requirements": {
+            "$ref": "#/components/schemas/TripRequirements"
+          },
+          "optionalAsked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Optionalasked"
+          },
+          "optionalPending": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Optionalpending"
+          },
+          "negotiations": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Negotiations"
+          }
+        },
+        "type": "object",
+        "title": "IntakeState",
+        "description": "clarify 收集阶段的累计状态（生成前需求状态，非生成请求）。\n\n基础参数可空 = 未收集；days 刻意无上限——超限原值保留由出口协商处理，\n生成入口才要求完整、合法参数。negotiations 承载服务端一次性协商闸标记，\n随状态往返实现无状态服务的\"只拦一次\"。"
+      },
+      "IntakeState-Output": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "persons": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persons"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "startDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startdate"
+          },
+          "stayNights": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staynights"
+          },
+          "preferences": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Preferences"
+          },
+          "hotelTier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoteltier"
+          },
+          "originCity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origincity"
+          },
+          "requirements": {
+            "$ref": "#/components/schemas/TripRequirements"
+          },
+          "optionalAsked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Optionalasked"
+          },
+          "optionalPending": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Optionalpending"
+          },
+          "negotiations": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Negotiations"
+          }
+        },
+        "type": "object",
+        "title": "IntakeState",
+        "description": "clarify 收集阶段的累计状态（生成前需求状态，非生成请求）。\n\n基础参数可空 = 未收集；days 刻意无上限——超限原值保留由出口协商处理，\n生成入口才要求完整、合法参数。negotiations 承载服务端一次性协商闸标记，\n随状态往返实现无状态服务的\"只拦一次\"。"
       },
       "InvitationAcceptRequest": {
         "properties": {
@@ -9031,6 +9478,16 @@
             ],
             "title": "Spent"
           },
+          "requirementsStruct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "requestId": {
             "anyOf": [
               {
@@ -9063,6 +9520,43 @@
         ],
         "title": "LocalReplanRequest",
         "description": "只对受影响日期做重规划的显式输入契约。"
+      },
+      "LodgingRequirements": {
+        "properties": {
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "lockedHotelIdentity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lockedhotelidentity"
+          },
+          "stayNightsExplicit": {
+            "type": "boolean",
+            "title": "Staynightsexplicit",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "LodgingRequirements",
+        "description": "住宿要求：夜数仍取现有 stayNights，这里只记录显式性与锁定身份。"
       },
       "LoginBody": {
         "properties": {
@@ -9705,6 +10199,54 @@
         ],
         "title": "RegisterBody"
       },
+      "RequiredPlace": {
+        "properties": {
+          "constraintId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Constraintid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "sourceTurnId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceturnid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "constraintId",
+          "name"
+        ],
+        "title": "RequiredPlace",
+        "description": "必去地点约束：day_nonull=全程必去；指定 day_no 属于硬要求（该日必须出现）。"
+      },
       "ShareCreateBody": {
         "properties": {
           "expireDays": {
@@ -10146,6 +10688,129 @@
           "poiName"
         ],
         "title": "TripItem"
+      },
+      "TripRequirements": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "dayWindows": {
+            "items": {
+              "$ref": "#/components/schemas/DayWindow"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "title": "Daywindows"
+          },
+          "requiredPlaces": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredPlace"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Requiredplaces"
+          },
+          "excludedPlaces": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Excludedplaces"
+          },
+          "excludedCategories": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Excludedcategories"
+          },
+          "pace": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "relaxed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pace"
+          },
+          "transportPreference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "driving",
+                  "mixed",
+                  "unspecified"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transportpreference"
+          },
+          "maxWalkMinutesPerLeg": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 480.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxwalkminutesperleg"
+          },
+          "budgetPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lodging": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LodgingRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unresolvedRequests": {
+            "items": {
+              "type": "string",
+              "maxLength": 400,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Unresolvedrequests"
+          }
+        },
+        "type": "object",
+        "title": "TripRequirements",
+        "description": "现有请求参数之外的结构化需求；全默认 = 无额外约束（等价于旧行为）。"
       },
       "UpdateDayBody": {
         "properties": {

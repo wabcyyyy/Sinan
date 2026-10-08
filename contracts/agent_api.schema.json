@@ -1,6 +1,346 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "BudgetPolicy": {
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "target",
+                "hard_cap"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        },
+        "includeIntercityTransport": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Includeintercitytransport"
+        }
+      },
+      "title": "BudgetPolicy",
+      "type": "object",
+      "required": [
+        "mode",
+        "includeIntercityTransport"
+      ]
+    },
+    "DayWindow": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "full",
+          "enum": [
+            "full",
+            "arrival",
+            "departure"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "notBefore": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notbefore"
+        },
+        "finishBy": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finishby"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "dayNo",
+        "kind",
+        "notBefore",
+        "finishBy",
+        "sourceTurnId"
+      ],
+      "title": "DayWindow",
+      "type": "object"
+    },
+    "LodgingRequirements": {
+      "properties": {
+        "rooms": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "lockedHotelIdentity": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lockedhotelidentity"
+        },
+        "stayNightsExplicit": {
+          "default": false,
+          "title": "Staynightsexplicit",
+          "type": "boolean"
+        }
+      },
+      "title": "LodgingRequirements",
+      "type": "object",
+      "required": [
+        "rooms",
+        "lockedHotelIdentity",
+        "stayNightsExplicit"
+      ]
+    },
+    "RequiredPlace": {
+      "properties": {
+        "constraintId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "constraintId",
+        "name",
+        "dayNo",
+        "sourceTurnId"
+      ],
+      "title": "RequiredPlace",
+      "type": "object"
+    },
+    "TripRequirements": {
+      "properties": {
+        "schemaVersion": {
+          "default": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "dayWindows": {
+          "items": {
+            "$ref": "#/$defs/DayWindow"
+          },
+          "maxItems": 7,
+          "title": "Daywindows",
+          "type": "array"
+        },
+        "requiredPlaces": {
+          "items": {
+            "$ref": "#/$defs/RequiredPlace"
+          },
+          "maxItems": 20,
+          "title": "Requiredplaces",
+          "type": "array"
+        },
+        "excludedPlaces": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Excludedplaces",
+          "type": "array"
+        },
+        "excludedCategories": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Excludedcategories",
+          "type": "array"
+        },
+        "pace": {
+          "anyOf": [
+            {
+              "enum": [
+                "normal",
+                "relaxed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pace"
+        },
+        "transportPreference": {
+          "anyOf": [
+            {
+              "enum": [
+                "walking",
+                "driving",
+                "mixed",
+                "unspecified"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transportpreference"
+        },
+        "maxWalkMinutesPerLeg": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 480,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalkminutesperleg"
+        },
+        "budgetPolicy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BudgetPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lodging": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LodgingRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unresolvedRequests": {
+          "items": {
+            "maxLength": 400,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Unresolvedrequests",
+          "type": "array"
+        }
+      },
+      "title": "TripRequirements",
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "dayWindows",
+        "requiredPlaces",
+        "excludedPlaces",
+        "excludedCategories",
+        "pace",
+        "transportPreference",
+        "maxWalkMinutesPerLeg",
+        "budgetPolicy",
+        "lodging",
+        "unresolvedRequests"
+      ]
+    },
     "GenerateRequest": {
       "properties": {
         "city": {
@@ -117,6 +457,17 @@
           ],
           "default": null,
           "title": "Origincity"
+        },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -130,7 +481,8 @@
         "requirements",
         "intent",
         "regionHint",
-        "originCity"
+        "originCity",
+        "requirementsStruct"
       ],
       "title": "GenerateRequest",
       "type": "object"
@@ -1299,6 +1651,17 @@
           "default": null,
           "title": "Requirements"
         },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "intent": {
           "anyOf": [
             {
@@ -1376,6 +1739,7 @@
         "chosenHotel",
         "needsHotel",
         "requirements",
+        "requirementsStruct",
         "intent",
         "regionHint",
         "feedback",
@@ -1605,6 +1969,177 @@
       "title": "AdjustResponse",
       "type": "object"
     },
+    "IntakeState": {
+      "properties": {
+        "schemaVersion": {
+          "default": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "days": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days"
+        },
+        "persons": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Persons"
+        },
+        "budget": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget"
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "maxLength": 10,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "stayNights": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Staynights"
+        },
+        "preferences": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Preferences",
+          "type": "array"
+        },
+        "hotelTier": {
+          "anyOf": [
+            {
+              "maxLength": 16,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hoteltier"
+        },
+        "originCity": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origincity"
+        },
+        "requirements": {
+          "$ref": "#/$defs/TripRequirements"
+        },
+        "optionalAsked": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Optionalasked",
+          "type": "array"
+        },
+        "optionalPending": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Optionalpending",
+          "type": "array"
+        },
+        "negotiations": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Negotiations",
+          "type": "object"
+        }
+      },
+      "title": "IntakeState",
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "city",
+        "days",
+        "persons",
+        "budget",
+        "startDate",
+        "stayNights",
+        "preferences",
+        "hotelTier",
+        "originCity",
+        "requirements",
+        "optionalAsked",
+        "optionalPending",
+        "negotiations"
+      ]
+    },
     "ClarifyRequest": {
       "properties": {
         "message": {
@@ -1616,17 +2151,32 @@
         "slots": {
           "title": "Slots",
           "type": "object"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntakeState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "message",
-        "slots"
+        "slots",
+        "state"
       ],
       "title": "ClarifyRequest",
       "type": "object"
     },
     "ClarifyResponse": {
       "properties": {
+        "state": {
+          "$ref": "#/$defs/IntakeState"
+        },
         "slots": {
           "title": "Slots",
           "type": "object"
@@ -1673,9 +2223,8 @@
           "type": "boolean"
         }
       },
-      "title": "ClarifyResponse",
-      "type": "object",
       "required": [
+        "state",
         "slots",
         "missing",
         "question",
@@ -1683,7 +2232,9 @@
         "options",
         "blocked",
         "degraded"
-      ]
+      ],
+      "title": "ClarifyResponse",
+      "type": "object"
     },
     "EditOpRequest": {
       "properties": {
@@ -1896,6 +2447,17 @@
           "default": null,
           "title": "Spent"
         },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "requestId": {
           "anyOf": [
             {
@@ -1932,6 +2494,7 @@
         "plans",
         "budget",
         "spent",
+        "requirementsStruct",
         "requestId",
         "actionId"
       ],
@@ -2102,6 +2665,17 @@
           "minLength": 1,
           "title": "Message",
           "type": "string"
+        },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -2120,7 +2694,8 @@
         "hotelTier",
         "plans",
         "history",
-        "message"
+        "message",
+        "requirementsStruct"
       ],
       "title": "ChatTurnRequest",
       "type": "object"

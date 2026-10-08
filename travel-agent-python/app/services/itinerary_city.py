@@ -31,6 +31,7 @@ from app.db.models import CityGeo
 from app.db.session import session_scope
 from app.schemas.agent_ops import CityGuideRequest, PoiNearbyItem, PoiNearbyRequest
 from app.schemas.trip import ClarifyRequest
+from app.schemas.trip_requirements import IntakeState
 from app.services import llm_gateway_service
 
 logger = logging.getLogger(__name__)
@@ -66,16 +67,25 @@ def guard_agent_call(unavailable_message: str, invoke: Callable[[], T]) -> T:
         raise ApiError(502, unavailable_message) from exc
 
 
-def clarify(user_id: int, message: str, slots: dict[str, Any]) -> dict[str, Any]:
+def clarify(user_id: int, message: str, slots: dict[str, Any], state: dict[str, Any] | None = None) -> dict[str, Any]:
     """槽位澄清：抽取行程参数并返回缺失字段与追问（纯解析，不落库）。
+
+    M1a：state（上一轮响应的权威累计状态）传入则以它为合并基础；响应携带完整
+    规范化 state，客户端不再重复做语义合并。slots 仍接受并作为老客户端兼容投影。
 
     user_id（BYOK 路由）：clarify 烧 LLM，路由上下文随调用进入（调用方为请求线程）。
     """
+
+    def build_request() -> ClarifyRequest:
+        # 构造放 guard 内（既有纪律）：message 长度/state 形状的 ValidationError
+        # 落进网关同款 502 文案，而不是裸穿成未处理异常的 500
+        parsed_state = IntakeState.model_validate(state) if isinstance(state, dict) else None
+        return ClarifyRequest(message=message, slots=slots or {}, state=parsed_state)
+
     with llm_gateway_service.route_scope(user_id):
-        response = guard_agent_call(
-            "意图解析服务暂不可用", lambda: run_clarify(ClarifyRequest(message=message, slots=slots or {}))
-        )
+        response = guard_agent_call("意图解析服务暂不可用", lambda: run_clarify(build_request()))
     return {
+        "state": response.state.model_dump(mode="json", by_alias=True),
         "slots": response.slots,
         "missing": response.missing,
         "question": response.question,

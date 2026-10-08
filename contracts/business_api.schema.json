@@ -116,6 +116,346 @@
       "title": "LoginData",
       "type": "object"
     },
+    "BudgetPolicy": {
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "target",
+                "hard_cap"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        },
+        "includeIntercityTransport": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Includeintercitytransport"
+        }
+      },
+      "title": "BudgetPolicy",
+      "type": "object",
+      "required": [
+        "mode",
+        "includeIntercityTransport"
+      ]
+    },
+    "DayWindow": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "kind": {
+          "default": "full",
+          "enum": [
+            "full",
+            "arrival",
+            "departure"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "notBefore": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notbefore"
+        },
+        "finishBy": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finishby"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "dayNo",
+        "kind",
+        "notBefore",
+        "finishBy",
+        "sourceTurnId"
+      ],
+      "title": "DayWindow",
+      "type": "object"
+    },
+    "LodgingRequirements": {
+      "properties": {
+        "rooms": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "lockedHotelIdentity": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lockedhotelidentity"
+        },
+        "stayNightsExplicit": {
+          "default": false,
+          "title": "Staynightsexplicit",
+          "type": "boolean"
+        }
+      },
+      "title": "LodgingRequirements",
+      "type": "object",
+      "required": [
+        "rooms",
+        "lockedHotelIdentity",
+        "stayNightsExplicit"
+      ]
+    },
+    "RequiredPlace": {
+      "properties": {
+        "constraintId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "constraintId",
+        "name",
+        "dayNo",
+        "sourceTurnId"
+      ],
+      "title": "RequiredPlace",
+      "type": "object"
+    },
+    "TripRequirements": {
+      "properties": {
+        "schemaVersion": {
+          "default": 1,
+          "title": "Schemaversion",
+          "type": "integer"
+        },
+        "dayWindows": {
+          "items": {
+            "$ref": "#/$defs/DayWindow"
+          },
+          "maxItems": 7,
+          "title": "Daywindows",
+          "type": "array"
+        },
+        "requiredPlaces": {
+          "items": {
+            "$ref": "#/$defs/RequiredPlace"
+          },
+          "maxItems": 20,
+          "title": "Requiredplaces",
+          "type": "array"
+        },
+        "excludedPlaces": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Excludedplaces",
+          "type": "array"
+        },
+        "excludedCategories": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Excludedcategories",
+          "type": "array"
+        },
+        "pace": {
+          "anyOf": [
+            {
+              "enum": [
+                "normal",
+                "relaxed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pace"
+        },
+        "transportPreference": {
+          "anyOf": [
+            {
+              "enum": [
+                "walking",
+                "driving",
+                "mixed",
+                "unspecified"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transportpreference"
+        },
+        "maxWalkMinutesPerLeg": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 480,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxwalkminutesperleg"
+        },
+        "budgetPolicy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BudgetPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lodging": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LodgingRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unresolvedRequests": {
+          "items": {
+            "maxLength": 400,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Unresolvedrequests",
+          "type": "array"
+        }
+      },
+      "title": "TripRequirements",
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "dayWindows",
+        "requiredPlaces",
+        "excludedPlaces",
+        "excludedCategories",
+        "pace",
+        "transportPreference",
+        "maxWalkMinutesPerLeg",
+        "budgetPolicy",
+        "lodging",
+        "unresolvedRequests"
+      ]
+    },
     "GenerateTripRequest": {
       "properties": {
         "city": {
@@ -281,6 +621,17 @@
           ],
           "default": null,
           "title": "Intent"
+        },
+        "requirementsStruct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TripRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "title": "GenerateTripRequest",
@@ -298,7 +649,8 @@
         "regionHint",
         "originCity",
         "requirements",
-        "intent"
+        "intent",
+        "requirementsStruct"
       ]
     },
     "ItemUpsertRequest": {

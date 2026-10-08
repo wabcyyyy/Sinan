@@ -40,6 +40,7 @@ from app.common.envelope import install_exception_handlers
 from app.db import session as db_session
 from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain, SysUser
 from app.schemas.trip import DailyPlan, GenerateRequest, GenerateResponse, TripItem
+from app.schemas.trip_requirements import TripRequirements
 from app.services import (
     generation_gate,
     generation_recovery,
@@ -395,6 +396,67 @@ def test_recovery_rebuilds_command_without_losing_user_params(client, monkeypatc
     quotes = _rows(trip_id)[0].flight_quotes
     assert quotes is not None and _first_provider(quotes) == "observed-test", (
         "recover_one 全程不写报价列：上一轮观测价保持原样"
+    )
+
+
+def test_recovery_rebuilds_structured_requirements(client, monkeypatch) -> None:
+    """M1a 验收：requirementsStruct 建壳随 V13 落库，rebuild 读回同一结构且与存量指纹一致。"""
+    _stub_orchestration(monkeypatch)
+    monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: None)
+    struct = {
+        "schemaVersion": 1,
+        "dayWindows": [{"dayNo": 1, "kind": "arrival", "notBefore": "14:00", "finishBy": "20:00"}],
+        "requiredPlaces": [{"constraintId": "place-1", "name": "灵隐寺", "dayNo": 2}],
+        "excludedCategories": ["museum"],
+        "excludedPlaces": ["宋城"],
+        "pace": "relaxed",
+        "transportPreference": "mixed",
+        "maxWalkMinutesPerLeg": 20,
+        "budgetPolicy": {"mode": "hard_cap", "includeIntercityTransport": False},
+        "lodging": {"rooms": 2, "stayNightsExplicit": True},
+    }
+    detail = client.post(
+        "/api/itinerary/generate",
+        json={
+            "city": CITY,
+            "days": 2,
+            "persons": 2,
+            "stayNights": 1,
+            "requirementsStruct": struct,
+        },
+    ).json()["data"]
+    trip_id = detail["id"]
+    itinerary_generation.reset_active_planning_for_tests()
+
+    main, _days = _rows(trip_id)
+    assert main.requirements_json is not None, "新行程建壳一律写需求快照（这是新旧指纹口径的判定信号）"
+    command = generation_recovery.rebuild_request(main)
+    assert command.legacy_fingerprint is False
+    assert command.requirements_struct == TripRequirements.model_validate(struct), (
+        "恢复读回的结构化需求与提交的逐字段一致（恢复不丢失）"
+    )
+    # 与建壳提交时（submit_planning 对同一 command 算的）指纹一致：恢复/重生成不会被 409
+    original = itinerary_generation.GenerateCommand(
+        city=CITY,
+        days=2,
+        persons=2,
+        stay_nights=1,
+        requirements_struct=TripRequirements.model_validate(struct),
+    )
+    assert generation_gate.request_fingerprint(command) == generation_gate.request_fingerprint(original)
+
+    # 旧行程（requirements_json NULL，V13 前创建）按旧口径恢复：不反推约束、指纹走 v1
+    with db_session.session_scope() as session:
+        row = session.get(ItineraryMain, trip_id)
+        assert row is not None
+        row.requirements_json = None
+    legacy_main, _legacy_days = _rows(trip_id)
+    legacy_command = generation_recovery.rebuild_request(legacy_main)
+    assert legacy_command.legacy_fingerprint is True and legacy_command.requirements_struct is None
+    # 同一输入去掉结构化需求后按 v1 口径重算，与 legacy 重算逐字节一致（口径切换不产生伪 409）
+    plain = itinerary_generation.GenerateCommand(city=CITY, days=2, persons=2, stay_nights=1, legacy_fingerprint=True)
+    assert generation_gate.request_fingerprint(legacy_command) == generation_gate.request_fingerprint(plain), (
+        "旧行程按 v1 口径重算指纹必须与旧口径逐字节一致，恢复不被 409"
     )
 
 

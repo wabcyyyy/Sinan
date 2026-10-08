@@ -63,7 +63,7 @@ export function TripPanel({ planning, chat, onStart }: {
         busy={chat.sending || planning.busy}
         onSlots={chat.updateSlots}
         onReset={chat.reset}
-        onStart={() => onStart(toGenerateInput(chat.slots, chat.firstMessage))}
+        onStart={() => onStart(toGenerateInput(chat.slots, chat.firstMessage, chat.serverState?.requirements))}
       />
     )}
     {/* done 态（ready 且 draft 可用）上预览板；ready 但 draft 异常缺失的退化情形

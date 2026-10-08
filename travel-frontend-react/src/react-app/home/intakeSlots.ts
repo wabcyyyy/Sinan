@@ -1,10 +1,13 @@
 /** 对话式创建的槽位模型与派生逻辑（纯函数，零依赖可单测）。
  *
- * 创建会话是短生命周期客户端状态：槽位由前端持有（sessionStorage），服务端
- * /clarify 纯解析不落库。键名与后端抽取口径一致（snake_case）。刷新可续，
- * 关闭标签页即弃——不做无壳草稿（itinerary_chat_message 外键指向 itinerary）。
+ * 创建会话是短生命周期客户端状态：对话记录与槽位投影由前端持有（sessionStorage），
+ * 服务端 /clarify 仍不落库；M1a 起需求的权威累计状态（serverState，契约 IntakeState）
+ * 由服务端每轮返回、前端原样回传，语义合并不再由客户端重复做。键名与后端抽取
+ * 口径一致（snake_case）。刷新可续，关闭标签页即弃——不做无壳草稿
+ * （itinerary_chat_message 外键指向 itinerary）。
  */
 import type { GenerateInput } from '../../api/sinan'
+import type { IntakeState as ContractIntakeState, TripRequirements } from '../../types/generated/contracts'
 import { inspirationTemplates } from '../data'
 
 export const INTAKE_STORAGE_KEY = 'sinan-intake-v1'
@@ -35,6 +38,8 @@ export interface IntakeState {
   messages: IntakeMessage[]
   slots: IntakeSlots
   firstMessage: string
+  /** M1a：服务端权威累计状态（契约 IntakeState 原样透传存储）；刷新续会话不丢需求 */
+  serverState?: ContractIntakeState
 }
 
 export const GREETING: IntakeMessage = {
@@ -153,8 +158,13 @@ function toInt(value: unknown): number | null {
 
 /** 槽位 → 生成请求（调用前已过 slotsReady 门，此处数值兜底）。
  * stayNights=天数-1、endDate 随天数推导，与旧表单口径一致；
- * intent 带首句原话——建壳随 V10 落库，恢复续跑时读得回。 */
-export function toGenerateInput(slots: IntakeSlots, firstMessage: string): GenerateInput {
+ * intent 带首句原话——建壳随 V10 落库，恢复续跑时读得回；
+ * requirementsStruct 带 clarify 累积的结构化需求——建壳随 V13 落库（M1a）。 */
+export function toGenerateInput(
+  slots: IntakeSlots,
+  firstMessage: string,
+  serverRequirements?: TripRequirements | null,
+): GenerateInput {
   const days = Math.min(Math.max(Math.trunc(slots.days || 0), 1), 7)
   const start = slots.start_date
   return {
@@ -169,6 +179,7 @@ export function toGenerateInput(slots: IntakeSlots, firstMessage: string): Gener
     intent: firstMessage.trim().slice(0, 800) || undefined,
     preferences: (slots.preferences || []).filter((item) => item.trim() !== ''),
     hotelTier: slots.hotel_tier || undefined,
+    requirementsStruct: serverRequirements ?? undefined,
   }
 }
 
@@ -327,6 +338,10 @@ export function loadIntake(): IntakeState | null {
       })),
       slots: mergeSlots({}, parsed.slots),
       firstMessage: typeof parsed.firstMessage === 'string' ? parsed.firstMessage : '',
+      serverState:
+        parsed.serverState && typeof parsed.serverState === 'object'
+          ? (parsed.serverState as ContractIntakeState)
+          : undefined,
     }
   } catch {
     return null

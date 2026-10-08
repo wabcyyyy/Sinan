@@ -330,14 +330,23 @@ def test_missing_itinerary_is_404_before_calling_the_model(client: TestClient, m
 
 def test_clarify_shape_and_empty_message_rejection(client: TestClient, monkeypatch) -> None:
     from app.schemas.trip import ClarifyResponse
+    from app.schemas.trip_requirements import IntakeState
 
     monkeypatch.setattr(
         itinerary_city,
         "run_clarify",
-        lambda req: ClarifyResponse(slots={"city": "杭州"}, missing=["days"], question="去玩几天？", ready=True),
+        lambda req: ClarifyResponse(
+            state=IntakeState(city="杭州"),
+            slots={"city": "杭州"},
+            missing=["days"],
+            question="去玩几天？",
+            ready=True,
+        ),
     )
     data = client.post("/api/itinerary/clarify", json={"message": "想去杭州", "slots": {}}).json()["data"]
     assert data == {
+        # M1a 起响应携带完整规范化累计状态（权威），slots 为兼容投影
+        "state": IntakeState(city="杭州").model_dump(mode="json", by_alias=True),
         "slots": {"city": "杭州"},
         "missing": ["days"],
         "question": "去玩几天？",

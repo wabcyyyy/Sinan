@@ -31,7 +31,7 @@ def geocoder(monkeypatch):
 
 def test_unrelated_first_city_is_rejected_and_user_can_correct(geocoder, monkeypatch):
     assert city_center.city_center("亚特兰蒂斯") is None
-    monkeypatch.setattr(clarify, "_ask", lambda req: "{}")
+    monkeypatch.setattr(clarify, "_ask", lambda req, slots, state: "{}")
     result = clarify.run_clarify(ClarifyRequest(message="开始", slots={"city": "亚特兰蒂斯", "days": 3, "persons": 2}))
     assert result.blocked and not result.ready and result.missing == ["city"]
     assert result.question is not None

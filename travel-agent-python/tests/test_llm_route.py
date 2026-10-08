@@ -20,6 +20,7 @@ from app.common.envelope import FAIL_TRIP_NOTE
 from app.common.llm_route import LLMRoute, current_route, use_route
 from app.db import session as db_session
 from app.db.models import Base, ItineraryDay, ItineraryMain
+from app.schemas.trip_requirements import IntakeState
 from app.services import (
     generation_recovery,
     itinerary_city,
@@ -138,8 +139,16 @@ def test_resolve_route_fail_open_on_db_error(monkeypatch, caplog) -> None:
 
 
 def _fake_clarify_response() -> SimpleNamespace:
+    # M1a：clarify 响应恒带权威 state（服务端序列化走 state.model_dump）
     return SimpleNamespace(
-        slots={}, missing=["days"], question="几天？", ready=False, options=[], blocked=False, degraded=False
+        state=IntakeState(),
+        slots={},
+        missing=["days"],
+        question="几天？",
+        ready=False,
+        options=[],
+        blocked=False,
+        degraded=False,
     )
 
 

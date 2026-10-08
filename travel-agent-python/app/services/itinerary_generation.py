@@ -50,6 +50,11 @@ from app.db.session import session_scope
 from app.schemas.business.itinerary import GenerateTripRequest
 from app.schemas.stream_events import StreamEvent
 from app.schemas.trip import MAX_TRIP_DAYS, DailyPlan, GenerateDayRequest
+from app.schemas.trip_requirements import (
+    TripRequirements,
+    canonical_requirements_payload,
+    requirements_issues,
+)
 from app.services import (
     budget_engine,
     day_persistence,
@@ -134,6 +139,13 @@ class GenerateCommand:
     intent: str | None = None
     # L14：可选出发地；有它才查航班（未映射 IATA 时航段如实缺席）
     origin_city: str | None = None
+    # M1a：结构化需求单一真源（与自然语言 requirements 原话并存，语义以本字段为准）。
+    # None = 请求未携带；建壳时 canonical 序列化进 requirements_json（全默认写 '{}'）
+    requirements_struct: TripRequirements | None = None
+    # 指纹口径标记（不进指纹哈希输入）：恢复重建旧行程（requirements_json IS NULL）
+    # 时由 rebuild_request 置 True，request_fingerprint 按迁移前 v1 口径计算，
+    # 与存量指纹逐字节一致——口径升级不得把存量恢复/重生成打成 409。新行程恒 False。
+    legacy_fingerprint: bool = False
 
     def resolved_intent(self) -> str:
         """意图兜底：未填 intent 时用 requirements（M1 契约，与 Java `resolveIntent` 一致）。"""
@@ -841,6 +853,9 @@ def generate(user_id: int, body: GenerateTripRequest, idempotency_key: str | Non
             # V10：用户原话参数随壳落库——僵尸续跑 rebuild_request 读回（恢复保真 P0-3）
             intent=command.intent,
             requirements=command.requirements,
+            # V13（M1a）：结构化需求快照随壳落库；新行程一律写（全默认也写 '{}'），
+            # NULL 与旧行程的判定信号——rebuild 据此选择 v1/v2 指纹口径
+            requirements_json=canonical_requirements_payload(command.requirements_struct),
             # 出发地建壳即写：submit 与 plan 开跑之间崩掉也留得住用户输入的事实
             origin_city=command.origin_city,
             status=1,
@@ -935,6 +950,12 @@ def _validate(body: GenerateTripRequest) -> GenerateCommand:
     stay_nights = body.stayNights if body.stayNights is not None else max(body.days - 1, 0)
     if stay_nights < 0 or stay_nights > body.days:
         raise ApiError(400, "住宿晚数必须在 0 到行程天数之间")
+    # M1a：结构化需求确定性校验——生成入口必须拿到完整、合法参数（收集阶段的
+    # 超限/冲突在 clarify 协商，不走这里）；问题逐条中文提示，与 Java 文案口径并存
+    if body.requirementsStruct is not None:
+        issues = requirements_issues(body.requirementsStruct, days=body.days)
+        if issues:
+            raise ApiError(400, "；".join(issues))
 
     return GenerateCommand(
         city=city,
@@ -952,4 +973,5 @@ def _validate(body: GenerateTripRequest) -> GenerateCommand:
         # L14 契约字段（originCity）此前在这里被丢弃：主路径永远查不到报价，
         # save_origin_city 也永远写不进主表，rebuild 更无从读回（恢复保真 P0-3）。
         origin_city=(body.originCity or "").strip() or None,
+        requirements_struct=body.requirementsStruct,
     )
