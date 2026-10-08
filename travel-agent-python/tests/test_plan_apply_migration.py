@@ -556,3 +556,241 @@ def test_hotel_option_requires_positive_price(client: TestClient) -> None:
         },
     ).json()
     assert body["code"] == 400 and body["message"] == "所选房型暂无有效参考价"
+
+
+# ---------- M4（spec §9.2）：缩扩天复活 / planning revision CAS ----------
+
+
+def _plan_rows_from_current(trip_id: int, *, day_nos: list[int]) -> list[dict]:
+    """取当前行程的指定天 plan 行（形状与 current_plans 一致），供草稿组装。"""
+    plans = jsonable_encoder(itinerary_chat.current_plans(trip_id))
+    return [plan for plan in plans if plan.get("day_no") in day_nos]
+
+
+def test_apply_survives_shrink_then_reexpand_on_same_day_row(client):
+    """2→1→2：软删行占 uk_itinerary_day_no 键位——扩天必须复活原行而非新 INSERT。
+
+    断言：无唯一键错误；day2 行 id 不变（原行复活）；恢复日不复活旧条目/旧生成
+    动作（generation_status=PENDING、action/fingerprint 清空）；默认 N-1 夜重算；
+    有 PENDING 天时 main 不冒充 COMPLETED。
+    """
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        main.gen_state = "COMPLETED"
+        day2 = (
+            session.execute(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id, ItineraryDay.day_no == 2))
+            .scalars()
+            .one()
+        )
+        day2.generation_status = "SUCCEEDED"
+        day2.generation_action_id = "day-1-2"
+        day2.generation_fingerprint = "fp-old"
+    original_day2_id = (
+        session.execute(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id, ItineraryDay.day_no == 2))
+        .scalars()
+        .one()
+        .id
+    )
+
+    # 先捕获两天 plan 行（缩天后 current_plans 只剩 day1，扩天草稿要用原始两天形状）；
+    # day2 草稿只带旧酒店 id——验证"身份放行 + 不复活原行（按新条目落地）"
+    plans_two = _plan_rows_from_current(trip_id, day_nos=[1, 2])
+    old_hotel_id = _item_ids(trip_id)["杭州老旅馆"]
+    for plan in plans_two:
+        if plan.get("day_no") == 2:
+            plan["items"] = [it for it in plan.get("items") or [] if it.get("poi_name") == "杭州老旅馆"]
+    # 2→1：收缩到只有 day1
+    message_id, revision = _draft(trip_id, _plan_rows_from_current(trip_id, day_nos=[1]))
+    assert (
+        client.post(
+            f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
+        ).status_code
+        == 200
+    )
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        assert main.days == 1 and main.stay_nights == 0, "默认语义：1 天 = 0 夜"
+
+    # 1→2：扩回两天——软删的 day2 原行复活
+    message_id2, revision2 = _draft(trip_id, plans_two)
+    response = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id2, "baseRevision": revision2}
+    )
+    assert response.status_code == 200, response.text
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        assert main.days == 2 and main.end_date == date(2026, 4, 21)
+        assert main.stay_nights == 1, "默认语义：2 天 = 1 夜（可重算）"
+        rows = (
+            session.execute(
+                select(ItineraryDay)
+                .execution_options(include_deleted=True)
+                .where(ItineraryDay.itinerary_id == trip_id, ItineraryDay.day_no == 2)
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 1, "没有唯一键冲突的重复行：复活在原 (itinerary_id, day_no) 上"
+        revived = rows[0]
+        assert revived.id == original_day2_id, "day2 行是原行复活，不是新 INSERT"
+        assert revived.deleted == 0
+        assert revived.generation_status == "PENDING", "恢复日不复活旧生成结果"
+        assert revived.generation_action_id is None and revived.generation_fingerprint is None, "恢复日不复活旧生成动作"
+        revived_day_items = (
+            session.execute(select(ItineraryItem).where(ItineraryItem.day_id == revived.id, ItineraryItem.deleted == 0))
+            .scalars()
+            .all()
+        )
+        assert [item.poi_name for item in revived_day_items] == ["杭州老旅馆"], "草稿明确带的条目正常落地"
+        assert all(item.id != old_hotel_id for item in revived_day_items), "旧条目原行不复活：按新条目落地"
+        old_hotel_row = session.execute(
+            select(ItineraryItem).execution_options(include_deleted=True).where(ItineraryItem.id == old_hotel_id)
+        ).scalar_one()
+        assert old_hotel_row.deleted == 1, "旧软删行保持删除"
+        assert main.gen_state == "PARTIAL", "有 PENDING 天时不得保持 COMPLETED"
+
+
+def test_apply_cas_stale_revision_conflicts_and_increments_on_success(client):
+    """两并发应用仅一个成功：A 与并发写者同读 rev N；写者先提交（N+1），A 的 CAS 409 整单不写。"""
+    from app.services import itinerary_version
+
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        base_revision_at_seed = main.planning_revision
+    plans_a = _plan_rows_from_current(trip_id, day_nos=[1, 2])
+    revision_hash = itinerary_chat.plan_revision(itinerary_chat.current_plans(trip_id))
+    rows = [
+        {**plan, "_baseRevision": revision_hash, "_basePlanningRevision": base_revision_at_seed} for plan in plans_a
+    ]
+    with db_session.session_scope() as session:
+        session.add(
+            ItineraryChatMessage(
+                itinerary_id=trip_id,
+                user_id=1,
+                role="ai",
+                content="建议A",
+                changed=1,
+                plans_json=json.dumps(rows, ensure_ascii=False),
+            )
+        )
+        session.flush()
+        message_a = (
+            session.execute(select(ItineraryChatMessage).order_by(ItineraryChatMessage.id.desc())).scalars().first()
+        )
+    assert message_a is not None
+
+    # 并发写者赢下竞争：修订号先推进（模拟另一个 apply/编辑已提交）
+    with db_session.session_scope() as session:
+        itinerary_version.bump_planning_revision(session, trip_id)
+
+    versions_before = _operations(trip_id)
+    response = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans",
+        json={"actionMessageId": message_a.id, "baseRevision": revision_hash},
+    )
+    assert response.status_code == 409, response.text
+    assert "过期" in response.json()["message"]
+    assert _operations(trip_id) == versions_before, "CAS 失败整事务回滚：无版本快照残留"
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        assert main.planning_revision == base_revision_at_seed + 1, "失败的 apply 不推进修订号"
+        message_row = session.get(ItineraryChatMessage, message_a.id)
+        assert message_row is not None and message_row.changed == 1, "草稿未被消费（整单回滚）"
+
+    # 对照：基准匹配（草稿挂到当前修订）→ 成功并推进
+    fresh_rows = [
+        {**plan, "_baseRevision": revision_hash, "_basePlanningRevision": base_revision_at_seed + 1} for plan in plans_a
+    ]
+    with db_session.session_scope() as session:
+        session.add(
+            ItineraryChatMessage(
+                itinerary_id=trip_id,
+                user_id=1,
+                role="ai",
+                content="建议A2",
+                changed=1,
+                plans_json=json.dumps(fresh_rows, ensure_ascii=False),
+            )
+        )
+        session.flush()
+        message_a2 = (
+            session.execute(select(ItineraryChatMessage).order_by(ItineraryChatMessage.id.desc())).scalars().first()
+        )
+    assert message_a2 is not None
+    assert (
+        client.post(
+            f"/api/itinerary/{trip_id}/apply-plans",
+            json={"actionMessageId": message_a2.id, "baseRevision": revision_hash},
+        ).status_code
+        == 200
+    )
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        assert main.planning_revision == base_revision_at_seed + 2
+
+
+def test_legacy_draft_without_planning_revision_still_hash_guarded(client):
+    """存量草稿（无 _basePlanningRevision）退化 hash 比对：错 hash 仍 409，对 hash 放行并推进。"""
+    trip_id = _trip_id(client)
+    plans = jsonable_encoder(itinerary_chat.current_plans(trip_id))
+    rows = [{**plan, "_baseRevision": "stale-hash"} for plan in plans]
+    with db_session.session_scope() as session:
+        session.add(
+            ItineraryChatMessage(
+                itinerary_id=trip_id,
+                user_id=1,
+                role="ai",
+                content="旧草稿",
+                changed=1,
+                plans_json=json.dumps(rows, ensure_ascii=False),
+            )
+        )
+        session.flush()
+        legacy = (
+            session.execute(select(ItineraryChatMessage).order_by(ItineraryChatMessage.id.desc())).scalars().first()
+        )
+    assert legacy is not None
+    response = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": legacy.id, "baseRevision": "stale-hash"}
+    )
+    assert response.status_code == 409, "存量草稿仍受 hash 关卡保护"
+
+    ok_draft_id, ok_revision = _draft(trip_id, plans)
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        before = main.planning_revision
+    assert (
+        client.post(
+            f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": ok_draft_id, "baseRevision": ok_revision}
+        ).status_code
+        == 200
+    )
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None
+        assert main.planning_revision == before + 1, "成功应用推进修订号"
+
+
+def test_repeat_apply_consumed_draft_does_not_double_apply(client):
+    """重复确认不重复变更：草稿已消费 → 409，版本/费用不重复产生。"""
+    trip_id = _trip_id(client)
+    message_id, revision = _draft(trip_id, _plan_rows_from_current(trip_id, day_nos=[1, 2]))
+    first = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
+    )
+    assert first.status_code == 200
+    operations_after_first = _operations(trip_id)
+    second = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
+    )
+    assert second.status_code == 409, "同一草稿重复确认被拒（已消费）"
+    assert _operations(trip_id) == operations_after_first, "重复确认不产生新版本"

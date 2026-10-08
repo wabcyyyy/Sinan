@@ -183,6 +183,21 @@ def action_base_revision(message: ItineraryChatMessage) -> str | None:
     return None
 
 
+def action_base_planning_revision(message: ItineraryChatMessage) -> int | None:
+    """草稿携带的整数规划修订号（M4 CAS 基准）；存量草稿没有该键 → None（退化 hash 比对）。"""
+    plans = read_json_list(message.plans_json)
+    if plans and isinstance(plans[0], dict):
+        value = plans[0].get("_basePlanningRevision")
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    options = read_json_list(message.hotel_options_json)
+    if options and isinstance(options[0], dict):
+        value = options[0].get("basePlanningRevision")
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return None
+
+
 def has_action_payload(message: ItineraryChatMessage) -> bool:
     return (
         message.changed == 1
@@ -346,10 +361,15 @@ def chat_history(user_id: int, itinerary_id: int) -> list[dict[str, Any]]:
 
 @dataclass(frozen=True)
 class ChatTurnContext:
-    """chatTurn 请求上下文：`chat_body` 发给 agent，`base_revision` 供草稿一致性校验。"""
+    """chatTurn 请求上下文：`chat_body` 发给 agent，`base_revision` 供草稿一致性校验。
+
+    M4：`base_planning_revision` 是读上下文时的整数规划修订号，随草稿嵌入，
+    apply 端做原子条件更新（CAS）。
+    """
 
     chat_body: dict[str, Any]
     base_revision: str
+    base_planning_revision: int | None = None
 
 
 def _spent_summary(user_id: int, itinerary_id: int) -> tuple[float | None, dict[str, float] | None, list[str] | None]:
@@ -417,6 +437,7 @@ def build_chat_turn_context(
             "message": message or "",
         },
         base_revision,
+        main.planning_revision,
     )
 
 
@@ -455,13 +476,25 @@ def latest_pending_plans(user_id: int, itinerary_id: int, base_revision: str) ->
     return []
 
 
-def attach_base_revision(rows: list[Any], base_revision: str, camel_case: bool) -> list[Any]:
-    """给草稿逐项打上版本指纹：plans 用 `_baseRevision`（下划线=内部字段），酒店用 `baseRevision`。"""
+def attach_base_revision(
+    rows: list[Any],
+    base_revision: str,
+    camel_case: bool,
+    planning_revision: int | None = None,
+) -> list[Any]:
+    """给草稿逐项打上版本指纹：plans 用 `_baseRevision`（下划线=内部字段），酒店用 `baseRevision`。
+
+    M4：同时嵌整数规划修订号（`_basePlanningRevision`/`basePlanningRevision`），
+    apply 端做原子条件更新（CAS）——hash 只做可读校验身份，不代替 CAS。
+    """
     key = "baseRevision" if camel_case else "_baseRevision"
+    rev_key = "basePlanningRevision" if camel_case else "_basePlanningRevision"
     attached = []
     for row in rows:
         item = dict(row)
         item[key] = base_revision
+        if planning_revision is not None:
+            item[rev_key] = planning_revision
         attached.append(item)
     return attached
 
@@ -516,8 +549,12 @@ def finalize_chat_turn(
     待确认动作（酒店方案的应用依赖落库消息 id）。
     """
     base_revision = ctx.base_revision
-    plans = attach_base_revision(turn.get("plans") or [], base_revision, camel_case=False)
-    hotel_options = attach_base_revision(turn.get("hotelOptions") or [], base_revision, camel_case=True)
+    plans = attach_base_revision(
+        turn.get("plans") or [], base_revision, camel_case=False, planning_revision=ctx.base_planning_revision
+    )
+    hotel_options = attach_base_revision(
+        turn.get("hotelOptions") or [], base_revision, camel_case=True, planning_revision=ctx.base_planning_revision
+    )
     out: dict[str, Any] = {
         "reply": turn.get("reply", "已更新草稿"),
         "changed": bool(turn.get("changed", False)),

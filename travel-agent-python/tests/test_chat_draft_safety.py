@@ -3,10 +3,12 @@ import json
 import pytest
 
 from app.agent.editing.chat_draft import decide
+from app.agent.editing.chat_draft.decide import _proposed_requirements_from_decision
 from app.agent.editing.chat_draft.hotel_intent import (
     HotelIntent,
     _fallback_hotel_intent,
     _hotel_comparison_base_tier,
+    _is_hotel_request,
     _with_stay_scope,
 )
 from app.agent.editing.chat_draft.intent import (
@@ -25,6 +27,7 @@ from app.agent.editing.chat_draft.plan_edit import (
 from app.agent.editing.chat_draft.validate import (
     _decision_reply,
     _plan_conflict,
+    _scope_violations,
     _substantive_plan_signature,
 )
 from app.schemas.trip import ChatTurnRequest
@@ -687,3 +690,107 @@ def test_unrepairable_plan_edit_degrades_with_forensics_log(monkeypatch, caplog)
     assert "无法生成安全草稿" in response.reply
     assert any("plan edit rejected after repair" in record.message for record in caplog.records)
     assert any("repair_produced=invalid" in record.message for record in caplog.records)
+
+
+# ---------- M4（spec §9.1）：作用域硬校验 / 保留语义 / 拟变更需求 ----------
+
+
+def test_scope_violations_catch_untouched_day_changes():
+    """「只改第1天」→ affected_days=[1]：第2天任何字段变化都是违例。"""
+    decision = {"affected_days": [1]}
+    baseline = [
+        {
+            "day_no": 1,
+            "items": [{"item_type": "attraction", "poi_name": "A", "start_time": "09:00", "end_time": "10:00"}],
+        },
+        {
+            "day_no": 2,
+            "items": [
+                {"item_type": "attraction", "poi_name": "B", "start_time": "09:00", "end_time": "10:00", "cost": 50}
+            ],
+        },
+    ]
+    same = [baseline[0], baseline[1]]
+    assert _scope_violations(decision, baseline, same) == []
+    changed = [
+        baseline[0],
+        {
+            "day_no": 2,
+            "items": [
+                {"item_type": "attraction", "poi_name": "B", "start_time": "10:00", "end_time": "11:00", "cost": 50}
+            ],
+        },
+    ]
+    issues = _scope_violations(decision, baseline, changed)
+    assert issues and "第 2 天" in issues[0], "未授权天的时间变化被抓（不只比名称）"
+
+
+def test_scope_violations_preserved_items_field_level():
+    """「保留晚餐和酒店」→ preserved 逐字段：丢失或改时间都违例。"""
+    decision = {"preserved": [{"day_no": 1, "poi_name": "晚餐"}]}
+    baseline = [
+        {
+            "day_no": 1,
+            "items": [
+                {"item_type": "food", "poi_name": "晚餐", "start_time": "18:00", "end_time": "19:30", "cost": 90}
+            ],
+        }
+    ]
+    assert _scope_violations(decision, baseline, baseline) == []
+    lost = [{"day_no": 1, "items": []}]
+    assert any("丢失" in i for i in _scope_violations(decision, baseline, lost))
+    shifted = [
+        {
+            "day_no": 1,
+            "items": [
+                {"item_type": "food", "poi_name": "晚餐", "start_time": "17:00", "end_time": "18:30", "cost": 90}
+            ],
+        }
+    ]
+    assert any("发生了变化" in i for i in _scope_violations(decision, baseline, shifted))
+
+
+def test_hotel_keep_intent_short_circuits_nominal_routing():
+    """「酒店不换，只调入住时间」不是酒店请求——动词动作路由（M4 §9.1）。"""
+    from app.schemas.trip import ChatTurnRequest
+
+    req = ChatTurnRequest(city="杭州", days=3, persons=2, message="酒店不换，只把第二天入住时间调晚一点")
+    assert _is_hotel_request(req, []) is False
+    req_switch = ChatTurnRequest(city="杭州", days=3, persons=2, message="酒店换成舒适型的")
+    assert _is_hotel_request(req_switch, []) is True
+
+
+def test_proposed_requirements_move_required_place(monkeypatch):
+    """「把灵隐寺移到第一天」→ requirements_patches 提案：草稿按拟变更需求验证，
+    未确认前正式需求不变（载体在草稿，不在主表）。"""
+    from app.schemas.trip import ChatTurnRequest
+    from app.schemas.trip_requirements import RequiredPlace, TripRequirements
+
+    baseline = TripRequirements(required_places=[RequiredPlace(constraint_id="place-1", name="灵隐寺", day_no=2)])
+    decision = {
+        "requirements_patches": [{"op": "set", "target": "required_place", "name": "灵隐寺", "day_no": 1}],
+        "affected_days": [1, 2],
+    }
+    req = ChatTurnRequest(
+        city="杭州",
+        days=2,
+        persons=2,
+        message="把灵隐寺移到第一天",
+        requirements_struct=baseline,
+    )
+    proposed = _proposed_requirements_from_decision(decision, req)
+    assert proposed is not None
+    assert proposed.required_places[0].day_no == 1, "拟变更需求：必去日从第 2 天改为第 1 天"
+    # 正式需求基线未被改动（提案是副本上的应用）
+    assert req.requirements_struct is not None
+    assert req.requirements_struct.required_places[0].day_no == 2
+
+
+def test_vague_request_does_not_propose_requirement_changes():
+    """含糊诉求不得顺便解除既有硬要求：无 requirements_patches → 无提案。"""
+    from app.schemas.trip import ChatTurnRequest
+    from app.schemas.trip_requirements import RequiredPlace, TripRequirements
+
+    baseline = TripRequirements(required_places=[RequiredPlace(constraint_id="p1", name="灵隐寺", day_no=2)])
+    req = ChatTurnRequest(city="杭州", days=2, persons=2, message="上午删掉一些吧", requirements_struct=baseline)
+    assert _proposed_requirements_from_decision({"patches": []}, req) is None

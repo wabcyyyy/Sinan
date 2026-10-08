@@ -162,6 +162,9 @@ class ItineraryMain(Base, SoftDelete):
     requirements_json: Mapped[dict | None] = mapped_column(
         JSON, comment="结构化需求快照(M1a):建壳写入,恢复读回;NULL=旧行程"
     )
+    # V14（planning_revision）：规划修订号（M4 CAS）——内容写入口事务内 +1，
+    # apply 以原子条件更新比对，过期 409；收藏/封面等非内容写不推进
+    planning_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()

@@ -28,7 +28,7 @@ from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.trip import DailyPlan, FactEvidence
-from app.services import generation_gate, stay_hotels
+from app.services import generation_gate, itinerary_version, stay_hotels
 from app.services.day_delivery_gate import hard_delivery_blockers
 
 logger = logging.getLogger(__name__)
@@ -89,6 +89,7 @@ def persist(
         else:
             day.generation_status = "SUCCEEDED"
             day.generation_error = None
+        itinerary_version.bump_planning_revision(session, itinerary_id)
 
 
 def _build_item(itinerary_id: int, day_id: int, item: Any, sort_no: int) -> ItineraryItem:
@@ -151,6 +152,7 @@ def reset_day_pending(day_id: int, action_id: str, fingerprint: str, reason: str
         generation_gate.verify_action(day, action_id, fingerprint)
         day.generation_status = "PENDING"
         day.generation_error = (reason or "").strip()[:MAX_ERROR_LENGTH] or None
+        itinerary_version.bump_planning_revision(session, day.itinerary_id)
 
 
 def append_existing_items(day_id: int, used_names: list[str]) -> None:

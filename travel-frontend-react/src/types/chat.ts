@@ -9,8 +9,13 @@ import type { HotelOption } from './itinerary'
 /** chat 草稿中的单个点位（后端返回 snake_case 草稿结构）。 */
 export interface ChatPlanItem {
   poi_name?: string | null
+  /** 条目类型（attraction/food/hotel/transport）：hotel 单独走酒店身份差异 */
+  item_type?: string | null
   start_time?: string | null
   end_time?: string | null
+  /** 时长/费用：草稿侧可能缺省，缺省视为未填、不参与差异比较 */
+  duration_min?: number | null
+  cost?: number | null
   /** 未核实提示用：AI 新增但无坐标的点位视为「位置未核实」 */
   latitude?: number | null
   longitude?: number | null

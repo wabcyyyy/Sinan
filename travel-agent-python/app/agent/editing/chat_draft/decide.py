@@ -26,11 +26,13 @@ from app.agent.runtime.memory import dialogue_messages
 from app.agent.tools import impl as tools
 from app.common.llm_client import get_llm_client
 from app.common.model_registry import model_for
+from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
 from app.schemas.trip import (
     MAX_TRIP_DAYS,
     ChatTurnRequest,
     ChatTurnResponse,
 )
+from app.schemas.trip_requirements import IntakeState, TripRequirements, canonical_requirements_payload
 
 from .confirm_graph import run_confirmation
 from .document import _decision_plan_document, _trip_plan_document
@@ -69,6 +71,7 @@ from .validate import (
     _decision_reply,
     _default_plan_update_reply,
     _parse_decision_json,
+    _scope_violations,
     _substantive_plan_signature,
     _untouched_conflicted_days,
 )
@@ -131,6 +134,58 @@ def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str 
 def _has_existing_hotel_item(req: ChatTurnRequest) -> bool:
     """当前计划里是否已有住宿条目（时间调整守卫的另一半：没有酒店就谈不上“挪酒店”）。"""
     return any(item.get("item_type") == "hotel" for plan in (req.plans or []) for item in (plan.get("items") or []))
+
+
+#: 需求提案只允许 TripRequirements 侧目标；基础参数（天数/预算等）不随提案改
+_PROPOSAL_TARGETS = frozenset(
+    {
+        "required_place",
+        "excluded_place",
+        "excluded_category",
+        "pace",
+        "transport_preference",
+        "max_walk_minutes_per_leg",
+        "budget_policy_mode",
+        "budget_policy_include_intercity",
+        "lodging_rooms",
+        "lodging_locked_hotel",
+        "lodging_stay_nights_explicit",
+    }
+)
+
+
+def _proposed_requirements_from_decision(decision: dict, req: ChatTurnRequest) -> TripRequirements | None:
+    """决策里的 requirements_patches → 拟变更需求（确定性应用，非法条目跳过）。
+
+    基线 = 当前正式需求（req.requirements_struct，缺省空结构）；含糊的诉求
+    不得顺便解除既有硬要求——只有明确指令的 patch 才生效。
+    """
+    raw = decision.get("requirements_patches")
+    if not isinstance(raw, list) or not raw:
+        return None
+    baseline = req.requirements_struct or TripRequirements()
+    state = IntakeState(requirements=baseline.model_copy(deep=True))
+    applied = False
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        try:
+            patch = RequirementPatch.model_validate(item)
+        except Exception:
+            continue
+        if patch.target not in _PROPOSAL_TARGETS:
+            continue
+        apply_intake_patches(state, [patch])
+        applied = True
+    if not applied:
+        return None
+    if (
+        canonical_requirements_payload(state.requirements)
+        == canonical_requirements_payload(baseline if baseline != TripRequirements() else None)
+        and canonical_requirements_payload(state.requirements) == {}
+    ):
+        return None
+    return state.requirements
 
 
 def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
@@ -265,6 +320,49 @@ def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
             )
         # 防御性去重：任何环节的遗漏都在此最后兜底，保证草稿无跨天重复景点。
         plans = _dedupe_plans(plans)
+        # M4（spec §9.1）：作用域硬校验——affected_days 之外的天/preserved 清单
+        # 逐字段比对。违例允许带反馈修一轮；仍违例必须如实拒绝，
+        # **不得**用宽泛 fallback（确定性兜底）重写后放行。
+        scope_issues = _scope_violations(final_decision, req.plans, plans)
+        if scope_issues:
+            scope_feedback = (
+                "你上一轮的提案越出了授权修改范围："
+                + "；".join(scope_issues)
+                + "。affected_days 只填你实际触及的天；preserved 清单里的条目必须原样保留（时间/费用/坐标都不变）。"
+            )
+            try:
+                scope_repaired = _decide_plan_change(req, hotels, feedback=scope_feedback)
+            except Exception as exc:
+                logger.warning("scope repair attempt failed: %s", exc)
+                scope_repaired = None
+            if scope_repaired and str(scope_repaired.get("mode") or "") in ("plan_update", "rewrite_plan"):
+                scope_plans = _apply_plan_update(scope_repaired, req)
+                if scope_plans is not None:
+                    scope_plans = _dedupe_plans(scope_plans)
+                    if not _scope_violations(scope_repaired, req.plans, scope_plans):
+                        plans = scope_plans
+                        final_decision = scope_repaired
+                        scope_issues = []
+            if scope_issues:
+                logger.warning("scope violations survived repair: %s", scope_issues)
+                return ChatTurnResponse(
+                    reply=(
+                        "### 草稿越出了修改范围\n\n"
+                        + "；".join(scope_issues[:2])
+                        + "。本次没有生成可应用草稿——请重新说明，只改你想改的那几天。"
+                    ),
+                    plans=[],
+                    changed=False,
+                    plan_document=_trip_plan_document(req),
+                    operations=operations,
+                )
+        # M4（spec §9.1）：拟变更需求——用户明确指令可以改变旧要求（如「移到第一天」）。
+        # 提案随草稿走：未确认前正式行程与正式需求都不改；apply 确认时同事务更新。
+        proposed_requirements = _proposed_requirements_from_decision(final_decision, req)
+        if proposed_requirements is not None:
+            payload = canonical_requirements_payload(proposed_requirements)
+            if payload:
+                plans = [{**row, "_proposedRequirements": payload} for row in plans]
         # 缩短/延长行程会顺带移除或新增日期里的住宿，这是用户明确要求的副作用，允许直接应用；
         # 其余情况下（天数未变却出现酒店差异）则必须走酒店确认流程，防止模型偷偷改住宿。
         if _hotel_signature(plans) != _hotel_signature(req.plans) and len(plans) == req.days:

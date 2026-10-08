@@ -17,7 +17,7 @@ import logging
 from datetime import date, datetime, time
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -55,6 +55,44 @@ def create_snapshot(user_id: int, itinerary_id: int, operation: str | None, summ
                 _MAX_SNAPSHOT_ATTEMPTS,
             )
     raise ApiError(500, "版本快照写入冲突，请稍后重试") from last_exc
+
+
+def append_version_in_session(
+    session: Session, user_id: int, itinerary_id: int, operation: str | None, summary: str | None
+) -> None:
+    """在调用方的活动事务内写快照（M4，spec §9.2：校验/快照/写/revision 同一事务）。
+
+    version_no 冲突（并发写者同号）以 IntegrityError 使整笔事务回滚——apply 链路
+    以过期/冲突语义重试整个操作，快照与内容保持原子，不再"三事务拼接"。
+    """
+    _write_snapshot(session, user_id, itinerary_id, operation, summary)
+
+
+def bump_planning_revision(session: Session, itinerary_id: int) -> None:
+    """规划修订号 +1（无条件；内容写路径在各自事务内调用）。"""
+    session.execute(
+        update(ItineraryMain)
+        .where(ItineraryMain.id == itinerary_id)
+        .values(planning_revision=ItineraryMain.planning_revision + 1)
+    )
+
+
+def bump_planning_revision_with_cas(session: Session, itinerary_id: int, expected: int | None) -> None:
+    """CAS 推进修订号：基准不匹配（行程已被并发操作推进）即 409。
+
+    expected=None（存量草稿无整数基准）退化为无条件 +1——hash 比对已在上游把关，
+    不取消其保护。
+    """
+    if expected is None:
+        bump_planning_revision(session, itinerary_id)
+        return
+    result = session.execute(
+        update(ItineraryMain)
+        .where(ItineraryMain.id == itinerary_id, ItineraryMain.planning_revision == expected)
+        .values(planning_revision=ItineraryMain.planning_revision + 1)
+    )
+    if getattr(result, "rowcount", 0) == 0:
+        raise ApiError(409, "行程刚被其他操作更新，该方案已过期，请重新生成建议")
 
 
 def record_snapshot_or_log(user_id: int, itinerary_id: int, operation: str | None, summary: str | None) -> None:
@@ -252,6 +290,7 @@ def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
                 )
         session.flush()
         budget_engine.recalculate(itinerary_id)
+        bump_planning_revision(session, itinerary_id)
 
     itinerary_query.evict_detail(user_id, itinerary_id)
     # 恢复本身已经提交：再让快照冲突把整笔操作报成 500，用户重试就是二次破坏性恢复。

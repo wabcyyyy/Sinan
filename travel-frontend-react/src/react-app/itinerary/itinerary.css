@@ -231,6 +231,10 @@
 .diff-badge { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 750; flex-shrink: 0; letter-spacing: 0.02em; }
 .diff-badge.is-add { background: color-mix(in srgb, var(--sinan-accent) 20%, transparent); color: var(--sinan-accent-dark); }
 .diff-badge.is-remove { background: var(--sinan-warm); color: var(--sinan-muted); }
+/* 五类差异徽标（M4 §9.1）：~时间/费用（青）、→跨日（天蓝）、酒店（暖底深字） */
+.diff-badge.is-update { background: color-mix(in srgb, var(--sinan-teal) 18%, transparent); color: var(--sinan-teal); }
+.diff-badge.is-move { background: color-mix(in srgb, var(--sinan-azure) 18%, transparent); color: var(--sinan-azure); }
+.diff-badge.is-hotel { background: var(--sinan-warm); color: var(--sinan-ink-soft); }
 .diff-text { color: var(--sinan-ink); }
 .chat-unverified { margin: 0; font-size: 11px; color: var(--sinan-muted); line-height: 1.7; }
 .chat-hotels { display: grid; gap: 9px; }

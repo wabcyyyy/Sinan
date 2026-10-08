@@ -5,7 +5,7 @@ import { interpretImageIntent, isUnauthorized, liveHotelQuotes } from '../../api
 import { ChatComposer, composeDraft, imageFeedbackText } from '../shared/ChatComposer'
 import { Icon } from '../shared/Icon'
 import { renderChatMarkdown } from './chatMarkdown'
-import { activeActionIndex, draftChanges, hotelDefaultSelection, pendingActionSummary, unverifiedNames } from './chatDraft'
+import { activeActionIndex, describeStructuredChange, diffBadge, hotelDefaultSelection, pendingActionSummary, structuredDraftChanges, unverifiedNames } from './chatDraft'
 import { getDayQuickPrompts, getPromptSceneGroups } from './chatPrompts'
 import { describeLiveQuotesError, liveQuotesCaption, quoteRowMeta } from './hotelLiveQuotes'
 import type { LiveQuotesState } from './hotelLiveQuotes'
@@ -199,7 +199,7 @@ export function DraftCard({
   onApply: () => void
   onApplyHotel: (option: HotelOption, roomType: string, dayNos: number[]) => void
 }) {
-  const changes = msg.plans?.length ? draftChanges(dayList, msg.plans) : []
+  const changes = msg.plans?.length ? structuredDraftChanges(dayList, msg.plans) : []
   const unverified = msg.plans?.length ? unverifiedNames(dayList, msg.plans) : []
   return <div className="chat-draft">
     {msg.requiresConfirmation && msg.pendingAction && (
@@ -215,14 +215,12 @@ export function DraftCard({
           <strong>AI 编排调整建议</strong>
         </div>
         <ul className="chat-diff">
-          {changes.map((line, idx) => {
-            const isAdd = line.includes('新增')
-            const isRemove = line.includes('删除') || line.includes('移除')
+          {changes.map((change, idx) => {
+            const badge = diffBadge(change)
             return (
-              <li key={idx} className={`chat-diff-line ${isAdd ? 'is-add' : isRemove ? 'is-remove' : ''}`}>
-                {isAdd && <span className="diff-badge is-add">+新增</span>}
-                {isRemove && <span className="diff-badge is-remove">−移除</span>}
-                <span className="diff-text">{line}</span>
+              <li key={idx} className={`chat-diff-line ${badge ? badge.className : ''}`}>
+                {badge && <span className={`diff-badge ${badge.className}`}>{badge.text}</span>}
+                <span className="diff-text">{describeStructuredChange(change)}</span>
               </li>
             )
           })}

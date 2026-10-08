@@ -112,6 +112,7 @@ def nl_edit(user_id: int, itinerary_id: int, instruction: str) -> dict[str, Any]
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "nl_edit", "自然语言编辑完成")
     return {"applied": applied, "detail": fresh_detail(user_id, itinerary_id)}
 

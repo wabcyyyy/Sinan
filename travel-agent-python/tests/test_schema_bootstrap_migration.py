@@ -97,15 +97,16 @@ def test_revision_refuses_to_rebuild_an_existing_schema(sqlite_db) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_head_is_0013_and_linear() -> None:
+def test_head_is_0014_and_linear() -> None:
     """结构化需求快照列（M1a）接在 city_geo 补种之后，历史链保持单一且完整。"""
     script = ScriptDirectory.from_config(db_migrate.alembic_config())
-    assert script.get_current_head() == "0013_itinerary_requirements_json"
+    assert script.get_current_head() == "0014_itinerary_planning_revision"
     # 从 head 沿 down_revision 走回基线，链路上每个 revision 都必须真实存在
     chain: list[str] = []
     for revision in script.walk_revisions(base="base", head="heads"):
         chain.append(revision.revision)
     assert chain == [
+        "0014_itinerary_planning_revision",
         "0013_itinerary_requirements_json",
         "0012_city_geo_domestic_expansion",
         "0011_user_llm_gateway",

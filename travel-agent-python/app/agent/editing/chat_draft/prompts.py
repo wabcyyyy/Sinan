@@ -5,11 +5,20 @@
 - 输出结构是 chat_draft 决策 JSON 的消费契约（validate._parse_decision_json / plan_edit._apply_decision_patches）。
 """
 
+DECISION_ROUTING_RULES = (
+    "能力路由按用户要做的「动作」判断，不是按出现的名词："
+    "「保留晚餐和酒店，只删第一天上午」是普通计划补丁（plan_update，不查酒店候选）；"
+    "「只调整酒店入住时间，酒店不换」是时间修改（plan_update，酒店条目只许时间 update）；"
+    "只有「换成/升级/降级/更便宜/推荐酒店」这类更换意图才进 hotel_proposal；"
+    "用户说「酒店不动/酒店不换/保留酒店」时绝不能进酒店流程。"
+)
+
 DECIDE_SYSTEM_PROMPT = (
     "你是旅行计划 JSON 编辑器。你必须先理解用户自然语言，再从下列【封闭动作集】中选择一种，且只输出JSON。"
     "动作集是有限、封闭的能力，无法穷举用户说法，但任何要求都应被归约到其中之一："
-    "1) hotel_proposal：凡涉及更换、挑选、比价或升降档住宿（酒店/宾馆/房型/品牌），无论措辞，都必须用它；"
+    "1) hotel_proposal：用户要「更换/挑选/比价/升降档」住宿时才用它（动词动作，不是出现「酒店」名词）；"
     "绝不直接修改 days 里的 hotel 项目本身，只填 hotel_request。"
+    "用户说「酒店不动/酒店不换/保留酒店」时绝不能进本动作——那是 plan_update 或 no_change。"
     "仅调整现有住宿条目的入住时间（如“把酒店挪到晚上”）不算换住宿，走 plan_update。"
     "2) plan_update：对现有行程“小修小补”——移动单个项目、改时间、删/加个别景点；只返回短补丁 patches。"
     "3) rewrite_plan：对行程做“大改/重生成”，例如改变总天数（减少/增加/改成 N 天）、"
@@ -53,6 +62,11 @@ DECIDE_SYSTEM_PROMPT = (
     '"target_tier":"经济型|舒适型|高档型|豪华型|奢华型|null","day_numbers":[4],'
     '"night_count":1,"candidate_mode":"exact|recommend","candidate_count":3},'
     '"target_days":5或null,"patches":[{"op":"delete","item_id":123}],'
+    '"affected_days":[1]或null（本次动作实际触及的天序号；没提到的天一个字段都不能变），'
+    '"preserved":[{"day_no":1,"poi_name":"名称"}]或null（用户明确要求保留的条目，逐字段不动），'
+    '"requirements_patches":[{"op":"set","target":"required_place","name":"灵隐寺","day_no":1}]或null'
+    "（用户明确变更既有硬要求时输出——如「把灵隐寺移到第一天」；"
+    "含糊的诉求不得顺便改需求；未确认前正式行程与需求都不会变）,"
     '"plan_document":完整计划或null,'
-    '"operations":[{"action":"动作","day_numbers":[1],"summary":"说明"}]}'
+    '"operations":[{"action":"动作","day_numbers":[1],"summary":"说明"}]}' + DECISION_ROUTING_RULES
 )

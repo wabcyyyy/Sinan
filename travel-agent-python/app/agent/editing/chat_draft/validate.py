@@ -120,6 +120,83 @@ def _untouched_conflicted_days(plans: list[dict], baseline: list[dict]) -> set[i
     return out
 
 
+def _plan_item_signature(item: dict) -> tuple[str, ...]:
+    """逐字段条目签名（M4 §9.1）：身份/日期/时间/费用/类型/坐标——不只比名称。"""
+    return (
+        str(item.get("item_type") or ""),
+        str(item.get("poi_name") or ""),
+        str(item.get("start_time") or ""),
+        str(item.get("end_time") or ""),
+        str(item.get("duration_min") or ""),
+        str(item.get("cost") or ""),
+        str(item.get("latitude") or ""),
+        str(item.get("longitude") or ""),
+    )
+
+
+def _scope_violations(decision: dict, baseline_plans: list[dict], draft_plans: list[dict]) -> list[str]:
+    """作用域硬校验（M4，spec §9.1）。
+
+    - affected_days 给定时：清单之外的天逐字段必须与基线一致（含时间/费用/坐标），
+      "只改第1天"则第2/3天任何字段变化都是违例；
+    - preserved 清单：要求保留的条目必须在草稿中且逐字段未变。
+    违例是硬约束——调用方不得用宽泛 fallback 重写后放行。
+    """
+    issues: list[str] = []
+
+    def by_day(plans: list[dict]) -> dict[int, list[tuple[str, ...]]]:
+        result: dict[int, list[tuple[str, ...]]] = {}
+        for plan in plans:
+            day_no = int(plan.get("day_no") or 0)
+            result[day_no] = sorted(
+                _plan_item_signature(it) for it in (plan.get("items") or []) if isinstance(it, dict)
+            )
+        return result
+
+    affected_raw = decision.get("affected_days")
+    if isinstance(affected_raw, list):
+        try:
+            affected = {int(x) for x in affected_raw}
+        except (TypeError, ValueError):
+            affected = set()
+        base_by_day, draft_by_day = by_day(baseline_plans), by_day(draft_plans)
+        for day_no, base_sigs in base_by_day.items():
+            if day_no in affected:
+                continue
+            if draft_by_day.get(day_no, []) != base_sigs:
+                issues.append(
+                    f"第 {day_no} 天不在本次授权修改范围内，但其内容发生了变化；请只修改第 {sorted(affected)} 天"
+                )
+    preserved = decision.get("preserved")
+    if isinstance(preserved, list):
+        draft_index: dict[tuple[int, str], tuple[str, ...]] = {}
+        for plan in draft_plans:
+            day_no = int(plan.get("day_no") or 0)
+            for it in plan.get("items") or []:
+                if isinstance(it, dict):
+                    draft_index[(day_no, str(it.get("poi_name") or ""))] = _plan_item_signature(it)
+        base_index: dict[tuple[int, str], tuple[str, ...]] = {}
+        for plan in baseline_plans:
+            day_no = int(plan.get("day_no") or 0)
+            for it in plan.get("items") or []:
+                if isinstance(it, dict):
+                    base_index[(day_no, str(it.get("poi_name") or ""))] = _plan_item_signature(it)
+        for entry in preserved:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                day_no = int(entry.get("day_no") or 0)
+            except (TypeError, ValueError):
+                continue
+            name = str(entry.get("poi_name") or "")
+            key = (day_no, name)
+            if key not in draft_index:
+                issues.append(f"要求保留的「{name}」（第 {day_no} 天）在草稿中丢失")
+            elif key in base_index and base_index[key] != draft_index[key]:
+                issues.append(f"要求保留的「{name}」（第 {day_no} 天）的时间/费用等字段发生了变化")
+    return issues
+
+
 def _substantive_plan_signature(plans: list[dict]) -> list[tuple]:
     return [
         (

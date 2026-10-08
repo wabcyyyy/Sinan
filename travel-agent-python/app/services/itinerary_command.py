@@ -112,6 +112,7 @@ def add_item(user_id: int, itinerary_id: int, request: ItemUpsertRequest | None)
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
         _apply_suggestion_used(session, itinerary_id, request.poiId, request.poiName, True)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "add_item", "新增行程项完成")
     return fresh_detail(user_id, itinerary_id)
 
@@ -155,6 +156,7 @@ def update_item(user_id: int, item_id: int, request: ItemUpsertRequest | None) -
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, operation, after_summary)
     return fresh_detail(user_id, itinerary_id)
 
@@ -195,6 +197,7 @@ def delete_item(user_id: int, item_id: int) -> dict[str, Any]:
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
         _apply_suggestion_used(session, itinerary_id, poi_id, poi_name, False)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "delete_item", "删除行程项完成")
     return fresh_detail(user_id, itinerary_id)
 
@@ -222,6 +225,7 @@ def reorder_items(user_id: int, itinerary_id: int, day_id: int | None, item_ids:
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "reorder", "调整行程顺序完成")
     return fresh_detail(user_id, itinerary_id)
 
@@ -293,6 +297,7 @@ def optimize_day(user_id: int, itinerary_id: int, day_id: int) -> dict[str, Any]
             _bump_sort(session, row_id, index)
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "optimize", f"优化路线完成（第 {day_no} 天）")
     return fresh_detail(user_id, itinerary_id)
 
@@ -324,6 +329,7 @@ def update_day(user_id: int, itinerary_id: int, day_id: int, theme: str | None) 
         day.metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
         session.flush()
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
+        itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "update_day", f"编辑日标题（第 {day_no} 天）")
     return fresh_detail(user_id, itinerary_id)
 
