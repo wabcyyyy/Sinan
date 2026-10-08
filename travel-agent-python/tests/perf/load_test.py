@@ -235,7 +235,12 @@ async def run(scenario: dict[str, Any], duration: int, workers: int, fixtures: d
     path = render_path(scenario, fixtures)
     results: list = []
     stop = asyncio.Event()
-    async with httpx.AsyncClient(base_url=BASE, timeout=30.0, cookies=cookies) as client:
+    # trust_env=False：压的是本机 127.0.0.1，绝不能绕道系统代理。httpx 的 trust_env
+    # 只认环境变量 NO_PROXY，不认 Windows 注册表的 ProxyOverride 绕过名单——开着
+    # 系统代理（如 127.0.0.1:7900）时全部流量会被送进代理：每请求多一跳、代理逐响应
+    # 关连接，突发下还会产生客户端侧假故障（实测 share:view 1.71% 全是代理层连接失败，
+    # 服务端访问日志同期只有 200/429）。
+    async with httpx.AsyncClient(base_url=BASE, timeout=30.0, cookies=cookies, trust_env=False) as client:
         tasks = [
             asyncio.create_task(worker(client, scenario, path, results, stop, {} if anonymous else headers))
             for _ in range(workers)
@@ -308,7 +313,7 @@ async def run_detail_cold_hot(
     itin_id = fixtures["itinId"]
     headers = fixtures["headers"]
     print("— 预热 + 冷缓存基线 —")
-    async with httpx.AsyncClient(base_url=BASE, timeout=30.0, cookies=fixtures["cookies"]) as client:
+    async with httpx.AsyncClient(base_url=BASE, timeout=30.0, cookies=fixtures["cookies"], trust_env=False) as client:
         r = await client.get(f"/api/itinerary/{itin_id}", headers=headers)
         assert r.json().get("code") == 200
         # 清掉 Redis 缓存键制造冷启动
@@ -341,7 +346,7 @@ async def main():
     )
     args = ap.parse_args()
 
-    async with httpx.AsyncClient(base_url=BASE, timeout=30.0) as client:
+    async with httpx.AsyncClient(base_url=BASE, timeout=30.0, trust_env=False) as client:
         headers, itin_id, task_id, cookies, share_token = await prepare(client)
     fixtures: dict[str, Any] = {
         "headers": headers,
