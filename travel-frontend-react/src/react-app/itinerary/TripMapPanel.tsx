@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LngLatBounds, Map, Marker, Popup } from 'maplibre-gl'
+// maplibre-gl v6 的默认 worker 解析是 `new URL(`./maplibre-gl-worker.mjs`, import.meta.url)`
+// 动态拼接——Vite dev（预构建进 .vite/deps）与 build（rollup 无法静态分析模板串，不复制该文件）
+// 都会 404，控制台报 "Worker failed to load"、底图永远空。v6 公开 setWorkerUrl 覆盖口；
+// 用 ?worker&url 让 Vite 把 worker 连同 maplibre-gl-shared 依赖一起打包出真实 URL。
+import { LngLatBounds, Map as MapLibreMap, Marker, Popup, setWorkerUrl } from 'maplibre-gl'
+import type { GeoJSONSource } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+setWorkerUrl(maplibreWorkerUrl)
 import type { DayPlan } from '../../types/itinerary'
 import { Icon } from '../shared/Icon'
 import {
@@ -9,6 +17,7 @@ import {
   dayPinColor,
   estimatedPinCount,
   googleMapsLink,
+  groupPinsByDay,
   missingCoordCount,
 } from './mapPins'
 import type { MapPin } from './mapPins'
@@ -31,7 +40,7 @@ export function TripMapPanel({
 }) {
   const pins = useMemo(() => buildPins(days), [days])
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<Map | null>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
   const loadedRef = useRef(false)
   const pinsRef = useRef(pins)
   pinsRef.current = pins
@@ -40,6 +49,9 @@ export function TripMapPanel({
   const [expanded, setExpanded] = useState(false)
   // 底图拉取失败（403/断网）时地图是整片留白——DOM pin 仍在，给出可见解释而不是无声米色
   const [tilesFailed, setTilesFailed] = useState(false)
+  // 地图构造失败（WebGL 不可用等）只能同步抛出：接住后如实说明，
+  // 不让异常冒泡崩进根 ErrorBoundary 把整个详情页（含地点列表与深链）一起带走
+  const [mapBroken, setMapBroken] = useState(false)
   // onSelect 由父组件内联传入（每次渲染都是新引用），经 ref 消费避免 pin 反复重建
   const selectRef = useRef(onSelect)
   selectRef.current = onSelect
@@ -47,13 +59,19 @@ export function TripMapPanel({
   useEffect(() => {
     const container = containerRef.current
     if (!container || mapRef.current) return
-    const map = new Map({
-      container,
-      style: OPENFREEMAP_LIBERTY,
-      center: [104.07, 30.66],
-      zoom: 10,
-      attributionControl: { compact: true },
-    })
+    let map: MapLibreMap
+    try {
+      map = new MapLibreMap({
+        container,
+        style: OPENFREEMAP_LIBERTY,
+        center: [104.07, 30.66],
+        zoom: 10,
+        attributionControl: { compact: true },
+      })
+    } catch {
+      setMapBroken(true)
+      return
+    }
     mapRef.current = map
     map.on('error', (event) => {
       const status = (event.error as { status?: number } | undefined)?.status
@@ -223,6 +241,11 @@ export function TripMapPanel({
       </div>
     </div>
     <div className="trip-map" ref={containerRef} aria-label="行程地图" />
+    {mapBroken && (
+      <div className="map-tiles-fallback" role="status">
+        地图未能启动（浏览器可能不支持或被限制），各天点位与顺序见下方每日行程，可用其中的「地图导航」链接核实位置。
+      </div>
+    )}
     {tilesFailed && (
       <div className="map-tiles-fallback" role="status">
         底图暂时加载不出来（可能是网络受限），各天点位仍标在图上，点 pin 可跳转地图查看位置。
@@ -236,14 +259,10 @@ export function TripMapPanel({
   </div>
 }
 
-/** 逐日路线层：每天一条折线连接当日有序点位。 */
-function syncRoutes(map: Map, pins: MapPin[]) {
-  const byDay = new Map<number, MapPin[]>()
-  pins.forEach((pin) => {
-    const list = byDay.get(pin.dayNo) || []
-    list.push(pin)
-    byDay.set(pin.dayNo, list)
-  })
+/** 逐日路线层：每天一条折线连接当日有序点位。分组容器是原生 Map（groupPinsByDay），
+ * 与地图实例严格分开——曾经 module 内 `Map` 遮蔽让分组误触 MapLibre 构造器直接崩。 */
+function syncRoutes(map: MapLibreMap, pins: MapPin[]) {
+  const byDay = groupPinsByDay(pins)
   for (const [dayNo, list] of byDay) {
     const sourceId = `route-day-${dayNo}`
     const line = list.length >= 2

@@ -7,9 +7,10 @@ import { Icon } from './Icon'
  * - ratio 传 CSS aspect-ratio 值（如 '4 / 3'），由外层盒子撑比例，图永远 object-fit: cover。
  *   传了 ratio 的场景不要再由父级给固定高度，二者会打架。
  * - 缓存命中时 React 可能错过 onLoad，挂载后主动查 complete 兜底。
+ * - src 缺省（调用方根本没图可给）与加载失败同待遇：直接落中性占位。
  */
 export function SmartImg({ src, alt, ratio, className = '', eager = false, width, height }: {
-  src: string
+  src?: string
   alt: string
   ratio?: string
   className?: string
@@ -26,7 +27,7 @@ export function SmartImg({ src, alt, ratio, className = '', eager = false, width
 
   return (
     <span className={`smart-img ${className}`} style={ratio ? { aspectRatio: ratio } : undefined} data-state={state}>
-      {state === 'error' ? (
+      {state === 'error' || !src ? (
         <span className="smart-img-fallback" role="img" aria-label={`${alt}（暂无实景图）`}><Icon name="image" size={20} /></span>
       ) : (
         <img

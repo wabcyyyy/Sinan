@@ -75,6 +75,18 @@ export function estimatedPinCount(pins: MapPin[]): number {
   return pins.filter((pin) => pin.estimated).length
 }
 
+/** 按天分组 pin（路线层容器）：必须是原生 `Map`——本模块零地图库依赖，
+ * 分组绝不会触碰 MapLibre 构造器（曾因 `Map` 遮蔽在运行时误 new 地图实例直接崩）。 */
+export function groupPinsByDay(pins: MapPin[]): Map<number, MapPin[]> {
+  const byDay = new Map<number, MapPin[]>()
+  for (const pin of pins) {
+    const list = byDay.get(pin.dayNo)
+    if (list) list.push(pin)
+    else byDay.set(pin.dayNo, [pin])
+  }
+  return byDay
+}
+
 /** 谷歌 Maps 查询深链（构造后仍过白名单出口，防手滑拼出域外 URL）。 */
 export function googleMapsLink(pin: Pick<MapPin, 'latitude' | 'longitude' | 'poiName'>): string {
   return safeMapLink(

@@ -6,6 +6,7 @@ import {
   dayPinColor,
   estimatedPinCount,
   googleMapsLink,
+  groupPinsByDay,
   missingCoordCount,
   poiPhotoUrl,
 } from './mapPins'
@@ -81,6 +82,34 @@ describe('计数（脚注口径）', () => {
   it('pin 颜色按天循环取色', () => {
     expect(dayPinColor(1)).toBe(dayPinColor(8))
     expect(dayPinColor(1)).not.toBe(dayPinColor(2))
+  })
+})
+
+describe('groupPinsByDay（原生分组容器，与地图实例严格分开）', () => {
+  it('返回原生 Map 原型实例而非地图实例：分组不得触碰 MapLibre 构造器', () => {
+    const grouped = groupPinsByDay(buildPins([day(1, [{ name: 'a', lat: 1, lng: 1 }])]))
+    // MapLibre Map 的原型链挂着 Evented，绝不会等于原生 Map.prototype——
+    // 这条断言就是"分组容器 ≠ 地图实例"的回归锚点（测试文件不导入地图库）
+    expect(Object.getPrototypeOf(grouped)).toBe(Map.prototype)
+  })
+  it('按天分组且保持天序与天内序', () => {
+    const grouped = groupPinsByDay(
+      buildPins([
+        day(1, [
+          { name: '断桥', lat: 1, lng: 1 },
+          { name: '雷峰塔', lat: 2, lng: 2 },
+        ]),
+        day(2, [{ name: '灵隐寺', lat: 3, lng: 3 }]),
+      ]),
+    )
+    expect([...grouped.keys()]).toEqual([1, 2])
+    expect(grouped.get(1)?.map((pin) => pin.poiName)).toEqual(['断桥', '雷峰塔'])
+    expect(grouped.get(2)?.map((pin) => pin.poiName)).toEqual(['灵隐寺'])
+  })
+  it('空输入返回空容器', () => {
+    const grouped = groupPinsByDay([])
+    expect(Object.getPrototypeOf(grouped)).toBe(Map.prototype)
+    expect(grouped.size).toBe(0)
   })
 })
 

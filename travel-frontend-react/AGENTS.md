@@ -18,7 +18,8 @@
 
 ```bash
 npm run dev        # 本地开发（/api 代理到 :8000）
-npm run build      # vite 构建
+npm run typecheck  # tsc --noEmit（含 src/**/*.tsx，strict 全开）
+npm run build      # typecheck + vite 构建（CI 的前端 job 跑的就是它）
 npm run test:unit  # vitest
 npm run theme:lint # 外观门禁
 npm run ep:lint    # EP 用量门禁
