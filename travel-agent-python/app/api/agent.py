@@ -266,9 +266,13 @@ def health_deep() -> ApiResponse[dict]:
     payload = deep_health.snapshot()
     ok = payload.get("status") == deep_health.UP
     body = ApiResponse.ok(payload) if ok else ApiResponse(code=503, message=deep_health.DEGRADED, data=payload)
-    return JSONResponse(
-        content=body.model_dump(mode="json", by_alias=True),
-        status_code=200 if ok else 503,
+    # 503 语义靠 status_code 表达，直返 JSONResponse（wire 与 ApiResponse 一致）
+    return cast(
+        ApiResponse[dict],
+        JSONResponse(
+            content=body.model_dump(mode="json", by_alias=True),
+            status_code=200 if ok else 503,
+        ),
     )
 
 

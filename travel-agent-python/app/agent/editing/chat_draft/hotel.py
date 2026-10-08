@@ -407,9 +407,9 @@ def _hotel_intent_from_decision(req: ChatTurnRequest, hotels: list[dict], data: 
 
 def _hotel_signature(plans: list[dict]) -> list[tuple[int, str]]:
     return sorted(
-        (int(plan.get("day_no")), str(item.get("poi_name")))
+        (int(day_no), str(item.get("poi_name")))
         for plan in plans
-        if isinstance(plan, dict) and isinstance(plan.get("day_no"), int)
+        if isinstance(plan, dict) and isinstance(day_no := plan.get("day_no"), int)
         for item in (plan.get("items") or [])
         if item.get("item_type") == "hotel"
     )
