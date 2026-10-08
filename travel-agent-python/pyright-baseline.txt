@@ -103,17 +103,13 @@ tests/test_audit_fixes.py:reportArgumentType:Argument of type "None" cannot be a
 tests/test_audit_fixes.py:reportArgumentType:Argument of type "Resp400" cannot be assigned to parameter "response" of type "Response" in function "__init__" |   "Resp400" is not assignable to "Response"
 tests/test_auth_migration.py:reportArgumentType:Argument of type "_Req" cannot be assigned to parameter "request" of type "Request" in function "client_ip" |   "_Req" is not assignable to "Request"
 tests/test_auth_migration.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
-tests/test_business_api_pilot.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
-tests/test_business_api_pilot.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_chat_draft_safety.py:reportOptionalIterable:Object of type "None" cannot be used as iterable value
 tests/test_chat_draft_safety.py:reportOptionalSubscript:Object of type "None" is not subscriptable
 tests/test_cover_api.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
-tests/test_cover_api.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
 tests/test_cover_api.py:reportOptionalMemberAccess:"cover_credit" is not a known attribute of "None"
 tests/test_cover_api.py:reportOptionalMemberAccess:"cover_ref" is not a known attribute of "None"
 tests/test_cover_api.py:reportOptionalMemberAccess:"cover_source" is not a known attribute of "None"
 tests/test_cover_api.py:reportOptionalMemberAccess:"cover_url" is not a known attribute of "None"
-tests/test_cover_api.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__init__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
 tests/test_export_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "args" of type "StrPath" in function "__new__" |   Type "str | None" is not assignable to type "StrPath" |     Type "None" is not assignable to type "StrPath" |       "None" is not assignable to "str" |       "None" is incompatible with protocol "PathLike[str]" |         "__fspath__" is not present
 tests/test_export_migration.py:reportOptionalMemberAccess:"error_msg" is not a known attribute of "None"
@@ -136,9 +132,6 @@ tests/test_generation_migration.py:reportOptionalMemberAccess:"title" is not a k
 tests/test_generation_migration.py:reportOptionalMemberAccess:"trip_theme" is not a known attribute of "None"
 tests/test_generation_migration.py:reportOptionalMemberAccess:"updated_at" is not a known attribute of "None"
 tests/test_generation_migration.py:reportReturnType:Type "tuple[ItineraryMain | None, list[ItineraryDay]]" is not assignable to return type "tuple[ItineraryMain, list[ItineraryDay]]" |   Type "ItineraryMain | None" is not assignable to type "ItineraryMain" |     "None" is not assignable to "ItineraryMain"
-tests/test_intent_pipeline.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "obj" of type "Sized" in function "len" |   Type "str | None" is not assignable to type "Sized" |     "None" is incompatible with protocol "Sized" |       "__len__" is not present
-tests/test_itinerary_list_filters.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
-tests/test_itinerary_list_filters.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_itinerary_read_migration.py:reportOptionalMemberAccess:"metadata_json" is not a known attribute of "None"
 tests/test_itinerary_write_migration.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
 tests/test_plan_apply_migration.py:reportArgumentType:Argument of type "str | None" cannot be assigned to parameter "s" of type "str | bytes | bytearray" in function "loads" |   Type "str | None" is not assignable to type "str | bytes | bytearray" |     Type "None" is not assignable to type "str | bytes | bytearray" |       "None" is not assignable to "str" |       "None" is not assignable to "bytes" |       "None" is not assignable to "bytearray"
@@ -158,10 +151,8 @@ tests/test_retirement_readiness.py:reportArgumentType:Argument of type "ModuleSp
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"exec_module" is not a known attribute of "None"
 tests/test_retirement_readiness.py:reportOptionalMemberAccess:"loader" is not a known attribute of "None"
 tests/test_schema_bootstrap_migration.py:reportReturnType:Type "str | None" is not assignable to return type "str" |   Type "str | None" is not assignable to type "str" |     "None" is not assignable to "str"
-tests/test_share_api.py:reportInvalidTypeForm:Return type of generator function must be compatible with "Generator[Any, Any, Any]" |   "Generator[Any, Any, Any]" is not assignable to "TestClient"
 tests/test_share_api.py:reportOptionalMemberAccess:"deleted" is not a known attribute of "None"
 tests/test_share_api.py:reportOptionalMemberAccess:"share_expires_at" is not a known attribute of "None"
-tests/test_share_api.py:reportReturnType:Return type of generator function must be compatible with "Generator[TestClient, Any, Any]" |   "Generator[TestClient, Unknown, Unknown]" is not assignable to "TestClient"
 tests/test_soft_delete_scope.py:reportAttributeAccessIssue:Cannot access attribute "update" for class "FromClause" |   Attribute "update" is unknown
 tests/test_soft_delete_scope.py:reportOptionalMemberAccess:"title" is not a known attribute of "None"
 tests/test_sse_chat_migration.py:reportArgumentType:Argument of type "Literal['data:']" cannot be assigned to parameter "prefix" of type "ReadableBuffer" in function "removeprefix" |   "Literal['data:']" is incompatible with protocol "Buffer" |     "__buffer__" is not present

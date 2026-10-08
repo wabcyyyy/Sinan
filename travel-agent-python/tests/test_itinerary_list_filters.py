@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -23,7 +25,7 @@ SIGNING_MATERIAL = "example-only-hs256-signing-material-32b"  # 测试占位串�
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch) -> TestClient:
+def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     engine = create_engine(f"sqlite:///{tmp_path / 'list.db'}")
     Base.metadata.create_all(engine)
     db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))

@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -48,7 +49,7 @@ def uploads_dir(tmp_path, monkeypatch) -> Path:
 
 
 @pytest.fixture
-def client(tmp_path, uploads_dir, monkeypatch) -> TestClient:
+def client(tmp_path, uploads_dir, monkeypatch) -> Iterator[TestClient]:
     engine = create_engine(f"sqlite:///{tmp_path / 'cover.db'}")
     Base.metadata.create_all(engine)
     db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))

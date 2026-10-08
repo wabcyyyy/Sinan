@@ -73,6 +73,8 @@ def httpx_connect_error():
 
 def test_generate_request_accepts_intent_and_requirements_4000():
     req = GenerateRequest(city="杭州", intent="旅" * 4000, requirements="求" * 4000)
+    assert req.intent is not None  # 运行时收窄：schema 声明为 str | None，len 前先钉住
+    assert req.requirements is not None
     assert len(req.intent) == 4000
     assert len(req.requirements) == 4000
 
@@ -89,6 +91,7 @@ def test_generate_request_rejects_requirements_over_4000():
 
 def test_generate_day_request_intent_limit_4000():
     req = GenerateDayRequest(city="杭州", intent="旅" * 4000)
+    assert req.intent is not None
     assert len(req.intent) == 4000
     with pytest.raises(ValidationError):
         GenerateDayRequest(city="杭州", intent="旅" * 4001)
@@ -96,6 +99,7 @@ def test_generate_day_request_intent_limit_4000():
 
 def test_butler_note_request_intent_accepts_4000():
     req = ButlerNoteRequest(intent="旅" * 4000)
+    assert req.intent is not None
     assert len(req.intent) == 4000
     with pytest.raises(ValidationError):
         ButlerNoteRequest(intent="旅" * 4001)
@@ -103,6 +107,7 @@ def test_butler_note_request_intent_accepts_4000():
 
 def test_poi_intros_request_intent_accepts_4000():
     req = PoiIntrosRequest(names=["西湖"], intent="旅" * 4000)
+    assert req.intent is not None
     assert len(req.intent) == 4000
 
 
