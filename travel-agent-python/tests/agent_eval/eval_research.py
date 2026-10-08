@@ -30,7 +30,7 @@ from app.agent.research import (
     run_research,
     run_research_context,
 )
-from app.agent.research.evidence import ResearchTask
+from app.agent.research.evidence import ResearchDomain, ResearchTask
 from app.agent.tools import impl as tools
 from app.common.config import settings
 from app.schemas.trip import GenerateRequest
@@ -73,7 +73,7 @@ def _research_patch():
     )
 
 
-def run_domain_case(domain: str, city: str) -> dict:
+def run_domain_case(domain: ResearchDomain, city: str) -> dict:
     """单个研究域的证据质量快照。"""
     patches = _research_patch()
     for item in patches:
@@ -128,7 +128,8 @@ def run_refill_case(city: str) -> dict:
 
 
 def build_report(city: str = "杭州") -> dict:
-    domains = [run_domain_case(domain, city) for domain in ("attraction", "food", "hotel")]
+    domain_names: tuple[ResearchDomain, ...] = ("attraction", "food", "hotel")
+    domains = [run_domain_case(domain, city) for domain in domain_names]
     refill = run_refill_case(city)
     total = max(len(domains), 1)
     return {

@@ -259,7 +259,7 @@ def test_incomplete_day_takes_precedence_over_stale(client: TestClient) -> None:
 def test_corrupt_optional_json_does_not_break_detail(client: TestClient) -> None:
     trip_id = client.get("/api/itinerary").json()["data"][0]["id"]
     with db_session.session_scope() as session:
-        day = session.query(ItineraryDay).first()
+        day = session.query(ItineraryDay).one()
         day.metadata_json = "{ 坏掉的 json"
     data = client.get(f"/api/itinerary/{trip_id}").json()["data"]
     assert data["dayList"][0]["theme"] is None

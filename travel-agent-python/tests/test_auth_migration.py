@@ -8,11 +8,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import Table, create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.api.business.auth import auth_router, user_router
@@ -190,7 +191,7 @@ def test_successful_login_resets_failure_counter(client: TestClient) -> None:
 def test_login_disabled_account_is_403(client: TestClient) -> None:
     _register(client)
     with db_session.session_scope() as session:
-        session.execute(SysUser.__table__.update().where(SysUser.username == "alice").values(status=0))
+        session.execute(cast(Table, SysUser.__table__).update().where(SysUser.username == "alice").values(status=0))
     body = client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD}).json()
     assert body["code"] == 403 and body["message"] == "账号已禁用"
 
@@ -251,12 +252,12 @@ class _Req:
 def test_forwarded_for_ignored_unless_peer_is_trusted(monkeypatch) -> None:
     spoofable = _Req("203.0.113.9", {"x-forwarded-for": "1.2.3.4"})
     monkeypatch.setattr(settings, "trusted_proxies", "")
-    assert client_ip(spoofable) == "203.0.113.9", "不可信对端的 XFF 必须忽略，否则限速可被逐次换 IP 绕过"
+    assert client_ip(cast(Any, spoofable)) == "203.0.113.9", "不可信对端的 XFF 必须忽略，否则限速可被逐次换 IP 绕过"
     monkeypatch.setattr(settings, "trusted_proxies", "203.0.113.9")
-    assert client_ip(spoofable) == "1.2.3.4"
+    assert client_ip(cast(Any, spoofable)) == "1.2.3.4"
     # R1-5：多跳时取的是**最右**的不可信跳。链首（9.9.9.9）永远是客户端自己写的，
     # 取它等于让攻击者每次换个限速桶；口径细节见 tests/test_client_ip.py。
-    assert client_ip(_Req("203.0.113.9", {"x-forwarded-for": "9.9.9.9, 8.8.8.8"})) == "8.8.8.8"
+    assert client_ip(cast(Any, _Req("203.0.113.9", {"x-forwarded-for": "9.9.9.9, 8.8.8.8"}))) == "8.8.8.8"
 
 
 def test_rate_limit_and_session_keys_match_java() -> None:

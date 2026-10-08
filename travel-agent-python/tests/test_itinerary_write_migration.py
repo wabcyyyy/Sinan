@@ -287,7 +287,7 @@ def test_delete_itinerary_soft_deletes_children(client: TestClient) -> None:
     assert client.get(f"/api/itinerary/{trip_id}").status_code == 404
     with db_session.session_scope() as session:
         alive = session.get(ItineraryMain, trip_id, execution_options={"include_deleted": True})
-        assert alive.deleted == 1
+        assert alive is not None and alive.deleted == 1
         rows = (
             session.execute(
                 select(ItineraryItem)

@@ -9,6 +9,7 @@
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from app.prompts.open_generation import OPEN_DAY_PROMPT_VERSION, OPEN_TRIP_PROMPT_VERSION
 from app.schemas.trip import DailyPlan, GenerateResponse, TripItem
@@ -27,7 +28,7 @@ def _item(
     remark: str | None = None,
     lat: float | None = 30.1,
     lon: float | None = 120.2,
-    verification: str = "verified",
+    verification: Literal["verified", "partially_verified", "unverified"] = "verified",
 ) -> TripItem:
     return TripItem(
         item_type=item_type,

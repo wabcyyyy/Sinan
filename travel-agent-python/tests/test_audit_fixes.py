@@ -7,6 +7,7 @@ H7 引用落地信任边界（伪造 source / 缺坐标不背书）、H8 LLM 输
 """
 
 import json
+from typing import cast
 
 import httpx
 import pytest
@@ -337,7 +338,10 @@ def test_llm_client_does_not_retry_client_error(monkeypatch):
         status_code = 400
 
         def raise_for_status(self):
-            raise httpx.HTTPStatusError("bad", request=None, response=Resp400())
+            # httpx 契约要求真实 Request/Response；替身仅用于触发 4xx 不重试分支
+            raise httpx.HTTPStatusError(
+                "bad", request=cast("httpx.Request", None), response=cast("httpx.Response", Resp400())
+            )
 
     def post(*_args, **_kwargs):
         attempts.append(1)

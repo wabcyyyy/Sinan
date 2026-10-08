@@ -87,6 +87,7 @@ def test_time_update_recalculates_end_time():
         {"target_days": None, "patches": [{"op": "update", "item_id": 1, "fields": {"start_time": "15:00"}}]},
         request,
     )
+    assert plans is not None
     item = next(item for item in plans[0]["items"] if item["id"] == 1)
     assert item["end_time"] == "16:30"
 
@@ -103,6 +104,7 @@ def test_unrequested_delete_is_ignored_when_extending_trip():
         },
         request,
     )
+    assert plans is not None
     assert any(item.get("id") == 1 for plan in plans for item in plan["items"])
 
 
@@ -112,6 +114,7 @@ def test_moved_item_is_rescheduled_when_original_time_conflicts():
         {"target_days": None, "patches": [{"op": "move", "item_id": 3, "day_no": 1}]},
         request,
     )
+    assert plans is not None
     moved = next(item for item in plans[0]["items"] if item.get("id") == 3)
     assert moved["start_time"] == "10:00"
     assert moved["end_time"] == "12:00"
@@ -473,6 +476,7 @@ def test_hotel_time_update_patch_is_applied():
         {"target_days": None, "patches": [{"op": "update", "item_id": 2, "fields": {"start_time": "21:00"}}]},
         request,
     )
+    assert plans is not None
     hotel = next(item for item in plans[0]["items"] if item["id"] == 2)
     assert hotel["start_time"] == "21:00"
 
@@ -489,6 +493,7 @@ def test_hotel_delete_and_move_patches_still_ignored():
         },
         request,
     )
+    assert plans is not None
     assert any(item["id"] == 2 for item in plans[0]["items"]), "酒店 delete 仍被拒绝"
     assert not any(item["id"] == 2 for item in plans[1]["items"]), "酒店 move 仍被拒绝"
 

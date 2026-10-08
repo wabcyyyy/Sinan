@@ -110,7 +110,8 @@ def test_route_constraint_uses_coordinates_and_reports_tolerant_gap():
     ]
     issues, _ = validate_plans(far)
     assert any("路线时间不足" in i for i in issues)
-    assert estimate_transfer_minutes(far[0]["items"][0], far[0]["items"][1]) > 30
+    transfer = estimate_transfer_minutes(far[0]["items"][0], far[0]["items"][1])
+    assert transfer is not None and transfer > 30
 
     close = [
         {

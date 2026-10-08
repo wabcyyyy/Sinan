@@ -99,6 +99,7 @@ class TestStreamChatDeltasCancel:
         assert response.consumed == 3
         assert response.closed, "退出 with 块应在途 HTTP 流被断开"
         trace = metrics.get_trace("cancel-llm-run")
+        assert trace is not None
         assert any(e["name"] == "llm.stream_request" and e["status"] == "cancelled" for e in trace["events"])
         # 用量分片未到：token 未知，不计 llm_calls（避免把取消误计为失败/成功）
         assert metrics.snapshot()["llm_calls"] == 0

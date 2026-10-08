@@ -29,6 +29,7 @@ SCRIPTS = BASE_DIR / "scripts"
 
 def _load_script(name: str, file_name: str | None = None):
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{file_name or name}.py")
+    assert spec is not None and spec.loader is not None, "被加载脚本与仓同行，spec 必然可解析"
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)

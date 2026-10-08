@@ -15,6 +15,7 @@ from app.agent.research import (
     run_research,
     run_research_context,
 )
+from app.agent.research.evidence import ResearchDomain
 from app.agent.research.reasoning import (
     evaluate_research as _real_evaluate,
 )
@@ -57,7 +58,8 @@ def test_run_research_produces_evidence_pack_for_each_domain():
     for item in patches:
         item.start()
     try:
-        for domain, expected in (("attraction", 12), ("food", 4), ("hotel", 2)):
+        cases: tuple[tuple[ResearchDomain, int], ...] = (("attraction", 12), ("food", 4), ("hotel", 2))
+        for domain, expected in cases:
             pack = run_research(ResearchTask(domain=domain, city="杭州", limit=30))
             assert pack.domain == domain
             assert len(pack.items) == expected

@@ -9,9 +9,10 @@ Java 的 @TableLogic 会替每条查询自动追加 `deleted = 0`；SQLAlchemy �
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import cast
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import Table, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import session as db_session
@@ -78,13 +79,18 @@ def test_update_path_is_not_silently_scoped(session: Session) -> None:
     session.commit()
     live_id, gone_id = live.id, gone.id
 
-    session.execute(ItineraryMain.__table__.update().where(ItineraryMain.id == live_id).values(title="改过"))
-    session.execute(ItineraryMain.__table__.update().where(ItineraryMain.id == gone_id).values(title="也改过"))
+    session.execute(
+        cast(Table, ItineraryMain.__table__).update().where(ItineraryMain.id == live_id).values(title="改过")
+    )
+    session.execute(
+        cast(Table, ItineraryMain.__table__).update().where(ItineraryMain.id == gone_id).values(title="也改过")
+    )
     session.commit()
     # Core UPDATE 不刷新 identity map，必须过期后重读才拿到库里的真值
     session.expire_all()
 
-    assert session.get(ItineraryMain, live_id).title == "改过"
+    refreshed = session.get(ItineraryMain, live_id)
+    assert refreshed is not None and refreshed.title == "改过"
     # 已软删行也能被显式 id 命中：证明写路径没有被偷偷加 deleted=0，
     # 还原/回收类任务因此可以正常操作软删数据。
     raw = session.execute(

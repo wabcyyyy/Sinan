@@ -37,7 +37,9 @@ def sqlite_db(tmp_path, monkeypatch):
 
 
 def _head_revision() -> str:
-    return ScriptDirectory.from_config(db_migrate.alembic_config()).get_current_head()
+    head = ScriptDirectory.from_config(db_migrate.alembic_config()).get_current_head()
+    assert head is not None, "样例库已升级到基线，alembic_version 必有 head"
+    return head
 
 
 def _record_upgrade(monkeypatch) -> list[str]:
