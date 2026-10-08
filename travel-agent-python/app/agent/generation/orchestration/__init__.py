@@ -2,7 +2,7 @@
 
 - ``workflow`` / ``trip_graph`` / ``graph_nodes``：统一生成图（整段与单日共用一张）与节点实现；
 - ``day_workflow`` / ``day_stream``：单日链路的门面与一次生成的编排+落地；
-- ``trip_stream`` / ``stream_parser``：整段流式（边流边解析逐天落地）；
+- ``stream_branch``：mode=stream 分支（stream_generate 节点承载整段流式，逐天 yield 落地）；
 - ``open_plans``：开放模式的逐日草案与降级；
 - ``plan_context``：生成上下文构建（研究证据收集与进度事件）。
 
