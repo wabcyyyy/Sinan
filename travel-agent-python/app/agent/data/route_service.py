@@ -195,6 +195,10 @@ class RouteService:
         self, first: dict, second: dict, *, mode: str = "walking", departure_time: str | datetime | None = None
     ) -> dict | None:
         first_key, second_key = _item_key(first), _item_key(second)
+        # fetcher 是 wire 缝（历史上是高德 HTTP 参数，协议只收 str | None）：
+        # datetime 是峰值系数的富形态，入缝即折回 ISO 串（_departure_hour 可回解析）。
+        if isinstance(departure_time, datetime):
+            departure_time = departure_time.isoformat()
         cache_key = (
             first_key,
             second_key,

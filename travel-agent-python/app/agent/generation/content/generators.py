@@ -158,7 +158,9 @@ def dedupe_daily_plans(
                     else:
                         repl, food_idx = _take(food_pool, food_idx)
                     if repl:
-                        used.add(repl.get("name"))
+                        repl_name = repl.get("name")
+                        if repl_name:
+                            used.add(repl_name)
                         kept.append(_to_item(repl, item.get("start_time"), item.get("end_time")))
                     continue
                 used.add(name)

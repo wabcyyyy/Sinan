@@ -18,6 +18,7 @@ import json
 import logging
 from typing import Any
 
+from pydantic import BaseModel
 from sqlalchemy import select, update
 
 from app.agent import run_butler_note, run_poi_intros, verify_suggestion_rows
@@ -40,7 +41,7 @@ def persist_suggestions(itinerary_id: int, suggestions: list[Suggestion] | list[
     if not suggestions:
         return
     rows = [
-        suggestion.model_dump(mode="json", by_alias=True) if hasattr(suggestion, "model_dump") else dict(suggestion)
+        suggestion.model_dump(mode="json", by_alias=True) if isinstance(suggestion, BaseModel) else dict(suggestion)
         for suggestion in suggestions
     ]
     try:

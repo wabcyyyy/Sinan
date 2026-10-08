@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, TypeGuard
+from typing import Any, TypeGuard, overload
 
 from sqlalchemy import select
 
@@ -409,6 +409,17 @@ def _to_decimal(value: Any) -> Decimal | None:
     if _is_number(value) and float(value) > 0:
         return Decimal(str(value)).quantize(Decimal("0.01"))
     return None
+
+
+# 双形态签名：fallback 静态为 str 的调用点（item_type 兜底值、NOT NULL 证据列沿用现值）
+# 结果必为 str。新建实体上 fallback 取值运行时可能是未初始化的 None，此时回写 None 也不
+# 入库——SQLAlchemy 对 INSERT 省略该列、列 default 照常生效（已实证），不会污染 NOT NULL 列。
+@overload
+def _str_or(value: Any, fallback: str) -> str: ...
+
+
+@overload
+def _str_or(value: Any, fallback: str | None) -> str | None: ...
 
 
 def _str_or(value: Any, fallback: str | None) -> str | None:

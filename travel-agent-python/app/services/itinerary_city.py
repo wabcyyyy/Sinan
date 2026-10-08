@@ -90,12 +90,12 @@ def city_guide(user_id: int, input_text: str, history: list[dict[str, Any]] | No
     """目的地不确定时的城市推荐对话。`supported` 由服务端现算，不接受客户端伪造。"""
 
     def build_request() -> dict:
-        # 构造放在 guard 内（同 clarify 的既有形态）：user_input 自 §3.3.5 起有
-        # max_length=4000，超长输入的 ValidationError 须落进 Java 网关同款 502 文案，
-        # 而不是裸穿成未处理异常的 500。by_alias=True：user_input 落成 wire 键 "input"，
-        # 与 run_city_guide 读取的键一致（同迁移前）。
+        # 构造放在 guard 内（同 clarify 的既有形态）：入参自 §3.3.5 起有 max_length=4000，
+        # 超长输入的 ValidationError 须落进 Java 网关同款 502 文案，而不是裸穿成未处理
+        # 异常的 500。kwarg 走 alias "input"（带 alias 字段的合成签名只认 alias），
+        # by_alias=True dump 后 wire 键同为 "input"，与 run_city_guide 读取的键一致（同迁移前）。
         request = CityGuideRequest(
-            user_input=input_text or "", supported=supported_cities(), history=_guide_history(history)
+            input=input_text or "", supported=supported_cities(), history=_guide_history(history)
         )
         return request.model_dump(by_alias=True)
 
