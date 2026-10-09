@@ -634,6 +634,21 @@ def test_fill_item_intros_binds_revision(sqlite_env, monkeypatch, caplog) -> Non
     assert _item_intro(item_id) == "千年古刹，邻飞来峰。", "legacy 口径（无 revision）无条件写"
 
 
+def test_fill_item_intros_truncates_to_column_width(sqlite_env, monkeypatch) -> None:
+    """超长介绍截断到列宽（String(600)）再写——活栈实测 DataError 会让整批介绍降级。"""
+    itinerary_id = _seed_main(planning_revision=3)
+    item_id = _seed_day_with_item(itinerary_id, "灵隐寺")
+    long_intro = "飞" * 1000
+    monkeypatch.setattr(itinerary_enricher, "run_poi_intros", lambda city, names, intent=None: {"灵隐寺": long_intro})
+    with db_session.session_scope() as session:
+        main_row = session.get(ItineraryMain, itinerary_id)
+    assert main_row is not None
+
+    itinerary_enricher._fill_item_intros(7, main_row, _REQUEST, itinerary_id, 3)
+    stored = _item_intro(item_id)
+    assert stored is not None and len(stored) == itinerary_enricher.MAX_INTRO_CHARS, "超长介绍截断到列宽，不整批丢弃"
+
+
 def test_finish_submits_enrichment_with_current_revision(client, monkeypatch, captured_events) -> None:
     """_finish 捕获提交时 main.planning_revision 随富化任务传入（提交时捕获语义）。"""
     _fake_agents(monkeypatch, [_plan(1, ["西湖", "酒店A"])])

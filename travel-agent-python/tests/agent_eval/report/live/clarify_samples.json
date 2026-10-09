@@ -1,0 +1,95 @@
+{
+  "mode": "clarify",
+  "generated_at": "2026-10-09T04:47:06.203155+00:00",
+  "commit": "25d7c0951b9468e4adb4aed0b34ccb20c3be42cd",
+  "call_path": "business-path: POST /api/itinerary/clarify（state 权威随轮回传）",
+  "model": "deepseek-flash",
+  "human_scoring": "见 clarify_scoring_sheet.md——spec §13.3：机器判结构、人工判体验，本报告不填机器代跑分数",
+  "scenarios": [
+    {
+      "id": "S1",
+      "turns": [
+        {
+          "user": "带爸妈去杭州玩3天，3个人，节奏慢一点少走路",
+          "reply": "大概哪天出发？还没定的话说「待定」也行。",
+          "ready": true,
+          "blocked": false,
+          "missing": [],
+          "options": [
+            "下周五出发",
+            "近期周末出发",
+            "日期待定"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "turns": [
+        {
+          "user": "2026年10月16号出发，15点才到，第三天下午4点的高铁要走",
+          "reply": "还想确认一下目的地城市～",
+          "ready": false,
+          "blocked": false,
+          "missing": [
+            "city",
+            "persons"
+          ],
+          "options": [
+            "帮我推荐目的地"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "turns": [
+        {
+          "user": "预算4500不含往返大交通，住舒适型，不要博物馆",
+          "reply": "还想确认一下目的地城市～",
+          "ready": false,
+          "blocked": false,
+          "missing": [
+            "city",
+            "days",
+            "persons"
+          ],
+          "options": [
+            "帮我推荐目的地"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "turns": [
+        {
+          "user": "随便帮我安排一下大理，两天",
+          "reply": "还想确认一下出行人数～",
+          "ready": false,
+          "blocked": false,
+          "missing": [
+            "persons"
+          ],
+          "options": [
+            "2 人",
+            "4 人",
+            "一家人"
+          ]
+        },
+        {
+          "user": "就我们俩，喜欢风景和咖啡，别太赶",
+          "reply": "大概哪天出发？还没定的话说「待定」也行。",
+          "ready": true,
+          "blocked": false,
+          "missing": [],
+          "options": [
+            "下周五出发",
+            "近期周末出发",
+            "日期待定"
+          ]
+        }
+      ]
+    }
+  ]
+}

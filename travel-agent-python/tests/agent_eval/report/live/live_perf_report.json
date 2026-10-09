@@ -1,0 +1,255 @@
+{
+  "mode": "perf",
+  "generated_at": "2026-10-09T04:55:37.278583+00:00",
+  "commit": "25d7c0951b9468e4adb4aed0b34ccb20c3be42cd",
+  "call_path": "business-path: POST /api/itinerary/generate -> SSE /api/itinerary/{id}/events -> GET /api/itinerary/{id}",
+  "path_identity": "business-path live（业务服务入口，非 agent 面直调）",
+  "model": "deepseek-flash",
+  "llm_base_url_host": "https://api.deepseek.com",
+  "prompt_versions": {
+    "open_trip": "v1.5.localized",
+    "open_day": "v1.5.localized"
+  },
+  "question_sha256": "3c7854a17979e9c8c36b0f732ff025643f011057c1b147e2c5533b76a337c74a",
+  "question": {
+    "city": "杭州",
+    "days": 2,
+    "persons": 3,
+    "budget": 4500,
+    "hotelTier": "舒适型",
+    "preferences": [
+      "人文",
+      "美食"
+    ],
+    "intent": "带爸妈去杭州玩 3 天改 2 天的亲子游，节奏慢一点少走路",
+    "requirements": "爸妈 60 多岁，少走路慢节奏；不要博物馆；住舒适型酒店"
+  },
+  "sample_size": {
+    "runs": 5,
+    "note": "样本量为授权验收首轮小样本，只作记录与带宽认知，不当自动门禁阈值（M5b：历史约 152 秒不能当基线）；同题连跑的研究缓存态未控制，cold(first)/warm(rest) 分别报告。"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "itinerary_id": 202,
+      "cache_label": "cold-first",
+      "gen_state": "COMPLETED",
+      "status": 2,
+      "days_emitted": 2,
+      "core_ready_in_detail": false,
+      "output_hash": "6078521a1ee618f05f0951fb6be6119b5f3a2c955359cc64b73fb6917f221423",
+      "wall_s": {
+        "to_research_start": null,
+        "to_research_done": 6.969,
+        "to_first_day_done": 25.052,
+        "to_core_ready": 54.243,
+        "to_complete": 54.3
+      },
+      "backend_stage_timing_ms": {
+        "research": 6985.0,
+        "first_day": 25063.0,
+        "core_ready": 54250.0
+      }
+    },
+    {
+      "run": 2,
+      "itinerary_id": 203,
+      "cache_label": "warm-sequential",
+      "gen_state": "COMPLETED",
+      "status": 2,
+      "days_emitted": 2,
+      "core_ready_in_detail": false,
+      "output_hash": "7ad0344e5f4c0290f97c452c0785c2efe4fa986fc3f0ff8c3db4ed3df691d5d6",
+      "wall_s": {
+        "to_research_start": null,
+        "to_research_done": 6.886,
+        "to_first_day_done": 22.303,
+        "to_core_ready": 60.286,
+        "to_complete": 60.35
+      },
+      "backend_stage_timing_ms": {
+        "research": 6906.0,
+        "first_day": 22328.0,
+        "core_ready": 60312.0
+      }
+    },
+    {
+      "run": 3,
+      "itinerary_id": 204,
+      "cache_label": "warm-sequential",
+      "gen_state": "COMPLETED",
+      "status": 2,
+      "days_emitted": 2,
+      "core_ready_in_detail": false,
+      "output_hash": "3209c7375dc00fca0be08d1f2e8b59f757438ba14c0c00dd76b0254deba8f0a2",
+      "wall_s": {
+        "to_research_start": null,
+        "to_research_done": 6.835,
+        "to_first_day_done": 19.405,
+        "to_core_ready": 24.431,
+        "to_complete": 24.493
+      },
+      "backend_stage_timing_ms": {
+        "research": 6844.0,
+        "first_day": 19407.0,
+        "core_ready": 24438.0
+      }
+    },
+    {
+      "run": 4,
+      "itinerary_id": 205,
+      "cache_label": "warm-sequential",
+      "gen_state": "COMPLETED",
+      "status": 2,
+      "days_emitted": 2,
+      "core_ready_in_detail": false,
+      "output_hash": "ef30aa4a9937b1bbaa55b9c53c07c4d69031da795c7e3937a9a14b58afdb22c9",
+      "wall_s": {
+        "to_research_start": null,
+        "to_research_done": 11.32,
+        "to_first_day_done": 24.156,
+        "to_core_ready": 28.265,
+        "to_complete": 28.335
+      },
+      "backend_stage_timing_ms": {
+        "research": 11329.0,
+        "first_day": 24172.0,
+        "core_ready": 28282.0
+      }
+    },
+    {
+      "run": 5,
+      "itinerary_id": 206,
+      "cache_label": "warm-sequential",
+      "gen_state": "COMPLETED",
+      "status": 2,
+      "days_emitted": 2,
+      "core_ready_in_detail": false,
+      "output_hash": "9e18a845e259c0f3a2e9ef28cb44d256d61f471d8768e516b9295d5dd7477457",
+      "wall_s": {
+        "to_research_start": null,
+        "to_research_done": 9.644,
+        "to_first_day_done": 22.109,
+        "to_core_ready": 48.303,
+        "to_complete": 48.357
+      },
+      "backend_stage_timing_ms": {
+        "research": 9656.0,
+        "first_day": 22125.0,
+        "core_ready": 48328.0
+      }
+    }
+  ],
+  "percentiles_all": {
+    "to_research_done": {
+      "n": 5,
+      "raw_s": [
+        6.969,
+        6.886,
+        6.835,
+        11.32,
+        9.644
+      ],
+      "min_s": 6.835,
+      "p50_s": 6.969,
+      "p95_s": 10.985,
+      "max_s": 11.32
+    },
+    "to_first_day_done": {
+      "n": 5,
+      "raw_s": [
+        25.052,
+        22.303,
+        19.405,
+        24.156,
+        22.109
+      ],
+      "min_s": 19.405,
+      "p50_s": 22.303,
+      "p95_s": 24.873,
+      "max_s": 25.052
+    },
+    "to_core_ready": {
+      "n": 5,
+      "raw_s": [
+        54.243,
+        60.286,
+        24.431,
+        28.265,
+        48.303
+      ],
+      "min_s": 24.431,
+      "p50_s": 48.303,
+      "p95_s": 59.077,
+      "max_s": 60.286
+    },
+    "to_complete": {
+      "n": 5,
+      "raw_s": [
+        54.3,
+        60.35,
+        24.493,
+        28.335,
+        48.357
+      ],
+      "min_s": 24.493,
+      "p50_s": 48.357,
+      "p95_s": 59.14,
+      "max_s": 60.35
+    }
+  },
+  "percentiles_warm_only": {
+    "to_research_done": {
+      "n": 4,
+      "raw_s": [
+        6.886,
+        6.835,
+        11.32,
+        9.644
+      ],
+      "min_s": 6.835,
+      "p50_s": 8.265,
+      "p95_s": 11.069,
+      "max_s": 11.32
+    },
+    "to_first_day_done": {
+      "n": 4,
+      "raw_s": [
+        22.303,
+        19.405,
+        24.156,
+        22.109
+      ],
+      "min_s": 19.405,
+      "p50_s": 22.206,
+      "p95_s": 23.878,
+      "max_s": 24.156
+    },
+    "to_core_ready": {
+      "n": 4,
+      "raw_s": [
+        60.286,
+        24.431,
+        28.265,
+        48.303
+      ],
+      "min_s": 24.431,
+      "p50_s": 38.284,
+      "p95_s": 58.489,
+      "max_s": 60.286
+    },
+    "to_complete": {
+      "n": 4,
+      "raw_s": [
+        60.35,
+        24.493,
+        28.335,
+        48.357
+      ],
+      "min_s": 24.493,
+      "p50_s": 38.346,
+      "p95_s": 58.551,
+      "max_s": 60.35
+    }
+  }
+}

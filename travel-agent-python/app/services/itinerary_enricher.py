@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 INTRO_BATCH_SIZE = 8
 MIN_SUGGESTION_INTRO = 50
 BUTLER_PREVIEW = 60
+#: 与 models.ItineraryItem.intro 列宽对齐——模型偶发超长介绍，写入前截断，
+# 否则 DataError 让整批介绍降级丢弃（2026-10-09 活栈验收 204/205 实测）。
+MAX_INTRO_CHARS = 600
 
 
 def persist_suggestions(itinerary_id: int, suggestions: list[Suggestion] | list[dict] | None) -> None:
@@ -205,6 +208,7 @@ def _fill_item_intros(
             for name, intro in intros.items():
                 if not intro or not intro.strip():
                     continue
+                intro = intro.strip()[:MAX_INTRO_CHARS]
                 stmt = update(ItineraryItem).where(
                     ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.poi_name == name
                 )
