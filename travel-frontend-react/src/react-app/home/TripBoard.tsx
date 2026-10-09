@@ -155,7 +155,7 @@ function BoardPreviewItem({ candidate }: { candidate: ItemPreviewCandidate }) {
       <div className="item-heading">
         <span className={`item-type item-type-${item.itemType ?? 'unknown'}`}><Icon name={icon} size={12} strokeWidth={2} />{ITEM_TYPE_LABELS[item.itemType ?? ''] || '安排'}</span>
         <h3>{item.poiName || '候选地点'}</h3>
-        <span className="trip-preview-status-pill is-active">正在完善</span>
+        <span className="trip-preview-status-pill is-active">{candidate.officialItemId ? '已并入行程' : '正在完善'}</span>
       </div>
       {(item.remark || item.whyThis) && <p>{item.remark || item.whyThis}</p>}
     </div>

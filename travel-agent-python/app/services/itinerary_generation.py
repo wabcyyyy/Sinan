@@ -541,6 +541,84 @@ def _first_succeeded_day_id(itinerary_id: int) -> int | None:
 _stream_events = TypeAdapter(StreamEvent)
 
 
+def _match_preview_mappings(
+    item_rows: list[tuple[int, str]], preview_entries: list[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """按 poi_name 把该日候选对到正式条目（条目序遍历、候选先到先配）。
+
+    预览与正式快照之间有反驳剔除/排程重排——序号不保真，存活条目的名字不变，
+    名字是持久化时刻唯一可靠的内容身份。重名候选只配第一个；条目没对上候选
+    （修复补的点）与候选没对上条目（被淘汰）都不进映射，缺席即如实陈述。
+    """
+    mappings: list[dict[str, Any]] = []
+    consumed: set[int] = set()
+    for item_id, poi_name in item_rows:
+        name = (poi_name or "").strip()
+        if not name:
+            continue
+        for idx, entry in enumerate(preview_entries):
+            if idx in consumed:
+                continue
+            if entry.get("name", "").strip() == name:
+                consumed.add(idx)
+                mappings.append(
+                    {
+                        "previewId": str(entry.get("previewId") or ""),
+                        "itemId": int(item_id),
+                        "poiName": name,
+                    }
+                )
+                break
+    return mappings
+
+
+def _emit_day_preview_mapping(
+    itinerary_id: int,
+    day_no: int,
+    event_type: str,
+    previews_by_day: dict[int, list[dict[str, str]]],
+    mapping_emitted: set[int],
+) -> None:
+    """流式天正式落库后发一次 previewId→itemId 映射帧（M5a 遗留收口）。
+
+    只对 `day` 事件发（day_patch 是酒店摊铺等修补重发，不重映射）；无候选登记
+    的天（逐日兜底腿）不发。映射失败绝不影响生成主循环——尽力而为帧。
+    """
+    if event_type != "day" or day_no in mapping_emitted or not previews_by_day.get(day_no):
+        return
+    mapping_emitted.add(day_no)
+    entries = previews_by_day[day_no]
+    try:
+        _emit_day_preview_mapping_inner(itinerary_id, day_no, entries)
+    except Exception as exc:
+        logger.warning("day preview mapping failed for %s day %s: %s", itinerary_id, day_no, exc)
+
+
+def _emit_day_preview_mapping_inner(itinerary_id: int, day_no: int, entries: list[dict[str, str]]) -> None:
+    """读回该日正式条目（final order），对配候选并发帧；空映射不发。"""
+    with session_scope() as session:
+        day = (
+            session.execute(
+                select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.day_no == day_no)
+            )
+            .scalars()
+            .first()
+        )
+        if day is None:
+            return
+        item_rows = [
+            (int(item_id), str(name or ""))
+            for item_id, name in session.execute(
+                select(ItineraryItem.id, ItineraryItem.poi_name)
+                .where(ItineraryItem.day_id == day.id, ItineraryItem.deleted == 0)
+                .order_by(ItineraryItem.sort_no)
+            ).all()
+        ]
+    mappings = _match_preview_mappings(item_rows, entries)
+    if mappings:
+        generation_events.day_preview_mapping(itinerary_id, str(entries[0].get("runId") or ""), day_no, mappings)
+
+
 def _plan_whole_trip(
     user_id: int,
     itinerary_id: int,
@@ -573,6 +651,10 @@ def _plan_whole_trip(
     suggestions_done = False
     done_seen = False
     contract_errors = 0
+    # M5a 遗留收口：转发候选时按日登记（previewId+内容名），该日正式落库后
+    # 发 previewId→itemId 映射帧；每正式 persist 只发一次（day_patch 不重发）。
+    previews_by_day: dict[int, list[dict[str, str]]] = {}
+    mapping_emitted: set[int] = set()
     # 与 /v1/generate-stream 同：只落 trace，不把 runId 回填进事件（消费者看到的键不变）
     with use_scene("generate"), observe_run(request_id=f"itinerary-{itinerary_id}"):
         try:
@@ -617,6 +699,13 @@ def _plan_whole_trip(
                             overwrite=event_type == "day_patch",
                             timing=timing,
                         )
+                        _emit_day_preview_mapping(
+                            itinerary_id,
+                            day_no,
+                            event_type,
+                            previews_by_day,
+                            mapping_emitted,
+                        )
                     except Exception as day_exc:
                         logger.warning("stream day %s persist failed for %s: %s", day_no, itinerary_id, day_exc)
                 elif event_type == "suggestions":
@@ -643,12 +732,22 @@ def _plan_whole_trip(
                 elif event_type == "day_item_preview":
                     # M5a 候选预览：转发业务 SSE（浏览器先亮「正在完善」）。
                     # 预览不落库——正式内容权威是随后的 day 快照，用它整体替换。
+                    run_id = str(event.get("runId") or "")
+                    day_no_preview = int(event.get("dayNo") or 0)
+                    item_node = dict(event.get("item") or {})
                     generation_events.item_preview(
                         itinerary_id,
-                        str(event.get("runId") or ""),
-                        int(event.get("dayNo") or 0),
+                        run_id,
+                        day_no_preview,
                         int(event.get("itemOrdinal") or 0),
-                        dict(event.get("item") or {}),
+                        item_node,
+                    )
+                    previews_by_day.setdefault(day_no_preview, []).append(
+                        {
+                            "runId": run_id,
+                            "previewId": f"{run_id}:{day_no_preview}:{int(event.get('itemOrdinal') or 0)}",
+                            "name": str(item_node.get("poi_name") or item_node.get("poiName") or ""),
+                        }
                     )
                 elif event_type == "day_item_preview_withdrawn":
                     generation_events.item_preview_withdrawn(

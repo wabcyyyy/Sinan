@@ -16,7 +16,7 @@ string` 消费（sinan.ts ItineraryStreamEvent），互不冒充。新增业务�
 
 业务面运行时帧类型全表（改动时同步维护）：
   进度：research_start / research_done / day_start / day_done / butler_note / complete
-  候选（M5a，spec §10.2）：item_preview / item_preview_withdrawn
+  候选（M5a，spec §10.2）：item_preview / item_preview_withdrawn / day_preview_mapping
   里程碑（M5b，spec §11）：core_ready（主行程可查看、备选富化中的 DB 权威中间态）
   指标（M5b，spec §11）：stage_timing（生成阶段分段耗时，观测用，前端可忽略）
   降级与错误：degraded / error（AGENT_ERROR 等码在 data 层）
@@ -88,6 +88,28 @@ def item_preview_withdrawn(itinerary_id: int, run_id: str, day_no: int, item_ord
             "dayNo": int(day_no),
             "itemOrdinal": int(item_ordinal),
             "reason": str(reason),
+        },
+        run_id=rid or None,
+    )
+
+
+def day_preview_mapping(itinerary_id: int, run_id: str, day_no: int, mappings: list[dict[str, Any]]) -> None:
+    """previewId→itemId 映射（M5a spec §10.2「持久化后提供映射」的收口帧）。
+
+    流式天落库后，把该日候选按 **poi_name** 对到正式条目：预览与正式快照之间
+    有反驳剔除/排程重排，**序号不保真**，对应关系只能在持久化时刻按内容身份
+    判定。`mappings` 每项 {previewId, itemId, poiName}；没对上的候选 = 被后
+    处理淘汰（缺席即如实陈述，不发伪 withdrawn）。映射只在生成进行中有意义
+    （预览不落库，刷新重建后只有正式条目，映射自然消失）。
+    """
+    rid = str(run_id)
+    publish_event(
+        itinerary_id,
+        "day_preview_mapping",
+        {
+            "runId": rid,
+            "dayNo": int(day_no),
+            "mappings": [dict(entry) for entry in mappings],
         },
         run_id=rid or None,
     )

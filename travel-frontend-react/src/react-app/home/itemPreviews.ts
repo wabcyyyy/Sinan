@@ -27,6 +27,9 @@ export interface ItemPreviewCandidate {
   dayNo: number
   itemOrdinal: number
   item: PreviewItem
+  /** B7：day_preview_mapping 帧对上的正式条目 id——候选已并入行程（快照到达
+   * 前的过渡态如实呈现），没对上的候选等快照整日替换/撤回。 */
+  officialItemId?: number
 }
 
 export interface ItemPreviewState {
@@ -80,6 +83,31 @@ export function reduceItemPreviewEvent(state: ItemPreviewState, event: Itinerary
     const previewId = previewIdOf(data, runId)
     if (!state.candidates.some((candidate) => candidate.previewId === previewId)) return state
     return { runId: state.runId, seenRuns: state.seenRuns, candidates: state.candidates.filter((candidate) => candidate.previewId !== previewId) }
+  }
+  if (event.type === 'day_preview_mapping') {
+    // B7（M5a 遗留收口，spec §10.2「持久化后提供 previewId→itemId 映射」）：
+    // 正式落库后按内容身份对配。幸存候选挂 officialItemId（徽标换「已并入行程」）；
+    // 没对上的 = 被后处理淘汰，缺席即如实，等快照整日替换。只认当前 run 的帧。
+    if (readString(data, 'runId') !== state.runId) return state
+    const entries = data.mappings
+    if (!Array.isArray(entries) || entries.length === 0) return state
+    const itemIdByPreviewId = new Map<string, number>()
+    for (const raw of entries) {
+      if (!raw || typeof raw !== 'object') continue
+      const entry = raw as Record<string, unknown>
+      const previewId = readString(entry, 'previewId')
+      const itemId = readNumber(entry, 'itemId')
+      if (previewId && itemId > 0) itemIdByPreviewId.set(previewId, itemId)
+    }
+    if (itemIdByPreviewId.size === 0) return state
+    let changed = false
+    const candidates = state.candidates.map((candidate) => {
+      const itemId = itemIdByPreviewId.get(candidate.previewId)
+      if (itemId === undefined || candidate.officialItemId === itemId) return candidate
+      changed = true
+      return { ...candidate, officialItemId: itemId }
+    })
+    return changed ? { runId: state.runId, seenRuns: state.seenRuns, candidates } : state
   }
   return state
 }

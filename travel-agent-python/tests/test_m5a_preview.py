@@ -20,13 +20,18 @@ import threading
 
 import pytest
 from pydantic import TypeAdapter
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.agent.core.json_utils import LlmJsonError
 from app.agent.generation.content import day_prompts, landing, trip_stream
 from app.agent.generation.content.trip_stream import llm_open_trip_stream
 from app.agent.generation.orchestration import open_plans, stream_branch
 from app.agent.generation.orchestration.stream_branch import run_generate_trip_stream
+from app.common import cache_store
 from app.common.config import settings
+from app.db import session as db_session
+from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain
 from app.schemas.stream_events import (
     ItemPreviewEvent,
     ItemPreviewWithdrawnEvent,
@@ -569,6 +574,27 @@ class TestBusinessSseFrames:
         assert captured[1][1] == "item_preview_withdrawn"
         assert captured[1][2]["previewId"] == "run-1:2:3" and captured[1][2]["reason"] == "regenerate"
 
+    def test_day_preview_mapping_frame_shape(self, monkeypatch):
+        """B7 映射帧 data 口径：{runId, dayNo, mappings:[{previewId, itemId, poiName}]}。"""
+        captured: list[tuple] = []
+        monkeypatch.setattr(
+            generation_events,
+            "publish_event",
+            lambda itinerary_id, event_type, data, run_id=None: captured.append(
+                (itinerary_id, event_type, data, run_id)
+            ),
+        )
+        generation_events.day_preview_mapping(
+            7, "run-1", 1, [{"previewId": "run-1:1:0", "itemId": 901, "poiName": "西湖"}]
+        )
+        assert captured[0][1] == "day_preview_mapping"
+        assert captured[0][2] == {
+            "runId": "run-1",
+            "dayNo": 1,
+            "mappings": [{"previewId": "run-1:1:0", "itemId": 901, "poiName": "西湖"}],
+        }
+        assert captured[0][3] == "run-1"
+
     def test_plan_whole_trip_forwards_preview_events(self, monkeypatch):
         """业务编排消费 agent 事件：day_item_preview / withdrawn 转发 generation_events。"""
         agent_events = [
@@ -606,3 +632,148 @@ class TestBusinessSseFrames:
         assert [kind for kind, _ in captured] == ["item_preview", "item_preview_withdrawn"]
         assert captured[0][1] == (42, "run-9", 1, 0, {"poi_name": "西湖"})
         assert captured[1][1] == (42, "run-9", 1, 0, "regen")
+
+
+# ------------------------- B7：previewId→itemId 映射（spec §10.2 遗留收口） ----
+
+
+@pytest.fixture
+def sqlite_env(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'm5a-mapping.db'}")
+    Base.metadata.create_all(engine)
+    db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
+    yield
+    db_session.init_engine(None, None)
+    cache_store.reset_for_tests()
+
+
+def _seed_day_with_item(poi_name: str = "西湖") -> tuple[int, int]:
+    """种子：main + day(1, SUCCEEDED) + 单条目；返回 (itinerary_id, item_id)。"""
+    with db_session.session_scope() as session:
+        main = ItineraryMain(user_id=1, title="t", city="杭州", days=1, persons=1, status=1)
+        session.add(main)
+        session.flush()
+        day = ItineraryDay(itinerary_id=main.id, day_no=1, city="杭州", generation_status="SUCCEEDED")
+        session.add(day)
+        session.flush()
+        item = ItineraryItem(day_id=day.id, itinerary_id=main.id, item_type="attraction", poi_name=poi_name)
+        session.add(item)
+        session.flush()
+        return main.id, item.id
+
+
+def test_match_preview_mappings_pure():
+    """纯匹配器：按名字先到先配（名字是持久化时刻唯一可靠的内容身份）；
+    重名候选只配一次；未对上的条目/候选都缺席，空白名不参与。"""
+    entries = [
+        {"previewId": "r:1:0", "runId": "r", "name": "西湖"},
+        {"previewId": "r:1:1", "runId": "r", "name": "楼外楼"},
+        {"previewId": "r:1:2", "runId": "r", "name": "被淘汰"},
+    ]
+    item_rows = [(11, " 西湖 "), (12, "断桥"), (13, "楼外楼"), (14, "  ")]
+    got = itinerary_generation._match_preview_mappings(item_rows, entries)
+    assert got == [
+        {"previewId": "r:1:0", "itemId": 11, "poiName": "西湖"},
+        {"previewId": "r:1:1", "itemId": 13, "poiName": "楼外楼"},
+    ]
+    dup_entries = [{"previewId": "r:1:0", "name": "西湖"}, {"previewId": "r:1:1", "name": "西湖"}]
+    got = itinerary_generation._match_preview_mappings([(21, "西湖")], dup_entries)
+    assert got == [{"previewId": "r:1:0", "itemId": 21, "poiName": "西湖"}]
+    assert itinerary_generation._match_preview_mappings([], entries) == []
+
+
+class TestDayPreviewMapping:
+    def test_plan_whole_trip_emits_mapping_after_day_persist(self, monkeypatch, sqlite_env):
+        """day 事件正式落库后发一次映射帧；淘汰候选缺席；重复 day/day_patch 不重发。"""
+        itinerary_id, item_id = _seed_day_with_item("西湖")
+
+        day_plan = {
+            "dayNo": 1,
+            "theme": "d1",
+            "note": "n1",
+            "items": [{"item_type": "attraction", "poi_name": "西湖", "start_time": "09:00", "end_time": "11:00"}],
+        }
+
+        def fake_stream(request, cancel=None, **kwargs):
+            yield {
+                "type": "day_item_preview",
+                "runId": "run-7",
+                "dayNo": 1,
+                "itemOrdinal": 0,
+                "item": {"poi_name": "西湖"},
+                "status": "drafting",
+            }
+            yield {
+                "type": "day_item_preview",
+                "runId": "run-7",
+                "dayNo": 1,
+                "itemOrdinal": 1,
+                "item": {"poi_name": "被淘汰"},
+                "status": "drafting",
+            }
+            yield {"type": "day", "plan": dict(day_plan)}
+            yield {"type": "day", "plan": dict(day_plan)}
+            yield {"type": "day_patch", "plan": dict(day_plan)}
+            yield {
+                "type": "done",
+                "daysExpected": 1,
+                "daysEmitted": [1],
+                "tripTheme": None,
+                "complete": True,
+                "message": None,
+            }
+
+        monkeypatch.setattr(itinerary_generation, "run_generate_trip_stream", fake_stream)
+        monkeypatch.setattr(itinerary_generation, "_persist_stream_day", lambda *args, **kwargs: None)
+        mappings: list[tuple] = []
+        monkeypatch.setattr(generation_events, "day_preview_mapping", lambda *args: mappings.append(args))
+        monkeypatch.setattr(generation_events, "item_preview", lambda *args: None)
+
+        command = itinerary_generation.GenerateCommand(city="杭州", days=1, persons=1, stay_nights=0)
+        itinerary_generation._plan_whole_trip(1, itinerary_id, command, {}, "fp")
+        assert len(mappings) == 1, "重复 day 事件与 day_patch 都不重发映射"
+        iid, run_id, day_no, entries = mappings[0]
+        assert (iid, run_id, day_no) == (itinerary_id, "run-7", 1)
+        assert entries == [{"previewId": "run-7:1:0", "itemId": item_id, "poiName": "西湖"}], (
+            "幸存候选按名字对到正式条目；被后处理淘汰的候选缺席即如实"
+        )
+
+    def test_mapping_skipped_without_previews_or_on_read_failure(self, monkeypatch, sqlite_env):
+        """逐日兜底腿（无候选登记）不发帧；读回失败只留警告不炸生成主循环。"""
+        itinerary_id, _item_id = _seed_day_with_item("灵隐寺")
+
+        def fake_stream(request, cancel=None, **kwargs):
+            yield {"type": "day", "plan": {"dayNo": 1, "theme": "d1", "note": "n1", "items": []}}
+            yield {
+                "type": "done",
+                "daysExpected": 1,
+                "daysEmitted": [1],
+                "tripTheme": None,
+                "complete": True,
+                "message": None,
+            }
+
+        monkeypatch.setattr(itinerary_generation, "run_generate_trip_stream", fake_stream)
+        monkeypatch.setattr(itinerary_generation, "_persist_stream_day", lambda *args, **kwargs: None)
+        mappings: list[tuple] = []
+        monkeypatch.setattr(generation_events, "day_preview_mapping", lambda *args: mappings.append(args))
+
+        command = itinerary_generation.GenerateCommand(city="杭州", days=1, persons=1, stay_nights=0)
+        itinerary_generation._plan_whole_trip(1, itinerary_id, command, {}, "fp")
+        assert mappings == [], "无候选登记的天不发映射帧"
+
+        # 读回失败（坏引擎）：异常被 _emit_day_preview_mapping 吞掉只留警告
+        def boom_inner(*args, **kwargs):
+            raise RuntimeError("db gone")
+
+        monkeypatch.setattr(itinerary_generation, "_persist_stream_day", lambda *a, **k: None)
+        previews = {1: [{"runId": "r", "previewId": "r:1:0", "name": "x"}]}
+        emitted: set[int] = set()
+        monkeypatch.setattr(
+            itinerary_generation,
+            "_emit_day_preview_mapping_inner",
+            boom_inner,
+        )
+        itinerary_generation._emit_day_preview_mapping(itinerary_id, 1, "day", previews, emitted)
+        assert emitted == {1}, "失败也标记已发，避免同天反复重试"
+        assert mappings == []

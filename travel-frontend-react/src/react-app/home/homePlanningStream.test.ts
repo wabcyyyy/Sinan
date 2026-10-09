@@ -130,6 +130,30 @@ describe('itemPreviews reducer（M5a 候选状态机）', () => {
     expect(prunePreviewsByDraft(state, emptyDraft)).toBe(state)
   })
 
+  it('day_preview_mapping：幸存候选挂 officialItemId；无映射/旧 run 帧不改状态（B7）', () => {
+    let state = emptyPreviewState()
+    state = reduceItemPreviewEvent(state, previewFrame('run-1:1:1', 1, 1, '宽窄巷子'))
+    state = reduceItemPreviewEvent(state, previewFrame('run-1:1:2', 1, 2, '被淘汰点'))
+    const mappingFrame = (mappings: unknown, runId = 'run-1'): ItineraryStreamEvent => ({
+      type: 'day_preview_mapping',
+      itineraryId: 7,
+      seq: 3,
+      ts: '2026-10-09T00:00:02Z',
+      data: { runId, dayNo: 1, mappings },
+    })
+    state = reduceItemPreviewEvent(state, mappingFrame([{ previewId: 'run-1:1:1', itemId: 901, poiName: '宽窄巷子' }]))
+    expect(state.candidates[0].officialItemId).toBe(901)
+    expect(state.candidates[1].officialItemId).toBeUndefined()
+    // 重复帧幂等：引用不变不触发多余渲染
+    const before = state
+    state = reduceItemPreviewEvent(state, mappingFrame([{ previewId: 'run-1:1:1', itemId: 901, poiName: '宽窄巷子' }]))
+    expect(state).toBe(before)
+    // 空映射 / 未知 previewId / 旧 run：一律原样
+    expect(reduceItemPreviewEvent(state, mappingFrame([]))).toBe(state)
+    expect(reduceItemPreviewEvent(state, mappingFrame([{ previewId: 'run-1:9:9', itemId: 999 }]))).toBe(state)
+    expect(reduceItemPreviewEvent(state, mappingFrame([{ previewId: 'run-1:1:1', itemId: 901 }], 'run-0'))).toBe(state)
+  })
+
   it('candidatesForDay：按 dayNo 过滤且 itemOrdinal 升序稳定', () => {
     let state = emptyPreviewState()
     state = reduceItemPreviewEvent(state, previewFrame('run-1:1:2', 1, 2, '人民公园'))
