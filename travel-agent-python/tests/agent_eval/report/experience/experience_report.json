@@ -1,0 +1,316 @@
+{
+  "generated_at": "2026-10-09T03:06:29+00:00",
+  "mode": "offline-business-path",
+  "commit": "8672b5e2c72514bbf6d4516ef538b9f8a2a3d724",
+  "dataset": {
+    "file": "e_dataset.json",
+    "dataset_hash": "5a3e812fd59d8ea78fe3478f2ad4abd3c287eadfa0a0b538fd784e03ccd28c91",
+    "case_count": 14
+  },
+  "prompt_version": {
+    "open_day": "v1.5.localized",
+    "open_trip": "v1.5.localized",
+    "note": "checks 主要走服务编排与确定性规则；prompt 版本绑定供真实 LLM 复跑时对齐"
+  },
+  "model": "offline-mock (no real LLM)",
+  "call_path": "business-service entries: editing.clarify / services.itinerary_generation.generate / itinerary_plan_apply.apply_plans / itinerary_chat.chat_edit(turn-id) / generation.content.TripPlanStreamParser / grounding.official_pages",
+  "path_identity": "business-service path (shell→research→per-day→persist→apply→idempotency)，LLM/网络全桩；与 nightly 直调路径（agent-face direct）分属两套口径，数值不可混读",
+  "sample_size": {
+    "cases": {
+      "pass": 14,
+      "skip": 0,
+      "fail": 0
+    },
+    "checks": {
+      "pass": 20,
+      "skip": 0,
+      "fail": 0
+    },
+    "checks_total": 20
+  },
+  "metrics": {
+    "hard_constraint_fulfillment": {
+      "applicable": 9.0,
+      "pass": 8.0,
+      "violation": 0.0,
+      "unknown": 1.0,
+      "rate": 0.8889
+    },
+    "first_pass_delivery": {
+      "generation_cases": 1.0,
+      "first_pass": 1.0,
+      "timeout_failures": 0.0,
+      "generation_failures": 0.0,
+      "rate": 1.0
+    },
+    "edit_scope_preservation": {
+      "scoped_cases": 1.0,
+      "preserved": 1.0,
+      "rate": 1.0
+    },
+    "duplicate_executions": 0.0,
+    "fact_conflicts": 2.0
+  },
+  "human_evaluation": "自然度/舒适度（回应具体诉求、追问必要性、语气、取舍说明）需要真人匿名同题评价，本离线报告不做、不填机器代跑数字；上线后按 spec §13.3 以人工同题评分补齐。",
+  "nightly_gap_fixes": [
+    "llm_eval._stream_request 补 preferences、requirements_struct（对齐 _plan_whole_trip）",
+    "llm_eval._run_stream_once 研究请求补 persons/budget/hotel_tier/intent/requirements/origin_city/region_hint/requirements_struct（对齐 GenerateCommand.to_generate_request）",
+    "llm_eval 报告加 path_identity 标注（agent-face direct，非业务落库链）"
+  ],
+  "cases": [
+    {
+      "id": "E01",
+      "title": "首句带爸妈杭州3天3人慢一点少走路；补充2026-10-16、15点到、第三天16点离开、不要博物馆、第二天灵隐寺、4500不含往返、舒适型",
+      "kind": "intake",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "clarify_multi_turn_requirements_terminal_state",
+          "status": "pass",
+          "detail": "多轮 clarify 终态：必去灵隐寺第2天、排除博物馆、target 预算不含往返、慢游+步行上限全部入结构",
+          "stats": {}
+        },
+        {
+          "name": "generation_pipeline_preserves_requirements",
+          "status": "pass",
+          "detail": "建壳→研究→整段→逐日→落库需求逐字段一致；库内最终活动窗口内、灵隐寺第2天、博物馆排除、target 口径明确（估算差额如实，不冒充 hard_cap）；单边返程窗（只给 16:00 离开）如实记 unknown 留分母，不冒充 pass",
+          "stats": {
+            "constraint_applicable": 9.0,
+            "constraint_pass": 8.0,
+            "constraint_violation": 0.0,
+            "constraint_unknown": 1.0,
+            "generation_cases": 1.0,
+            "first_pass": 1.0,
+            "timeout_failures": 0.0,
+            "generation_failures": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "E02",
+      "title": "E01 后\"改4天，灵隐寺第三天，预算不限制了\"：days/date/anchor/budget 旧值被替换，其他需求保留",
+      "kind": "intake",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "clarify_replacement_updates_keep_other_requirements",
+          "status": "pass",
+          "detail": "days/必去日/预算旧值被替换；排除类别/节奏/人数/日期/酒店档次原样保留",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E03",
+      "title": "后端低预算协商或8天超限；刷新、手动改输入、直接开始、迟到响应：blocked 不被绕过；接受状态绑定原参数",
+      "kind": "intake",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "overlong_days_blocked_not_bypassed",
+          "status": "pass",
+          "detail": "超 8 天恒 blocked（上限 7 天）、原值保留、\"直接开始\"不可绕过",
+          "stats": {}
+        },
+        {
+          "name": "budget_negotiation_acceptance_binds_params",
+          "status": "pass",
+          "detail": "blocked→接受（绑定 budget=500/persons=2/days=7）→预算改 600 后旧接受失配（摘要失效）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E04",
+      "title": "明确总预算严格≤4500且不含往返；造出估算4845：有明确违例，不能凭8%容差判通过",
+      "kind": "constraints",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "hard_cap_budget_no_tolerance",
+          "status": "pass",
+          "detail": "估算 4845 超 4500 共 345：hard_cap 明确违例（无容差）；target 差额 345 < 8% 容差 360 不误报——E01 的 4500 是 target，必须报差额而非伪称严格上限",
+          "stats": {
+            "budget_overage": 345.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "E05",
+      "title": "单句\"不要博物馆\"；分类未知的候选：不产生错误正向偏好；已识别博物馆不进入；未知分类不记 pass",
+      "kind": "constraints",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "negation_never_becomes_positive_preference",
+          "status": "pass",
+          "detail": "否定只进 excluded_categories，preferences 零污染（无\"人文历史\"类错误正向偏好）",
+          "stats": {}
+        },
+        {
+          "name": "excluded_category_violation_and_unknown_for_unsupported",
+          "status": "pass",
+          "detail": "博物馆命中判 violation（阻断）；aquarium 词表外判 unknown（不记 pass、不阻断）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E06",
+      "title": "半日16:00–18:30、活动120分钟；无新要求普通全天120分钟：前者按半日可通过，后者保留旧过稀护栏",
+      "kind": "constraints",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "half_day_window_not_flagged_thin_full_day_keeps_guard",
+          "status": "pass",
+          "detail": "150 分钟明确半日按窗口验收（min_active=0）；无约束全天 120 分钟仍报过稀（240 基线不变）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E07",
+      "title": "两小时窗口，必去锚点与两可选点冲突；午餐12点；锁定预约：硬约束先于数量；午餐不变9点；锁定不能挪",
+      "kind": "constraints",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "optimizer_required_priority_lunch_and_locked",
+          "status": "pass",
+          "detail": "必去锚点保留、可选点显式取舍；午餐锁定在 11:00 午窗（营业窗钳制，不变 9 点）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E08",
+      "title": "两点约5km walking/driving；缺一方坐标：mode差异符合策略，未知不当零/最优/已满足步行限制",
+      "kind": "constraints",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "mode_aware_transfer_estimates_and_unknown_coords",
+          "status": "pass",
+          "detail": "5km：步行 123 分钟 > 2×驾驶 26 分钟（123/26 钉住常量）；缺坐标=None、unknown-route 保守罚分且 degraded 如实（不冒充已满足步行上限）",
+          "stats": {
+            "walking_minutes": 123.0,
+            "driving_minutes": 26.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "E09",
+      "title": "\"只调整第1天，删除上午，保留晚餐和酒店，其他两天不要动，先给建议\"：不调用换酒店能力；草稿与应用的未触及内容一致",
+      "kind": "editing",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "scope_violations_outside_affected_days",
+          "status": "pass",
+          "detail": "affected_days 之外逐字段硬校验；preserved 清单逐字段保留检查（不止比名称）",
+          "stats": {}
+        },
+        {
+          "name": "keep_hotel_phrase_not_routed_to_hotel_flow",
+          "status": "pass",
+          "detail": "能力路由按动词动作：保留/不换不进酒店候选；明确更换才进",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E10",
+      "title": "明确把灵隐寺从第二天移到第一天；未确认/确认：需求变更随草稿提议；仅确认成功后与行程一同生效",
+      "kind": "editing",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "proposed_requirements_apply_on_confirm",
+          "status": "pass",
+          "detail": "拟变更（灵隐寺 第2→1天）随草稿提议；确认 apply 同事务写正式需求+行程；未确认前正式需求零改动",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E11",
+      "title": "已生成2天→1天→2天；并发应用两草稿：无唯一键冲突/旧条目复活，日/主表/住宿一致，CAS只一成功",
+      "kind": "editing",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "shrink_reexpand_days_consistency",
+          "status": "pass",
+          "detail": "2→1→2 原行复活、住宿默认语义重算（2 天=1 夜）、PARTIAL 如实、未触及天逐字段不变",
+          "stats": {
+            "scope_cases": 1.0,
+            "scope_preserved": 1.0
+          }
+        },
+        {
+          "name": "cas_concurrent_apply_single_winner",
+          "status": "pass",
+          "detail": "并发两草稿：过期者 409 零残留，对齐者唯一成功（CAS 修订 +2 语义正确）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E12",
+      "title": "第一个完整 item 后模型阻塞；截断、非法尾部、重复patch、重连：先显示真候选；正式项以快照为准，不虚报complete",
+      "kind": "streaming",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "stream_parser_blocked_interleave_and_truncation",
+          "status": "pass",
+          "detail": "第一个完整 item 先于模型结束发布（runId+dayNo+ordinal 身份稳定）；正式 day 快照以 EOF 终检为准；截断半截不冒充完整（走逐日兜底）",
+          "stats": {}
+        }
+      ]
+    },
+    {
+      "id": "E13",
+      "title": "创建已接受丢响应；编辑stream断开；刷新/重复确认/取消：相同操作只有一个任务/结果，不双跑、不回填旧结果",
+      "kind": "idempotency",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "turn_id_replay_zero_llm_calls",
+          "status": "pass",
+          "detail": "同 turn 重放零调用零落库（不回填旧结果）；同键不同请求 409；running 窗口 409——重复执行数 0",
+          "stats": {
+            "duplicate_executions": 0.0,
+            "llm_calls": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "E14",
+      "title": "官方fixture否决旧票价/预约；官方请求失败：正确字段级证据或unknown，不把坐标verified传染给票价",
+      "kind": "evidence",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "official_page_fixture_vetoes_stale_ticket",
+          "status": "pass",
+          "detail": "旧票价 80.0 被官方证据否决（值撤回+待复核+冲突记录含 URL/2025-11-20 观测/摘录）；坐标 verified 不传染票价",
+          "stats": {
+            "fact_conflicts": 2.0
+          }
+        },
+        {
+          "name": "fetch_failure_keeps_fields_unknown",
+          "status": "pass",
+          "detail": "请求失败/守卫拒绝：零升级零撤回，unknown 保持 unknown（给官方核实入口）",
+          "stats": {}
+        }
+      ]
+    }
+  ]
+}

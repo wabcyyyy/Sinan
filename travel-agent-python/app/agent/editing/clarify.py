@@ -229,11 +229,13 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
         question, options, parsed, patches, llm_reply, reply_for, accepted = _extract(raw, slots)
     for key in _INT_SLOTS:
         _normalize_int(slots, key)
+    # 顺序即语义（E02 回归钉住）：先回写基础槽位、再应用 patch——「预算不限制了」
+    # 的 unset 必须赢过旧值经 slots 投影的回写，否则解除的预算被投影复活（M7 题集实测）。
+    _sync_base_from_slots(state, slots)
     if patches:
         # 有类型 patch 确定性应用；被拒条目进 unresolved_requests（不丢弃）
         apply_intake_patches(state, patches)
     apply_acceptance(state, accepted)
-    _sync_base_from_slots(state, slots)
     missing = [k for k in REQUIRED_SLOTS if k not in slots or slots[k] in (None, "")]
     response = respond(state, missing, question, options, llm_reply, reply_for)
     # 投影最后做：出口内的协商闸标记（budget/multicity warned）必须进当轮 slots

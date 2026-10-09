@@ -38,6 +38,7 @@ from app.agent.tools import impl as tools
 from app.common.config import settings
 from app.prompts.open_generation import OPEN_DAY_PROMPT_VERSION, OPEN_TRIP_PROMPT_VERSION
 from app.schemas.trip import DailyPlan, GenerateDayRequest, GenerateRequest, GenerateResponse, Suggestion
+from app.schemas.trip_requirements import TripRequirements
 from tests.agent_eval.dataset_schema import load_dataset
 from tests.agent_eval.metrics import evaluate_depth, evaluate_narrative, evaluate_response
 from tests.agent_eval.prompt_digest import prompt_text_sha256
@@ -148,8 +149,15 @@ def _stream_request(case: dict, context: dict) -> GenerateDayRequest:
     """case + 研究上下文 → 整段流式请求（字段对齐 `itinerary_generation._plan_whole_trip`）。
 
     刻意不自己发明形状：产品怎么拼这个请求，评测就怎么拼，否则量到的不是同一条路。
+
+    M7（spec §13.3）入参遗漏修复：生产请求带 `preferences` 与 `requirements_struct`
+    （`_plan_whole_trip` 同款），此前评测漏带——preferences 影响生成指令与排除类别，
+    requirements_struct 是 M1a 起硬约束的单一真源；漏带会让 nightly 量到一条比生产
+    弱约束的路径。`origin_city` 不是 GenerateDayRequest 字段（生产同样不带），出发地
+    在研究请求（下方 `_run_stream_once`）进入。
     """
     days = max(int(case.get("days") or 1), 1)
+    requirements_struct = case.get("requirements_struct")
     return GenerateDayRequest(
         city=case["city"],
         persons=case.get("persons", 1),
@@ -159,10 +167,15 @@ def _stream_request(case: dict, context: dict) -> GenerateDayRequest:
         days=days,
         used_names=[],
         hotel_tier=case.get("hotel_tier"),
+        preferences=case.get("preferences") or [],
         chosen_hotel=None,
         needs_hotel=stay_nights(days) > 0,
         requirements=case.get("requirements"),
         intent=case.get("intent"),
+        # M1a 结构化需求贯通（与 _plan_whole_trip 一致；case 未带时为 None = 旧口径）
+        requirements_struct=(
+            TripRequirements.model_validate(requirements_struct) if isinstance(requirements_struct, dict) else None
+        ),
         region_hint=case.get("region_hint"),
         request_id=f"eval-{case['city']}-{days}d",
         context=context,
@@ -232,12 +245,30 @@ def _run_stream_once(case: dict, suffix: str, catalog: dict) -> tuple[dict, str]
     run_id = f"llm-{city}-{days}-{suffix}-stream"
     empty_trace = {"run_id": run_id, "events": []}
     try:
+        # M7（spec §13.3）入参遗漏修复：研究请求此前只带 city/days/start_date/preferences，
+        # persons/budget/hotel_tier/intent/requirements/origin_city/requirements_struct 全部
+        # 漏带——研究层永远看见 persons=1、无预算无档次，量到的不是生产那条研究路径
+        # （生产经 GenerateCommand.to_generate_request() 带完整参数）。字段对齐 _plan_whole_trip
+        # 的研究口径；case 未带的字段仍为缺省（老题集行为不回退）。
+        requirements_struct = case.get("requirements_struct")
         context = run_plan_context(
             GenerateRequest(
                 city=city,
                 days=days,
+                persons=case.get("persons", 1),
+                budget=case.get("budget"),
                 start_date=case.get("start_date"),
                 preferences=case.get("preferences") or [],
+                hotel_tier=case.get("hotel_tier"),
+                requirements=case.get("requirements"),
+                intent=case.get("intent"),
+                origin_city=case.get("origin_city"),
+                region_hint=case.get("region_hint"),
+                requirements_struct=(
+                    TripRequirements.model_validate(requirements_struct)
+                    if isinstance(requirements_struct, dict)
+                    else None
+                ),
             )
         )
     except Exception as exc:
@@ -427,6 +458,14 @@ def main() -> int:
         "dataset": dataset,
         # 口径的一部分：同一条 case 在两条路径上的预算形状不同，数值不可跨路径比较
         "generation_path": args.path,
+        # M7（spec §13.3）路径身份标注：本报告是「直调 agent 面」路径，不等于生产链路——
+        # 不经 services.itinerary_generation 的建壳/落库/终检/修复循环；与业务路径的
+        # 对比只读 `tests/experience_cases/runner.py` + `eval_experience.py` 的业务面数字。
+        "path_identity": (
+            "agent-face direct (run_plan_context + run_generate_trip_stream)"
+            if args.path == "stream"
+            else "agent-face direct (workflow.run_generate graph)"
+        ),
         "model": settings.llm_model,
         # 与开放模式真实生成调用同源（day_prompts.GENERATION_TEMPERATURE）
         "temperature": GENERATION_TEMPERATURE,

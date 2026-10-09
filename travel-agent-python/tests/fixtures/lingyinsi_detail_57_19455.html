@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--
+  离线 fixture（M7，spec 2026-10-08 §13.1）：灵隐寺官方公告页静态快照。
+  来源 URL：https://www.lingyinsi.org/detail_57_19455.html
+  采集日期：2026-10-08（spec 审查当日记录的页面内容要点，非实时抓取）。
+  内容要点：自 2025-12-01 起含灵隐寺免票、实名预约分时游览。
+  用途：仅作离线测试证据输入（extract_evidence / apply_evidence_conflicts /
+  fetch 守卫单测）。生产代码禁止硬编码"灵隐寺永远免费/永远这个开放时间"——
+  extract 只对传入的 HTML 负责，页面内容变了证据随之变。
+  本文件是测试数据，不是产品代码；任何运行时路径都不得抓取真实官网。
+-->
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>景区公告：灵隐寺免费开放及预约须知 - 灵隐寺官方网站</title>
+  </head>
+  <body>
+    <div class="header">
+      <h1>灵隐寺官方网站</h1>
+    </div>
+    <nav>
+      <a href="/">首页</a><a href="/news">公告</a><a href="/visit">游览须知</a>
+    </nav>
+    <article class="detail">
+      <h2>景区公告：灵隐寺免费开放及预约须知</h2>
+      <p class="meta">发布时间：2025-11-20　来源：灵隐寺管理处</p>
+      <div class="content">
+        <p>
+          根据上级部门关于景区惠民开放的统一部署，自 2025 年 12 月 1 日起，
+          灵隐寺免票开放，不再收取门票。飞来峰景区门票另行按规定执行。
+        </p>
+        <p>
+          为保障游览安全与秩序，寺院实行实名预约分时游览。请游客提前通过
+          官方预约渠道填写本人身份信息，按预约时段入园，预约成功后凭有效证件
+          核验进入。
+        </p>
+        <p>开放时间以当日公告为准，遇重大法务活动将临时调整并另行通告。</p>
+      </div>
+      <p class="footer-note">本页面为灵隐寺官方网站发布的权威信息。</p>
+    </article>
+  </body>
+</html>

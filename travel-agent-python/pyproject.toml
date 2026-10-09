@@ -87,6 +87,8 @@ ignore = [
 "tests/*" = ["SIM117", "RUF012", "RUF001", "RUF002", "RUF003"]
 # agent_eval 的评测/回放脚本先做 sys.path 注入再 import app，E402 是既定结构。
 "tests/agent_eval/*" = ["E402"]
+# experience_cases/runner.py 同款（直跑 uv run python + pytest 双入口，M7 题集）。
+"tests/experience_cases/runner.py" = ["E402"]
 
 [tool.pyright]
 include = ["app", "tests", "scripts", "main.py"]
