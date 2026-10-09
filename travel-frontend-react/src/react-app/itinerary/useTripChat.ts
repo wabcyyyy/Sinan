@@ -5,6 +5,8 @@ import {
   chatEditItinerary,
   chatEditStream,
   getItineraryChatHistory,
+  newIdempotencyToken,
+  ReactApiError,
 } from '../../api/sinan'
 import type { ChatHistory, ChatReply } from '../../api/sinan'
 import type { ItineraryChatMessage } from '../../types/chat'
@@ -13,6 +15,17 @@ import { activeActionIndex } from './chatDraft'
 
 const SEND_TIMEOUT_MS = 70000
 const HISTORY_LIMIT = 12
+
+/** M6（spec §12 编辑入口）：turn 幂等 409 的两种语义识别。
+ * 「仍在处理」= 后端同一任务仍在跑（网络超时≠后台取消），引导等待、绝不重发第二份；
+ * 「已用于不同请求」= 同 turnId 被别的请求占用，按错误透出。其余 409/错误返回 null。
+ * 文案单一源在后端（信封 message），这里只做语义分类、不仿写第二份。 */
+function turnConflictMessage(error: unknown): string | null {
+  if (!(error instanceof ReactApiError) || error.status !== 409) return null
+  const message = error.message || ''
+  if (message.includes('仍在处理') || message.includes('已用于不同请求')) return message
+  return null
+}
 
 function toHistory(msgs: ItineraryChatMessage[]): ChatHistory {
   return msgs
@@ -99,6 +112,10 @@ export function useTripChat(
       const history = toHistory(msgsRef.current)
       const userId = -(++seq.current)
       const aiId = -(++seq.current)
+      // M6（spec §12）：同一 send 只生成一次 turnId——流式与其内部回退的阻塞通道
+      // 复用同一 turn 身份（后端 409 保护下断流恢复不会跑出第二份）；用户下一次
+      // 主动发送才是新 turn。
+      const turnId = newIdempotencyToken()
       setMsgs((list) => [
         ...list,
         { id: userId, role: 'user', content: trimmed },
@@ -107,6 +124,20 @@ export function useTripChat(
       const controller = new AbortController()
       const timer = window.setTimeout(() => controller.abort(), SEND_TIMEOUT_MS)
       const dropPlaceholder = () => setMsgs((list) => list.filter((msg) => msg.id !== aiId))
+      /** 409 turn 冲突的就地呈现：「仍在处理」留占位（结果稍后经历史可见）+ 等待提示，
+       * 「已用于不同请求」撤占位 + 错误透出；两类都不自动重发。返回是否按冲突处理。 */
+      const showTurnConflict = (error: unknown): boolean => {
+        const message = turnConflictMessage(error)
+        if (!message) return false
+        const stillProcessing = message.includes('仍在处理')
+        setMsgs((list) =>
+          stillProcessing
+            ? list.map((msg) => (msg.id === aiId && !msg.content ? { ...msg, content: '（还在处理中，稍后即可看到结果）' } : msg))
+            : list.filter((msg) => msg.id !== aiId),
+        )
+        setNotice(message)
+        return true
+      }
       try {
         await chatEditStream(
           itineraryId,
@@ -121,6 +152,7 @@ export function useTripChat(
             },
           },
           controller.signal,
+          turnId,
         )
       } catch (error) {
         if (controller.signal.aborted) {
@@ -128,21 +160,24 @@ export function useTripChat(
           setMsgs((list) =>
             list.map((msg) => (msg.id === aiId && !msg.content ? { ...msg, content: '（这一轮没有等到回复）' } : msg)),
           )
-        } else {
-          // 流式失败回退阻塞端点（兜底）
+        } else if (!showTurnConflict(error)) {
+          // 流式失败回退阻塞端点（兜底）——同一 turnId：若后端原 turn 仍在跑，
+          // 回退会拿到 409 并按冲突语义呈现，不会执行第二份
           try {
-            const reply: ChatReply = await chatEditItinerary(itineraryId, trimmed, history)
+            const reply: ChatReply = await chatEditItinerary(itineraryId, trimmed, history, controller.signal, turnId)
             applyDraftPayload(aiId, reply)
             setMsgs((list) =>
               list.map((msg) => (msg.id === aiId ? { ...msg, content: msg.content || reply.reply || '好的，建议如下：' } : msg)),
             )
           } catch (fallbackError) {
-            dropPlaceholder()
-            setNotice(
-              fallbackError instanceof Error && fallbackError.message
-                ? fallbackError.message
-                : '这条没太理解，换个说法试试？',
-            )
+            if (!showTurnConflict(fallbackError)) {
+              dropPlaceholder()
+              setNotice(
+                fallbackError instanceof Error && fallbackError.message
+                  ? fallbackError.message
+                  : '这条没太理解，换个说法试试？',
+              )
+            }
           }
         }
       } finally {

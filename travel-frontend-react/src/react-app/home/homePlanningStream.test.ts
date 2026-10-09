@@ -21,6 +21,7 @@ import { TripPanel } from './TripPanel'
  * - hook 级 mock api 交互（真 useHomePlanning + mock 流事件序列，同 homeIntake.test.ts 纪律）；
  * - 静态渲染断言（renderToStaticMarkup，零新依赖）。
  * 业务面帧 data 是开放 dict（帧表真源在 BE generation_events.py），按消费键构造。
+ * M6（spec §12 创建入口）另含 attempt 幂等块：X-Idempotency-Key 的持久化/复用/换新。
  */
 
 vi.mock('../../api/sinan', async (importOriginal) => {
@@ -402,5 +403,174 @@ describe('M5a/M5b 渲染（静态断言）', () => {
     // 候选缺 poiName 走兜底文案；itemType 缺键兜底「安排」
     expect(withCandidate).toContain('安排')
     expect(render()).not.toContain('is-preview')
+  })
+})
+
+// ===== 4. M6 attempt 幂等（spec §12 创建入口）：key 持久化 / 复用 / 换新 =====
+
+const ATTEMPT_KEY = 'sinan-intake-attempt'
+
+const inputA = { city: '成都', days: 3, persons: 2, stayNights: 2, preferences: [] }
+const inputB = { city: '杭州', days: 2, persons: 2, stayNights: 2, preferences: [] }
+
+type PostCapture = { key: string; attemptAtPost: string | null }
+
+interface StoredAttempt {
+  attemptId: string
+  hash: string
+  phase: 'pending' | 'submitted'
+  itineraryId: number | null
+}
+
+const storedAttempt = (): StoredAttempt | null => {
+  const raw = sessionStorage.getItem(ATTEMPT_KEY)
+  return raw ? (JSON.parse(raw) as StoredAttempt) : null
+}
+
+describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => {
+  function AttemptProbe() {
+    const planning = useHomePlanning()
+    return createElement('div', null,
+      createElement('button', { type: 'button', className: 'probe-start-a', onClick: () => void planning.submit(inputA) }, 'a'),
+      createElement('button', { type: 'button', className: 'probe-start-b', onClick: () => void planning.submit(inputB) }, 'b'),
+      createElement('button', { type: 'button', className: 'probe-reset', onClick: () => planning.reset() }, 'reset'),
+      createElement('output', { className: 'probe-state' }, JSON.stringify({ status: planning.status, message: planning.message })),
+    )
+  }
+
+  const idemRoots: Array<{ root: Root; container: HTMLDivElement }> = []
+  let posts: PostCapture[] = []
+  let waitCapture: { resolve: (detail: ItineraryDetail) => void } | null = null
+
+  async function flush() {
+    await act(async () => {})
+  }
+
+  /** 排队一次「先捕获再失败」的 POST（rejected 的 Once 实现不走默认捕获体） */
+  function failNextGenerate() {
+    generateMock.mockImplementationOnce(async (_input, key) => {
+      posts.push({ key: String(key), attemptAtPost: sessionStorage.getItem(ATTEMPT_KEY) })
+      throw new TypeError('network down')
+    })
+  }
+
+  /** 让在途 monitor 收尾（轮询通道返回 readyDetail）：解锁下一次 submit（busy 闸） */
+  async function settleWait() {
+    await act(async () => { waitCapture!.resolve(readyDetail) })
+    await flush()
+  }
+
+  async function mount() {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    idemRoots.push({ root, container })
+    await act(async () => { root.render(createElement(AttemptProbe)) })
+    await flush()
+    return container
+  }
+
+  async function click(container: HTMLDivElement, className: string) {
+    await act(async () => { (container.querySelector(className) as HTMLButtonElement).click() })
+    await flush()
+  }
+
+  const stateOf = (container: HTMLDivElement) =>
+    JSON.parse(container.querySelector('.probe-state')!.textContent ?? '{}') as { status: string; message: string }
+
+  beforeEach(() => {
+    ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+    sessionStorage.clear()
+    posts = []
+    waitCapture = null
+    // 捕获 POST 时点的 key 与 sessionStorage 状态（「先落盘再 POST」的直接证据）
+    generateMock.mockReset(); generateMock.mockImplementation(async (_input, key) => {
+      posts.push({ key: String(key), attemptAtPost: sessionStorage.getItem(ATTEMPT_KEY) })
+      return { id: 7, status: 1 } as ItineraryDetail
+    })
+    getDetailMock.mockReset(); getDetailMock.mockResolvedValue(readyDetail)
+    // 流立即收口：monitor 的 `await sse` 不悬挂，submit 能退净（request.current 清空），
+    // 同一容器内连续多次 submit 才可达；等待收尾由 waitForMock/settleWait 控制
+    streamMock.mockReset(); streamMock.mockImplementation(async () => {})
+    waitForMock.mockReset(); waitForMock.mockImplementation(() =>
+      new Promise<ItineraryDetail>((resolve) => { waitCapture = { resolve } }))
+  })
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    for (const { root, container } of idemRoots.splice(0)) {
+      await act(async () => { root.unmount() })
+      container.remove()
+    }
+    sessionStorage.clear()
+  })
+
+  it('首次 POST 前已持久化 attemptId+hash+状态；成功后 phase=submitted 且绑 itineraryId', async () => {
+    const container = await mount()
+    await click(container, '.probe-start-a')
+    expect(posts).toHaveLength(1)
+    // POST 执行时点记录已在（phase 还是 pending）——落盘先于发请求
+    const atPost = JSON.parse(posts[0].attemptAtPost!) as StoredAttempt
+    expect(atPost.attemptId).toBe(posts[0].key)
+    expect(atPost.attemptId).toBeTruthy()
+    expect(atPost.hash).toBeTypeOf('string')
+    expect(atPost.phase).toBe('pending')
+    // 成功后绑定 itineraryId（此后恢复只轮询这一条）
+    expect(storedAttempt()).toMatchObject({ attemptId: posts[0].key, phase: 'submitted', itineraryId: 7 })
+    expect(stateOf(container).status).toBe('planning')
+  })
+
+  it('网络失败后的重试复用同一 key（E13：创建已接受丢响应仍只有一条行程）', async () => {
+    failNextGenerate()
+    const container = await mount()
+    await click(container, '.probe-start-a')
+    expect(posts).toHaveLength(1)
+    expect(stateOf(container).status).toBe('error')
+    // 记录保留（结果未知）：同输入再试拿同一 key，后端同键回放同一行程
+    await click(container, '.probe-start-a')
+    expect(posts).toHaveLength(2)
+    expect(posts[1].key).toBe(posts[0].key)
+    expect(stateOf(container).status).toBe('planning')
+  })
+
+  it('请求实质变化换新 key；reset（明确另建）后同输入也换新 key', async () => {
+    const container = await mount()
+    await click(container, '.probe-start-a')
+    expect(posts[0].key).toBeTruthy()
+    await settleWait()
+    await click(container, '.probe-start-b')
+    expect(posts[1].key).not.toBe(posts[0].key)
+    await settleWait()
+    // reset 清 attempt 记录：同样的输入也是一次显式的新行程
+    await click(container, '.probe-reset')
+    expect(storedAttempt()).toBeNull()
+    await click(container, '.probe-start-a')
+    expect(posts[2].key).not.toBe(posts[0].key)
+  })
+
+  it('storage 写不进（隐私模式/配额满）：降级内存影子，会话内重试仍复用同一 key', async () => {
+    const setItemSpy = vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota', 'QuotaExceededError')
+    })
+    failNextGenerate()
+    const container = await mount()
+    await click(container, '.probe-start-a')
+    expect(posts).toHaveLength(1)
+    expect(setItemSpy).toHaveBeenCalled()
+    await click(container, '.probe-start-a')
+    expect(posts).toHaveLength(2)
+    expect(posts[1].key).toBe(posts[0].key)
+    expect(stateOf(container).status).toBe('planning')
+  })
+
+  it('已有 itineraryId 的刷新恢复只轮询不重复提交（attempt 记录在场也不触发 POST）', async () => {
+    sessionStorage.setItem('sinan-intake-generation', '7')
+    sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({
+      attemptId: 'seed-key', hash: 'h', phase: 'submitted', itineraryId: 7,
+    }))
+    await mount()
+    await flush()
+    expect(generateMock).not.toHaveBeenCalled()
+    expect(getDetailMock).toHaveBeenCalledWith(7)
   })
 })

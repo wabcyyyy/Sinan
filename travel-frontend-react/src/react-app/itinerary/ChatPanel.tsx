@@ -71,7 +71,10 @@ export function ChatPanel({
   }
 
   const activeIdx = activeActionIndex(chat.msgs)
-  const quickPrompts = getDayQuickPrompts(currentDayNo, city)
+  // M6（spec §12）：快捷建议按近期对话过滤——用户说过「不要博物馆」就不再推荐博物馆类
+  const quickPrompts = getDayQuickPrompts(currentDayNo, city, {
+    recentMessages: chat.msgs.map((msg) => ({ role: msg.role, content: msg.content })),
+  })
   const sceneGroups = getPromptSceneGroups(currentDayNo, city)
 
   return <section className={collapsed ? 'chat-panel is-collapsed' : 'chat-panel'} aria-label="行程对话编排">

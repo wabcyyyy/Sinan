@@ -357,21 +357,44 @@ async def events(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_bus
 
 @router.post("/{id}/chat-edit")
 def chat_edit(
-    id: int = Path(..., ge=1), body: ChatEditBody = Body(...), user: AuthUser = Depends(enforce_business_auth)
+    id: int = Path(..., ge=1),
+    body: ChatEditBody = Body(...),
+    user: AuthUser = Depends(enforce_business_auth),
+    x_turn_id: str | None = Header(default=None, alias="X-Turn-Id"),
 ) -> dict:
+    """M6：`X-Turn-Id`（可选，前端生成的 UUID）——turn 级幂等，作用域 user+itinerary+turnId。
+    缺省 = 旧行为不变；语义（running 409 / done 重放 / 同键不同请求 409）见
+    `itinerary_chat.claim_chat_turn`。"""
     quota_service.enforce_llm_budget(user.id)
-    return ok(itinerary_chat.chat_edit(user.id, id, body.message, body.history))
+    return ok(
+        itinerary_chat.chat_edit(
+            user.id, id, body.message, body.history, turn_id=itinerary_chat.normalize_turn_id(x_turn_id)
+        )
+    )
 
 
 @router.post("/{id}/chat-edit/stream")
 async def chat_edit_stream(
-    id: int = Path(..., ge=1), body: ChatEditBody = Body(...), user: AuthUser = Depends(enforce_business_auth)
+    id: int = Path(..., ge=1),
+    body: ChatEditBody = Body(...),
+    user: AuthUser = Depends(enforce_business_auth),
+    x_turn_id: str | None = Header(default=None, alias="X-Turn-Id"),
 ) -> StreamingResponse:
-    """对话编辑的 SSE 变体：与非阻塞版同参构造、同一条落库收尾路径。"""
+    """对话编辑的 SSE 变体：与非阻塞版同参构造、同一条落库收尾路径。
+
+    M6：带 X-Turn-Id 时 turn 争抢在**建流之前**完成（409 以真实 HTTP 状态返回，
+    不能变成流中间的 error 事件——与上面的归属校验同一纪律）。
+    """
     quota_service.enforce_llm_budget(user.id)
     await run_in_threadpool(itinerary_query.find_writable_main, user.id, id)
+    prepared = None
+    turn_id = itinerary_chat.normalize_turn_id(x_turn_id)
+    if turn_id:
+        prepared = await run_in_threadpool(
+            itinerary_chat.prepare_chat_turn, user.id, id, body.message, body.history, turn_id
+        )
     return itinerary_events.sse_response(
-        itinerary_events.sse_frames(itinerary_chat.chat_edit_stream(user.id, id, body.message, body.history))
+        itinerary_events.sse_frames(itinerary_chat.chat_edit_stream(user.id, id, body.message, body.history, prepared))
     )
 
 

@@ -188,9 +188,21 @@ export async function waitForItinerary(id: number | string, options: WaitForItin
     }
     transientFailures = 0
     options.onUpdate?.(detail)
-    if (detail.status === 2) return detail
+    // M6（spec §12）：终态不再仅以 status==2 判断——status==2 但 genState=PARTIAL 的
+    // 行程有 PENDING/FAILED 天，不得当成"已全部完成"；CORE_READY 是中间里程碑
+    //（主行程已可看——onUpdate 已推送详情，提示条由调用方按 coreReady 亮），
+    // 备选富化未完仍需继续轮询。存量行（无 genState）保持旧口径。
     if (detail.status === 3) {
       throw new ReactApiError(detail.planNote || '行程生成失败，请稍后重试')
+    }
+    const genState = detail.genState ?? null
+    if (
+      genState === 'COMPLETED' ||
+      genState === 'FAILED' ||
+      genState === 'PARTIAL' ||
+      (genState === null && detail.status === 2)
+    ) {
+      return detail
     }
     if (Date.now() - startedAt >= timeoutMs) {
       throw new ReactApiError('行程仍在后台整理，可以稍后从我的行程继续查看')
@@ -425,15 +437,63 @@ export interface ChatReply extends ChatDraftPayload {
   reply?: string
 }
 
+/** M6（spec §12）：幂等令牌工厂——X-Turn-Id / X-Idempotency-Key 的值都出自这里。
+ * crypto.randomUUID 优先（现代浏览器/安全上下文都有）；不可用时退化为 Math.random
+ * 拼出的 v4 形状串。键只在本服务内自比（后端 normalize 后仅限长、不验格式），足够。 */
+export function newIdempotencyToken(): string {
+  const c = globalThis.crypto
+  if (c && typeof c.randomUUID === 'function') {
+    try {
+      return c.randomUUID()
+    } catch {
+      // 个别非安全上下文实现会抛：落到下面的随机串
+    }
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0
+    const v = ch === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 export function getItineraryChatHistory(id: number | string) {
   return apiRequest<ItineraryChatMessage[]>(`/itinerary/${id}/chat-history`)
 }
 
-/** 阻塞版对话回合：流式失败时的回退通道。 */
-export function chatEditItinerary(id: number | string, message: string, history: ChatHistory, signal?: AbortSignal) {
+/** 非 2xx 的流式建连失败 → ReactApiError：信封 message 优先（M6 的 409 turn 幂等
+ * 冲突在建流前返回，信封里是「仍在处理 / 已用于不同请求」的面向用户文案，必须
+ * 原样透出给上层分语义呈现）；解析不出再退回通用文案。 */
+async function streamRequestError(response: Response): Promise<ReactApiError> {
+  let message = ''
+  try {
+    const raw = await response.text()
+    if (raw) {
+      try {
+        message = (JSON.parse(raw) as Envelope<unknown> | null)?.message ?? ''
+      } catch {
+        // 非 JSON 体：维持通用文案
+      }
+    }
+  } catch {
+    // body 不可读：维持通用文案
+  }
+  return new ReactApiError(message || `流式连接不可用（${response.status}）`, response.status)
+}
+
+/** 阻塞版对话回合：流式失败时的回退通道。
+ * M6：`turnId`（可选）带出 X-Turn-Id 头——同一回合的流式与阻塞共用同一 turn 身份，
+ * 后端据此保证同回合只有一份执行（running 409 / done 重放）。 */
+export function chatEditItinerary(
+  id: number | string,
+  message: string,
+  history: ChatHistory,
+  signal?: AbortSignal,
+  turnId?: string,
+) {
   return apiRequest<ChatReply>(`/itinerary/${id}/chat-edit`, {
     method: 'POST',
     signal,
+    headers: turnId ? { 'X-Turn-Id': turnId } : undefined,
     body: JSON.stringify({ message, history }),
   })
 }
@@ -442,6 +502,9 @@ export function chatEditItinerary(id: number | string, message: string, history:
  * 流式对话回合：POST SSE，帧形 {type, itineraryId, seq, ts, data}。
  * chat_token → onToken(delta)；chat_draft → onDraft(草稿九键，plans 为 snake_case)；
  * error 帧 → throw Error(message)；chat_done 忽略。
+ * M6：`turnId`（可选）带出 X-Turn-Id 头——后端在建流**前**完成 turn 争抢，
+ * 409（仍在处理 / 已用于不同请求）以真实 HTTP 状态返回，信封文案经
+ * streamRequestError 原样透出；done 重放按 chat_token+chat_draft 帧照常送达。
  */
 export async function chatEditStream(
   id: number | string,
@@ -449,16 +512,21 @@ export async function chatEditStream(
   history: ChatHistory,
   handlers: { onToken: (delta: string) => void; onDraft: (payload: ChatDraftPayload) => void },
   signal?: AbortSignal,
+  turnId?: string,
 ) {
   const response = await fetch(`/api/itinerary/${id}/chat-edit/stream`, {
     method: 'POST',
     credentials: 'include',
-    headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' },
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+      ...(turnId ? { 'X-Turn-Id': turnId } : {}),
+    },
     body: JSON.stringify({ message, history }),
     signal,
   })
   if (!response.ok || !response.body) {
-    throw new ReactApiError(`流式连接不可用（${response.status}）`, response.status)
+    throw await streamRequestError(response)
   }
   const reader = response.body.getReader()
   const decoder = new TextDecoder()

@@ -293,6 +293,47 @@ def test_detail_is_cached_and_evicted_per_itinerary(client: TestClient) -> None:
     assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["title"] == "改过名", "精确失效后必须回源"
 
 
+# ---------- 生成阶段投影（M6，spec §12） ----------
+
+
+def _main_with_gen_state(gen_state: str | None) -> int:
+    with db_session.session_scope() as session:
+        trip = ItineraryMain(
+            user_id=1,
+            title=f"生成态-{gen_state}",
+            city="杭州",
+            days=2,
+            persons=1,
+            status=2,
+            gen_state=gen_state,
+        )
+        session.add(trip)
+        session.flush()
+        return trip.id
+
+
+def test_detail_projects_gen_state_partial_as_terminal_not_complete(client: TestClient) -> None:
+    """PARTIAL 详情如实携带 genState=PARTIAL——前端不得把 status==2 当"已全部完成"。"""
+    trip_id = _main_with_gen_state("PARTIAL")
+    data = client.get(f"/api/itinerary/{trip_id}").json()["data"]
+    assert data["status"] == 2 and data["genState"] == "PARTIAL"
+    assert data["coreReady"] is False
+
+
+def test_detail_projects_core_ready_flag(client: TestClient) -> None:
+    """CORE_READY：主行程可看、备选仍在完善——coreReady=true 供 UI 亮提示（刷新后仍在）。"""
+    trip_id = _main_with_gen_state("CORE_READY")
+    data = client.get(f"/api/itinerary/{trip_id}").json()["data"]
+    assert data["genState"] == "CORE_READY" and data["coreReady"] is True
+
+
+def test_detail_gen_state_defaults_for_legacy_rows(client: TestClient) -> None:
+    """存量行（V13 迁移前）gen_state 为 NULL：投影如实为 None/false，不猜状态。"""
+    trip_id = client.get("/api/itinerary").json()["data"][0]["id"]
+    data = client.get(f"/api/itinerary/{trip_id}").json()["data"]
+    assert data["genState"] is None and data["coreReady"] is False
+
+
 # ---------- 路由顺序与偏好 ----------
 
 

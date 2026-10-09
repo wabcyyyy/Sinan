@@ -356,6 +356,12 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         # L14：出发地（用户建行程时填）——前端据此显示"从 X 出发"与"查实时价"入口
         "originCity": main.origin_city,
         "status": main.status,
+        # M6（spec §12）：生成阶段只读投影——waitForItinerary 不再仅以 status==2 判定
+        # 完全就绪：PARTIAL 是终态（有 PENDING/FAILED 天，不得当"已全部完成"），
+        # CORE_READY 是中间里程碑（主行程可看、备选仍在完善，UI 可亮"已可查看"提示）。
+        # owner/成员详情面可见；匿名分享面自建 VO 不经过这里（share.py 不消费本函数）。
+        "genState": main.gen_state,
+        "coreReady": main.gen_state == "CORE_READY",
         "planNote": main.plan_note,
         "tripTheme": main.trip_theme,
         # S1：封面快照 / 收藏 / 归档 / 分享。shareToken **只回给 owner**：详情面

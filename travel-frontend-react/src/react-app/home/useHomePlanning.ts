@@ -4,6 +4,7 @@ import {
   getItineraryDetail,
   isOfflineError,
   isUnauthorized,
+  newIdempotencyToken,
   streamItineraryEvents,
   waitForItinerary,
 } from '../../api/sinan'
@@ -43,6 +44,123 @@ function clearGenerationId() {
   } catch {
     // ignore
   }
+}
+
+// ===== M6（spec §12 创建入口）：attempt 幂等记录 =====
+// 首次 POST **前**就落 sessionStorage：{ attemptId（X-Idempotency-Key 值）, hash（规范化
+// 请求指纹）, phase, itineraryId }。同一次网络失败/响应丢失/刷新后的重试复用同一 key
+//（后端同键 TTL 内只建壳一次，回放同一行程——「创建已接受但响应丢失仍只有一条行程」）；
+// 请求实质变化（hash 不一致）或用户明确「重新说」（reset 清记录）才换 key。已拿到
+// itineraryId 的恢复只走轮询（GENERATION_KEY resume），不再次提交。storage 不可用时
+// 降级为模块级内存变量——会话内幂等仍成立，跨刷新不可恢复（如实限制）。
+const ATTEMPT_KEY = 'sinan-intake-attempt'
+
+interface AttemptRecord {
+  attemptId: string
+  hash: string
+  phase: 'pending' | 'submitted'
+  itineraryId: number | null
+}
+
+let memoryAttempt: AttemptRecord | null = null
+
+function parseAttempt(raw: string): AttemptRecord | null {
+  try {
+    const value = JSON.parse(raw) as Partial<AttemptRecord> | null
+    if (value && typeof value.attemptId === 'string' && value.attemptId && typeof value.hash === 'string') {
+      return {
+        attemptId: value.attemptId,
+        hash: value.hash,
+        phase: value.phase === 'submitted' ? 'submitted' : 'pending',
+        itineraryId:
+          typeof value.itineraryId === 'number' && Number.isInteger(value.itineraryId) && value.itineraryId > 0
+            ? value.itineraryId
+            : null,
+      }
+    }
+  } catch {
+    // 记录损坏：当作没有，按新 attempt 走
+  }
+  return null
+}
+
+/** 存储可写性探测：原值回写（Safari 旧隐私模式/配额满是「可读不可写」）。
+ * 只在存储里没有可用记录时调用，用户动作频率，成本可忽略。 */
+function attemptStorageWritable(): boolean {
+  try {
+    sessionStorage.setItem(ATTEMPT_KEY, sessionStorage.getItem(ATTEMPT_KEY) ?? '')
+    return true
+  } catch {
+    return false
+  }
+}
+
+function readAttempt(): AttemptRecord | null {
+  try {
+    const raw = sessionStorage.getItem(ATTEMPT_KEY)
+    if (raw) return parseAttempt(raw)
+  } catch {
+    return memoryAttempt
+  }
+  // 存储可读但无记录：能写则以存储为准（外部清理/测试重置不复活内存影子），
+  // 不能写（写失败场景）降级内存影子保会话内幂等
+  return attemptStorageWritable() ? null : memoryAttempt
+}
+
+function writeAttempt(record: AttemptRecord | null) {
+  memoryAttempt = record
+  try {
+    if (record === null) sessionStorage.removeItem(ATTEMPT_KEY)
+    else sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify(record))
+  } catch {
+    // 写不进：内存影子已保会话内幂等；跨刷新恢复能力如实受限（下次读取经探测走内存）
+  }
+}
+
+const ATTEMPT_HASH_KEYS = [
+  'city', 'days', 'persons', 'stayNights', 'budget', 'startDate', 'endDate',
+  'originCity', 'intent', 'preferences', 'hotelTier', 'regionHint', 'requirements', 'requirementsStruct',
+] as const
+
+/** 规范化请求指纹：固定键序浅 stringify（缺字段补 null）后 FNV-1a + 长度。
+ * 只在本会话内自比，不需要密码学强度；宁可比出不一致换新 key，不可错复用旧 key。 */
+function attemptHash(input: GenerateInput): string {
+  const source = input as unknown as Record<string, unknown>
+  const canonical = ATTEMPT_HASH_KEYS.map((key) => `${key}=${JSON.stringify(source[key] ?? null)}`).join('|')
+  let h = 0x811c9dc5
+  for (let i = 0; i < canonical.length; i += 1) {
+    h ^= canonical.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return `${(h >>> 0).toString(16)}:${canonical.length}`
+}
+
+/** 提交前认领 attempt：同 hash 复用原 key（失败/丢响应/刷新后的重试同键）；
+ * hash 变了或没有记录才生成新 key。落盘发生在 POST 之前（这是同键重放成立的前提）。 */
+function claimAttempt(hash: string): AttemptRecord {
+  const existing = readAttempt()
+  if (existing && existing.hash === hash) {
+    const record: AttemptRecord = { ...existing, phase: 'pending' }
+    writeAttempt(record)
+    return record
+  }
+  const record: AttemptRecord = { attemptId: newIdempotencyToken(), hash, phase: 'pending', itineraryId: null }
+  writeAttempt(record)
+  return record
+}
+
+function settleAttempt(attemptId: string, itineraryId: number) {
+  const existing = readAttempt()
+  if (existing && existing.attemptId === attemptId) {
+    writeAttempt({ ...existing, phase: 'submitted', itineraryId })
+  }
+}
+
+/** 结果已知的失败（终态 FAILED/建壳被拒）后清 attempt：用户重试该拿到新一次尝试，
+ * 而不是被回放到同一个失败壳。与 clearGenerationId 分开用——resume 拉不到详情属于
+ *「结果未知」，只清 generationId，attempt 保留让下次提交复用键把行程找回来。 */
+function clearAttempt() {
+  writeAttempt(null)
 }
 
 export function useHomePlanning() {
@@ -97,6 +215,9 @@ export function useHomePlanning() {
             setDraft(detail)
             // M5a：正式 day 快照（轮询对账到达）是权威内容——已有条目的天候选整日让位
             setPreviewState((prev) => prunePreviewsByDraft(prev, detail))
+            // M6（spec §12）：coreReady 随详情投影到达——刷新/断流后轮询对账也能亮
+            // 「主行程已可查看」提示，不再只依赖一次性的 SSE core_ready 帧
+            if (detail.coreReady) setCoreReady(true)
             lastStatus = detail.status
           }
         },
@@ -105,10 +226,28 @@ export function useHomePlanning() {
       // done 不清 generationId：刷新后走 resume 恢复同一 ready 呈现（见 GENERATION_KEY 注）
       // 完整收尾（轮询通道先于 SSE 终态帧到达是常态）：残余预览与里程碑提示一并清
       setDraft(result); setPreviewState(emptyPreviewState()); setCoreReady(false)
-      setProgress(4); setStatus('ready'); setMessage('你的行程已准备好')
+      if (result.genState === 'FAILED') {
+        // M6：gen_state=FAILED 是终态但不是成功——如实呈现失败与已得内容；
+        // attempt 记录一并清（结果已知，重试拿新一次尝试而不是回放失败壳）
+        clearGenerationId()
+        clearAttempt()
+        setStatus('pending')
+        setMessage(result.planNote || '行程未能全部生成，已保留当前内容，可稍后重试。')
+      } else {
+        setProgress(4); setStatus('ready')
+        // M6：PARTIAL（有 PENDING/FAILED 天）不得当成"已全部完成"
+        setMessage(
+          result.genState === 'PARTIAL'
+            ? '行程主要内容已生成，部分天尚未完成，可在详情页重试未完成的天'
+            : '你的行程已准备好',
+        )
+      }
     } catch (error) {
       if (controller.signal.aborted) return
-      if (lastStatus === 3) clearGenerationId()
+      if (lastStatus === 3) {
+        clearGenerationId()
+        clearAttempt()
+      }
       setStatus('pending')
       setMessage(error instanceof Error ? error.message : '进度暂时不可用，已保留当前行程。')
     }
@@ -121,11 +260,16 @@ export function useHomePlanning() {
     request.current = controller
     setStatus('creating'); setMessage('正在创建你的行程'); setProgress(0); setDraft(null)
     setPreviewState(emptyPreviewState()); setCoreReady(false)
+    // M6（spec §12）：POST **前**认领并持久化 attempt——之后的网络失败/丢响应/刷新重试
+    // 复用同一键（后端回放同一行程）；请求实质变化才换新键。只提交一次的责任由
+    // 后端同键回放兜底，这里不靠按钮禁用。
+    const attempt = claimAttempt(attemptHash(input))
     let created: ItineraryDetail | null = null
     try {
-      created = await generateItinerary(input, crypto.randomUUID(), controller.signal)
+      created = await generateItinerary(input, attempt.attemptId, controller.signal)
       if (controller.signal.aborted) return
       saveGenerationId(created.id)
+      settleAttempt(attempt.attemptId, created.id)
       setDraft(created); setStatus('planning')
       await monitor(created, controller)
     } catch (error) {
@@ -158,14 +302,22 @@ export function useHomePlanning() {
       const shell = await getItineraryDetail(id)
       if (!request.current) request.current = controller
       if (shell.status === 3) {
+        // 终态失败是结果已知：resume 标记与 attempt 记录一并清，重试拿新一次尝试
         clearGenerationId()
+        clearAttempt()
         return
       }
       setDraft(shell)
       if (shell.status === 2) {
         // 刷新恢复 done 态：与刚生成完的 ready 同一呈现分支（TripPanel 的 TripBoard），
-        // id 继续保留——再刷新仍能恢复；清空只发生在会话重置
-        setProgress(4); setStatus('ready'); setMessage('你的行程已准备好')
+        // id 继续保留——再刷新仍能恢复；清空只发生在会话重置。
+        // M6：PARTIAL 也是 status==2 终态，但不是"已全部完成"——如实区分文案
+        setProgress(4); setStatus('ready')
+        setMessage(
+          shell.genState === 'PARTIAL'
+            ? '行程主要内容已生成，部分天尚未完成，可在详情页重试未完成的天'
+            : '你的行程已准备好',
+        )
         return
       }
       saveGenerationId(id)
@@ -189,6 +341,7 @@ export function useHomePlanning() {
     request.current?.abort()
     request.current = null
     clearGenerationId()
+    clearAttempt()
     setDraft(null); setProgress(0); setMessage(''); setStatus('idle')
     setPreviewState(emptyPreviewState()); setCoreReady(false)
   }, [])

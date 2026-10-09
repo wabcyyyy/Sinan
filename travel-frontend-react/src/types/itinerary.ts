@@ -116,6 +116,11 @@ export interface ItineraryDetail {
   /** 用户旅行意图原文（§5.3.1 意图回显行；后端暂未回传，有值才渲染） */
   intent?: string | null
   status: number
+  /** M6（spec §12）：生成阶段只读投影——null/GENERATING/CORE_READY/COMPLETED/PARTIAL/FAILED。
+   * waitForItinerary 据此区分「完全就绪」「部分完成（有 PENDING/FAILED 天）」与「核心可看」。 */
+  genState?: 'CORE_READY' | 'COMPLETED' | 'PARTIAL' | 'FAILED' | 'GENERATING' | null
+  /** M6：genState==CORE_READY 时为 true——主行程已可查看、备选仍在完善（轮询继续）。 */
+  coreReady?: boolean
   /** 协作（C2.3）：当前调用者在本行程中的角色；owner/editor 可写，viewer 只读 */
   myRole?: 'owner' | 'editor' | 'viewer'
   /** 模板（C2.4）：已发布时间；有值=发布中（详情为本人视角才回传） */

@@ -2664,6 +2664,7 @@
           "itinerary"
         ],
         "summary": "Chat Edit",
+        "description": "M6：`X-Turn-Id`（可选，前端生成的 UUID）——turn 级幂等，作用域 user+itinerary+turnId。\n缺省 = 旧行为不变；语义（running 409 / done 重放 / 同键不同请求 409）见\n`itinerary_chat.claim_chat_turn`。",
         "operationId": "chat_edit_api_itinerary__id__chat_edit_post",
         "parameters": [
           {
@@ -2674,6 +2675,22 @@
               "type": "integer",
               "minimum": 1,
               "title": "Id"
+            }
+          },
+          {
+            "name": "X-Turn-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Turn-Id"
             }
           }
         ],
@@ -2718,7 +2735,7 @@
           "itinerary"
         ],
         "summary": "Chat Edit Stream",
-        "description": "对话编辑的 SSE 变体：与非阻塞版同参构造、同一条落库收尾路径。",
+        "description": "对话编辑的 SSE 变体：与非阻塞版同参构造、同一条落库收尾路径。\n\nM6：带 X-Turn-Id 时 turn 争抢在**建流之前**完成（409 以真实 HTTP 状态返回，\n不能变成流中间的 error 事件——与上面的归属校验同一纪律）。",
         "operationId": "chat_edit_stream_api_itinerary__id__chat_edit_stream_post",
         "parameters": [
           {
@@ -2729,6 +2746,22 @@
               "type": "integer",
               "minimum": 1,
               "title": "Id"
+            }
+          },
+          {
+            "name": "X-Turn-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Turn-Id"
             }
           }
         ],

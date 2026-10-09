@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { interpretImageIntent, reportClientError, streamItineraryEvents } from './sinan'
+import { interpretImageIntent, reportClientError, streamItineraryEvents, waitForItinerary } from './sinan'
 
 /** SSE 断流重连与错误探针的传输层测试：fetch 以鸭子类型打桩
  * （streamItineraryEvents 只消费 ok/status/body.getReader）。 */
@@ -100,6 +100,50 @@ describe('streamItineraryEvents 断流重连', () => {
       ),
     ).rejects.toThrow()
     expect(onError).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('waitForItinerary 终态口径（M6：不再仅以 status==2 判断完全就绪）', () => {
+  /** 详情轮询桩：apiRequest 走 response.text()，这里按应答序列回 JSON 信封。 */
+  function stubDetailSequence(details: Array<Record<string, unknown>>) {
+    const payloads = details.map((detail) => JSON.stringify({ code: 200, data: detail }))
+    let index = 0
+    const fetchMock = vi.fn(async () => {
+      const raw = payloads[Math.min(index, payloads.length - 1)]
+      index += 1
+      return { ok: true, status: 200, text: async () => raw } as unknown as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return { fetchMock, calls: () => fetchMock.mock.calls.length }
+  }
+
+  const base = { id: 7, city: '成都', days: 3, dayList: [], budgetList: [], totalAmount: 0 }
+
+  it('status=2 且 genState=PARTIAL：终态返回，不再误判"已全部完成"后无限轮询', async () => {
+    stubDetailSequence([{ ...base, status: 2, genState: 'PARTIAL', coreReady: false }])
+    const detail = await waitForItinerary(7, { intervalMs: 1 })
+    expect(detail.genState).toBe('PARTIAL')
+  })
+
+  it('status=2 且 genState=CORE_READY：继续轮询直到 COMPLETED', async () => {
+    const { calls } = stubDetailSequence([
+      { ...base, status: 2, genState: 'CORE_READY', coreReady: true },
+      { ...base, status: 2, genState: 'COMPLETED', coreReady: false },
+    ])
+    const detail = await waitForItinerary(7, { intervalMs: 1 })
+    expect(detail.genState).toBe('COMPLETED')
+    expect(calls()).toBe(2)
+  })
+
+  it('存量行（无 genState）保持旧口径：status=2 即完成', async () => {
+    stubDetailSequence([{ ...base, status: 2 }])
+    const detail = await waitForItinerary(7, { intervalMs: 1 })
+    expect(detail.status).toBe(2)
+  })
+
+  it('status=3 仍抛错（取消/失败语义不变）', async () => {
+    stubDetailSequence([{ ...base, status: 3, planNote: '生成已取消' }])
+    await expect(waitForItinerary(7, { intervalMs: 1 })).rejects.toThrow('生成已取消')
   })
 })
 

@@ -13,10 +13,39 @@ export interface QuickPromptItem {
   icon?: string
 }
 
+/** M6（spec §12 快捷建议过滤）：近期对话上下文。FE 本地历史即可满足"明确不要的东西
+ * 不再推荐"——requirements_struct 是 BE 内部状态，不为其新增公开投影。 */
+export interface QuickPromptOptions {
+  /** 近几条对话消息（user/ai 原文均可：AI 的确认回复会复述用户原话） */
+  recentMessages?: Array<{ role: string; content: string }>
+}
+
+/** 只扫最近 N 条消息：更早的推翻性指令（"又想去博物馆了"）不该再拉黑建议 */
+const EXCLUSION_SCAN_WINDOW = 6
+
+/** 否定短语 + 紧随的排除对象（2-12 个非标点字符）：「不要博物馆」「不去西湖」「别安排美术馆」 */
+const NEGATION_RE = /(?:不要|不想去|不去|别去|别安排|不要安排)\s*([^，。；、！？!?,.\s]{2,12})/g
+
+/**
+ * 从近期对话里提取排除项（M6）：用户说过「不要 X」后，快捷建议不再推荐含 X 的条目。
+ * 纯本地词面匹配，不做语义理解——识别不了的不过滤（宁可多推荐，不可违背明确排除）。
+ */
+export function excludedTermsFromMessages(messages: Array<{ role: string; content: string }> | undefined): string[] {
+  if (!messages?.length) return []
+  const terms = new Set<string>()
+  for (const message of messages.slice(-EXCLUSION_SCAN_WINDOW)) {
+    const content = typeof message?.content === 'string' ? message.content : ''
+    for (const match of content.matchAll(NEGATION_RE)) {
+      terms.add(match[1])
+    }
+  }
+  return [...terms]
+}
+
 /** 针对具体某一天的智能指令生成器 */
-export function getDayQuickPrompts(dayNo: number, city?: string): QuickPromptItem[] {
+export function getDayQuickPrompts(dayNo: number, city?: string, options?: QuickPromptOptions): QuickPromptItem[] {
   const cityPrefix = city ? `${city}·` : ''
-  return [
+  const prompts: QuickPromptItem[] = [
     {
       id: `route-${dayNo}`,
       category: 'route',
@@ -60,6 +89,12 @@ export function getDayQuickPrompts(dayNo: number, city?: string): QuickPromptIte
       prompt: `请推荐第 ${dayNo} 天游览区域附近交通便利、口碑好的品质酒店或民宿候选。`,
     },
   ]
+  const excluded = excludedTermsFromMessages(options?.recentMessages)
+  if (!excluded.length) return prompts
+  // 「不要博物馆」→ 含"博物馆"的建议整条隐藏（label/prompt 任一命中即过滤）
+  return prompts.filter(
+    (item) => !excluded.some((term) => item.prompt.includes(term) || item.label.includes(term)),
+  )
 }
 
 /** 详情页空状态下的精选分类场景指南 */
