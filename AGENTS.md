@@ -21,9 +21,12 @@ cd travel-agent-python && powershell -NoProfile -ExecutionPolicy Bypass -File sc
 # 契约导出（改了 app/schemas/ 后必须跑，产物入仓，CI 校验漂移）
 cd travel-agent-python && uv run python scripts/export_contracts.py
 
-# 离线评测（mock 驱动，无需 LLM key；行为类改动后对比指标）
+# 离线评测（mock 驱动，无需 LLM key；行为类改动后跑全套再对照棘轮基线）
 cd travel-agent-python && uv run python tests/agent_eval/eval_agent.py
 cd travel-agent-python && uv run python tests/agent_eval/eval_research.py
+cd travel-agent-python && uv run python tests/agent_eval/eval_editing.py
+cd travel-agent-python && uv run python tests/agent_eval/eval_experience.py
+cd travel-agent-python && uv run python scripts/eval_ratchet.py
 
 # 前端构建与门禁
 cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:lint && npm run ep:lint

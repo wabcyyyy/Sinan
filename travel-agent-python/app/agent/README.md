@@ -84,7 +84,13 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `day_stream.py` | 单日链路：一次生成的编排与落地（反思/重试不在此） |
 | `day_workflow.py` | 单日图的门面 |
 | `stream_branch.py` | 整段流式：统一图的流式分支，custom stream 逐天下发 NDJSON 事件（`run_generate_trip_stream`） |
+| `content/incremental_plans.py` | 增量 JSON 候选解析（ijson push 词法 + 事件折叠）：item 完整闭合且过基础形状校验才发布候选；EOF 未闭合 = 截断失败，半截不冒充成功（M5a） |
+| `content/trip_stream.py` | 整段流式 LLM 调用：与阻塞 `llm_open_trip` 同 prompt/schema，逐 chunk 喂解析器产出候选泵，EOF 走有界修复（M5a） |
+| `rules/day_policy.py` | DayPolicy 到/离日窗口语义：每天可用窗与时长上限（M3 共用规则单源，reflect 不再各带一份） |
+| `rules/constraint_checks.py` | ConstraintReport 硬约束检查（必去/排除/窗口/冲突）：core_ready 交付门与编辑草稿确定性硬校验共用（M3/M4） |
 | `workflow.py` | 图工作流的门面：生成 → 校验 → 修复循环 |
+| `grounding/official_pages.py` | 官方页面证据 adapter：限域抓取（仅 http(s)/私网 fail-closed/2MB/10s），只认登记过的公告句式，认不出 = unknown（M7） |
+| `editing/chat_draft/` | 编辑草稿决策契约：意图分类（「酒店不动」优先于名词匹配）、作用域校验、拟变更需求随草稿提议（M4） |
 
 ## 依赖方向（禁反向）
 

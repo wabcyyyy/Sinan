@@ -30,11 +30,12 @@ check:
 test:
     cd {{py}}; uv run pytest tests/ -q --ignore=tests/api --ignore=tests/perf
 
-# 离线评测（行为类改动后对比指标；跑完即棘轮，指标动了红）
+# 离线评测（行为类改动后对比指标；跑完即棘轮，指标动了红；体验题集 fail>0 自红）
 eval:
     cd {{py}}; uv run python tests/agent_eval/eval_agent.py
     cd {{py}}; uv run python tests/agent_eval/eval_research.py
     cd {{py}}; uv run python tests/agent_eval/eval_editing.py
+    cd {{py}}; uv run python tests/agent_eval/eval_experience.py
     cd {{py}}; uv run python scripts/eval_ratchet.py
 
 # 流式事件快照（P2 拆分/重构的判据）

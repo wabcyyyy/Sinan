@@ -6,11 +6,11 @@
 
 ## 核心能力
 
-- **整段流式生成 + SSE 实时进度**：一次结构化 JSON 调用生成整趟（模型看得见全盘），逐天 yield 事件边生成边落库（生成期跨天去重 + 落库后 `validate_plans` 终检，违规天重排）；断线降级轮询，缺天自动逐日修复
+- **整段流式生成 + SSE 实时进度**：一次结构化 JSON 调用生成整趟（模型看得见全盘），逐天 yield 事件边生成边落库（生成期跨天去重 + 落库后 `validate_plans` 终检，违规天重排）；逐项候选闭合即预览（未过接地标「正在完善」，淘汰显式撤回），主行程落库过终检即发 `core_ready` 里程碑——先可查看，备选富化不阻塞；断线降级轮询，缺天自动逐日修复
 - **意图优先**：一句话旅行意图作为最高优先级信号，驱动主题提炼、检索补池与选点；输出每日叙事、拍照机位、天气备选与方案分叉
 - **多 Agent 研究编排**：酒店/景点/美食三域并行收集证据（LLM 规划检索 → OTM 半径池/联网搜索补池 → 评估充分性 → 不足补查），Supervisor 汇总并按校验反馈定向补查，全程 trace
 - **诚实降级**：行程项带 `source` / 核验状态；外部数据与估价严格分开标注（`observed` vs `estimated`），不存在「用候选直接拼装行程冒充生成」的路径，LLM 失败如实返回待研究草案
-- **对话式创建与编辑**：首页 ChatIntake 一句话收集槽位（缺槽自动追问、确认卡拍板）；详情页 ChatPanel 自然语言改行程（换酒店/调节奏/加减天数），SSE 返回草稿卡片，确认后应用并联动预算重算（服务端草稿 + 指纹乐观并发）
+- **对话式创建与编辑**：首页 ChatIntake 一句话收集槽位（缺槽自动追问、确认卡拍板；需求为服务端权威结构化状态，多轮累积、随确认生效）；详情页 ChatPanel 自然语言改行程（换酒店/调节奏/加减天数），SSE 返回草稿卡片，确认后应用并联动预算重算——编辑带作用域校验与 planning revision 乐观并发（并发应用只有一份生效），chat 编辑按 turnId 幂等（断线重试/重复提交不双跑、不双份消息）
 - **AI-NATIVE 地点层**：OTM 半径池带坐标/热度，Nominatim 点名兜底，零本地语料、零索引维护；任意城市即开即用
 - **可观测**：`X-Agent-Run-ID` 关联全链路脱敏 Trace，`/v1/metrics` 暴露成功/降级/失败、token 分场景、外部调用命中（支持 Prometheus 文本）
 - **前端外观契约**：七套 scheme × 日间/夜间双主题 × 紧凑密度 × 减弱动效，首帧无 FOUC；`theme:lint` 禁裸色与野 z-index、`ep:lint` 钉死 Element Plus 零用量防回潮（均入 CI）
@@ -43,7 +43,7 @@
 
 **分层**：前端只做展示与交互；FastAPI 服务同时承担两件事——**业务面**（认证、行程状态机、缓存、异步 PDF 导出、SSE 事件流）与 **Agent 面**（LLM 编排、多 Agent 研究、事实落地与质量校验），两者同进程直调，省掉跨语言序列化与一条 SSE 转发桥。外部数据永远只作证据：候选以编号参考资料注入 Prompt 引导模型选点，OTM/Nominatim 命中项落地真实坐标与来源（`observed`）；票价/营业时间无结构化来源，由 LLM 估价（`estimated`）；系统不存在「用候选直接拼装行程」的路径，LLM 失败时如实返回待研究草案。
 
-**资源口径（L5a，2026-09-27 实测）**：「一次 N 天生成花多少调用/token/秒」按 run_id 聚合可答（`travel-agent-python/scripts/usage_report.py`）。本机实测：2 天行程主生成 = 8 次 LLM 调用 / 18,223 token / 274 秒；对话式创建的每轮澄清 ≈ 2,700 token / 3-8 秒。离线评测为 mock 口径、结构性无 LLM 成本（探针实证 calls=0），故成本棘轮挂在 nightly 真实评测之后（`usage_report.py --check`，LLM 方差超限按基线认账）；线上时点数据经 `/api/agent/v1/usage` 查询。
+**资源口径（L5a，2026-09-27 实测）**：「一次 N 天生成花多少调用/token/秒」按 run_id 聚合可答（`travel-agent-python/scripts/usage_report.py`）。本机实测：2 天行程主生成 = 8 次 LLM 调用 / 18,223 token / 274 秒；对话式创建的每轮澄清 ≈ 2,700 token / 3-8 秒。2026-10-09 授权活栈复测（deepseek-flash，业务路径同题 5 连跑）：2 天行程 core_ready/终态 p50≈48s、p95≈59s（`travel-agent-python/tests/agent_eval/report/live/`，与上行不同模型不同口径，不互比）。离线评测为 mock 口径、结构性无 LLM 成本（探针实证 calls=0），故成本棘轮挂在 nightly 真实评测之后（`usage_report.py --check`，LLM 方差超限按基线认账）；线上时点数据经 `/api/agent/v1/usage` 查询。
 
 **后端演进（Java 版已删除）**：这个项目最初是「Vue + Spring Boot + Python Agent」三端结构，Spring 侧承载认证 / 行程状态机 / 缓存 / PDF / SSE 网关。为了把 agent 能力与持久化放进同一进程，后端已按绞杀者路线整体迁到 FastAPI：当前端点口径以**可对账数字**为准——**业务面+agent 面合计 104 paths / 120 ops（2026-10-08 自 contracts/openapi.json 实数），由 `contracts/openapi.json` 入仓并受契约漂移门禁保护；前端调用点 100% 路由覆盖有机检**（`tests/test_cutover_contract.py`）。Java 时期「50 个端点落地 49」的说法只有历史出处（ARCHIVED.md），口径已随 Java 删除不可现场对账，不再作为等价性主张；恢复步骤与「原先谁负责什么」的对照表见 `ARCHIVED.md`。
 
@@ -170,7 +170,8 @@ just fe-check                    # 前端构建 + theme:lint + ep:lint + 单测
 | --- | --- |
 | 离线单测 | 事件契约与漂移门禁 / 断流取消 / 叙事契约 / 引用落地 / 跨天去重 / 反思 / 多 Agent / SSE / PDF 导出 / 后台管理 |
 | 活栈契约 | `uv run pytest tests/api -q`（需先起后端）：登录/行程/导出/后台端到端 |
-| Agent 评测 | 离线 mock 评测 + 真实 LLM 评测（固定模型与 Prompt 版本）；行为回归门禁（快照 + eval ratchet）已入 CI |
+| Agent 评测 | 离线 mock 评测（agent/research/editing）+ 真实 LLM 评测（固定模型与 Prompt 版本）；行为回归门禁（快照 + eval ratchet）已入 CI |
+| 体验回归题集 | `uv run python tests/agent_eval/eval_experience.py`：E01-E14 业务路径指标（硬约束履约/一次交付/范围保持/重复执行/事实冲突），fail>0 拒出报告即红；已入 nightly |
 | 性能压测 | `uv run python tests/perf/load_test.py --endpoint all` |
 
 > 完整命令清单与门禁口径见 [`AGENTS.md`](AGENTS.md) 与 [`travel-agent-python/AGENTS.md`](travel-agent-python/AGENTS.md)。

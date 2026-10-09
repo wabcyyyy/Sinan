@@ -55,7 +55,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1  # 一键�
 uv run pytest tests/ -q --ignore=tests/api --ignore=tests/perf  # 离线测试（含 tests/agent_eval 度量层单测）
 uv run python scripts/export_contracts.py        # 改 schemas 后导出契约（产物入仓）
 uv run python tests/agent_eval/eval_agent.py     # 离线评测（行为改动后对比）
-uv run python scripts/eval_ratchet.py            # eval 指标棘轮（跑完两个 eval 后对照基线）
+uv run python tests/agent_eval/eval_editing.py   # 编辑链路离线评测
+uv run python tests/agent_eval/eval_experience.py # 体验题集 E01-E14（fail>0 拒出报告即红）
+uv run python scripts/eval_ratchet.py            # eval 指标棘轮（跑完三套 offline eval 后对照基线）
 uv run pytest tests/api -q                       # 活栈契约（需先起服务）
 ```
 
@@ -66,20 +68,26 @@ uv run pytest tests/api -q                       # 活栈契约（需先起服�
   `GOLDEN_REGENERATE=1 uv run pytest tests/test_stream_snapshot.py`，**人工复核 diff 后**入库
   （同法适用于 `GOLDEN_REGENERATE=1 uv run pytest tests/test_format_output_golden.py`
   重写 `tests/golden/format_output.json`）。
-- **eval ratchet**（PR-0 口径，取代报告字节比对）：跑 `eval_agent.py` + `eval_research.py` 后
+- **eval ratchet**（PR-0 口径，取代报告字节比对）：跑 `eval_agent.py` + `eval_research.py` +
+  `eval_editing.py` 后
   `uv run python scripts/eval_ratchet.py`——逐指标对照 `tests/agent_eval/metrics_baseline.json`
   双向棘轮：回归红；显著变好也逼 `--update` 认账收紧（基线只跟不松）；未冻结的新指标红。
   字节比对区分不了变好/变坏，被棘轮 + CI `eval-determinism` job（同 fixture 两遍报告
   SHA256 必须一致）取代；离线护栏（实时价/联网入口哨兵）保证报告确定可复现。指标口径见
-  `report/offline/report.md`。报告分 `report/offline/`（mock 离线，进棘轮）与
-  `report/nightly/`（真实 LLM，`eval_gate.py` 防倒退下限，不进棘轮、可被 nightly 重跑覆盖）。
+  `report/offline/report.md`。报告分四类：`report/offline/`（mock 离线，进棘轮）、
+  `report/experience/`（体验题集 E01-E14 的业务路径指标，`eval_experience.py` fail>0 拒出报告
+  即红，报告随代码入仓、不进棘轮）、`report/nightly/`（真实 LLM，`eval_gate.py` 防倒退下限，
+  不进棘轮、可被 nightly 重跑覆盖）、`report/live/`（授权活栈验收：业务路径同题 p50/p95、
+  clarify 人工评分素材与 LLM 裁判辅助报告，由 `scripts/live_perf_probe.py` 生成，随代码入仓）。
   **报告重生成流程**（eval 报告没有 GOLDEN_REGENERATE 等价开关）：改用例/改指标口径后
   直接重跑两个脚本，`report/offline/report.json|md` 与 `report/offline/research_report.json|md`
   就地重写；指标有意变化跑 `scripts/eval_ratchet.py --update` 重落基线（放宽界值属 INV-1
   豁免，PR 须留注释与期限），**人工复核 diff 后与代码同一 commit 入库**。题集
   （`cases.json` / `themed_cases.json` / `replay_cases.json`）受 `tests/agent_eval/schemas/datasets.schema.json`
   校验（加载点统一走 `dataset_schema.load_dataset`），报告记数据集哈希——改题集同样是一次
-  认账。cases 可带 `"coords": false` 走无坐标边界变体
+  认账。体验题集独立成套：`tests/experience_cases/`（E01-E14，`e_dataset.json` 带
+  schema/版本/hash，由 `tests/experience_cases/runner.py` 驱动，不得让指标脚本与测试分别
+  手抄题目），改口径走 `eval_experience.py` 的 fail>0 拒出报告门。cases 可带 `"coords": false` 走无坐标边界变体
   （C3.2；海外城市直接用非汉字名，mock 坐标按城市名落国内框内/海外）。
   深度指标口径（C3.2）：`coord_valid_rate`=attraction/food/hotel 项坐标有效率
   （0/0 与 None 为缺失哨兵）；`deeplink_resolvable_rate`=按天计的全天路线深链可解析率
