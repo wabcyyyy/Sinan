@@ -10,8 +10,8 @@
 3. 整趟主输出缺 suggestions → 不报错：装配层如实返回空数组（既有行为钉住），
    备选池由研究候选池确定性构建（floor_suggestions 从空 raw 构建），open_trip
    输出 schema 不再含 suggestions 键、prompt 不再要求输出（版本已 bump）。
-4. 富化写 suggestions_json 绑定 planning_revision：修订号移动 → 放弃写并记
-   WARNING；匹配 → 正常写。
+4. 富化三段写（A plan_note / B items.intro / C suggestions_json）绑定
+   planning_revision：修订号移动 → 放弃写并记 WARNING；匹配 → 正常写。
 5. core_ready 只发一次：GENERATING→CORE_READY 的条件更新即发布闸，非
    GENERATING 状态（已发/已终态）一律跳过。
 6. stage_timing 阶段计时事件存在、elapsedMs 为非负数值（只记录不设阈值）。
@@ -42,7 +42,7 @@ from app.common import cache_store
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.db import session as db_session
-from app.db.models import Base, ItineraryDay, ItineraryMain, SysUser
+from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain, SysUser
 from app.prompts.open_generation import open_trip_system_prompt
 from app.schemas.trip import DailyPlan, TripItem
 from app.services import (
@@ -562,6 +562,76 @@ def test_enrich_itinerary_binds_revision_end_to_end(sqlite_env, monkeypatch) -> 
     rows = _stored_rows(itinerary_id)
     assert all(row["latitude"] == 30.25 for row in rows), "绑定现 revision 的富化正常写入"
     assert (7, itinerary_id) in evict_calls, "写回后仍精确失效详情缓存"
+
+
+def _seed_day_with_item(itinerary_id: int, poi_name: str = "灵隐寺") -> int:
+    with db_session.session_scope() as session:
+        day = ItineraryDay(itinerary_id=itinerary_id, day_no=1, city="杭州")
+        session.add(day)
+        session.flush()
+        item = ItineraryItem(day_id=day.id, itinerary_id=itinerary_id, item_type="attraction", poi_name=poi_name)
+        session.add(item)
+        session.flush()
+        return item.id
+
+
+def _item_intro(item_id: int) -> str | None:
+    with db_session.session_scope() as session:
+        item = session.get(ItineraryItem, item_id)
+        return item.intro if item is not None else None
+
+
+def test_butler_note_binds_revision(sqlite_env, monkeypatch, caplog) -> None:
+    """A 段（plan_note）绑修订：修订号已移动 → 不写不发事件并记 WARNING；匹配 → 写+事件。"""
+    itinerary_id = _seed_main(planning_revision=3)
+    with db_session.session_scope() as session:
+        main_row = session.get(ItineraryMain, itinerary_id)
+    assert main_row is not None
+    monkeypatch.setattr(itinerary_enricher, "_plans_for_butler", lambda iid: [{"day_no": 1, "items": ["灵隐寺"]}])
+    monkeypatch.setattr(itinerary_enricher, "run_butler_note", lambda payload: "这是一段管家讲解，交代行程取舍。")
+    events: list[int] = []
+    monkeypatch.setattr(generation_events, "butler_note", lambda iid, length, preview: events.append(iid))
+
+    with caplog.at_level("WARNING", logger="app.services.itinerary_enricher"):
+        itinerary_enricher._write_butler_note(7, main_row, _REQUEST, itinerary_id, 9)
+    with db_session.session_scope() as session:
+        row = session.get(ItineraryMain, itinerary_id)
+        assert row is not None
+        assert row.plan_note is None, "修订号已移动：旧富化讲解不落库"
+    assert events == [], "未落库就不得发 butler_note 事件"
+    assert any("stale butler note abandoned" in record.message for record in caplog.records)
+
+    itinerary_enricher._write_butler_note(7, main_row, _REQUEST, itinerary_id, 3)
+    with db_session.session_scope() as session:
+        row = session.get(ItineraryMain, itinerary_id)
+        assert row is not None
+        assert "管家讲解" in (row.plan_note or "")
+    assert events == [itinerary_id], "匹配现修订：正常落库并发事件"
+
+
+def test_fill_item_intros_binds_revision(sqlite_env, monkeypatch, caplog) -> None:
+    """B 段（items.intro）绑修订：修订号已移动 → intro 分文不动；匹配 → 写入；
+    legacy 口径（不传 revision）无条件写，行为不变。"""
+    itinerary_id = _seed_main(planning_revision=3)
+    item_id = _seed_day_with_item(itinerary_id, "灵隐寺")
+    monkeypatch.setattr(
+        itinerary_enricher, "run_poi_intros", lambda city, names, intent=None: {"灵隐寺": "千年古刹，邻飞来峰。"}
+    )
+    with db_session.session_scope() as session:
+        main_row = session.get(ItineraryMain, itinerary_id)
+    assert main_row is not None
+
+    with caplog.at_level("WARNING", logger="app.services.itinerary_enricher"):
+        itinerary_enricher._fill_item_intros(7, main_row, _REQUEST, itinerary_id, 9)
+    assert _item_intro(item_id) is None, "修订号已移动：旧富化不给新行程条目写介绍"
+    assert any("stale item intros abandoned" in record.message for record in caplog.records)
+
+    itinerary_enricher._fill_item_intros(7, main_row, _REQUEST, itinerary_id, 3)
+    assert _item_intro(item_id) == "千年古刹，邻飞来峰。", "匹配现修订：介绍正常写入"
+
+    _bump_revision(itinerary_id)
+    itinerary_enricher._fill_item_intros(7, main_row, _REQUEST, itinerary_id)
+    assert _item_intro(item_id) == "千年古刹，邻飞来峰。", "legacy 口径（无 revision）无条件写"
 
 
 def test_finish_submits_enrichment_with_current_revision(client, monkeypatch, captured_events) -> None:

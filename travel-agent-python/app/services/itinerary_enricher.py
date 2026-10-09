@@ -11,10 +11,14 @@ C. 备选池批量后验证 + 介绍补写 → 重写 `itinerary_main.suggestion
 - 收尾无条件按 `(userId, itineraryId)` 精确失效详情缓存（不是全量 clear，避免一次生成
   把所有用户的详情缓存击穿）。
 
-M5b（spec §11）第四条：**写 suggestions_json 绑定规划修订**。富化任务提交时捕获
-`main.planning_revision`，每次回写都在同一事务内以 `WHERE planning_revision = 提交时值`
-做条件更新（CAS）——core_ready 后用户的编辑会推进 revision，修订号已移动 = 行程已是
-新规划，旧富化放弃写并记日志（绝不用陈旧备选覆盖新行程）。
+M5b（spec §11）第四条：**长任务富化写入绑定规划修订**。富化任务提交时捕获
+`main.planning_revision`，三段回写都以 `WHERE planning_revision = 提交时值` 做事务内
+条件更新（CAS）——core_ready 后用户的编辑会推进 revision，修订号已移动 = 行程已是
+新规划，旧富化放弃写并记日志（绝不用陈旧内容覆盖新行程）：
+- A 段 `plan_note`：主表单列 UPDATE 直接带 revision 条件；
+- B 段 `items.intro`：items 表不持 revision，每条 UPDATE 以同语句 EXISTS 谓词
+  原子探测主表修订（单语句判定，不做「先读后写」竞态窗口）；
+- C 段 `suggestions_json`：主表单列 UPDATE 带 revision 条件。
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ import logging
 from typing import Any
 
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 
 from app.agent import run_butler_note, run_poi_intros, verify_suggestion_rows
 from app.common.envelope import ApiError
@@ -62,8 +66,8 @@ def enrich_itinerary(user_id: int, itinerary_id: int, request: Any, expected_rev
     """生成完成后的富化主入口（编排层提交到富化线程池执行）。
 
     `expected_revision`（M5b，spec §11）：提交任务时的 `main.planning_revision`
-    （_finish 捕获传入）；None = 旧口径不设防（测试/独立调用）。C 段对
-    suggestions_json 的每次回写都按它做事务内 CAS。
+    （_finish 捕获传入）；None = 旧口径不设防（测试/独立调用）。A/B/C 三段对
+    plan_note / items.intro / suggestions_json 的每次回写都按它做事务内 CAS。
     """
     # BYOK 路由：enricher_pool 工作线程不继承 plan_days 的 contextvars（实测），
     # 入口自带 user_id——这里进入，A/B/C 三段的 LLM 调用全部走用户网关。
@@ -79,8 +83,8 @@ def enrich_itinerary(user_id: int, itinerary_id: int, request: Any, expected_rev
             main = session.get(ItineraryMain, itinerary_id)
         if main is None:
             return
-        _write_butler_note(user_id, main, request, itinerary_id)
-        _fill_item_intros(user_id, main, request, itinerary_id)
+        _write_butler_note(user_id, main, request, itinerary_id, expected_revision)
+        _fill_item_intros(user_id, main, request, itinerary_id, expected_revision)
         try:
             _verify_suggestions(user_id, itinerary_id, expected_revision)
         except Exception as exc:
@@ -118,7 +122,9 @@ def _plans_for_butler(itinerary_id: int) -> list[dict[str, Any]]:
     return plans
 
 
-def _write_butler_note(user_id: int, main: ItineraryMain, request: Any, itinerary_id: int) -> None:
+def _write_butler_note(
+    user_id: int, main: ItineraryMain, request: Any, itinerary_id: int, expected_revision: int | None = None
+) -> None:
     plans = _plans_for_butler(itinerary_id)
     if not plans:
         return
@@ -143,7 +149,17 @@ def _write_butler_note(user_id: int, main: ItineraryMain, request: Any, itinerar
         if not note.strip():
             return
         with session_scope() as session:
-            session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(plan_note=note))
+            stmt = update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(plan_note=note)
+            if expected_revision is not None:
+                stmt = stmt.where(ItineraryMain.planning_revision == int(expected_revision))
+            moved = getattr(session.execute(stmt), "rowcount", 0) == 0
+        if expected_revision is not None and moved:
+            logger.warning(
+                "stale butler note abandoned for itinerary %s: planning_revision moved off %s; plan_note not written",
+                itinerary_id,
+                expected_revision,
+            )
+            return
         from app.services import generation_events
 
         generation_events.butler_note(itinerary_id, len(note), note[:BUTLER_PREVIEW])
@@ -152,7 +168,9 @@ def _write_butler_note(user_id: int, main: ItineraryMain, request: Any, itinerar
         _publish_degraded(itinerary_id, "butler", str(exc), "跳过讲解")
 
 
-def _fill_item_intros(user_id: int, main: ItineraryMain, request: Any, itinerary_id: int) -> None:
+def _fill_item_intros(
+    user_id: int, main: ItineraryMain, request: Any, itinerary_id: int, expected_revision: int | None = None
+) -> None:
     with session_scope() as session:
         names = list(
             dict.fromkeys(
@@ -173,14 +191,33 @@ def _fill_item_intros(user_id: int, main: ItineraryMain, request: Any, itinerary
                 intros.update(run_poi_intros(main.city, chunk, resolve_intent(request)) or {})
             except Exception as exc:
                 logger.warning("poi intros batch failed for %s: %s", itinerary_id, exc)
+        # items 表不持 revision：每条 UPDATE 以同语句 EXISTS 原子探测主表修订号
+        # （修订已移动则 0 行命中），整体放弃——不用旧富化给新行程的条目写介绍。
+        revision_guard = (
+            exists().where(
+                ItineraryMain.id == itinerary_id, ItineraryMain.planning_revision == int(expected_revision or 0)
+            )
+            if expected_revision is not None
+            else None
+        )
+        applied = 0
         with session_scope() as session:
             for name, intro in intros.items():
-                if intro and intro.strip():
-                    session.execute(
-                        update(ItineraryItem)
-                        .where(ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.poi_name == name)
-                        .values(intro=intro)
-                    )
+                if not intro or not intro.strip():
+                    continue
+                stmt = update(ItineraryItem).where(
+                    ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.poi_name == name
+                )
+                if revision_guard is not None:
+                    stmt = stmt.where(revision_guard)
+                applied += int(getattr(session.execute(stmt.values(intro=intro)), "rowcount", 0))
+        if expected_revision is not None and intros and applied == 0:
+            logger.warning(
+                "stale item intros abandoned for itinerary %s: planning_revision moved off %s "
+                "(or every matched item was replaced by the edit)",
+                itinerary_id,
+                expected_revision,
+            )
     except Exception as exc:
         logger.warning("poi intros failed for %s: %s", itinerary_id, exc)
         _publish_degraded(itinerary_id, "poi_intros", str(exc), "跳过景点介绍")
