@@ -114,6 +114,14 @@ jobs:
           # 深度基线互不套用；首跑后作者按实测把 eval_gate 的 graph 深度下限认账抬升。
           uv run python tests/agent_eval/llm_eval.py --path graph --limit 2 --out-stem llm_report_graph | tee llm_eval_graph_small.json
           uv run python tests/agent_eval/eval_gate.py --path graph
+      - name: Experience 回归题集（E01-E14，spec §13.2/§13.3）
+        # 离线 mock 驱动（零真实 LLM/网络）：业务服务入口的硬约束履约/一次交付/
+        # 范围保持/重复执行/事实冲突指标。fail>0 拒出报告即红；报告落
+        # report/experience/（已在下方 artifact 的 report 目录内）。
+        # 口径与上方 llm_eval 直调路径分属两套（agent-face direct vs 业务路径），数值不可混读。
+        if: steps.guard.outputs.skip != 'true'
+        working-directory: travel-agent-python
+        run: uv run python tests/agent_eval/eval_experience.py
       - name: Usage 软棘轮（L5a：真实评测的调用/token 上限，首跑后按实测校准数字）
         if: steps.guard.outputs.skip != 'true'
         working-directory: travel-agent-python
