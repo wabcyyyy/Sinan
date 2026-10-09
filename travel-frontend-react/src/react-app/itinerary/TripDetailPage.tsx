@@ -26,6 +26,7 @@ import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
 import { DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
+import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
 import { feedbackIndex } from './itemFeedback'
 import { ItemFeedbackControl } from './ItemFeedbackControl'
@@ -337,7 +338,7 @@ export function TripDetailPage({ path }: { path: string }) {
     </div>
     {offline && <div className="detail-offline"><span>示例状态</span> 这是本地预览，服务恢复后可打开真实行程。</div>}
     <DraftOnlyBanner status={trip.destinationStatus} />
-    {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />司南正在逐日编排这趟旅程，完成后自动更新，无需刷新页面。</div>}
+    {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />{detailGeneratingCopy(trip.coreReady)}</div>}
     <section className="detail-hero">
       <div>
         <span className="section-eyebrow">{trip.city} · {trip.days} 天 · {trip.persons} 人</span>
