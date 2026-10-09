@@ -199,8 +199,10 @@ def test_sanitize_narrative_keeps_why_this_of_non_attraction_items():
 def test_prompt_versions_current():
     # 2026-10-07（单日饱和度窗口入 prompt）：终检的 240-480 分钟窗口与景点上限
     # 写进两套 Prompt，两版本同步 bump
+    # 2026-10-09（M5b）：整趟主输出去 suggestions 长备选（spec §11），open_trip
+    # 再 bump v1.4→v1.5；open_day（逐日兜底链）建议契约不变
     assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.5.localized"
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.4.localized"
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.5.localized"
 
 
 class _Mem:

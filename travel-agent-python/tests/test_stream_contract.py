@@ -91,9 +91,22 @@ class TestSchemaContract:
             "运行 uv run python scripts/export_contracts.py 重新导出并提交"
         )
 
-    def test_six_event_types_declared(self):
+    def test_declared_event_types(self):
+        """判别联合登记的全部 type：既有六类 + M5a 候选预览两类（前向兼容附加）。
+
+        既有消费方对未知 type 前向兼容忽略；新类型入联合即入 schema 导出与漂移门禁。
+        """
         schema = export_schema()
-        assert set(schema["discriminator"]["mapping"]) == {"start", "day", "day_patch", "suggestions", "done", "error"}
+        assert set(schema["discriminator"]["mapping"]) == {
+            "start",
+            "day",
+            "day_patch",
+            "suggestions",
+            "done",
+            "error",
+            "day_item_preview",
+            "day_item_preview_withdrawn",
+        }
 
     def test_required_fields_pinned(self):
         """Java 消费方依赖的字段必须保持必填（改名/降级可选都会在此暴露）。"""
@@ -107,6 +120,9 @@ class TestSchemaContract:
             "complete",
             "message",
         }
+        # M5a：候选身份三元组（runId+dayNo+itemOrdinal）与开放形状 item 全键必填
+        assert defs["ItemPreviewEvent"]["required"] == ["type", "runId", "dayNo", "itemOrdinal", "item", "status"]
+        assert defs["ItemPreviewWithdrawnEvent"]["required"] == ["type", "runId", "dayNo", "itemOrdinal", "reason"]
         for model in ("DailyPlan", "TripItem", "Suggestion", "DayOption", "FactEvidence"):
             props = defs[model]["properties"]
             assert defs[model]["required"] == list(props), f"{model} 应全键必填"

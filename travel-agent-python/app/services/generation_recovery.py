@@ -85,10 +85,15 @@ def recover() -> int:
     """
     active_after = datetime.now() - timedelta(seconds=IDLE_SECONDS)
     stale = ItineraryMain.updated_at < active_after
+    # CORE_READY（M5b，spec §11）与 GENERATING 同待遇：它是生成中的过程态
+    # （核心就绪、终态未写）。正常路径下 core_ready 写入后毫秒级就会被
+    # complete_trip 收终态；若进程恰好死在这个窗口，状态投影停在 CORE_READY +
+    # status=1，不纳入谓词这条行程就永远进不了恢复扫描。
     idle_generating = and_(
         stale,
         or_(
-            ItineraryMain.gen_state == "GENERATING", and_(ItineraryMain.gen_state.is_(None), ItineraryMain.status == 1)
+            ItineraryMain.gen_state.in_(("GENERATING", "CORE_READY")),
+            and_(ItineraryMain.gen_state.is_(None), ItineraryMain.status == 1),
         ),
     )
     failed_resumable = and_(

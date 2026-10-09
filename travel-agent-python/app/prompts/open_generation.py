@@ -23,7 +23,10 @@ import json
 # 2026-10-07 v1.4/v1.3（P1-4）：动态追加的参考资料块改为三引号定界 + 可信/
 # 不可信分区渲染（reference_pool.block），两套生成 Prompt 的实际正文随之变化。
 OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
-OPEN_TRIP_PROMPT_VERSION = "v1.4.localized"
+# 2026-10-09 v1.5/v1.4（M5b，spec §11）：整趟主输出不再要求 suggestions 长备选数组
+# （24-40 条 × 60-100 字是主 JSON 截断的头号税源）；备选池改由研究候选池确定性构建
+# （open_plans.floor_suggestions / build_suggestions），缺口经既有有界富化补齐。
+OPEN_TRIP_PROMPT_VERSION = "v1.5.localized"
 
 
 def open_day_system_prompt(
@@ -164,11 +167,15 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
 
     参数与 llm_open_trip 局部变量同名；min_active_minutes / max_daily_minutes 是单日
     实质活动时长的**终检窗口**（reflect.validate_plans），理由同 open_day_system_prompt。
+
+    M5b（spec §11）：主输出契约不再包含 suggestions——长备选介绍（24-40 条 ×
+    60-100 字）此前是整段 JSON 截断的头号税源（截断 → 修复重试 → 逐日兜底的
+    失败链起点）。备选池由系统在研究候选池上确定性构建，模型不再产出。
     """
     return (
         "你是资深当地导游。基于目的地常识一次安排完整多日行程。"
         "叙事一律用简体中文；地点统一采用正式或常用中文名，无可靠中文名保留正式原名，"
-        "禁止编造翻译，同一地点在 items、suggestions 与叙事中保持同一写法。只输出 JSON："
+        "禁止编造翻译，同一地点在 items 与叙事中保持同一写法。只输出 JSON："
         '{"trip_theme":"整趟主题标题(≤40 字，能串起全部天数的核心意象，'
         '如「目的地·核心意象＋主线气质（住宿据点为据点）」)",'
         '"daily_plans":[{"day_no":1,"theme":"当天主题叙事句(≤40 字，一句说清「当天怎么玩」的主线，'
@@ -181,16 +188,13 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
         '"practical_notes":["当日可执行提示(每日必填 2-4 条：预约方式/着装要求/礼仪禁忌/交通衔接)"],'
         '"photo_spots":[{"name":"出片点位名","tip":"拍摄建议","best_time":"最佳时段"}],'
         '"backup_plan":[{"if":"触发条件","action":"可直接执行的替换方案"}],'
-        '"day_options":[{"label":"方案名","summary":"一句话概述","tradeoff":"取舍说明"}]}],'
-        '"suggestions":[{"poi_name":"真实地点名","city":"地点所在城市（必须与目的地一致）",'
-        '"category":"attraction|activity|food|hotel|shopping",'
-        '"intro":"两三句亮点(60-100字：一句话定位+核心看点/特色+适合人群或体验提示)",'
-        '"need_reservation":true或false,'
-        '"estimated_cost":门票/餐饮/酒店的人均或每晚估算数字，shopping 类禁止填写}]}。'
+        '"day_options":[{"label":"方案名","summary":"一句话概述","tradeoff":"取舍说明"}]}]}。'
         "硬性要求：trip_theme 只在顶层输出一次（整趟一个，禁止每天重复输出）；"
+        "不要输出 suggestions 备选点位数组——备选推荐由系统另行构建，"
+        "你只负责把每日行程安排好；"
         "禁止在 item 中输出经纬度坐标、poi_id 与任何来源/核验字段——位置与真伪由系统"
         "按名称解析后填写，你只负责给出准确、可被搜索到的正式地点名；"
-        "所有 items 与 suggestions 的地点必须真实位于目的地城市（或其合理一日游范围内），"
+        "所有 items 的地点必须真实位于目的地城市（或其合理一日游范围内），"
         "禁止输出与目的地无关的其它城市地点；"
         "跨天片区编排：先为整趟规划各天的主打片区，每天 items 尽量集中在同一片区，"
         "相邻天安排相邻或互补的片区，禁止跨天走回头路重复穿越同一区域；"
@@ -215,16 +219,4 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
         "餐饮必须写目的地城市真实存在的具体店名（正式名称，可含分店名），"
         "禁止「某商场美食层」等笼统称呼，禁止套用其它城市的知名餐厅。"
         "每天的景点顺序必须按地理位置从近到远排列。"
-        "另必须输出未排入行程的优质备选点位 suggestions（24-40 条）："
-        "优先热门、口碑好、有代表性的地点，不限于当日行程主题；"
-        "餐饮必须写目的地城市真实存在的具体餐厅店名；"
-        "景点优先知名必去与高评价体验；"
-        "分类硬性要求：景点 ≥8、美食 ≥8、体验/游玩 3-8、酒店 3-6"
-        "（体验含演出、SPA、观景台、游船课等；酒店写未排入行程的正式酒店名）；"
-        "购物 2-6 条且必须是目的地城市真实存在的具体商城/商业街/知名店铺，禁止只写「伴手礼店」，"
-        "禁止套用其它城市的示例店铺；"
-        "每条 suggestions 的 city 字段必须填地点实际所在城市（与目的地一致）；"
-        "禁止同一店名重复多条；"
-        "名称必须真实存在可搜索到，禁止编造，"
-        "且不与任何一天已排入的地点重复。"
     )

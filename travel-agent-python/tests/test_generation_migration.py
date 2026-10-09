@@ -154,7 +154,7 @@ def _fake_agents(monkeypatch, per_day: list[DailyPlan], stream_events: list[dict
         calls["day"].append(request)
         return per_day[min(request.day_no, len(per_day)) - 1]
 
-    def fake_stream(request, cancel=None):
+    def fake_stream(request, cancel=None, **kwargs):
         calls["stream"] += 1
         if stream_events is None:
             raise RuntimeError("整段流式炸了")
@@ -770,7 +770,7 @@ def test_recovery_six_day_stream_break_resumes_without_whole_rerun(client: TestC
         counted["context"] += 1
         return {"candidates": [{"name": "西湖"}], "foods": [], "hotels": [], "consumption": {}, "research_report": {}}
 
-    def fake_stream(request):
+    def fake_stream(request, **kwargs):
         counted["stream"] += 1
         for day_no in (1, 2, 3):
             yield {"type": "day", "plan": _wire_plan(day_no, [f"流点{day_no}"])}

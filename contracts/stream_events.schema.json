@@ -398,6 +398,90 @@
         "reviewRequirement"
       ]
     },
+    "ItemPreviewEvent": {
+      "properties": {
+        "type": {
+          "const": "day_item_preview",
+          "enum": [
+            "day_item_preview"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        },
+        "dayNo": {
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "itemOrdinal": {
+          "title": "Itemordinal",
+          "type": "integer"
+        },
+        "item": {
+          "title": "Item",
+          "type": "object"
+        },
+        "status": {
+          "const": "drafting",
+          "default": "drafting",
+          "enum": [
+            "drafting"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "runId",
+        "dayNo",
+        "itemOrdinal",
+        "item",
+        "status"
+      ],
+      "title": "ItemPreviewEvent",
+      "type": "object"
+    },
+    "ItemPreviewWithdrawnEvent": {
+      "properties": {
+        "type": {
+          "const": "day_item_preview_withdrawn",
+          "enum": [
+            "day_item_preview_withdrawn"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        },
+        "dayNo": {
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "itemOrdinal": {
+          "title": "Itemordinal",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "runId",
+        "dayNo",
+        "itemOrdinal",
+        "reason"
+      ],
+      "title": "ItemPreviewWithdrawnEvent",
+      "type": "object"
+    },
     "PhotoSpot": {
       "properties": {
         "name": {
@@ -875,6 +959,8 @@
   "discriminator": {
     "mapping": {
       "day": "#/$defs/DayEvent",
+      "day_item_preview": "#/$defs/ItemPreviewEvent",
+      "day_item_preview_withdrawn": "#/$defs/ItemPreviewWithdrawnEvent",
       "day_patch": "#/$defs/DayPatchEvent",
       "done": "#/$defs/DoneEvent",
       "error": "#/$defs/ErrorEvent",
@@ -901,6 +987,12 @@
     },
     {
       "$ref": "#/$defs/ErrorEvent"
+    },
+    {
+      "$ref": "#/$defs/ItemPreviewEvent"
+    },
+    {
+      "$ref": "#/$defs/ItemPreviewWithdrawnEvent"
     }
   ]
 }

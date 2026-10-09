@@ -218,7 +218,7 @@ class TestGenerateStreamEndpoint:
             return client.post("/api/agent/v1/generate-stream", json={"city": "杭州", "days": 1, "persons": 1})
 
     def test_streams_contract_events(self, monkeypatch):
-        def fake_stream(req, cancel=None):
+        def fake_stream(req, cancel=None, **kwargs):
             # start 由端点自身产出（runId 来自 trace），生成器只负责业务事件
             yield {
                 "type": "done",
@@ -236,7 +236,7 @@ class TestGenerateStreamEndpoint:
         assert events[0]["runId"], "start 事件应携带 runId"
 
     def test_producer_failure_yields_error_event(self, monkeypatch):
-        def boom_stream(req, cancel=None):
+        def boom_stream(req, cancel=None, **kwargs):
             raise RuntimeError("llm down")
             yield  # pragma: no cover - 保持生成器形态
 

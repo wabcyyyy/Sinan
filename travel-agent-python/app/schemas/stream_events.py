@@ -1,7 +1,8 @@
 """跨语言流事件契约：generate-stream 的 JSON Lines 事件模型（单一模型源）。
 
 职责：
-- 为整段流式生成的六类事件（start / day / day_patch / suggestions / done / error）
+- 为整段流式生成的既有一组事件（start / day / day_patch / suggestions / done /
+  error）与 M5a 增量附加的逐项候选事件（day_item_preview / day_item_preview_withdrawn）
   定义唯一模型；Python 产出点一律「模型构造 → dump」输出 wire dict，
   杜绝手搓键名漂移；
 - export_schema() 导出联合 JSON Schema（仓库根 contracts/stream_events.schema.json），
@@ -23,7 +24,7 @@ JSONL 事件；业务面进度 SSE（`GET /api/itinerary/{id}/events`）的运�
 - 导出前剥离 description：docstring 只服务 Python 可读性，不应触发契约漂移。
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, TypeAdapter
 
@@ -68,8 +69,49 @@ class ErrorEvent(WireModel):
     message: str
 
 
+class ItemPreviewEvent(WireModel):
+    """逐项候选预览（M5a）：流式生成中单个 item JSON 完整闭合即发布。
+
+    候选身份 = runId + dayNo + itemOrdinal，由服务端分配，**与 LLM 的 chunk
+    切割无关**（同一候选无论流怎么切片/重组，身份三元组不变）。
+    `item` 是开放形状（dict）：候选未过 ground/终检，坐标与关键事实保持
+    未知，消费方按「正在完善」呈现；同一天的正式 day 事件随后到达，day
+    快照是权威内容，用它整体替换该日预览。预览不落库，断线重连后以
+    DB snapshot 对账即可，不要求复活所有未落库候选。
+    """
+
+    type: Literal["day_item_preview"]
+    run_id: str
+    day_no: int
+    item_ordinal: int
+    item: dict[str, Any]
+    status: Literal["drafting"] = "drafting"
+
+
+class ItemPreviewWithdrawnEvent(WireModel):
+    """逐项候选撤回（M5a）：已发布的候选失效时显式撤回。
+
+    典型场景：整段生成腿在发布候选后失败/降级，缺口天交逐日兜底重生成——
+    旧候选必须显式撤回（消费方按 runId + dayNo + itemOrdinal 定位居右移除），
+    不能留在板上，也不能静默变成另一个地点。身份同样与 chunk 切割无关。
+    """
+
+    type: Literal["day_item_preview_withdrawn"]
+    run_id: str
+    day_no: int
+    item_ordinal: int
+    reason: str
+
+
 StreamEvent = Annotated[
-    StartEvent | DayEvent | DayPatchEvent | SuggestionsEvent | DoneEvent | ErrorEvent,
+    StartEvent
+    | DayEvent
+    | DayPatchEvent
+    | SuggestionsEvent
+    | DoneEvent
+    | ErrorEvent
+    | ItemPreviewEvent
+    | ItemPreviewWithdrawnEvent,
     Field(discriminator="type"),
 ]
 

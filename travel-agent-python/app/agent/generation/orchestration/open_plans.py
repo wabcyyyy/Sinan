@@ -10,11 +10,17 @@ generate_open_plans 分三段（原 152 行单函数按阶段拆开，行为不�
 3. `draft_state`：整段失败或重试耗尽时返回「待研究草案」（不冒充成功）。
 
 **可 mock 契约（勿随意搬移）**：单测经 `open_plans.llm_open_day`、
-`open_plans.llm_open_trip`、`open_plans.local_ground` 注入桩，替身须打在
-本模块（调用期解析）。
+`open_plans.llm_open_trip`、`open_plans.open_trip_streamed`、
+`open_plans.local_ground` 注入桩，替身须打在本模块（调用期解析）；
+流式生成器本体（`trip_stream.llm_open_trip_stream` / `trip_stream.get_llm_client`）
+的桩打在 content.trip_stream。
 
 **流式挂点（PR-4）**：`on_day(day_no, plan)` / `on_patch(plan)` 回调——trip 图的
 stream 节点经 LangGraph custom stream 逐天转发 wire 事件；同步图路径不传回调。
+**候选挂点（M5a，spec §10）**：`on_item_preview(day_no, ordinal, item)` /
+`on_item_withdrawn(day_no, ordinal, reason)`——非 None 且多日时整段腿改走
+open_trip_streamed（M5a 流式生成器），候选闭合即回调（预览先于正式 day 事件）；
+整段腿失败时已发布候选逐个撤回，再交逐日兜底。两个回调都默认 None = 完全旧行为。
 
 依赖：day_prompts/day_stream/grounding/reference_pool、budget/suggestions、
 generation_core；不 import workflow（禁反向）。
@@ -30,6 +36,7 @@ from app.agent.generation.content.landing import drop_refuted_items, filter_plan
 from app.agent.generation.content.narrative import normalize_name_mentions
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import activity_floor, floor_suggestions
+from app.agent.generation.content.trip_stream import open_trip_streamed
 from app.agent.generation.orchestration.day_stream import llm_open_day
 from app.agent.generation.rules.generation_core import (
     draft_day_plans,
@@ -68,13 +75,17 @@ def _generate_drafts(
     ref_pool: ReferencePool,
     schedule_report: dict,
     on_day: Callable[[int, dict], None] | None = None,
+    on_item_preview: Callable[[int, int, dict], None] | None = None,
+    on_item_withdrawn: Callable[[int, int, str], None] | None = None,
 ) -> tuple[list[dict], list[dict], list[str]]:
     """第一段（草案生成）：LLM 生成 + 参考落地 + 边判去重 + 矛盾点位出局。
 
     多日走 llm_open_trip（一次调用、模型看得见全盘），单日走 llm_open_day；
-    **缺口天逐日兜底**（PR-4）：整段调用失败/截断（`parse_llm_json` 对截断 JSON
-    不打捞）或模型漏排该天时，改走 llm_open_day 生成，兜底也失败才落「待研究」
-    空草案——suggestions 随天收集，截断不再可能丢建议池。
+    `on_item_preview` 非 None 时多日改走 open_trip_streamed（M5a：候选闭合
+    即回调预览，整段腿失败撤回已发布候选）。**缺口天逐日兜底**（PR-4）：整段
+    调用失败/截断（`parse_llm_json` 对截断 JSON 不打捞）或模型漏排该天时，改走
+    llm_open_day 生成，兜底也失败才落「待研究」空草案——suggestions 随天收集，
+    截断不再可能丢建议池。
     同日/跨天去重为**生成期边判**（PoiSeenRegistry 双通道：归一化同名 + 落地后
     同类型近距离），重复项不触发网络落地；命中参考资料的点位由 ref_pool 落地
     权威字段，未命中交存在性解析器补真实坐标，解析到别处的点位在这里删掉（G5）。
@@ -107,7 +118,13 @@ def _generate_drafts(
             feedback=feedback,
         )
         try:
-            trip_plans, trip_suggestions = llm_open_trip(trip_req)
+            published_previews: list[tuple[int, int]] = []
+            if on_item_preview is not None:
+                # M5a 流式腿：候选闭合即回调（预览先于正式 day 事件），final 段
+                # 与阻塞腿完全同一后续（plans_by_day/落地/去重/摊铺都不分叉）。
+                trip_plans, trip_suggestions = open_trip_streamed(trip_req, on_item_preview, published_previews)
+            else:
+                trip_plans, trip_suggestions = llm_open_trip(trip_req)
             # 模型可能返回重复/越界的 day_no；字典推导会静默后覆盖前，
             # 保留首个并遥测丢弃项，缺的天在下方走逐日兜底。
             plans_by_day: dict[int, dict] = {}
@@ -124,6 +141,12 @@ def _generate_drafts(
         except StreamCancelled:
             raise  # 取消不是失败：向上传给 stream 节点收口，不落研究错误
         except Exception as exc:
+            # 已发布的候选显式撤回（spec §10.2）：缺口天交逐日兜底重生成，
+            # 旧候选不能留在消费端，更不能静默变成另一地点。取消态不撤——
+            # 消费端已断开，没有可通知的对象。
+            if on_item_withdrawn is not None and published_previews:
+                for day_no, item_ordinal in published_previews:
+                    on_item_withdrawn(day_no, item_ordinal, f"整段生成失败（{exc}），第{day_no}天将逐日重生成")
             logger.warning("open research failed for %s: %s", req.city, exc)
             research_errors.append(f"开放研究失败：{exc}")
             plans_by_day = {}
@@ -284,8 +307,15 @@ def generate_open_plans(
     weather: list[dict] | None = None,
     on_day: Callable[[int, dict], None] | None = None,
     on_patch: Callable[[dict], None] | None = None,
+    on_item_preview: Callable[[int, int, dict], None] | None = None,
+    on_item_withdrawn: Callable[[int, int, str], None] | None = None,
 ) -> tuple[dict | None, list[str]]:
     """开放模式生成（三段编排：草案生成 → 后处理 → 失败即降级）。
+
+    `on_item_preview` / `on_item_withdrawn`（M5a，spec §10）：候选挂点，默认
+    None = 完全旧行为（阻塞 llm_open_trip，无候选事件）。两者非 None 且
+    req.days > 1 时整段腿改走 open_trip_streamed（M5a 流式生成器）——候选闭合即回调预览；
+    整段腿失败时已发布候选逐个撤回，再交缺口天逐日兜底。
 
     返回 ``(状态增量 | None, 研究错误)``：整体失败时错误必须跟着返回——调用方
     只剩一个 ``None`` 可看，就只能写一句"重试耗尽"，把 deadline / 配额这类真因
@@ -307,7 +337,14 @@ def generate_open_plans(
         }
         ref_pool = ReferencePool(context)
         plans, raw_suggestions, research_errors = _generate_drafts(
-            req, feedback, context, ref_pool, schedule_report, on_day=on_day
+            req,
+            feedback,
+            context,
+            ref_pool,
+            schedule_report,
+            on_day=on_day,
+            on_item_preview=on_item_preview,
+            on_item_withdrawn=on_item_withdrawn,
         )
         if research_errors and not any(p.get("items") for p in plans):
             # 整段开放研究失败：交由调用方降级，避免把候选库城市打成空草案。

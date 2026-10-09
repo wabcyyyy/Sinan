@@ -242,3 +242,28 @@ def sanitize_narrative(plan: dict) -> dict:
         # 同日同名点位去重（保留首条）：模型偶尔把同一景区按不同 tag 拆成多条
         cleaned["items"] = _dedupe_same_day_items(fixed_items)
     return cleaned
+
+
+def assemble_trip_output(data: dict, days: int) -> tuple[list[dict], list[dict]]:
+    """llm_open_trip / llm_open_trip_stream 共用的装配段：清洗 + 主题注入。
+
+    data 是已过顶层校验（validate_trip_output）的整段输出；返回
+    (清洗后的每日行程, 行程级备选池)。整趟主题只由顶层输出一次：注入到
+    每一天的 plan dict（第 1 天为权威来源，其余天兜底），随装配透传。
+    放在叙事模块是因为清洗语义（sanitize_narrative / 主题截断）的唯一真源
+    都在这里——阻塞/流式两路共用，避免第二份抄写漂移。
+    """
+    plans = data.get("daily_plans") if isinstance(data, dict) else None
+    if not isinstance(plans, list):
+        raise ValueError("开放模式多日行程结构无效")
+    suggestions = data.get("suggestions") if isinstance(data, dict) else None
+    cleaned_plans = [sanitize_narrative(plan) for plan in plans if isinstance(plan, dict)][:days]
+    trip_theme = data.get("trip_theme") if isinstance(data, dict) else None
+    if isinstance(trip_theme, str) and trip_theme.strip():
+        clipped = trip_theme[:NARRATIVE_THEME_MAX]
+        for plan in cleaned_plans:
+            # 清洗层已把 trip_theme 归一为 None/串，不能用 setdefault（key 已存在）；
+            # 仅在缺失时回填，保留模型自带的天级主题。
+            if not plan.get("trip_theme"):
+                plan["trip_theme"] = clipped
+    return cleaned_plans, [s for s in suggestions if isinstance(s, dict)] if isinstance(suggestions, list) else []

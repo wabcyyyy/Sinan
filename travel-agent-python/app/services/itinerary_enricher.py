@@ -10,6 +10,11 @@ C. 备选池批量后验证 + 介绍补写 → 重写 `itinerary_main.suggestion
 - B 段按 `poi_name` 批量覆盖同名列（不按 day_id 精确定位），与 Java 一致；
 - 收尾无条件按 `(userId, itineraryId)` 精确失效详情缓存（不是全量 clear，避免一次生成
   把所有用户的详情缓存击穿）。
+
+M5b（spec §11）第四条：**写 suggestions_json 绑定规划修订**。富化任务提交时捕获
+`main.planning_revision`，每次回写都在同一事务内以 `WHERE planning_revision = 提交时值`
+做条件更新（CAS）——core_ready 后用户的编辑会推进 revision，修订号已移动 = 行程已是
+新规划，旧富化放弃写并记日志（绝不用陈旧备选覆盖新行程）。
 """
 
 from __future__ import annotations
@@ -53,8 +58,13 @@ def persist_suggestions(itinerary_id: int, suggestions: list[Suggestion] | list[
         session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(suggestions_json=payload))
 
 
-def enrich_itinerary(user_id: int, itinerary_id: int, request: Any) -> None:
-    """生成完成后的富化主入口（编排层提交到富化线程池执行）。"""
+def enrich_itinerary(user_id: int, itinerary_id: int, request: Any, expected_revision: int | None = None) -> None:
+    """生成完成后的富化主入口（编排层提交到富化线程池执行）。
+
+    `expected_revision`（M5b，spec §11）：提交任务时的 `main.planning_revision`
+    （_finish 捕获传入）；None = 旧口径不设防（测试/独立调用）。C 段对
+    suggestions_json 的每次回写都按它做事务内 CAS。
+    """
     # BYOK 路由：enricher_pool 工作线程不继承 plan_days 的 contextvars（实测），
     # 入口自带 user_id——这里进入，A/B/C 三段的 LLM 调用全部走用户网关。
     # 密文解不开（ApiError 409）只跳过富化：行程本体已成功，富化是锦上添花，
@@ -72,11 +82,11 @@ def enrich_itinerary(user_id: int, itinerary_id: int, request: Any) -> None:
         _write_butler_note(user_id, main, request, itinerary_id)
         _fill_item_intros(user_id, main, request, itinerary_id)
         try:
-            _verify_suggestions(user_id, itinerary_id)
+            _verify_suggestions(user_id, itinerary_id, expected_revision)
         except Exception as exc:
             logger.warning("suggestion verification failed for %s: %s", itinerary_id, exc)
         try:
-            _enrich_suggestion_intros(main, request, itinerary_id)
+            _enrich_suggestion_intros(main, request, itinerary_id, expected_revision)
         except Exception as exc:
             logger.warning("suggestion intros failed for %s: %s", itinerary_id, exc)
         itinerary_query.evict_detail(user_id, itinerary_id)
@@ -193,19 +203,39 @@ def _load_suggestion_rows(itinerary_id: int) -> list[dict[str, Any]] | None:
     return rows
 
 
-def _store_suggestion_rows(user_id: int, itinerary_id: int, rows: list[dict[str, Any]]) -> None:
-    """单列 UPDATE 回写：富化动辄几十秒，期间用户可能正在编辑同一行程。"""
+def _store_suggestion_rows(
+    user_id: int, itinerary_id: int, rows: list[dict[str, Any]], expected_revision: int | None = None
+) -> None:
+    """单列 UPDATE 回写：富化动辄几十秒，期间用户可能正在编辑同一行程。
+
+    M5b：`expected_revision` 给定时回写是**事务内 CAS**（`WHERE planning_revision =
+    提交时值`）——修订号已移动说明 core_ready 后行程被编辑过，旧富化在此放弃：
+    不覆盖新行程、不带回已被排除的内容，rowcount=0 记日志即可（单语句原子判定，
+    不做"先读后写"的竞态窗口）。
+    """
     try:
         payload = json.dumps(rows, ensure_ascii=False)
     except (TypeError, ValueError) as exc:
         logger.warning("suggestions json encode failed for %s: %s", itinerary_id, exc)
         return
     with session_scope() as session:
-        session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(suggestions_json=payload))
+        stmt = update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(suggestions_json=payload)
+        if expected_revision is not None:
+            stmt = stmt.where(ItineraryMain.planning_revision == int(expected_revision))
+        result = session.execute(stmt)
+        moved = getattr(result, "rowcount", 0) == 0
+    if expected_revision is not None and moved:
+        logger.warning(
+            "stale enrichment abandoned for itinerary %s: planning_revision moved off %s; "
+            "suggestions_json not overwritten",
+            itinerary_id,
+            expected_revision,
+        )
+        return
     itinerary_query.evict_detail(user_id, itinerary_id)
 
 
-def _verify_suggestions(user_id: int, itinerary_id: int) -> dict[str, int]:
+def _verify_suggestions(user_id: int, itinerary_id: int, expected_revision: int | None = None) -> dict[str, int]:
     """备选池批量后验证（PLAN-A1 G6-B）：回填坐标 + 丢弃与本次行程矛盾的点。
 
     主行程的点位在生成时被问过一遍；备选池那 24-40 个名字此前从未被检验，
@@ -220,11 +250,13 @@ def _verify_suggestions(user_id: int, itinerary_id: int) -> dict[str, int]:
         city = str(fresh.city or "") if fresh is not None else ""
     kept, stats = verify_suggestion_rows(rows, city)
     if stats.get("filled") or stats.get("dropped"):
-        _store_suggestion_rows(user_id, itinerary_id, kept)
+        _store_suggestion_rows(user_id, itinerary_id, kept, expected_revision)
     return stats
 
 
-def _enrich_suggestion_intros(main: ItineraryMain, request: Any, itinerary_id: int) -> None:
+def _enrich_suggestion_intros(
+    main: ItineraryMain, request: Any, itinerary_id: int, expected_revision: int | None = None
+) -> None:
     rows = _load_suggestion_rows(itinerary_id)
     if not rows:
         return
@@ -268,7 +300,7 @@ def _enrich_suggestion_intros(main: ItineraryMain, request: Any, itinerary_id: i
             changed = True
     if not changed:
         return
-    _store_suggestion_rows(main.user_id, itinerary_id, rows)
+    _store_suggestion_rows(main.user_id, itinerary_id, rows, expected_revision)
 
 
 def resolve_intent(request: Any) -> str:

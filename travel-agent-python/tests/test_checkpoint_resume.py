@@ -314,7 +314,7 @@ def _stub_orchestration(monkeypatch, *, deaths: dict | None = None) -> dict:
     if deaths is not None:
         real_persist = itinerary_generation._persist_stream_day
 
-        def die_after_two_days(user_id, itinerary_id, command, context, fingerprint):
+        def die_after_two_days(user_id, itinerary_id, command, context, fingerprint, timing=None):
             for day_no in (1, 2):
                 real_persist(
                     user_id,
@@ -324,6 +324,7 @@ def _stub_orchestration(monkeypatch, *, deaths: dict | None = None) -> dict:
                     _wire_plan(day_no, [f"流点{day_no}"]),
                     fingerprint,
                     overwrite=False,
+                    timing=timing,
                 )
             deaths["died"] += 1
             raise _ProcessDeath("stream connection reset mid-trip")

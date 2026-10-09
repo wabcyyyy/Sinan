@@ -43,7 +43,7 @@ const streamMock = vi.mocked(streamItineraryEvents)
 type Planning = ReturnType<typeof useHomePlanning>
 
 const planning = (overrides: Partial<Planning>): Planning =>
-  ({ status: 'idle', message: '', progress: 0, draft: null, busy: false, submit: async () => undefined, reset: () => undefined, ...overrides }) as Planning
+  ({ status: 'idle', message: '', progress: 0, draft: null, previews: [], coreReady: false, busy: false, submit: async () => undefined, reset: () => undefined, ...overrides }) as Planning
 
 const fakeChat = (overrides: Partial<IntakeChat>): IntakeChat =>
   ({

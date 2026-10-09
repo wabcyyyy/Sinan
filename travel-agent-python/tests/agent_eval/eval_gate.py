@@ -38,8 +38,10 @@ EXPECTED_PROMPT_VERSION = "workflow-v2-authority-route-20260828"
 # 2026-10-07（单日饱和度窗口入 prompt）：把终检的 240-480 分钟窗口与景点上限写进
 # 两套生成 Prompt，版本 bump（open_day v1.4→v1.5、open_trip v1.3→v1.4）；正文变化
 # 使 prompt_text_sha256 随之改变（该指纹由源码现值算出，无需在此登记）。
+# 2026-10-09（M5b，spec §11）：整趟主输出去 suggestions 长备选（备选池改由研究
+# 候选池确定性构建），open_trip bump v1.4→v1.5；open_day（逐日兜底链）口径不变。
 EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
-EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.4.localized"
+EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.5.localized"
 
 # 一致性基线（2026-09-23 重新认账）：流式路径真实小样本（qwen-plus，`llm_eval.py
 # --path stream --limit 3`，与 nightly 门禁同题同口径）实测两遍一致率 **0.0**

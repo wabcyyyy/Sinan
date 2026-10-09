@@ -1,6 +1,7 @@
 import type { GenerateInput } from '../../api/sinan'
 import { loginRedirect, navigate } from '../router'
 import { Icon } from '../shared/Icon'
+import { candidatesForDay } from './itemPreviews'
 import { toGenerateInput } from './intakeSlots'
 import { IntakeConfirm } from './IntakeConfirm'
 import { SlotChecklist } from './SlotChecklist'
@@ -72,9 +73,10 @@ export function TripPanel({ planning, chat, onStart }: {
       />
     )}
     {/* done 态（ready 且 draft 可用）上预览板；ready 但 draft 异常缺失的退化情形
-        留在 PlanningPreview 露出结果文案，不白屏 */}
+        留在 PlanningPreview 露出结果文案，不白屏。候选（M5a）顺手透传：终态已清，
+        极端竞态下（ready 后仍有迟到候选帧）板上按「正在完善」呈现而非静默丢失 */}
     {state === 'ready' && planning.draft && planning.draft.days > 0
-      ? <TripBoard draft={planning.draft} onReset={chat.reset} />
+      ? <TripBoard draft={planning.draft} previews={planning.previews} onReset={chat.reset} />
       : (state === 'generating' || state === 'ready' || state === 'pending' || state === 'error' || state === 'login')
         && <PlanningPreview planning={planning} />}
   </section>
@@ -82,12 +84,13 @@ export function TripPanel({ planning, chat, onStart }: {
 
 /** 生成/兜底态内容区（PLAN §3.4/§3.6，原 home/TripPreview.tsx 卡4 就地迁入）：
  * 四段阶段进度（ol.planning-stages 是金路径 E2E 契约类，不许改名）+ 逐日生长卡
- * （已排好的天亮 theme+前 4 个 POI，未排的天骨架占位），generating/pending/error/login
+ * （已排好的天亮 theme+前 4 个 POI，未排的天骨架占位；M5a 起未排天若已有候选帧，
+ * 候选条目带「正在完善」徽标就地亮出，替代纯骨架），generating/pending/error/login
  * 同容器落位；ready+draft 已由上面的 TripBoard 接走，此处仅剩 draft 异常缺失的
  * 退化兜底（只露结果文案，不再有「查看完整行程」CTA——那条进预览板了）。
  * 数据来自 SSE + 轮询对账的 draft（useHomePlanning），无需独立请求。 */
 function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlanning> }) {
-  const { status, message, progress, draft, busy } = planning
+  const { status, message, progress, draft, busy, previews, coreReady } = planning
   return <aside className="trip-preview" aria-label="行程实时预览" aria-busy={busy}>
     <div className="planning-result-heading">
       <span aria-hidden="true" className={busy ? 'loading-orbit' : 'planning-result-icon'}>
@@ -95,6 +98,9 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
       </span>
       <p role={status === 'error' || status === 'login' ? 'alert' : 'status'}>{message}</p>
     </div>
+    {/* M5b（spec §11）：core_ready 非阻断轻提示——主行程已可查看，备选富化仍在进行；
+        done/complete 收尾时提示随状态一并清（useHomePlanning），这里不需要再兜底 */}
+    {coreReady && <p className="planning-core-hint" role="status">主行程已可查看，备选仍在完善</p>}
     {status === 'login' && <button className="button button-primary" type="button" onClick={() => navigate(loginRedirect())}>登录并继续<Icon name="arrow" size={16} /></button>}
     {busy && <ol className="planning-stages">
       {PLANNING_STAGES.map((stage, index) => (
@@ -110,6 +116,9 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
         const isRunning = day?.generationStatus === 'RUNNING'
         const firstUnfinished = draft.dayList.find((item) => !item.items.length)?.dayNo
         const isCurrentGenerating = !done && (isRunning || dayNo === firstUnfinished)
+        // M5a：该天已发布的候选（快照落库后 reducer/prune 已整日让位，这里只兜
+        // 「还没落库」的在途候选）
+        const dayCandidates = candidatesForDay(previews, dayNo)
         return <li key={dayNo} className={done ? 'is-done' : `is-pending${isCurrentGenerating ? ' is-generating' : ' is-queued'}`}>
           <div className="trip-preview-dayhead">
             <span className="trip-preview-dayno">第 {dayNo} 天</span>
@@ -123,10 +132,17 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
             : <div className="trip-preview-daybody">
                 <strong>安排中…</strong>
                 <small>{isCurrentGenerating ? '司南正在排这一天的路线' : '排在队列里，马上就好'}</small>
-                <div className="trip-preview-shimmer" aria-hidden="true">
-                  <span className="shimmer-line shimmer-line-long" />
-                  <span className="shimmer-line shimmer-line-mid" />
-                </div>
+                {dayCandidates.length > 0
+                  ? <ul className="trip-preview-candidates">
+                      {dayCandidates.map((candidate) => <li key={candidate.previewId} className="trip-preview-candidate">
+                        <span className="trip-preview-candidate-name">{candidate.item.poiName || '候选地点'}</span>
+                        <span className="trip-preview-status-pill is-active">正在完善</span>
+                      </li>)}
+                    </ul>
+                  : <div className="trip-preview-shimmer" aria-hidden="true">
+                      <span className="shimmer-line shimmer-line-long" />
+                      <span className="shimmer-line shimmer-line-mid" />
+                    </div>}
               </div>}
         </li>
       })}

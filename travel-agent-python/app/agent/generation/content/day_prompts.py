@@ -6,7 +6,9 @@
   / budget_clause（见 budget）/ QUALITY_CLAUSE（选点质量，供 Prompt 基座引用）；
 - 文风节奏：_pace_guidance（按天数给出每日景点数建议）；
 - open_trip_prompt / llm_open_trip：整段生成的提示组装与一次 LLM 调用入口
-  （逐日编排仍用 day_stream.llm_open_day）。
+  （逐日编排仍用 day_stream.llm_open_day）；M5a 流式逐项形态
+  llm_open_trip_stream 在 content.trip_stream（同一 prompt/schema，阻塞
+  complete 换 stream_chat_deltas）。
 
 约定（与 day_stream 一致）：未配置 LLM 即抛，失败向上抛由上层降级；
 destination_line 因跨模块使用已由 _destination_line 提级为公共名。
@@ -21,7 +23,7 @@ from functools import lru_cache
 from app.agent.core.intent import IntentBrief, distill_intent
 from app.agent.data.weather import trip_clause as trip_weather_clause
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_trip_output
-from app.agent.generation.content.narrative import NARRATIVE_THEME_MAX, sanitize_narrative
+from app.agent.generation.content.narrative import assemble_trip_output
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.requirement_directives import (
     has_structured_requirements,
@@ -320,7 +322,13 @@ def open_day_output_schema(day_no: int) -> dict:
 
 
 def open_trip_output_schema() -> dict:
-    """llm_open_trip 的输出 schema：顶层 trip_theme 一次 + daily_plans + suggestions。"""
+    """llm_open_trip 的输出 schema：顶层 trip_theme 一次 + daily_plans。
+
+    M5b（spec §11）：顶层不再有 suggestions——长备选数组是主 JSON 截断的头号
+    税源，备选池由研究候选池确定性构建（open_plans 的 floor/build 路径）。模型
+    若仍输出该键（json_object 降级档不强制 schema），装配层如实丢弃不计错；
+    day 级 schema（llm_open_day / 逐日兜底链）口径不变，仍随天携带建议。
+    """
     return _closed(
         {
             "trip_theme": {"type": ["string", "null"]},
@@ -337,7 +345,6 @@ def open_trip_output_schema() -> dict:
                     ),
                 },
             },
-            "suggestions": {"type": "array", "items": _suggestion_schema()},
         }
     )
 
@@ -381,19 +388,4 @@ def llm_open_trip(req: GenerateDayRequest) -> tuple[list[dict], list[dict]]:
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         validate=lambda data: validate_trip_output(data, days),
     )
-    plans = data.get("daily_plans") if isinstance(data, dict) else None
-    if not isinstance(plans, list):
-        raise ValueError("开放模式多日行程结构无效")
-    suggestions = data.get("suggestions") if isinstance(data, dict) else None
-    cleaned_plans = [sanitize_narrative(plan) for plan in plans if isinstance(plan, dict)][:days]
-    # 整趟主题只由顶层输出一次：注入到每一天的 plan dict（第 1 天为权威来源，
-    # 其余天兜底），随装配透传，避免改动本函数返回签名影响存量调用方。
-    trip_theme = data.get("trip_theme") if isinstance(data, dict) else None
-    if isinstance(trip_theme, str) and trip_theme.strip():
-        clipped = trip_theme[:NARRATIVE_THEME_MAX]
-        for plan in cleaned_plans:
-            # 清洗层已把 trip_theme 归一为 None/串，不能用 setdefault（key 已存在）；
-            # 仅在缺失时回填，保留模型自带的天级主题。
-            if not plan.get("trip_theme"):
-                plan["trip_theme"] = clipped
-    return cleaned_plans, [s for s in suggestions if isinstance(s, dict)] if isinstance(suggestions, list) else []
+    return assemble_trip_output(data, days)

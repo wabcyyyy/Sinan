@@ -10,6 +10,8 @@ import {
 import type { GenerateInput } from '../../api/sinan'
 import type { ItineraryStreamEvent } from '../../api/sinan'
 import type { ItineraryDetail } from '../../types/itinerary'
+import { emptyPreviewState, prunePreviewsByDraft, reduceItemPreviewEvent } from './itemPreviews'
+import type { ItemPreviewState } from './itemPreviews'
 
 export type PlanningStatus = 'idle' | 'creating' | 'planning' | 'ready' | 'pending' | 'error' | 'login'
 
@@ -48,6 +50,10 @@ export function useHomePlanning() {
   const [message, setMessage] = useState('')
   const [progress, setProgress] = useState(0)
   const [draft, setDraft] = useState<ItineraryDetail | null>(null)
+  // M5a 逐项候选（spec §10.2）+ M5b core_ready 里程碑（spec §11）：只存在于
+  // 生成进行中，页面重建即消失（spec 明说不要求复活，DB 快照是对账权威）
+  const [previewState, setPreviewState] = useState<ItemPreviewState>(emptyPreviewState)
+  const [coreReady, setCoreReady] = useState(false)
   const request = useRef<AbortController | null>(null)
   const busy = status === 'creating' || status === 'planning'
 
@@ -62,6 +68,18 @@ export function useHomePlanning() {
       if (event.type === 'day_start') { setProgress(2); setMessage(`正在安排第 ${String(data.dayNo || '')} 天`) }
       if (event.type === 'day_done') setMessage(`第 ${String(data.dayNo || '')} 天已安排好`)
       if (event.type === 'butler_note') { setProgress(3); setMessage('正在补充出行提醒') }
+      // M5a：候选发布/撤回（开放 data → itemPreviews 纯 reducer 收窄：previewId
+      // 去重、换 run 作废、撤回精确移除）
+      if (event.type === 'item_preview' || event.type === 'item_preview_withdrawn') {
+        setPreviewState((prev) => reduceItemPreviewEvent(prev, event))
+      }
+      // M5b：core_ready 只是非阻断里程碑提示（「主行程可查看」），done 的完整
+      // 收尾语义不变；stage_timing 是观测帧，前端暂不展示，透传不消费即可
+      if (event.type === 'core_ready') setCoreReady(true)
+      // 终态（complete 直发帧 / 重连后补的 done 快照帧）：清残余预览与里程碑提示
+      if (event.type === 'complete' || event.type === 'done') {
+        setPreviewState(emptyPreviewState()); setCoreReady(false)
+      }
     }
     // SSE 与轮询并行：SSE 管进度文案，轮询 2s 对账管预览数据——串行的话，
     // 流没关之前 day_done 已落库但 setDraft 不更新，预览天卡会一直停在「安排中」。
@@ -74,11 +92,20 @@ export function useHomePlanning() {
       const result = await waitForItinerary(created.id, {
         signal: controller.signal,
         timeoutMs: 30 * 60 * 1000,
-        onUpdate: (detail) => { if (!controller.signal.aborted) { setDraft(detail); lastStatus = detail.status } },
+        onUpdate: (detail) => {
+          if (!controller.signal.aborted) {
+            setDraft(detail)
+            // M5a：正式 day 快照（轮询对账到达）是权威内容——已有条目的天候选整日让位
+            setPreviewState((prev) => prunePreviewsByDraft(prev, detail))
+            lastStatus = detail.status
+          }
+        },
       })
       if (controller.signal.aborted) return
       // done 不清 generationId：刷新后走 resume 恢复同一 ready 呈现（见 GENERATION_KEY 注）
-      setDraft(result); setProgress(4); setStatus('ready'); setMessage('你的行程已准备好')
+      // 完整收尾（轮询通道先于 SSE 终态帧到达是常态）：残余预览与里程碑提示一并清
+      setDraft(result); setPreviewState(emptyPreviewState()); setCoreReady(false)
+      setProgress(4); setStatus('ready'); setMessage('你的行程已准备好')
     } catch (error) {
       if (controller.signal.aborted) return
       if (lastStatus === 3) clearGenerationId()
@@ -93,6 +120,7 @@ export function useHomePlanning() {
     const controller = new AbortController()
     request.current = controller
     setStatus('creating'); setMessage('正在创建你的行程'); setProgress(0); setDraft(null)
+    setPreviewState(emptyPreviewState()); setCoreReady(false)
     let created: ItineraryDetail | null = null
     try {
       created = await generateItinerary(input, crypto.randomUUID(), controller.signal)
@@ -162,7 +190,15 @@ export function useHomePlanning() {
     request.current = null
     clearGenerationId()
     setDraft(null); setProgress(0); setMessage(''); setStatus('idle')
+    setPreviewState(emptyPreviewState()); setCoreReady(false)
   }, [])
 
-  return { status, message, progress, draft, busy, submit, reset }
+  return {
+    status, message, progress, draft,
+    /** M5a：当前候选条目（按天渲染「正在完善」，仅生成进行中非空） */
+    previews: previewState.candidates,
+    /** M5b：主行程已可查看、备选仍在完善的非阻断提示态 */
+    coreReady,
+    busy, submit, reset,
+  }
 }

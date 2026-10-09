@@ -92,7 +92,7 @@ def _stub_orchestration(monkeypatch, captured: dict) -> None:
         captured["day_requests"].append(request)
         return _daily_plan(request.day_no, f"点{request.day_no}")
 
-    def fake_stream(request, cancel=None):
+    def fake_stream(request, cancel=None, **kwargs):
         captured["stream_request"] = request
         # 空流：整段不产出 → 走逐日兜底（本文件关注参数贯通，不关注流式装配）
         yield from ()

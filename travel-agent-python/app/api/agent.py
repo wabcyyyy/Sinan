@@ -444,7 +444,8 @@ def generate_trip_stream(
         try:
             with use_scene("generate"), observe_run(request_id=req.request_id or x_request_id) as trace:
                 yield to_wire(StartEvent(type="start", run_id=trace.run_id))
-                yield from run_generate_trip_stream(req, cancel=cancel)
+                # M5a：agent 面 JSONL 同步开启逐项候选预览（spec §10.2 两套协议都接通）
+                yield from run_generate_trip_stream(req, cancel=cancel, item_previews=True)
         except Exception as e:
             logger.warning("generate-stream failed: %s", e)
             yield to_wire(ErrorEvent(type="error", message="生成服务暂不可用，请稍后重试"))

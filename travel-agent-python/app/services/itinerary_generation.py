@@ -71,11 +71,47 @@ from app.services import preferences as preferences_service
 logger = logging.getLogger(__name__)
 
 MAX_STREAM_CONTRACT_ERRORS = 3
-KNOWN_STREAM_TYPES = ("start", "day", "day_patch", "suggestions", "done", "error")
+# M5a：day_item_preview / day_item_preview_withdrawn 是前向兼容的附加事件
+# （候选预览，不落库），随既有六类一起进白名单。
+KNOWN_STREAM_TYPES = (
+    "start",
+    "day",
+    "day_patch",
+    "suggestions",
+    "done",
+    "error",
+    "day_item_preview",
+    "day_item_preview_withdrawn",
+)
 
 # Java AsyncConfig：generationExecutor core2/max4/queue20、enricherExecutor core1/max2/queue10
 _GENERATION_SLOTS = 4 + 20
 _ENRICHER_SLOTS = 2 + 10
+
+
+class _StageClock:
+    """M5b 阶段计时（spec §11 指标）：submit 起各里程碑的 monotonic 分段耗时。
+
+    经业务事件通道（generation_events.stage_timing）发布：plan_days 大部分区段
+    刻意不包 observe_run（研究段与 /v1/plan-context 同口径），agent 面
+    record_event 在无 recorder 上下文时是 no-op，业务帧才是这条编排线程里
+    真正可达的观测面。只记录、不断言——历史 152 秒不当自动基线，不设任何
+    性能阈值；同一名义阶段只发首帧（first_day 的整段/逐日两条落库路径都调 mark）。
+    tokens/请求次数沿用既有用量上报（llm_client → metrics），此处不重造。
+    """
+
+    __slots__ = ("_fired", "_itinerary_id", "_submit")
+
+    def __init__(self, itinerary_id: int) -> None:
+        self._itinerary_id = itinerary_id
+        self._submit = time.monotonic()
+        self._fired: set[str] = set()
+
+    def mark(self, stage: str) -> None:
+        if stage in self._fired:
+            return
+        self._fired.add(stage)
+        generation_events.stage_timing(self._itinerary_id, stage, (time.monotonic() - self._submit) * 1000)
 
 
 # 与池抛出的异常同一个类；池本身共用 app.common.task_pool（导出任务也用同一个原语）
@@ -208,6 +244,9 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
     # 路由解析先于 with 单独兜 ApiError：密文解不开（加密 key 轮换）若从 route_scope
     # 直接抛出，会绕过下方 try 的失败收尾（fail_trip / SSE 错误 / finally 解注册），
     # 409 裸穿 generation_pool 还会漏 _unregister_planning 造成注册表泄漏（终审补丁）。
+    # M5b：timing 从本函数第一条语句起算——「submit→各里程碑」的 submit 就是
+    # 任务体开始执行这一刻（排队耗时不在本函数视野内，如实不含）。
+    timing = _StageClock(itinerary_id)
     try:
         route = llm_gateway_service.resolve_route(user_id)
     except ApiError as exc:
@@ -215,6 +254,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
         generation_events.error(itinerary_id, "AGENT_ERROR", user_reason(exc), True)
         day_persistence.fail_trip(itinerary_id, str(exc) or None, user_facing=True)
         itinerary_query.evict_detail(user_id, itinerary_id)
+        timing.mark("terminal")
         _unregister_planning(itinerary_id)
         return
     with use_route(route):
@@ -245,6 +285,8 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
                 with use_scene("research"):
                     context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
                 context[_CONTEXT_FP_KEY] = fingerprint
+            # M5b：首个研究上下文可用（本轮返回或恢复复用）即记 research 里程碑
+            timing.mark("research")
             # L14：报价随研究上下文一次落库；空即写 NULL（续跑取回的 context 同样带它）
             day_persistence.save_flight_quotes(itinerary_id, context.get("flight_quotes"))
             day_persistence.save_origin_city(itinerary_id, command.origin_city)
@@ -254,7 +296,9 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             fresh_trip = len(unfinished) >= command.days
             if fresh_trip:
                 try:
-                    suggestions_persisted = _plan_whole_trip(user_id, itinerary_id, command, context, fingerprint)
+                    suggestions_persisted = _plan_whole_trip(
+                        user_id, itinerary_id, command, context, fingerprint, timing=timing
+                    )
                 except Exception as stream_exc:
                     logger.warning("whole-trip stream failed for itinerary %s: %s", itinerary_id, stream_exc)
                 # 整段流式的后置终检（stream 产出的天不再零校验直落库）：对已落库天跑
@@ -283,6 +327,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
                         plan = _generate_day_with_trace(
                             itinerary_id, command, context, day_no, used_names, chosen_hotel, action_id, fingerprint
                         )
+                        timing.mark("first_day")
                         if day_no == 1:
                             first_day_suggestions = plan.suggestions
                             day_persistence.set_trip_theme(itinerary_id, plan.trip_theme)
@@ -309,7 +354,15 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
 
             if not suggestions_persisted:
                 itinerary_enricher.persist_suggestions(itinerary_id, first_day_suggestions)
+            # M5b（spec §11）：core_ready 中间里程碑——全部天落库且终检后无 PENDING 天
+            # （终检违规天已被 _revalidate_stream_days 重置、由上方逐日循环重生成）
+            # 才发布；仍有未完成天 = 交付不齐，不发，走既有 PARTIAL/FAILED 终态路径。
+            # 发布点在提交富化池（_finish 内）之前：此后本任务只余收尾写（摊铺/预算/
+            # 终态列/版本快照，均非核心内容改写），核心内容不再变更。
+            if not day_persistence.unfinished_day_nos(itinerary_id):
+                _publish_core_ready(itinerary_id, timing)
             _finish(user_id, itinerary_id, command)
+            timing.mark("terminal")
         except Exception as exc:
             logger.error("async planning failed for itinerary %s", itinerary_id, exc_info=True)
             # R2-F3：原始异常文本（含上游 URL）只进日志；SSE 错误帧与 plan_note 都给用户文案。
@@ -319,6 +372,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             generation_events.error(itinerary_id, code, user_reason(exc), True)
             day_persistence.fail_trip(itinerary_id, str(exc) or None, code=code)
             itinerary_query.evict_detail(user_id, itinerary_id)
+            timing.mark("terminal")
         finally:
             _unregister_planning(itinerary_id)
 
@@ -488,7 +542,12 @@ _stream_events = TypeAdapter(StreamEvent)
 
 
 def _plan_whole_trip(
-    user_id: int, itinerary_id: int, command: GenerateCommand, context: dict[str, Any], fingerprint: str
+    user_id: int,
+    itinerary_id: int,
+    command: GenerateCommand,
+    context: dict[str, Any],
+    fingerprint: str,
+    timing: _StageClock | None = None,
 ) -> bool:
     request = GenerateDayRequest(
         city=command.city,
@@ -517,7 +576,9 @@ def _plan_whole_trip(
     # 与 /v1/generate-stream 同：只落 trace，不把 runId 回填进事件（消费者看到的键不变）
     with use_scene("generate"), observe_run(request_id=f"itinerary-{itinerary_id}"):
         try:
-            for event in run_generate_trip_stream(request):
+            # M5a：整段腿开启逐项候选预览（item_preview/item_preview_withdrawn 帧
+            # 随流转发给浏览器）；day/day_patch/done 落库语义不变。
+            for event in run_generate_trip_stream(request, item_previews=True):
                 event_type = str(event.get("type") or "")
                 if event_type not in KNOWN_STREAM_TYPES:
                     # 未知类型 = 前向兼容的附加事件：忽略且不计数（增量演进不算协议破坏）
@@ -554,6 +615,7 @@ def _plan_whole_trip(
                             plan_node,
                             fingerprint,
                             overwrite=event_type == "day_patch",
+                            timing=timing,
                         )
                     except Exception as day_exc:
                         logger.warning("stream day %s persist failed for %s: %s", day_no, itinerary_id, day_exc)
@@ -578,6 +640,24 @@ def _plan_whole_trip(
                     )
                 elif event_type == "error":
                     logger.warning("whole-trip stream error for %s: %s", itinerary_id, event.get("message"))
+                elif event_type == "day_item_preview":
+                    # M5a 候选预览：转发业务 SSE（浏览器先亮「正在完善」）。
+                    # 预览不落库——正式内容权威是随后的 day 快照，用它整体替换。
+                    generation_events.item_preview(
+                        itinerary_id,
+                        str(event.get("runId") or ""),
+                        int(event.get("dayNo") or 0),
+                        int(event.get("itemOrdinal") or 0),
+                        dict(event.get("item") or {}),
+                    )
+                elif event_type == "day_item_preview_withdrawn":
+                    generation_events.item_preview_withdrawn(
+                        itinerary_id,
+                        str(event.get("runId") or ""),
+                        int(event.get("dayNo") or 0),
+                        int(event.get("itemOrdinal") or 0),
+                        str(event.get("reason") or ""),
+                    )
         except Exception as stream_exc:
             if done_seen:
                 # done 之后连接收尾的残余异常（如 Premature EOF）不影响结果：缺天交给逐日循环
@@ -602,6 +682,7 @@ def _persist_stream_day(
     plan_node: dict[str, Any],
     fingerprint: str,
     overwrite: bool,
+    timing: _StageClock | None = None,
 ) -> None:
     action_id = f"day-{itinerary_id}-{day_no}"
     if not generation_gate.try_day_lock(itinerary_id, day_no):
@@ -619,6 +700,8 @@ def _persist_stream_day(
             day_persistence.persist(
                 itinerary_id, command, day_no, plan, action_id, fingerprint, allow_overwrite=overwrite
             )
+            if timing is not None:
+                timing.mark("first_day")
             generation_events.day_done(itinerary_id, day_no, plan.theme, len(plan.items or []), plan.note)
             itinerary_query.evict_detail(user_id, itinerary_id)
             _submit_budget_recalculate(itinerary_id)
@@ -767,6 +850,40 @@ def _item_rule_dict(row: ItineraryItem) -> dict[str, Any]:
 # ---------- 终态 ----------
 
 
+def _publish_core_ready(itinerary_id: int, timing: _StageClock) -> None:
+    """M5b（spec §11）：核心就绪 = DB 权威状态投影 + 业务事件，一次且同源。
+
+    `GENERATING → CORE_READY` 的**条件更新**本身就是发布闸：rowcount=1 才发
+    core_ready 事件——状态投影与事件由同一条 UPDATE 保证只发生一次，恢复重放、
+    已完成行程上重复触发 plan_days（幂等登记路径）都不会二次发布。revision 与
+    daysEmitted 都读自 DB（planning_revision 现值 / SUCCEEDED 天数），不从内存
+    或事件流推导。有 PENDING/FAILED 天时调用方不会走到这里，终态语义不变
+    （_finish 随后写 COMPLETED/PARTIAL，complete 帧含义不变）。
+    """
+    with session_scope() as session:
+        result = session.execute(
+            update(ItineraryMain)
+            .where(ItineraryMain.id == itinerary_id, ItineraryMain.gen_state == "GENERATING")
+            .values(gen_state="CORE_READY")
+        )
+        if getattr(result, "rowcount", 0) == 0:
+            logger.info("core_ready skipped for itinerary %s: gen_state no longer GENERATING", itinerary_id)
+            return
+        main = session.get(ItineraryMain, itinerary_id)
+        revision = int(main.planning_revision or 0) if main is not None else 0
+        days_emitted = len(
+            session.execute(
+                select(ItineraryDay.id).where(
+                    ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.generation_status == "SUCCEEDED"
+                )
+            )
+            .scalars()
+            .all()
+        )
+    generation_events.core_ready(itinerary_id, revision, days_emitted)
+    timing.mark("core_ready")
+
+
 def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_summary: str = "行程生成完成") -> None:
     with session_scope() as session:
         main = session.get(ItineraryMain, itinerary_id)
@@ -793,7 +910,12 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         version_id,
     )
     try:
-        enricher_pool.submit(itinerary_enricher.enrich_itinerary, user_id, itinerary_id, command)
+        # M5b（spec §11）：富化任务绑定提交时的规划修订——core_ready 后用户的编辑
+        # 会推进 revision，旧富化不得覆盖新行程；比对在富化侧写 suggestions_json
+        # 的事务内逐次做（见 itinerary_enricher._store_suggestion_rows）。
+        enricher_pool.submit(
+            itinerary_enricher.enrich_itinerary, user_id, itinerary_id, command, int(main.planning_revision or 0)
+        )
     except TaskRejected as rejected:
         logger.warning("itinerary enrichment rejected for %s: %s", itinerary_id, rejected)
     itinerary_query.evict_detail(user_id, itinerary_id)

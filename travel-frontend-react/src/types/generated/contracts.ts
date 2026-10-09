@@ -913,4 +913,21 @@ export interface ErrorEvent {
   message: string
 }
 
-export type StreamEvent = StartEvent | DayEvent | DayPatchEvent | SuggestionsEvent | DoneEvent | ErrorEvent
+export interface ItemPreviewEvent {
+  type: "day_item_preview"
+  runId: string
+  dayNo: number
+  itemOrdinal: number
+  item: Record<string, unknown>
+  status: "drafting"
+}
+
+export interface ItemPreviewWithdrawnEvent {
+  type: "day_item_preview_withdrawn"
+  runId: string
+  dayNo: number
+  itemOrdinal: number
+  reason: string
+}
+
+export type StreamEvent = StartEvent | DayEvent | DayPatchEvent | SuggestionsEvent | DoneEvent | ErrorEvent | ItemPreviewEvent | ItemPreviewWithdrawnEvent

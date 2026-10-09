@@ -10,6 +10,9 @@ dispatch ──mode=stream──► stream_generate（生成 → 落地 → 摊�
   wire 事件仍走 `schemas/stream_events.to_wire`（契约不变）；
 - LLM 形态 = 整段一次调用（llm_open_trip，模型看得见全盘）+ 截断逐日兜底
   （缺口天 llm_open_day，suggestions 随天收集——截断不可能丢建议池）；
+  M5a 起经 run config `item_previews` 显式开启时整段腿改走 llm_open_trip_stream，
+  逐项候选以 day_item_preview wire 事件先于正式 day 事件下发（默认关 = 既有
+  事件序列逐字节不变，业务面/agent 面入口显式开启）。
 - 生成/落地/去重实现全在 `open_plans`（on_day/on_patch 挂点），本模块只做
   「事件化 + 产品语义」：研究在外层（上下文随请求带入）、整段天已补终检
   （业务侧 plan_days 落库后跑 validate_plans，违规天重置交逐日循环）、
@@ -38,10 +41,18 @@ from app.agent.generation.content.suggestions import build_suggestions, fill_sug
 from app.agent.generation.rules.budget import budget_tier
 from app.agent.research.agent_state import MODE_STREAM, UnifiedAgentState
 from app.agent.runtime import checkpoint
-from app.agent.runtime.trace import record_event, traced
+from app.agent.runtime.trace import current_run_id, record_event, traced
 from app.common.llm_client import StreamCancelled
 from app.common.model_registry import configured
-from app.schemas.stream_events import DayEvent, DayPatchEvent, DoneEvent, SuggestionsEvent, to_wire
+from app.schemas.stream_events import (
+    DayEvent,
+    DayPatchEvent,
+    DoneEvent,
+    ItemPreviewEvent,
+    ItemPreviewWithdrawnEvent,
+    SuggestionsEvent,
+    to_wire,
+)
 from app.schemas.trip import DailyPlan, GenerateDayRequest, GenerateRequest, Suggestion
 
 logger = logging.getLogger(__name__)
@@ -64,6 +75,13 @@ def _cancel_event(config: RunnableConfig | None) -> threading.Event | None:
         return None
     value = (config.get("configurable") or {}).get("cancel")
     return value if isinstance(value, threading.Event) else None
+
+
+def _item_previews_enabled(config: RunnableConfig | None) -> bool:
+    """M5a 候选预览开关（run config 注入，默认关 = 既有事件序列不变）。"""
+    if config is None:
+        return False
+    return bool((config.get("configurable") or {}).get("item_previews"))
 
 
 def _raise_if_cancelled(cancel: threading.Event | None) -> None:
@@ -123,21 +141,65 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
         if int(plan.get("day_no") or 0) in emitted:
             writer(to_wire(DayPatchEvent(type="day_patch", plan=_stream_plan_model(plan))))
 
+    # M5a 逐项候选挂点：候选包装成契约事件（模型构造 → dump，禁止手搓键名）
+    # 后立即下发——预览先于同一 day 的正式 day 事件，day 快照是权威内容，
+    # 消费方用它整体替换该日预览。runId 取当前 trace（无 trace 上下文如实空串）。
+    def on_item_preview(day_no: int, item_ordinal: int, item: dict) -> None:
+        _raise_if_cancelled(cancel)
+        writer(
+            to_wire(
+                ItemPreviewEvent(
+                    type="day_item_preview",
+                    run_id=current_run_id() or "",
+                    day_no=int(day_no),
+                    item_ordinal=int(item_ordinal),
+                    item=dict(item),
+                )
+            )
+        )
+
+    def on_item_withdrawn(day_no: int, item_ordinal: int, reason: str) -> None:
+        writer(
+            to_wire(
+                ItemPreviewWithdrawnEvent(
+                    type="day_item_preview_withdrawn",
+                    run_id=current_run_id() or "",
+                    day_no=int(day_no),
+                    item_ordinal=int(item_ordinal),
+                    reason=str(reason),
+                )
+            )
+        )
+
     increment: dict | None = None
     research_errors: list[str] = []
     try:
         from app.agent.generation.orchestration import open_plans
 
-        increment, research_errors = open_plans.generate_open_plans(
-            request,
-            req.feedback or "",
-            context_hotels=hotels,
-            candidates=candidates,
-            foods=foods,
-            weather=context.get("weather") or [],
-            on_day=on_day,
-            on_patch=on_patch,
-        )
+        if _item_previews_enabled(config):
+            increment, research_errors = open_plans.generate_open_plans(
+                request,
+                req.feedback or "",
+                context_hotels=hotels,
+                candidates=candidates,
+                foods=foods,
+                weather=context.get("weather") or [],
+                on_day=on_day,
+                on_patch=on_patch,
+                on_item_preview=on_item_preview,
+                on_item_withdrawn=on_item_withdrawn,
+            )
+        else:
+            increment, research_errors = open_plans.generate_open_plans(
+                request,
+                req.feedback or "",
+                context_hotels=hotels,
+                candidates=candidates,
+                foods=foods,
+                weather=context.get("weather") or [],
+                on_day=on_day,
+                on_patch=on_patch,
+            )
     except StreamCancelled:
         logger.info("trip stream cancelled for %s after %d day(s)", req.city, len(emitted))
     if cancel is not None and cancel.is_set():
@@ -210,12 +272,18 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
     return result
 
 
-def run_generate_trip_stream(req: GenerateDayRequest, cancel: threading.Event | None = None) -> Iterator[dict]:
+def run_generate_trip_stream(
+    req: GenerateDayRequest, cancel: threading.Event | None = None, *, item_previews: bool = False
+) -> Iterator[dict]:
     """整段流式生成入口：统一图 mode=stream 分支的 custom stream 转发。
 
-    逐个 yield wire 事件 dict（day / day_patch / suggestions / done）。cancel 经
+    逐个 yield wire 事件 dict（day / day_patch / suggestions / done；M5a 开启
+    候选预览时另有 day_item_preview / day_item_preview_withdrawn）。cancel 经
     run config 注入（PR-3 后 state 必须可序列化，取消信号不入 state）；LLM 未配置
     沿旧口径抛 ValueError——调用方（业务侧）据此降级逐日生成。
+
+    `item_previews`（M5a，spec §10）：逐项候选预览开关，默认 False——不开启时
+    事件序列与既有逐字节一致；业务整段流式腿与 /v1/generate-stream 显式开启。
     """
     if cancel is not None and cancel.is_set():
         record_event(
@@ -228,7 +296,12 @@ def run_generate_trip_stream(req: GenerateDayRequest, cancel: threading.Event | 
     if not configured("main"):
         raise ValueError("未配置 LLM，无法生成行程内容")
     config: RunnableConfig = {
-        "configurable": {"thread_id": checkpoint.checkpoint_thread_id(f"stream-{uuid4().hex}"), "cancel": cancel}
+        "configurable": {
+            "thread_id": checkpoint.checkpoint_thread_id(f"stream-{uuid4().hex}"),
+            "cancel": cancel,
+            # M5a：候选预览经 run config 进节点（同 cancel 的注入通道，不入 state）
+            "item_previews": item_previews,
+        }
     }
     state = {"mode": MODE_STREAM, "day_request": req, "feedback": req.feedback or ""}
     from app.agent.generation.orchestration.trip_graph import unified_agent_graph

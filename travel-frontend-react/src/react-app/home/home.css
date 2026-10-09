@@ -603,6 +603,13 @@
 .shimmer-line-long { width: 85%; }
 .shimmer-line-mid { width: 55%; }
 @keyframes sinan-shimmer-flow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* —— M5a 逐项候选（spec §10.2）：未排天的在途候选条目就地亮出，徽标复用
+   .trip-preview-status-pill 既有 badge 体系（is-active 朱砂态=正在完善），不新造裸色 —— */
+.trip-preview-candidates { list-style: none; display: grid; gap: 5px; margin: 8px 0 0; padding: 0; }
+.trip-preview-candidate { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--sinan-ink-soft); }
+.trip-preview-candidate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* —— M5b core_ready 轻提示条（spec §11）：非阻断状态条，accent 洗染色系 —— */
+.planning-core-hint { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; font-size: 12px; line-height: 1.6; color: var(--sinan-accent-dark); background: var(--sinan-accent-wash); border: 1px solid var(--sinan-accent-soft); border-radius: var(--sinan-radius-sm); }
 /* —— done 态只读预览板（TripBoard，PLAN §3.5）：头部摘要条 + DAY 横向 chips +
    当天紧凑时间线（复用全局 .day-item 视觉语言，作用域内做紧凑化覆盖）+ 预算/CTA 底栏 —— */
 .trip-board { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
@@ -629,6 +636,10 @@
 .trip-board .day-item-line > span { min-height: 38px; }
 .trip-board .item-heading h3 { margin: 2px 0; font-size: 14px; }
 .trip-board .day-item-copy > p { margin: 4px 0 0; font-size: 12px; line-height: 1.7; }
+/* M5a：板上候选行（终态竞态下的迟到候选）——虚线弱化为「未定稿」，无媒体列、不可点 */
+.trip-board .day-item.is-preview { grid-template-columns: 48px 20px minmax(0, 1fr); border-style: dashed; opacity: .82; cursor: default; }
+.trip-board .day-item.is-preview:hover { background: transparent; border-color: var(--sinan-line-soft); transform: none; box-shadow: none; }
+.trip-board .day-item.is-preview .item-heading .trip-preview-status-pill { flex-shrink: 0; }
 .board-foot { display: grid; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--sinan-line); }
 .board-budget { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .board-budget-label { color: var(--sinan-muted); font-size: 12px; }
