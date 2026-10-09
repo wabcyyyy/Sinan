@@ -1,0 +1,90 @@
+{
+  "mode": "clarify-judge",
+  "generated_at": "2026-10-09T08:27:29.558216+00:00",
+  "commit": "610044f4490bd3f1d4228bd3067587778920a656",
+  "judge_model": "deepseek-flash",
+  "self_judge_caveat": "judge 与被评模型同家族（LLM_ROLE_JUDGE 未配异家族通道）时存在 self-preference 偏差；本报告是辅助信号，spec §13.3 的人工评分（clarify_scoring_sheet.md）才是体验口径。",
+  "samples_sha256": "2e46a45c99a70f80438dee2fd16fa6db8c5d07a76c04baf3bcde194d63c25a74",
+  "rubric_sha256": "7a4c0d9f1166da5012c474fef7b092c205008221f2c19f29364e78bdeb343c51",
+  "per_dim": {
+    "responsiveness": {
+      "n": 4,
+      "mean": 3.5
+    },
+    "followup_necessity": {
+      "n": 4,
+      "mean": 3.75
+    },
+    "tone": {
+      "n": 4,
+      "mean": 4.5
+    },
+    "tradeoff_clarity": {
+      "n": 4,
+      "mean": 5.0
+    }
+  },
+  "judged": [
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "error": "LLM 输出 JSON 解码失败"
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "user": "2026年10月16号出发，15点才到，第三天下午4点的高铁要走",
+      "reply": "还想确认一下目的地城市～",
+      "judge": {
+        "responsiveness": 4,
+        "followup_necessity": 5,
+        "tone": 5,
+        "tradeoff_clarity": 5,
+        "tradeoff_na": true,
+        "rationale": "城市为规划必需且用户未给出，追问合理；但未对已给的到达/离开时间做任何承接，略显单薄，故回应性记4。"
+      }
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "user": "预算4500不含往返大交通，住舒适型，不要博物馆",
+      "reply": "还想确认一下目的地城市～",
+      "judge": {
+        "responsiveness": 4,
+        "followup_necessity": 5,
+        "tone": 5,
+        "tradeoff_clarity": 5,
+        "tradeoff_na": true,
+        "rationale": "接住了预算与偏好，追问目的地属必需槽位；语气自然。未明确复述不要博物馆等约束，稍欠回应感，其余得当。"
+      }
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "user": "随便帮我安排一下大理，两天",
+      "reply": "还想确认一下出行人数～",
+      "judge": {
+        "responsiveness": 4,
+        "followup_necessity": 3,
+        "tone": 4,
+        "tradeoff_clarity": 5,
+        "tradeoff_na": true,
+        "rationale": "接住了需求但未回显大理两天，只追问人数；用户说“随便”时人数并非硬性必需，略欠必要性判断；语气自然简洁，本轮无取舍。"
+      }
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "user": "就我们俩，喜欢风景和咖啡，别太赶",
+      "reply": "大概哪天出发？还没定的话说「待定」也行。",
+      "judge": {
+        "responsiveness": 2,
+        "followup_necessity": 2,
+        "tone": 4,
+        "tradeoff_clarity": 5,
+        "tradeoff_na": true,
+        "rationale": "用户已给出人数、风景咖啡偏好和轻松节奏，助手完全未接住，只追问出发日期；而结构态ready、missing为空，日期并非必需，属无效追问。语气自然简洁尚可。"
+      }
+    }
+  ]
+}

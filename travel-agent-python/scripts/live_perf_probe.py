@@ -289,6 +289,109 @@ def run_clarify(base_url: str) -> dict:
 
 SCORING_DIMS = ["回应具体诉求(1-5)", "追问必要性(1-5)", "语气(1-5)", "取舍说明(1-5)"]
 
+#: B8：LLM 裁判 rubric——四维与人工评分表同源（spec §13.3）。裁判只能辅助，
+#: 不等同真实用户偏好，不替代 clarify_scoring_sheet.md 的人工评分。
+CLARIFY_JUDGE_RUBRIC = (
+    "你是旅行规划助手的澄清回复质量评审。给定该轮用户输入、助手回复与结构态摘要，"
+    "按四个维度打 1-5 整数分：\n"
+    "1. responsiveness（回应具体诉求）：是否接住用户本轮给出的信息（城市/天数/人数/"
+    "日期/节奏/预算等），不答非所问、不无视明确要求。\n"
+    "2. followup_necessity（追问必要性）：追问的槽位是否确实为规划所必需且用户尚未给出；"
+    "已知信息不得重复问，可选信息不得当必答逼问。\n"
+    "3. tone（语气）：自然、简洁、像真人管家；不堆砌术语、不机械罗列。\n"
+    "4. tradeoff_clarity（取舍说明）：涉及限制/冲突/协商/降级时是否如实说明取舍与原因；"
+    "本轮无取舍场景记 5 分并把 tradeoff_na 置 true。\n"
+    '只输出一个 JSON 对象：{"responsiveness": 整数1到5, "followup_necessity": 整数1到5, '
+    '"tone": 整数1到5, "tradeoff_clarity": 整数1到5, "tradeoff_na": true或false, '
+    '"rationale": "不超过80字的理由"}'
+)
+CLARIFY_JUDGE_DIMS = ("responsiveness", "followup_necessity", "tone", "tradeoff_clarity")
+
+
+def judge_clarify_samples(samples_path: Path) -> dict:
+    """对已抓取的 clarify 样本跑 LLM 裁判辅助评分（B8）。
+
+    判分走 judge 通道（LLM_ROLE_JUDGE，留空复用 main——self-judge 偏差在报告
+    如实标注）；单轮失败只记 error 不中断。输出是辅助信号，人工评分表仍待填。
+    """
+    from app.agent.core.json_utils import parse_llm_json
+    from app.common import model_registry
+    from app.common.llm_client import get_judge_client
+
+    raw_samples = samples_path.read_text(encoding="utf-8")
+    samples = json.loads(raw_samples)
+    client = get_judge_client()
+    judged: list[dict] = []
+    for scenario in samples["scenarios"]:
+        for idx, turn in enumerate(scenario["turns"], start=1):
+            prompt = (
+                f"场景 {scenario['id']} 第 {idx} 轮。\n"
+                f"用户输入：{turn['user']}\n"
+                f"助手回复：{turn['reply']}\n"
+                f"结构态：ready={turn.get('ready')} blocked={turn.get('blocked')} "
+                f"missing={turn.get('missing')} options={turn.get('options')}\n"
+                "按评审口径只输出 JSON。"
+            )
+            try:
+                raw = client.chat(
+                    [{"role": "user", "content": f"{CLARIFY_JUDGE_RUBRIC}\n\n{prompt}"}],
+                    temperature=0,
+                    max_tokens=400,
+                    response_format={"type": "json_object"},
+                )
+                try:
+                    scores = parse_llm_json(raw)
+                except Exception:
+                    # 单次修复重试（同 judge.py 纪律）：空输出/解码失败再要一次
+                    raw = client.chat(
+                        [
+                            {"role": "user", "content": f"{CLARIFY_JUDGE_RUBRIC}\n\n{prompt}"},
+                            {"role": "assistant", "content": str(raw)[:200] if raw else ""},
+                            {"role": "user", "content": "上次输出为空或不是合法 JSON。只重新输出那个 JSON 对象。"},
+                        ],
+                        temperature=0,
+                        max_tokens=400,
+                        response_format={"type": "json_object"},
+                    )
+                    scores = parse_llm_json(raw)
+            except Exception as exc:
+                judged.append({"scenario": scenario["id"], "turn": idx, "error": str(exc)[:200]})
+                continue
+            judged.append(
+                {"scenario": scenario["id"], "turn": idx, "user": turn["user"], "reply": turn["reply"], "judge": scores}
+            )
+            print(f"  {scenario['id']}-#{idx}: " + " ".join(f"{d}={scores.get(d)}" for d in CLARIFY_JUDGE_DIMS))
+    per_dim = {
+        dim: {
+            "n": sum(1 for row in judged if isinstance(row.get("judge"), dict) and row["judge"].get(dim) is not None),
+            "mean": round(
+                statistics.mean(
+                    float(row["judge"][dim])
+                    for row in judged
+                    if isinstance(row.get("judge"), dict) and row["judge"].get(dim) is not None
+                ),
+                3,
+            )
+            if any(isinstance(row.get("judge"), dict) and row["judge"].get(dim) is not None for row in judged)
+            else None,
+        }
+        for dim in CLARIFY_JUDGE_DIMS
+    }
+    return {
+        "mode": "clarify-judge",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "commit": git_commit(),
+        "judge_model": model_registry.binding("judge").model,
+        "self_judge_caveat": (
+            "judge 与被评模型同家族（LLM_ROLE_JUDGE 未配异家族通道）时存在 self-preference 偏差；"
+            "本报告是辅助信号，spec §13.3 的人工评分（clarify_scoring_sheet.md）才是体验口径。"
+        ),
+        "samples_sha256": hashlib.sha256(raw_samples.encode("utf-8")).hexdigest(),
+        "rubric_sha256": hashlib.sha256(CLARIFY_JUDGE_RUBRIC.encode("utf-8")).hexdigest(),
+        "per_dim": per_dim,
+        "judged": judged,
+    }
+
 
 def write_scoring_sheet(samples: list[dict], path: Path) -> None:
     lines = [
@@ -319,10 +422,20 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--timeout-s", type=float, default=900.0)
     parser.add_argument("--clarify-scenarios", action="store_true", help="抓真实 clarify 回复并出人工评分表")
+    parser.add_argument(
+        "--judge-clarify", action="store_true", help="对已抓取的 clarify 样本跑 LLM 裁判辅助评分（不代人工）"
+    )
     args = parser.parse_args()
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     exit_code = 0
+    if args.judge_clarify:
+        print("== clarify LLM 裁判辅助评分 ==")
+        report = judge_clarify_samples(REPORT_DIR / "clarify_samples.json")
+        out = REPORT_DIR / "clarify_judge_report.json"
+        out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+        print(json.dumps(report["per_dim"], ensure_ascii=False, indent=2))
+        print(f"报告已生成：{out}（辅助信号——人工评分表 clarify_scoring_sheet.md 仍待填写）")
     if args.clarify_scenarios:
         print("== clarify 自然度素材采集 ==")
         report = run_clarify(args.base_url)
