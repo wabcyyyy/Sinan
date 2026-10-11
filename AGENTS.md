@@ -37,7 +37,7 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 - **契约单一源**：跨端线级模型全部定义在 `travel-agent-python/app/schemas/**`（登记表 `app/schemas/contracts.py` 的 CONTRACT_GROUPS：agent_api + business_api；事件在 `stream_events.py`），`scripts/export_contracts.py` 据此导出 `contracts/*.schema.json` + `contracts/openapi.json` + 前端生成类型 `travel-frontend-react/src/types/generated/contracts.ts`（前端契约类型只准引它）。改 schema → 重新导出 → 产物随同一 commit 入仓；CI 与本地 check.ps1 都有 drift 门禁，手改 `contracts/` 或生成类型必红。
 - **后端分层有门禁**：`app.api → app.services → app.agent` 三层，api/services 只准经 `app/agent/__init__.py` 门面用 agent 能力；由 import-linter 契约机检（`pyproject.toml` 的 `[tool.importlinter]`，入 check.ps1 与 CI）。agent 层内按域分（`core → runtime → data → grounding → tools/research → generation → editing`，域地图与落位表见 `travel-agent-python/app/agent/README.md`），契约按**域级**登记——已登记域内新增模块免登记，新增域或新增平铺模块必须登记。
 - **前端消费面口径（2026-09-27 拍板）**：后端 104 paths（2026-10-08 实数）中有六域前端**不（全）消费**，这是产品阶段取舍、不是遗漏——expense（消费面是 MCP 记账，不做手工记账 UI）、collab（单人产品定位，后端设计保留）、version（后端保留；若未来补前端，最小切片=版本列表+一键恢复）、admin（运维经 curl/脚本直调，不做管理 UI）、templates（前端明确放弃，flag 默认关，sinan.ts 死函数已清）、feedback（C3.5 条目对/错 UI 已补齐，flag 默认关=前端探针自动隐藏）。各域后端端点与测试一律保留，不因前端不用而退役；翻案前先改本条。
-- **Java 已退役**：`travel-backend-java/` 已删除，FastAPI 是唯一后端。不要以任何形式复活第二份后端实现；历史与恢复步骤只看 `ARCHIVED.md`。业务端点的行为基准是 `tests/api` 契约与 `tests/test_cutover_contract.py`。
+- **Java 已退役**：`travel-backend-java/` 已删除，FastAPI 是唯一后端。不要以任何形式复活第二份后端实现。业务端点的行为基准是 `tests/api` 契约与 `tests/test_cutover_contract.py`。
 - **数据库迁移 append-only**：SQL 真相源是 `travel-agent-python/app/db/migrations/sql/V*.sql`，已入库的迁移文件禁止修改/重排，新变更只能追加新版本。
 
 ## 哲学（违反任何一条的 PR 请先停下来说明）
@@ -52,5 +52,5 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 
 ## 分层细则
 
-- Python 包：看 `travel-agent-python/AGENTS.md`（不变量、错误边界、数据访问选址）。
-- 前端：看 `travel-frontend-react/AGENTS.md`（外观门禁、组件拆分）。
+- 后端 Agent 域划分与模块落位：看 `travel-agent-python/app/agent/README.md`。
+- 环境、开发命令与变更验收：看 `docs/public/development.md`。

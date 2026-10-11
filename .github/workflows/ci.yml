@@ -37,7 +37,7 @@ jobs:
       - name: Ruff format --check
         run: uv run ruff format --check .
       - name: Typecheck (pyright baseline ratchet)
-        # 存量报错冻结在 pyright-baseline.txt，新增即红；本地入口 scripts/typecheck.ps1
+        # 存量报错冻结在 pyright-baseline.txt，新增即红；本地入口 scripts/typecheck.py
         run: uv run python scripts/typecheck.py
       - name: Import boundaries (import-linter)
         # G-1.2：分层 api->services->agent + 门面唯一公开面；本地入口 check.ps1 同步
