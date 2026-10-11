@@ -64,7 +64,8 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .guide-copy .text-action svg { transition: transform .2s var(--sinan-ease); }
 .guide-card:hover .text-action { color: var(--sinan-accent); }
 .guide-card:hover .text-action svg { transform: translateX(3px); }
-.guide-image span { position: absolute; left: 14px; bottom: 14px; border-radius: 999px; padding: 5px 12px; background: color-mix(in srgb, var(--sinan-surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--sinan-ink); font-size: 11px; font-weight: 700; box-shadow: var(--sinan-shadow-soft); }
+/* 只命中分类标签：旧写法 `.guide-image span` 连 SmartImg 根节点（也是 span）一起绝对定位，封面高度塌成 0 */
+.guide-tag { position: absolute; left: 14px; bottom: 14px; border-radius: 999px; padding: 5px 12px; background: color-mix(in srgb, var(--sinan-surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--sinan-ink); font-size: 11px; font-weight: 700; box-shadow: var(--sinan-shadow-soft); }
 .inspiration-grid { gap: 24px; }
 .inspiration-card { background: var(--sinan-surface); border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius); box-shadow: var(--sinan-shadow-soft); overflow: hidden; transition: transform .25s var(--sinan-ease), box-shadow .25s var(--sinan-ease), border-color .25s var(--sinan-ease); }
 .inspiration-card:hover { transform: translateY(-4px); box-shadow: var(--sinan-shadow); border-color: color-mix(in srgb, var(--sinan-accent) 25%, var(--sinan-line)); }
@@ -86,6 +87,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .filter-tab.active, .theme-tab.active { color: var(--sinan-on-image); }
 .guide-detail-hero h1 { font-size: 42px; line-height: 1.35; font-weight: 700; }
 .guide-detail-hero .section-eyebrow { margin-top: 22px; }
+.guide-offline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 20px; color: var(--sinan-muted); font-size: 12.5px; line-height: 1.7; }
 .site-footer { margin-top: 0; }
 .footer-inner { max-width: 1320px; padding: 32px 48px; }
 .footer-brand .sinan-mark { transform: scale(.8); }
