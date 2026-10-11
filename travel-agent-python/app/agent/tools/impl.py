@@ -28,6 +28,7 @@ from app.agent.core.poi_identity import same_entity
 from app.agent.data import city_reference, places, web_search
 from app.agent.data.city_center import city_center
 from app.agent.grounding.grounding_evidence import issue_evidence
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.agent.runtime.trace import traced
 from app.common.config import settings
 from app.common.external_client import BACKGROUND, ExternalClient, fetch_json
@@ -268,6 +269,8 @@ _image_client: ExternalClient = ExternalClient(
     negative_ttl_seconds=300,
     max_response_bytes=256 * 1024,
     timeout_seconds=8,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 
@@ -277,6 +280,8 @@ _wiki_client: ExternalClient = ExternalClient(
     negative_ttl_seconds=300,
     max_response_bytes=256 * 1024,
     timeout_seconds=4,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 

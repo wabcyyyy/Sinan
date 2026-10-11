@@ -8,7 +8,6 @@ from collections.abc import Callable
 
 from app.agent.core.json_utils import LlmJsonError, parse_llm_json
 from app.agent.runtime.trace import record_event
-from app.common.model_registry import model_for
 
 
 def validate_day_output(data: dict) -> None:
@@ -74,7 +73,7 @@ def parse_llm_json_with_repair(
         context,
         temperature=0,
         max_tokens=repair_max_tokens,
-        model=model or model_for("fast"),
+        model=model,
         json_mode=response_format is None,
         response_format=response_format,
         enable_thinking=False,

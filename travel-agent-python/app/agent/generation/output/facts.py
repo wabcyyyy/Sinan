@@ -17,11 +17,12 @@ from typing import Any, cast
 
 from app.agent.generation.rules.generation_core import PoiFactRow
 from app.agent.generation.rules.transfer_time import parse_time
-from app.agent.grounding.facts import has_coord
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     ItemLabel,
     apply_label,
     has_valid_coords,
+    is_authoritative_source,
     is_trusted_row,
     label_for_evidence_row,
     label_for_landed_item,
@@ -36,6 +37,7 @@ def field_fact_evidence(
     *,
     cost_observed: bool,
     open_time_observed: bool,
+    evidence_id: str | None = None,
 ) -> dict[str, FactEvidence]:
     """字段级证据票（GROUND-2）：identity/cost/open_time 各自独立记票。
 
@@ -45,11 +47,11 @@ def field_fact_evidence(
     直写一律 unverified/generated + 出发前复核。字段没有值就不发票。
     """
     identity = FactEvidence(
-        source_ref=label.source,
+        source_ref=evidence_id,
         provider=label.source,
         retrieved_at=label.source_updated_at,
-        verification_status="verified" if (label.endorsed and item.get("poi_id")) else "unverified",
-        value_kind="observed" if label.endorsed else "generated",
+        verification_status="verified" if evidence_id and is_authoritative_source(label.source) else "unverified",
+        value_kind="observed" if evidence_id and is_authoritative_source(label.source) else "generated",
         freshness_status=label.freshness_status,
         review_requirement=label.review_requirement,
     )
@@ -57,7 +59,7 @@ def field_fact_evidence(
     def _ticket(observed: bool) -> FactEvidence:
         if observed:
             return FactEvidence(
-                source_ref=label.source,
+                source_ref=evidence_id,
                 provider=label.source,
                 retrieved_at=label.source_updated_at,
                 verification_status="verified",
@@ -73,6 +75,8 @@ def field_fact_evidence(
         )
 
     evidence: dict[str, FactEvidence] = {"identity": identity}
+    if has_valid_coords(item):
+        evidence["coordinates"] = _ticket(label.endorsed)
     if item.get("cost") is not None:
         evidence["cost"] = _ticket(cost_observed)
     if item.get("open_time"):
@@ -104,6 +108,8 @@ def apply_item_facts(
     city: str = "",
 ) -> None:
     """按候选快照回填权威字段，并就地质标溯源与质量状态。"""
+    if poi and is_trusted_row(poi):
+        poi = cast(PoiFactRow, evidence_row(poi))
     label = label_for_evidence_row(poi) if poi else label_for_landed_item(item, city)
     # 来源不可信的行一个字段都不采纳：伪 source 不只让徽章失真，还能把真实景点
     # 指到调用方自选的坐标与 poi_id 上（P6）。
@@ -114,12 +120,7 @@ def apply_item_facts(
         # 不能作为权威坐标回填，否则幻觉坐标获得权威背书。
         poi_lat = poi.get("latitude")
         poi_lng = poi.get("longitude")
-        if (
-            not has_coord(item.get("latitude"))
-            and has_valid_coords(poi)
-            and poi_lat is not None
-            and poi_lng is not None
-        ):
+        if has_valid_coords(poi) and poi_lat is not None and poi_lng is not None:
             item["latitude"] = float(poi_lat)
             item["longitude"] = float(poi_lng)
         if not item.get("poi_id"):
@@ -135,7 +136,11 @@ def apply_item_facts(
     # GROUND-2：字段级证据票就地构建（identity/cost/open_time 独立记票），
     # 模型直写的票价/时间不再随行级标签获得「有据」背书
     item["fact_evidence"] = field_fact_evidence(
-        item, label, cost_observed=cost_observed, open_time_observed=open_time_observed
+        item,
+        label,
+        cost_observed=cost_observed,
+        open_time_observed=open_time_observed,
+        evidence_id=str((poi or item).get("evidence_id") or "") or None,
     )
     source_records.setdefault(label.source, source_record_for(label, poi))
 

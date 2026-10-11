@@ -11,7 +11,7 @@ from app.agent.data.map_link import map_directions_url
 from app.agent.data.route_service import ROUTE_ESTIMATE_TOLERANCE_MIN
 from app.agent.generation.content.reflect import validate_plans
 from app.agent.generation.rules.transfer_time import estimate_transfer_minutes, item_end, item_start
-from app.agent.grounding.grounding_evidence import lookup_ticket
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.research.evidence import RESEARCH_DOMAINS
 
 # 研究泳道序号 = RESEARCH_DOMAINS 序（hotel/attraction/food）；上溯不到
@@ -206,10 +206,13 @@ def evaluate_narrative(response, case: dict) -> dict:
 
 def _anchored(item: dict, city: str) -> bool:
     """这一项能不能对上本服务签发的证据票（"有来源"的唯一凭据）。"""
-    name = str(item.get("poi_name") or "").strip()
-    if not name:
-        return False
-    return lookup_ticket(name, city, str(item.get("poi_id") or "")) is not None
+    evidence = (item.get("fact_evidence") or {}).get("identity") or {}
+    ticket_row = {
+        "evidence_id": evidence.get("source_ref"),
+        "name": item.get("poi_name"),
+        "source": evidence.get("provider"),
+    }
+    return evidence_row(ticket_row) is not None and evidence.get("value_kind") == "observed"
 
 
 def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:

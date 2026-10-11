@@ -30,6 +30,7 @@ import threading
 import time
 from typing import Any
 
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
 from app.common.external_client import INTERACTIVE, ExternalClient, fetch_json
 from app.common.http_client import api_client, contact_user_agent
@@ -45,6 +46,8 @@ _serpapi_client: ExternalClient = ExternalClient(
     name="serpapi_flights",
     ttl_seconds=_QUOTA_TTL_SECONDS,
     negative_ttl_seconds=120,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 # ---- 进程内月配额（单机诚实口径：重启清零） ---------------------------------

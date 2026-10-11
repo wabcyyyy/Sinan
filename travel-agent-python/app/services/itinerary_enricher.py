@@ -30,13 +30,20 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy import exists, select, update
 
-from app.agent import run_butler_note, run_poi_intros, verify_suggestion_rows
+from app.agent import (
+    RunLimits,
+    check_task_write,
+    run_butler_note,
+    run_poi_intros,
+    use_task_limits,
+    verify_suggestion_rows,
+)
 from app.common.envelope import ApiError
 from app.common.llm_route import use_route
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.trip import Suggestion
-from app.services import itinerary_query, llm_gateway_service
+from app.services import itinerary_query, llm_gateway_service, planning_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +69,29 @@ def persist_suggestions(itinerary_id: int, suggestions: list[Suggestion] | list[
         logger.warning("persist suggestions failed for %s: %s", itinerary_id, exc)
         return
     with session_scope() as session:
+        check_task_write()
         session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(suggestions_json=payload))
 
 
-def enrich_itinerary(user_id: int, itinerary_id: int, request: Any, expected_revision: int | None = None) -> None:
+def enrich_itinerary(
+    user_id: int, itinerary_id: int, request: Any, expected_revision: int | None = None, limits: RunLimits | None = None
+) -> None:
+    try:
+        if limits is None:
+            _enrich(user_id, itinerary_id, request, expected_revision)
+        else:
+            with use_task_limits(limits):
+                limits.check("enrichment")
+                _enrich(user_id, itinerary_id, request, expected_revision)
+    except Exception:
+        logger.exception("enrichment stopped for itinerary %s", itinerary_id)
+    finally:
+        if limits is not None:
+            itinerary_query.evict_detail(user_id, itinerary_id)
+            planning_tasks.release(itinerary_id, limits.task_id)
+
+
+def _enrich(user_id: int, itinerary_id: int, request: Any, expected_revision: int | None) -> None:
     """生成完成后的富化主入口（编排层提交到富化线程池执行）。
 
     `expected_revision`（M5b，spec §11）：提交任务时的 `main.planning_revision`
@@ -152,6 +178,7 @@ def _write_butler_note(
         if not note.strip():
             return
         with session_scope() as session:
+            check_task_write()
             stmt = update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(plan_note=note)
             if expected_revision is not None:
                 stmt = stmt.where(ItineraryMain.planning_revision == int(expected_revision))
@@ -205,6 +232,7 @@ def _fill_item_intros(
         )
         applied = 0
         with session_scope() as session:
+            check_task_write()
             for name, intro in intros.items():
                 if not intro or not intro.strip():
                     continue
@@ -260,6 +288,7 @@ def _store_suggestion_rows(
         logger.warning("suggestions json encode failed for %s: %s", itinerary_id, exc)
         return
     with session_scope() as session:
+        check_task_write()
         stmt = update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(suggestions_json=payload)
         if expected_revision is not None:
             stmt = stmt.where(ItineraryMain.planning_revision == int(expected_revision))

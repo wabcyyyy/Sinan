@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 from unittest.mock import MagicMock
 
 import httpx
@@ -131,7 +133,7 @@ def test_chat_response_sends_deepseek_parameters(monkeypatch):
     captured_payloads = []
 
     class _MockHttpClient:
-        def post(self, url, json_payload=None, **kwargs):
+        def stream(self, _method, url, json_payload=None, **kwargs):
             captured_payloads.append(json_payload or kwargs.get("json"))
             resp = MagicMock(spec=httpx.Response)
             resp.status_code = 200
@@ -147,7 +149,8 @@ def test_chat_response_sends_deepseek_parameters(monkeypatch):
                 ],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 20},
             }
-            return resp
+            resp.iter_bytes.return_value = [json.dumps(resp.json.return_value).encode()]
+            return contextlib.nullcontext(resp)
 
         def is_closed(self):
             return False
@@ -180,7 +183,7 @@ def test_stream_chat_deltas_filters_reasoning_content(monkeypatch):
 
         def __enter__(self):
             resp = MagicMock()
-            resp.iter_lines.return_value = self.lines
+            resp.iter_bytes.return_value = [("\n".join(self.lines) + "\n").encode()]
             return resp
 
         def __exit__(self, exc_type, exc_val, exc_tb):

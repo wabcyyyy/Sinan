@@ -27,6 +27,7 @@ from app.schemas.trip import (
     PhotoSpot,
     TripItem,
 )
+from tests.llm_binding import FakeBinding
 
 # ---------- 1. Schema：结构化子模型与叙事字段 ----------
 
@@ -303,7 +304,7 @@ def test_open_trip_contract_contains_narrative_fields():
 # ---------- 4. 透传：LLM 输出 → plan dict → DailyPlan ----------
 
 
-class _CapturingClient:
+class _CapturingClient(FakeBinding):
     """client.complete 替身：记录调用参数并返回固定 JSON。"""
 
     def __init__(self, payload):
@@ -339,7 +340,7 @@ def test_llm_open_day_returns_sanitized_narrative_fields(monkeypatch):
             "suggestions": [],
         }
     )
-    monkeypatch.setattr(day_stream, "get_llm_client", lambda: client)
+    monkeypatch.setattr(day_stream, "get_llm_client", lambda _role="main": client)
     req = GenerateDayRequest(city="京都", day_no=1, days=3)
     plan = day_stream.llm_open_day(req, set())
 
@@ -366,7 +367,7 @@ def test_llm_open_day_day1_has_trip_theme_day2_not(monkeypatch):
             "suggestions": [],
         }
     )
-    monkeypatch.setattr(day_stream, "get_llm_client", lambda: client)
+    monkeypatch.setattr(day_stream, "get_llm_client", lambda _role="main": client)
 
     day1 = day_stream.llm_open_day(GenerateDayRequest(city="京都", day_no=1, days=2), set())
     assert day1["trip_theme"] is None  # 模型未输出 → 缺省即空，不报错
@@ -451,7 +452,7 @@ def test_llm_open_trip_sanitizes_plans_and_injects_trip_theme(monkeypatch):
             "suggestions": [],
         }
     )
-    monkeypatch.setattr(day_prompts, "get_llm_client", lambda: client)
+    monkeypatch.setattr(day_prompts, "get_llm_client", lambda _role="main": client)
     req = GenerateDayRequest(city="京都", day_no=1, days=2, needs_hotel=True)
     plans, suggestions = day_prompts.llm_open_trip(req)
 

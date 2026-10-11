@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import and_, or_, select, update
 
-from app.agent import resume_day
+from app.agent import RunLimitExceeded, load_task_budget, resume_day, use_task_limits
 from app.common import cron
 from app.common.envelope import ApiError
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
@@ -128,7 +128,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # 存活探测（P1-1）：本进程里这次生成还在跑/排队（研究段最坏静默 ≈19 分钟 ≫
     # 5 分钟阈值）时，updated_at 老 ≠ 僵尸——直接不碰，消灭"对活着的生成二次放行"
     # 的双跑窗口。单进程前提同 event_hub/幂等；多实例需升级 DB 租约。
-    if itinerary_generation.is_planning_active(itinerary_id):
+    if itinerary_generation.planning_tasks.is_active(itinerary_id):
         return False
     cutoff = active_after or (datetime.now() - timedelta(seconds=IDLE_SECONDS))
     with session_scope() as session:
@@ -187,6 +187,13 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 留给用户走「重新生成这一天」端点显式自救——前提是 complete_trip 在写
             # PARTIAL 终态时不清这面旗（否则每轮扫描都重拉，白烧 LLM 成无限补齐）。
             return False
+        limits = load_task_budget(itinerary_id)
+        if limits is None or limits.remaining() <= 0:
+            if completed_days:
+                day_persistence.complete_trip(itinerary_id, False)
+            else:
+                day_persistence.fail_trip(itinerary_id, "检查点缺少有效预算或任务已过期，请重新生成", user_facing=True)
+            return True
         if not generation_gate.try_resume_lock(itinerary_id):
             return False
         if failed_resume:
@@ -213,7 +220,8 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # 密文解不开（ApiError 409）必须就地终态化并放 resume 锁：扫描周期重拉也必败，
     # 漏放锁则这条行程永远进不了恢复（终审补丁）。
     try:
-        with llm_gateway_service.route_scope(user_id):
+        itinerary_generation.planning_tasks.acquire(user_id, itinerary_id, limits)
+        with llm_gateway_service.route_scope(user_id), use_task_limits(limits):
             for day_no in pending:
                 action_id = f"day-{itinerary_id}-{day_no}"
                 resumed = resume_day(action_id)
@@ -225,11 +233,13 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
                 day_persistence.persist(itinerary_id, command, day_no, resumed.plan, action_id, fingerprint)
                 logger.info("resumed itinerary %s day %s from checkpoint", itinerary_id, day_no)
                 resumed_any = True
-    except ApiError as exc:
+    except (ApiError, RunLimitExceeded) as exc:
         generation_gate.release_resume_lock(itinerary_id)
         day_persistence.fail_trip(itinerary_id, str(exc) or None, user_facing=True)
         logger.warning("byok route broken, failed itinerary %s: %s", itinerary_id, exc)
         return True
+    finally:
+        itinerary_generation.planning_tasks.release(itinerary_id, limits.task_id)
 
     if pending and not remaining:
         # 全部从检查点续完：补终态（与"数据齐了"分支同口径），不整段重排
@@ -239,7 +249,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
         return True
 
     try:
-        itinerary_generation.submit_planning(user_id, itinerary_id, command, context=context)
+        itinerary_generation.submit_planning(user_id, itinerary_id, command, context=context, limits=limits)
     except itinerary_generation.TaskRejected as rejected:
         generation_gate.release_resume_lock(itinerary_id)
         logger.warning("could not resume itinerary %s: %s", itinerary_id, rejected)

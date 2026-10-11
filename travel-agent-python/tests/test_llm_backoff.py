@@ -70,7 +70,7 @@ def test_probe_knobs_single_attempt_short_read_no_redirects(monkeypatch):
     calls: list[dict] = []
 
     class _Client:
-        def post(self, _url, **kwargs):
+        def stream(self, _method, _url, **kwargs):
             calls.append(kwargs)
             raise httpx.ConnectTimeout("black-hole")
 

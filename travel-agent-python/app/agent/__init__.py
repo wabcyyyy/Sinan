@@ -38,6 +38,15 @@ from app.agent.grounding.existence import resolve_poi
 from app.agent.grounding.grounding_labels import is_authoritative_source
 from app.agent.grounding.suggestion_grounding import verify_suggestion_rows
 from app.agent.runtime.observability import metrics, observe_run, scene, use_scene
+from app.agent.runtime.run_limits import (
+    RunLimitExceeded,
+    RunLimits,
+    check_task_write,
+    current_limits,
+    phase_scope,
+    use_task_limits,
+)
+from app.agent.runtime.task_budget import load_task_budget, new_task_budget
 from app.agent.runtime.usage_store import usage_store
 from app.agent.tools.flight_quotes import search_live_flight_quotes, shape_quote_for_wire
 from app.agent.tools.hotel_quotes import search_live_hotel_quotes
@@ -48,10 +57,14 @@ __all__ = [
     "BUDGET_OVERAGE_MARK",
     "ConfirmResume",
     "DayResume",
+    "RunLimitExceeded",
+    "RunLimits",
     "ToolInvocationError",
     "ToolSpec",
     "check_constraints",
+    "check_task_write",
     "confirm_thread",
+    "current_limits",
     "day_policy_for",
     "destination_problem",
     "find_nearby_pois",
@@ -59,9 +72,12 @@ __all__ = [
     "get_weather_forecast",
     "is_authoritative_source",
     "live_quote_quota_exhausted",
+    "load_task_budget",
     "metrics",
+    "new_task_budget",
     "observe_run",
     "optimize_daily_plan",
+    "phase_scope",
     "registry",
     "resolve_poi",
     "resume_confirmation",
@@ -88,6 +104,7 @@ __all__ = [
     "sync_schedule_summary",
     "usage_store",
     "use_scene",
+    "use_task_limits",
     "validate_plans",
     "verify_suggestion_rows",
     "workbench_search",

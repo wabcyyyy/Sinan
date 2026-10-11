@@ -15,8 +15,7 @@ qwen-vl-plus 在 api.deepseek.com 上并不存在——发过去只换来一次 
 import json
 import logging
 
-from app.common.llm_client import get_role_client, require_model_served
-from app.common.model_registry import model_for
+from app.common.llm_client import get_llm_client, require_model_served
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +32,8 @@ _MAX_CONTEXT_CHARS = 600
 
 def run_image_intent(data_uri: str, context: str = "") -> dict:
     """看图产出 {text, suggestedMessage}；解析失败抛 ValueError（轨向上由 service 转 502）。"""
-    client = get_role_client("vision")
-    model = model_for("vision")
+    client = get_llm_client("vision")
+    model = client.model
     # 通道与模型名不匹配（如 DeepSeek 官方通道 + qwen-vl-plus）在本地就响亮报错，
     # 不要用一次注定 404 的往返伪装成"上游不可用"。
     require_model_served(client.base_url, model)

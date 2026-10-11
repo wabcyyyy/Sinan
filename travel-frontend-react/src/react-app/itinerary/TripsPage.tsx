@@ -1,3 +1,4 @@
+import { hasIntakeUser } from '../home/intakeStorage'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isOfflineError, isUnauthorized, listItineraries } from '../../api/sinan'
 import { loginRedirect, navigate } from '../router'
@@ -39,7 +40,7 @@ export function TripsPage() {
     setAuthExpired(false)
     loadDrafts()
 
-    if (!localStorage.getItem('sinan-username')) {
+    if (!hasIntakeUser()) {
       setItems(sampleTripSummaries)
       setOffline(true)
       setLoading(false)
@@ -66,6 +67,7 @@ export function TripsPage() {
 
   useEffect(() => {
     load()
+    return () => { loadSeqRef.current += 1 }
   }, [filter])
 
   const visible = useMemo(

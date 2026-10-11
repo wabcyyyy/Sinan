@@ -26,7 +26,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from app.agent.grounding.grounding_evidence import verify_evidence
+from app.agent.grounding.grounding_evidence import evidence_row, verify_evidence
 from app.schemas.trip import SourceRecord
 
 # 权威来源值域：只有这些前缀的 source 才允许为行程项背书
@@ -116,7 +116,8 @@ def label_for_evidence_row(row: Mapping[str, Any]) -> ItemLabel:
     updated_at = str(row.get("source_updated_at") or "") or None
     if not is_trusted_row(row):
         return _degraded(UNTRUSTED_SOURCE, None)
-    if not has_valid_coords(row):
+    snapshot = evidence_row(row)
+    if snapshot is None or not has_valid_coords(snapshot):
         # 来源真实但没有坐标：事实仍来自外部，只是位置不可背书。
         return _degraded(declared, updated_at)
     return ItemLabel(

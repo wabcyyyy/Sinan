@@ -57,6 +57,7 @@ class ResolveResult:
     reason: str = ""
     out_of_area: bool = False
     authoritative_negative: bool = False
+    evidence_id: str | None = None
 
     @property
     def grounded(self) -> bool:
@@ -270,7 +271,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
     result = _run_providers(target, city)
     if result.grounded:
         # 判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票
-        issue_evidence(
+        ticket = issue_evidence(
             {
                 "name": result.localized_name or result.name or target,
                 "city": city,
@@ -280,6 +281,8 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
                 "longitude": result.longitude,
             }
         )
+        if ticket is not None:
+            result = replace(result, evidence_id=ticket.evidence_id)
     if result.state != UNKNOWN:
         # 只记忆化**判定**（VERIFIED / NOT_FOUND）。UNKNOWN 绝大多数是"没问到"：
         # 额度耗尽、源不可用、超时。_memo 是进程级、跨 run 的，缓存它等于让一次

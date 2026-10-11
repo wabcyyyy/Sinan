@@ -19,11 +19,25 @@ type Envelope<T> = { code: number; message: string; data: T }
 // 前缀单独成常量：apiRequest 是透传管道，具体路径由各调用点声明
 // （后端 cutover 契约测试逐点扫描 apiRequest 调用，见 test_cutover_contract.py）。
 const API_BASE = '/api'
+const sessionRequests = new Set<AbortController>()
+
+export function cancelSessionRequests(): void {
+  for (const request of sessionRequests) request.abort()
+  sessionRequests.clear()
+}
 
 async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const controller = new AbortController()
+  const cancelled = () => controller.abort()
+  sessionRequests.add(controller)
+  if (init.signal?.aborted) controller.abort()
+  init.signal?.addEventListener('abort', cancelled, { once: true })
+  const signal = controller.signal
+  try {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     ...init,
+    signal,
     headers: {
       Accept: 'application/json',
       // FormData 不能手写 Content-Type：multipart boundary 由浏览器生成，写了反而发不出
@@ -48,6 +62,10 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ReactApiError(payload.message || '请求失败', response.status, payload.code)
   }
   return (payload?.data ?? payload) as T
+  } finally {
+    sessionRequests.delete(controller)
+    init.signal?.removeEventListener('abort', cancelled)
+  }
 }
 
 function waitFor(ms: number, signal?: AbortSignal) {
@@ -145,8 +163,8 @@ export function listItineraries(view?: string, query?: string) {
   return apiRequest<ItinerarySummary[]>(`/itinerary?${params.toString()}`)
 }
 
-export function getItineraryDetail(id: number | string) {
-  return apiRequest<ItineraryDetail>(`/itinerary/${id}`)
+export function getItineraryDetail(id: number | string, signal?: AbortSignal) {
+  return apiRequest<ItineraryDetail>(`/itinerary/${id}`, { signal })
 }
 
 export function getItineraryWeather(id: number | string) {

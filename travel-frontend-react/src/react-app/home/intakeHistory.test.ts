@@ -1,3 +1,4 @@
+import { activateIntakeOwner } from './intakeStorage'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   clearAllIntakeSessions,
@@ -10,7 +11,7 @@ import {
 
 describe('intakeHistory（对话管理与历史会话草稿）', () => {
   beforeEach(() => {
-    localStorage.clear()
+    localStorage.clear(); sessionStorage.clear(); activateIntakeOwner(null)
   })
 
   it('空会话列表返回 []', () => {
@@ -108,3 +109,5 @@ describe('intakeHistory（对话管理与历史会话草稿）', () => {
     expect(formatSessionTime(Date.now() - 5 * 60 * 1000)).toBe('5 分钟前')
   })
 })
+
+beforeEach(() => { activateIntakeOwner(null) })

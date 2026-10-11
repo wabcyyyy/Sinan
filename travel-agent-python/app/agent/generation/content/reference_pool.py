@@ -20,6 +20,7 @@
 import re
 
 from app.agent.core.poi_identity import same_entity
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     UNTRUSTED_SOURCE,
     apply_label,
@@ -242,6 +243,9 @@ class ReferencePool:
         # 真实景点指到调用自选的坐标/poi_id 上（P6）。
         if not is_trusted_row(poi):
             return True
+        poi = evidence_row(poi)
+        assert poi is not None
+        item["evidence_id"] = poi["evidence_id"]
         item["poi_id"] = str(poi.get("id") or "") or item.get("poi_id")
         item["address"] = poi.get("address")
         if has_valid_coords(poi):

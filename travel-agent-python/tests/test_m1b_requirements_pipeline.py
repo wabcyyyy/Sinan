@@ -101,7 +101,11 @@ def _stub_orchestration(monkeypatch, captured: dict) -> None:
     monkeypatch.setattr(itinerary_generation, "run_generate_day", fake_day)
     monkeypatch.setattr(itinerary_generation, "run_generate_trip_stream", fake_stream)
     monkeypatch.setattr(itinerary_generation, "_submit_budget_recalculate", lambda itinerary_id: None)
-    monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", lambda task, *args: None)
+    monkeypatch.setattr(
+        itinerary_generation.enricher_pool,
+        "submit",
+        lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+    )
     # 池内联执行：generate 请求返回前 plan_days 已同步跑完（本文件要抓贯通参数）
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: task(*args))
 
@@ -115,7 +119,7 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "redis_url", "redis://127.0.0.1:1/0")
     cache_store.reset_for_tests()
     state_and_sessions.reset_for_tests()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     with db_session.session_scope() as session:
         session.add(SysUser(username="alice", password=user_service.hash_password(PASSWORD), status=1, role="user"))
     yield
@@ -139,7 +143,7 @@ def _submit_trip(client: TestClient, captured: dict, monkeypatch) -> int:
     detail = client.post("/api/itinerary/generate", json=GENERATE_BODY).json()["data"]
     trip_id = detail["id"]
     # 提交被桩成不执行 → 清注册表让 plan_days 线程跑完（同 test_checkpoint_resume 口径）
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     return trip_id
 
 

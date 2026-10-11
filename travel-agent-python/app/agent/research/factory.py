@@ -116,10 +116,9 @@ def _run_search(state: UnifiedAgentState) -> dict:
     # tools 模块属性，patch.object(tools, "search_*") 注入持续生效。
     # 主检索一定执行（它是这个域的最小可用证据），但照样记账——研究额度
     # 记的就是"研究一共取了多少次数"，超了之后停的是补池，不是主检索。
-    _spend_research(limits, task.domain)
+    if not _spend_research(limits, task.domain):
+        return {"items": state.items or [], "round": state.round + 1, "quota_note": "研究额度已用完"}
     items = registry.invoke(config.tool_name, params) or []
-    if limits:
-        limits.record_retrieval(1)
     extras = list(dict.fromkeys((plan.get("extra_keywords") or []) + (state.extra_keywords or [])))
     # M3-②（AD5）最小增量：任务卡携带的意图关键词并入补池链（新旧行为兼容，仅追加）
     extras = list(dict.fromkeys(extras + list(task.intent_keywords or [])))
@@ -139,8 +138,6 @@ def _run_search(state: UnifiedAgentState) -> dict:
                 limits.check("retrieval")
             # 关键词补池走联网搜索（POI 库退役）：意图词补真实地点名，不保证坐标
             supplement = search_places_via_web(task.city, task.domain, limit=4, intent_keywords=[keyword])
-            if limits:
-                limits.record_retrieval(1)
             items = _merge_supplement(items, supplement)
     # 外部池仍偏少时：联网搜索补真实地点名（池空/海外城市的证据缺口）
     if len(items) < 3 and web_search_enabled() and _spend_research(limits, task.domain):

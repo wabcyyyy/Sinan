@@ -122,7 +122,8 @@ def test_resolved_item_is_endorsed_with_the_provider_that_ran(monkeypatch):
         item["address"] = "苏州市姑苏区东北街178号"
         item["source"] = "nominatim"
         # 真实 local_ground 解析成功时同步签发证据票；背书认票不认字符串
-        issue_evidence({**item, "name": item["poi_name"], "city": city})
+        item["city"] = city
+        issue_evidence(item)
 
     monkeypatch.setattr(day_stream, "local_ground", _ground)
     monkeypatch.setattr(
@@ -225,18 +226,21 @@ def test_degraded_gateway_gets_compact_prompt(monkeypatch):
         return "SYS"
 
     class _Client:
+        def json_response_format(self, name, schema):
+            return {"type": "json_object"}
+
         def complete(self, *a, **k):
             return '{"theme":"t","note":"n","items":[{"poi_name":"西湖","item_type":"attraction"}]}'
 
     monkeypatch.setattr(day_stream, "open_day_system_prompt", _spy_prompt)
-    monkeypatch.setattr(day_stream, "json_response_format", lambda *a, **k: {"type": "json_object"})
-    monkeypatch.setattr(day_stream, "get_llm_client", lambda: _Client())
+    monkeypatch.setattr(_Client, "json_response_format", lambda *a, **k: {"type": "json_object"})
+    monkeypatch.setattr(day_stream, "get_llm_client", lambda *_args, **_kwargs: _Client())
 
     day_stream.llm_open_day(GenerateDayRequest(city="杭州", day_no=2, days=2, context={}), used=set())
     assert captured["compact_output"] is True
 
     monkeypatch.setattr(
-        day_stream, "json_response_format", lambda *a, **k: {"type": "json_schema", "json_schema": {"name": "x"}}
+        _Client, "json_response_format", lambda *a, **k: {"type": "json_schema", "json_schema": {"name": "x"}}
     )
     day_stream.llm_open_day(GenerateDayRequest(city="杭州", day_no=2, days=2, context={}), used=set())
     assert captured["compact_output"] is False

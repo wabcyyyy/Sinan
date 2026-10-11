@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { activateIntakeOwner, intakeSessionStorage } from './intakeStorage'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   clearIntake,
   INTAKE_STORAGE_KEY,
@@ -180,9 +181,9 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
       slots: { city: '成都' },
       firstMessage: '',
     })
-    const raw = sessionStorage.getItem('sinan-intake-v1')
-    sessionStorage.setItem(
-      'sinan-intake-v1',
+    const raw = intakeSessionStorage.getItem('current')
+    intakeSessionStorage.setItem(
+      'current',
       JSON.stringify({ ...JSON.parse(raw!), messages: [{ role: 'user', text: 42 }, 'junk', { id: 'b', role: 'user', text: '想去成都' }] }),
     )
     const restored = loadIntake()
@@ -191,8 +192,8 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
   })
   it('全部消息无效 = 无可续会话，返回 null', () => {
     saveIntake({ messages: [{ id: 'a', role: 'assistant', text: 'ok' }], slots: {}, firstMessage: '' })
-    const raw = sessionStorage.getItem('sinan-intake-v1')
-    sessionStorage.setItem('sinan-intake-v1', JSON.stringify({ ...JSON.parse(raw!), messages: ['junk'] }))
+    const raw = intakeSessionStorage.getItem('current')
+    intakeSessionStorage.setItem('current', JSON.stringify({ ...JSON.parse(raw!), messages: ['junk'] }))
     expect(loadIntake()).toBeNull()
   })
   it('写入带版本号 v；缺版本或旧版本的记录一律不恢复（=会话重开，重新走一次确认）', () => {
@@ -201,9 +202,9 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
       slots: { city: '成都' },
       firstMessage: '',
     })
-    expect(JSON.parse(sessionStorage.getItem(INTAKE_STORAGE_KEY)!).v).toBe(INTAKE_STORAGE_VERSION)
+    expect(JSON.parse(intakeSessionStorage.getItem(INTAKE_STORAGE_KEY)!).v).toBe(INTAKE_STORAGE_VERSION)
     // 旧格式（M2 之前，无 v 字段）
-    sessionStorage.setItem(
+    intakeSessionStorage.setItem(
       INTAKE_STORAGE_KEY,
       JSON.stringify({
         messages: [{ id: 'a', role: 'assistant', text: '旧格式' }],
@@ -213,7 +214,7 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
     )
     expect(loadIntake()).toBeNull()
     // 旧版本号
-    sessionStorage.setItem(
+    intakeSessionStorage.setItem(
       INTAKE_STORAGE_KEY,
       JSON.stringify({
         v: INTAKE_STORAGE_VERSION - 1,
@@ -225,3 +226,5 @@ describe('intake 会话暂存（sessionStorage，刷新可续）', () => {
     expect(loadIntake()).toBeNull()
   })
 })
+
+beforeEach(() => { activateIntakeOwner(null) })

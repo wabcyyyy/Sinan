@@ -1,3 +1,4 @@
+import { activateIntakeOwner, intakeSessionStorage, intakeHistoryStorage } from './intakeStorage'
 import { act, StrictMode } from 'react'
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -70,7 +71,7 @@ const day = (dayNo: number, pois: string[]) => ({
 })
 
 describe('HomeStudio（首页 phase 状态机）', () => {
-  afterEach(() => sessionStorage.removeItem('sinan-intake-v1'))
+  afterEach(() => intakeSessionStorage.removeItem('current'))
   it('idle：首屏只有一张居中对话卡，右栏不上屏', () => {
     const html = renderToStaticMarkup(createElement(HomeStudio, { query: new URLSearchParams() }))
     expect(html).toContain('home-studio is-idle')
@@ -94,8 +95,8 @@ describe('HomeStudio（首页 phase 状态机）', () => {
     expect(html).toContain('还差 2 项就能开工')
   })
   it('idle 态若存在草稿记录，渲染恢复条提示与对话记录入口', () => {
-    localStorage.setItem(
-      'sinan-intake-sessions-v1',
+    intakeHistoryStorage.setItem(
+      'history',
       JSON.stringify([
         {
           id: 'draft-1',
@@ -112,7 +113,7 @@ describe('HomeStudio（首页 phase 状态机）', () => {
     expect(html).toContain('成都 · 4天 · 2人')
     expect(html).toContain('继续上次对话')
     expect(html).toContain('对话记录 (1)')
-    localStorage.removeItem('sinan-intake-sessions-v1')
+    intakeHistoryStorage.removeItem('history')
   })
 })
 
@@ -364,7 +365,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     // happy-dom 的 WAAPI：useFlip 取消上一段动画会以未处理 AbortError 冒出（真浏览器
     // 不 await finished 就无此问题）。相位锁断言只看 class/结构，动画桩掉即可。
     vi.spyOn(Element.prototype, 'animate').mockReturnValue({ cancel: () => {} } as unknown as Animation)
@@ -388,7 +389,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     vi.clearAllMocks()
   })
 
@@ -404,13 +405,13 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
     expect(studioClass(container)).toContain('is-active')
     expect(container.querySelector('.trip-board')).not.toBeNull()
     // done 态保留 generationId（F4）：刷新后 resume 靠它恢复 ready
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('7')
+    expect(intakeSessionStorage.getItem('generation')).toBe('7')
 
     // 「重新说」：会话重置是 id 的唯一清空点，生成态与草稿一并归零，回 idle 居中
     await act(async () => { (container.querySelector('.trip-board-reset') as HTMLButtonElement).click() })
     expect(studioClass(container)).toContain('is-idle')
     expect(container.querySelector('.home-studio-panel')).toBeNull()
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBeNull()
+    expect(intakeSessionStorage.getItem('generation')).toBeNull()
 
     // 锁只活一次：再次开聊（新消息进会话）即恢复 active 双栏
     await say(container, '那改去杭州，3 天')
@@ -439,7 +440,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
     await act(async () => { (first.container.querySelector('.intake-start') as HTMLButtonElement).click() })
     await flush()
     expect(first.container.querySelector('.trip-board')).not.toBeNull()
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('7')
+    expect(intakeSessionStorage.getItem('generation')).toBe('7')
 
     // 模拟刷新：整树卸载后全新挂载（sessionStorage 同页保留——对话历史与 id 都在）
     await act(async () => { first.root.unmount() })
@@ -456,7 +457,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
     expect(second.container.querySelector('.trip-confirm')).toBeNull()
     expect(getDetailMock).toHaveBeenCalledTimes(1)
     // id 仍保留：再次刷新仍能恢复；清空只发生在「重新说」
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('7')
+    expect(intakeSessionStorage.getItem('generation')).toBe('7')
   })
 })
 
@@ -465,7 +466,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
  * → 先清键再自动补发一次，未登录保留键。挂载行为静态渲染够不着，mock api 层真挂载
  * 驱动（同「重新说」锁块纪律）。 */
 describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
-  const PENDING_KEY = 'sinan-intake-pending'
+  const PENDING_KEY = 'pending'
   const SENT_TEXT = '国庆想去成都玩 4 天，两个人'
   const clarifyAskDays = clarifyFixture({
     slots: { city: '成都' },
@@ -506,8 +507,8 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
-    localStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
+    localStorage.clear(); sessionStorage.clear(); activateIntakeOwner(null)
     clarifyMock.mockReset(); clarifyMock.mockResolvedValue(clarifyAskDays)
   })
 
@@ -516,8 +517,8 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
-    localStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
+    localStorage.clear(); sessionStorage.clear(); activateIntakeOwner(null)
     vi.clearAllMocks()
   })
 
@@ -527,33 +528,33 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
     await act(async () => { (container.querySelector('button') as HTMLButtonElement).click() })
     await act(async () => {})
     expect(container.querySelector('em')?.textContent).toBe('needs-login')
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe(SENT_TEXT)
+    expect(intakeSessionStorage.getItem(PENDING_KEY)).toBe(SENT_TEXT)
   })
 
   it('已登录 + pending 键：挂载自动补发一次、键被清；StrictMode 双挂载不双发', async () => {
-    sessionStorage.setItem(PENDING_KEY, SENT_TEXT)
-    localStorage.setItem('sinan-username', '盛楠')
+    intakeSessionStorage.setItem(PENDING_KEY, SENT_TEXT)
+    activateIntakeOwner(1, true)
     const container = await mountHarness(true)
     await flushAutoSend()
     expect(clarifyMock).toHaveBeenCalledTimes(1)
     expect(clarifyMock.mock.calls[0][0]).toBe(SENT_TEXT)
-    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull()
+    expect(intakeSessionStorage.getItem(PENDING_KEY)).toBeNull()
     // 补发走现有 send 通道：用户消息进会话、追问回复照常追加
     expect(container.textContent).toContain(SENT_TEXT)
     expect(container.textContent).toContain('玩几天？')
   })
 
   it('有 pending 键但未登录：不补发，键保留等下次', async () => {
-    sessionStorage.setItem(PENDING_KEY, SENT_TEXT)
+    intakeSessionStorage.setItem(PENDING_KEY, SENT_TEXT)
     await mountHarness()
     await flushAutoSend()
     expect(clarifyMock).not.toHaveBeenCalled()
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe(SENT_TEXT)
+    expect(intakeSessionStorage.getItem(PENDING_KEY)).toBe(SENT_TEXT)
   })
 
   it('键已清后再挂载不补发（幂等闸的直接断言）', async () => {
-    sessionStorage.setItem(PENDING_KEY, SENT_TEXT)
-    localStorage.setItem('sinan-username', '盛楠')
+    intakeSessionStorage.setItem(PENDING_KEY, SENT_TEXT)
+    activateIntakeOwner(1, true)
     await mountHarness()
     await flushAutoSend()
     expect(clarifyMock).toHaveBeenCalledTimes(1)
@@ -608,7 +609,7 @@ describe('useIntakeChat 后端就绪权威与迟到守卫（M2 mock api 交互�
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     clarifyMock.mockReset()
     generateMock.mockReset(); generateMock.mockResolvedValue({ id: 7 } as unknown as ItineraryDetail)
   })
@@ -618,7 +619,7 @@ describe('useIntakeChat 后端就绪权威与迟到守卫（M2 mock api 交互�
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     vi.clearAllMocks()
   })
 
@@ -743,7 +744,7 @@ describe('M2 表单重验（mock api 交互）', () => {
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     vi.spyOn(Element.prototype, 'animate').mockReturnValue({ cancel: () => {} } as unknown as Animation)
     clarifyMock.mockReset()
     generateMock.mockReset(); generateMock.mockResolvedValue({ id: 7 } as unknown as ItineraryDetail)
@@ -763,7 +764,7 @@ describe('M2 表单重验（mock api 交互）', () => {
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     vi.clearAllMocks()
   })
 
@@ -804,3 +805,5 @@ describe('M2 表单重验（mock api 交互）', () => {
     expect((container.querySelector('.intake-start') as HTMLButtonElement).textContent).toContain('信息已更新，重新确认')
   })
 })
+
+beforeEach(() => { activateIntakeOwner(null) })

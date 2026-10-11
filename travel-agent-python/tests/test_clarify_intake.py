@@ -4,9 +4,10 @@ from app.agent.editing import clarify as clarify_mod
 from app.agent.editing import clarify_policy as policy
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
 from app.schemas.trip_requirements import IntakeState
+from tests.llm_binding import FakeBinding
 
 
-class _FakeClient:
+class _FakeClient(FakeBinding):
     """签名对齐 llm_client.complete 的最小桩。"""
 
     def __init__(self, raw: str | Exception) -> None:
@@ -21,7 +22,7 @@ class _FakeClient:
 def _run(
     monkeypatch, raw: str | Exception, slots: dict | None = None, state: "IntakeState | None" = None
 ) -> ClarifyResponse:
-    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda: _FakeClient(raw))
+    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda _role="main": _FakeClient(raw))
     return clarify_mod.run_clarify(ClarifyRequest(message="想去玩", slots=slots or {}, state=state))
 
 

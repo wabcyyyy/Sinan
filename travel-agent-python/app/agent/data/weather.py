@@ -21,6 +21,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
 from app.common.external_client import ExternalClient, fetch_json
 from app.common.http_client import api_client
@@ -51,6 +52,8 @@ _weather_client: ExternalClient = ExternalClient(
     ttl_seconds=6 * 3600,
     negative_ttl_seconds=600,
     timeout_seconds=settings.places_timeout_seconds,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 

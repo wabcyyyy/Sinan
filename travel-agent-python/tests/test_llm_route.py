@@ -211,13 +211,14 @@ def _seed_stale_generating_trip(user_id: int = 7) -> int:
         session.add(ItineraryDay(itinerary_id=main.id, day_no=1, city="杭州", generation_status="PENDING"))
         session.flush()
         session.execute(update(ItineraryDay).where(ItineraryDay.itinerary_id == main.id).values(updated_at=stale))
+        itinerary_generation.new_task_budget(user_id, main.id)
         return main.id
 
 
 def test_recovery_resume_leg_carries_route(sqlite_env, monkeypatch) -> None:
     """恢复线程内的 resume_day 检查点续跑腿必须携带用户路由（决策 5 的回归防线）。"""
     trip_id = _seed_stale_generating_trip()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     seen: list[LLMRoute | None] = []
     monkeypatch.setattr(llm_gateway_service, "resolve_route", lambda uid: SENTINEL if uid == 7 else None)
     monkeypatch.setattr(generation_recovery, "resume_day", lambda _aid: (_seen_append(seen), None)[1])
@@ -229,7 +230,7 @@ def test_recovery_resume_leg_carries_route(sqlite_env, monkeypatch) -> None:
 
 def test_recovery_leg_without_gateway_stays_default(sqlite_env, monkeypatch) -> None:
     trip_id = _seed_stale_generating_trip()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     seen: list[LLMRoute | None] = []
     monkeypatch.setattr(generation_recovery, "resume_day", lambda _aid: (_seen_append(seen), None)[1])
     monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *_a, **_k: None)
@@ -252,8 +253,8 @@ def _broken_route(_user_id: int):
 def test_plan_days_fails_trip_when_cipher_broken(sqlite_env, monkeypatch) -> None:
     """409 不得裸穿 generation_pool：就地 fail_trip + SSE 错误 + 解注册，防僵尸/注册表泄漏。"""
     trip_id = _seed_stale_generating_trip()
-    itinerary_generation.reset_active_planning_for_tests()
-    itinerary_generation._register_planning(trip_id)
+    itinerary_generation.planning_tasks.reset()
+    itinerary_generation.planning_tasks.acquire(7, trip_id)
     errors: list[tuple] = []
     monkeypatch.setattr(itinerary_generation.generation_events, "error", lambda *a, **k: errors.append((a, k)))
     monkeypatch.setattr(llm_gateway_service, "resolve_route", _broken_route)
@@ -266,14 +267,14 @@ def test_plan_days_fails_trip_when_cipher_broken(sqlite_env, monkeypatch) -> Non
         assert main is not None
         assert main.gen_state == "FAILED" and main.status == 3
         assert _BROKEN in (main.plan_note or "")
-    assert itinerary_generation.is_planning_active(trip_id) is False, "注册表必须解注册（漏了会堵住重提）"
+    assert itinerary_generation.planning_tasks.is_active(trip_id) is False, "注册表必须解注册（漏了会堵住重提）"
     assert errors, "SSE 错误事件必须发出（用户侧看得见失败原因）"
     assert errors[0][0][1] == "AGENT_ERROR" and errors[0][0][3] is True
 
 
 def test_recovery_fails_trip_and_releases_lock_when_cipher_broken(sqlite_env, monkeypatch) -> None:
     trip_id = _seed_stale_generating_trip()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     resumed: list[str] = []
     monkeypatch.setattr(generation_recovery, "resume_day", lambda _aid: (resumed.append(_aid), None)[1])
     monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *_a, **_k: None)
@@ -319,7 +320,7 @@ def test_plan_days_failure_note_and_sse_are_user_facing(sqlite_env, monkeypatch)
     """
 
     trip_id = _seed_stale_generating_trip()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     errors: list[tuple] = []
     monkeypatch.setattr(itinerary_generation.generation_events, "error", lambda *a, **k: errors.append((a, k)))
 

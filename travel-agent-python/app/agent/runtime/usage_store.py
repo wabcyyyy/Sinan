@@ -59,6 +59,15 @@ class UsageStore:
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(llm_calls)").fetchall()}
         if "run_id" not in columns:
             self._conn.execute("ALTER TABLE llm_calls ADD COLUMN run_id TEXT")
+        for name, declaration in {
+            "task_id": "TEXT",
+            "user_id": "INTEGER",
+            "itinerary_id": "INTEGER",
+            "provider": "TEXT",
+            "usage_complete": "INTEGER NOT NULL DEFAULT 0",
+        }.items():
+            if name not in columns:
+                self._conn.execute(f"ALTER TABLE llm_calls ADD COLUMN {name} {declaration}")
         self._conn.commit()
 
     @contextmanager
@@ -84,24 +93,59 @@ class UsageStore:
         success: bool,
         error: str | None = None,
         run_id: str | None = None,
-    ) -> None:
-        """登记一次 LLM 调用明细（失败调用 token 记 0，用于错误率统计）。"""
+        *,
+        task_id: str | None = None,
+        user_id: int | None = None,
+        itinerary_id: int | None = None,
+        provider: str | None = None,
+        usage_complete: bool = False,
+        record_id: int | None = None,
+    ) -> int:
+        """每个 HTTP 尝试一行；缺失 usage 的 token 是保守预占，完整性另存。"""
+        columns = (
+            "ts",
+            "scene",
+            "model",
+            "prompt_tokens",
+            "completion_tokens",
+            "duration_ms",
+            "success",
+            "error",
+            "run_id",
+            "task_id",
+            "user_id",
+            "itinerary_id",
+            "provider",
+            "usage_complete",
+        )
+        values = (
+            int(time.time()),
+            scene or "other",
+            model or "",
+            max(int(prompt_tokens or 0), 0),
+            max(int(completion_tokens or 0), 0),
+            max(int(duration_ms or 0), 0),
+            int(success),
+            error,
+            run_id,
+            task_id,
+            user_id,
+            itinerary_id,
+            provider,
+            int(usage_complete),
+        )
         with self._cursor() as cur:
+            if record_id is not None:
+                cur.execute(
+                    "UPDATE llm_calls SET " + ",".join(f"{name}=?" for name in columns) + " WHERE id=?",
+                    (*values, record_id),
+                )
+                return record_id
             cur.execute(
-                "INSERT INTO llm_calls (ts, scene, model, prompt_tokens, completion_tokens,"
-                " duration_ms, success, error, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    int(time.time()),
-                    scene or "other",
-                    model or "",
-                    max(int(prompt_tokens or 0), 0),
-                    max(int(completion_tokens or 0), 0),
-                    max(int(duration_ms or 0), 0),
-                    1 if success else 0,
-                    (error or None) if success else (error or "unknown"),
-                    run_id or None,
-                ),
+                "INSERT INTO llm_calls (" + ",".join(columns) + ") VALUES (" + ",".join("?" for _ in values) + ")",
+                values,
             )
+            return int(cur.lastrowid or 0)
 
     def summary(self, start_ts: int, end_ts: int) -> dict:
         """时间范围内的总体统计。"""
@@ -206,6 +250,30 @@ class UsageStore:
                 for row in rows
             ],
         }
+
+    def task_calls(self, task_id: str) -> list[dict]:
+        """完整任务账单，不受管理接口分页或时间窗截断。"""
+        columns = (
+            "id",
+            "scene",
+            "provider",
+            "model",
+            "run_id",
+            "task_id",
+            "user_id",
+            "itinerary_id",
+            "prompt_tokens",
+            "completion_tokens",
+            "duration_ms",
+            "success",
+            "error",
+            "usage_complete",
+        )
+        with self._cursor() as cur:
+            rows = cur.execute(
+                "SELECT " + ",".join(columns) + " FROM llm_calls WHERE task_id=? ORDER BY id", (task_id,)
+            ).fetchall()
+        return [dict(zip(columns, row, strict=True)) for row in rows]
 
     def report(self, range_key: str, limit: int = 200, offset: int = 0) -> dict:
         """仪表盘一次性取数：`/api/agent/v1/usage` 与 `/api/admin/llm-usage` 共用。

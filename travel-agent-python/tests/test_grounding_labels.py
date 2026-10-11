@@ -19,7 +19,7 @@ from app.agent.generation.content.narrative import sanitize_narrative
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.output.facts import apply_item_facts
 from app.agent.generation.rules.generation_core import PoiFactRow
-from app.agent.grounding.grounding_evidence import issue_evidence, lookup_ticket
+from app.agent.grounding.grounding_evidence import issue_evidence, verify_evidence
 from app.agent.grounding.grounding_labels import (
     OPEN_ITEM_SOURCE,
     POOL_UNKNOWN_SOURCE,
@@ -100,7 +100,7 @@ def test_authoritative_row_without_coords_keeps_source_but_not_endorsement():
 def test_landed_item_is_endorsed_only_for_resolvers_that_ran():
     """落地草稿的 source 由解析器写、票也由解析器签；两者缺一不背书。"""
     resolved = {"poi_name": "楼外楼", "city": "杭州", "source": "nominatim", "latitude": 30.25, "longitude": 120.13}
-    issue_evidence({**resolved, "name": resolved["poi_name"]})
+    issue_evidence(resolved)
     grounded = label_for_landed_item(resolved, "杭州")
     assert (grounded.source, grounded.endorsed) == ("nominatim", True)
     bare = label_for_landed_item({"poi_name": "某处"})
@@ -203,7 +203,7 @@ def test_source_string_alone_cannot_buy_endorsement():
     字符串——G1 之后它们必须能对上本服务签发的票才算数。
     """
     forged = _row(sign=False, name="没被查到过的点", source="opentripmap", latitude=1.0, longitude=2.0, id="xid-forged")
-    assert lookup_ticket("没被查到过的点", "", "xid-forged") is None  # 无票
+    assert verify_evidence(forged) is False  # 无票
 
     label = label_for_evidence_row(forged)
     assert (label.source, label.verification_status, label.endorsed) == (
@@ -222,7 +222,7 @@ def test_source_string_alone_cannot_buy_endorsement():
 def test_ticket_coords_must_match_the_claimed_row():
     """真 xid + 假坐标也不行：票把坐标钉死在查到的那一点。"""
     signed = _row()
-    assert lookup_ticket("西湖", "", "") is not None
+    assert verify_evidence(signed) is True
     far = {**signed, "latitude": 22.54, "longitude": 114.05}  # 挪到深圳
     assert is_trusted_row(far) is False
 

@@ -52,7 +52,8 @@ from app.agent.generation.rules.generation_core import (
     sanitize_itinerary_items,
 )
 from app.agent.generation.rules.transfer_time import fix_transfer_gaps, normalize_item_clocks
-from app.agent.grounding.facts import has_coord, local_ground
+from app.agent.grounding.facts import local_ground
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     apply_label,
     has_valid_coords,
@@ -65,7 +66,7 @@ from app.agent.runtime.trace import record_event
 from app.common.addons import addons
 from app.common.config import settings
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import configured, json_response_format, model_for
+from app.common.model_registry import configured
 from app.common.season import season_factor, season_label
 from app.prompts.open_generation import open_day_system_prompt
 from app.schemas.trip import (
@@ -80,7 +81,7 @@ logger = logging.getLogger(__name__)
 
 def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     """开放模式：LLM 凭自身知识 + 权威参考资料为任意城市/省份安排一天行程。"""
-    client = get_llm_client()
+    client = get_llm_client("fast")
     mem = WorkingMemory(used_names=set(used))
     # 引用式生成：把权威知识库候选作为带编号参考资料注入 Prompt，模型选点
     # 输出 refs 引用，生成后由 ReferencePool.ground 落地为权威字段。
@@ -116,7 +117,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     # PR-5 强约束档按网关能力分支（DeepSeek 官方 2026-10-05 起拒 json_schema，
     # 降级 json_object，见 day_prompts.json_response_format）：守约网关保证符合
     # 契约 schema（含"禁产经纬度/poi_id/来源字段"的闭合约束）；坏输出走修复重试 → 兜底。
-    response_format = json_response_format("fast", "day_output", open_day_output_schema(req.day_no))
+    response_format = client.json_response_format("day_output", open_day_output_schema(req.day_no))
     # 终检时长窗口常量由本层传入（prompt 模块不依赖 agent 层，也不自留副本）。
     system = open_day_system_prompt(
         day_no=req.day_no,
@@ -169,7 +170,6 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         # 给足输出预算。3200 实测装不下（2026-09-18 量测 6/6 城截断，
         # 见 docs/量测-存在性接地-2026-09-18.md §5），8000 后 6/6 城解析成功。
         max_tokens=8000,
-        model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
         enable_thinking=False,
@@ -182,7 +182,6 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         parse_llm_json_with_repair(
             raw,
             client,
-            model=model_for("fast"),
             repair_max_tokens=8000,
             response_format=response_format,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -300,10 +299,12 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     items: list[TripItem] = []
     for item in drafts:
         poi = lookup.get(str(item.get("poi_name") or ""))
+        if poi and is_trusted_row(poi):
+            poi = evidence_row(poi)
         cost_observed = False
         open_time_observed = False
         if poi and is_trusted_row(poi):
-            if not has_coord(item.get("latitude")) and has_valid_coords(poi):
+            if has_valid_coords(poi):
                 item["latitude"] = float(poi["latitude"])
                 item["longitude"] = float(poi["longitude"])
             if not item.get("poi_id"):
@@ -330,12 +331,14 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
         # format 阶段补证据；在单日边界先建立最小字段级来源契约。
         # 标签判定与 format 阶段、参考资料落地共用 grounding_labels 的唯一实现
         # （此前三处各写一份且互不一致，同一项走哪条链决定它拿什么徽章）。
-        # GROUND-2：cost/open_time 独立记票（facts.field_fact_evidence 单一工厂），
-        # 模型直写的票价/时间不再随 identity 背书
         label = label_for_evidence_row(poi) if poi else label_for_landed_item(item, req.city)
         apply_label(item, label)
         item["fact_evidence"] = field_fact_evidence(
-            item, label, cost_observed=cost_observed, open_time_observed=open_time_observed
+            item,
+            label,
+            cost_observed=cost_observed,
+            open_time_observed=open_time_observed,
+            evidence_id=str((poi or item).get("evidence_id") or "") or None,
         )
         normalize_item_clocks(item)
 
@@ -345,7 +348,6 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             remark = f"{season_name}估算：系数×{factor}（基准价￥{base:g}）"
             item["remark"] = f"{item['remark']}；{remark}" if item.get("remark") else remark
 
-        # 餐饮：实时价（可选）+ 城市均价硬钳制，抑制离谱估值
         if item.get("item_type") == "food":
             meal_price = float((ctx.get("consumption") or {}).get("meal_price") or 0) or None
             cost_now = item.get("cost")
@@ -372,9 +374,6 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
                 pass  # 仅钳制路径已处理
         items.append(TripItem(**item))
 
-    # 叙事层透传（M3-①）：why_this 随 TripItem(**item) 自然携带（schema 新增
-    # 字段，sanitize_itinerary_items 按 dict(item) 原样保留）；day_options /
-    # trip_theme 在此显式装配。兼容 camelCase 读取（清洗层通常已归一）。
     result = DailyPlan(
         day_no=req.day_no,
         note=plan.get("note"),
@@ -394,7 +393,6 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
 
 def run_generate_day(req: GenerateDayRequest) -> DailyPlan:
     """通过 LangGraph 执行单日生成闭环，保持原有 HTTP 契约不变。"""
-    # 延迟导入是为了让 day_workflow 复用本模块的单次执行函数时不形成循环导入。
     from app.agent.generation.orchestration.day_workflow import run_day_agent
 
     return run_day_agent(req)

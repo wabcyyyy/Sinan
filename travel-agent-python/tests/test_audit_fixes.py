@@ -6,6 +6,7 @@ H7 引用落地信任边界（伪造 source / 缺坐标不背书）、H8 LLM 输
 #21 reflect 时间规则。
 """
 
+import contextlib
 import json
 from typing import cast
 
@@ -27,6 +28,7 @@ from app.agent.tools.registry import registry
 from app.common import llm_client
 from app.schemas.trip import MAX_TRIP_DAYS, GenerateDayRequest, GenerateRequest
 from tests.agent_eval import mock_llm
+from tests.llm_binding import FakeBinding
 
 # ---------- #24：住宿口径 N 天 = N-1 晚（末日不计房价） ----------
 
@@ -88,7 +90,7 @@ def test_open_trip_prompt_uses_stay_nights_hotel_clause(monkeypatch):
     """多日整段 prompt 明确 N-1 晚 + 全程同一家酒店口径。"""
     captured = {}
 
-    class FakeClient:
+    class FakeClient(FakeBinding):
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
             return json.dumps(
@@ -98,7 +100,7 @@ def test_open_trip_prompt_uses_stay_nights_hotel_clause(monkeypatch):
                 }
             )
 
-    monkeypatch.setattr("app.agent.generation.content.day_prompts.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr("app.agent.generation.content.day_prompts.get_llm_client", lambda _role="main": FakeClient())
     req = GenerateDayRequest(city="丽江", day_no=1, days=3, needs_hotel=True)
     from app.agent.generation.content.day_prompts import llm_open_trip
 
@@ -238,14 +240,16 @@ def test_reference_pool_excludes_used_names():
 def test_open_day_prompt_excludes_used_names(monkeypatch):
     captured = {}
 
-    class FakeClient:
+    class FakeClient(FakeBinding):
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
             return json.dumps(
                 {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
             )
 
-    monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        "app.agent.generation.orchestration.day_stream.get_llm_client", lambda _role="main": FakeClient()
+    )
     req = GenerateDayRequest(
         city="杭州",
         day_no=2,
@@ -301,29 +305,43 @@ def _fake_response(payload):
         def raise_for_status(self):
             pass
 
-        def json(self):
-            return payload
+        def iter_bytes(self):
+            # llm_client 现走 stream：bounded_chunks(resp) 聚合字节块后整体 json.loads
+            return iter([json.dumps(payload).encode("utf-8")])
+
+        def close(self):
+            pass
 
     return Resp()
+
+
+def _stream_client(handler):
+    """把旧 post 替身接上 llm_client 现行用法：with client.stream("POST", ...) as resp。
+
+    handler 每次真实 HTTP 尝试调用一次（重试计数留在各测试的 handler 里），
+    产出的响应对象需支持 raise_for_status / iter_bytes / close。
+    """
+
+    class _Client:
+        def stream(self, _method, _url, **_kwargs):
+            return contextlib.nullcontext(handler())
+
+        def is_closed(self):
+            return False
+
+    return _Client()
 
 
 def test_llm_client_retries_transient_error_once(monkeypatch):
     attempts = []
 
-    def flaky_post(*_args, **_kwargs):
+    def flaky_stream():
         attempts.append(1)
         if len(attempts) == 1:
             raise httpx.ConnectError("boom")
         return _fake_response({"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}], "usage": {}})
 
-    class _Client:
-        def post(self, *a, **k):
-            return flaky_post(*a, **k)
-
-        def is_closed(self):
-            return False
-
-    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _Client())
+    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _stream_client(flaky_stream))
     monkeypatch.setattr(llm_client, "_retry_sleep", lambda _n: None)
     client = llm_client.LLMClient()
     result = client.chat_response([{"role": "user", "content": "hi"}])
@@ -343,18 +361,11 @@ def test_llm_client_does_not_retry_client_error(monkeypatch):
                 "bad", request=cast("httpx.Request", None), response=cast("httpx.Response", Resp400())
             )
 
-    def post(*_args, **_kwargs):
+    def stream_once():
         attempts.append(1)
         return Resp400()
 
-    class _Client:
-        def post(self, *a, **k):
-            return post(*a, **k)
-
-        def is_closed(self):
-            return False
-
-    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _Client())
+    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _stream_client(stream_once))
     monkeypatch.setattr(llm_client, "_retry_sleep", lambda _n: None)
     with pytest.raises(httpx.HTTPStatusError):
         llm_client.LLMClient().chat_response([{"role": "user", "content": "hi"}])
@@ -362,17 +373,10 @@ def test_llm_client_does_not_retry_client_error(monkeypatch):
 
 
 def test_llm_client_empty_choices_raises_semantic_error(monkeypatch):
-    def post(*_args, **_kwargs):
+    def stream_once():
         return _fake_response({"choices": [], "usage": {}, "finish_reason": "content_filter"})
 
-    class _Client:
-        def post(self, *a, **k):
-            return post(*a, **k)
-
-        def is_closed(self):
-            return False
-
-    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _Client())
+    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _stream_client(stream_once))
     with pytest.raises(ValueError, match="未返回任何候选"):
         llm_client.LLMClient().chat_response([{"role": "user", "content": "hi"}])
 
@@ -381,18 +385,11 @@ def test_llm_client_empty_choices_reports_gateway_error_code(monkeypatch):
     """AICHAIN-4：空 choices 时诊断文案读顶层 error.code/message（真因），
     顶层 finish_reason 恒 None——读它只会误导排障。"""
 
-    def post(*_args, **_kwargs):
+    def stream_once():
         body = {"choices": [], "usage": {}, "error": {"code": "content_filter", "message": "输出被安全策略拦截"}}
         return _fake_response(body)
 
-    class _Client:
-        def post(self, *a, **k):
-            return post(*a, **k)
-
-        def is_closed(self):
-            return False
-
-    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _Client())
+    monkeypatch.setattr(llm_client, "_get_http_client", lambda: _stream_client(stream_once))
     with pytest.raises(ValueError, match=r"未返回任何候选（content_filter）"):
         llm_client.LLMClient().chat_response([{"role": "user", "content": "hi"}])
 
@@ -507,14 +504,16 @@ def test_requirements_clause_delimits_user_text():
 def test_open_day_feedback_is_delimited(monkeypatch):
     captured = {}
 
-    class FakeClient:
+    class FakeClient(FakeBinding):
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["system"] = system_prompt
             return json.dumps(
                 {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
             )
 
-    monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        "app.agent.generation.orchestration.day_stream.get_llm_client", lambda _role="main": FakeClient()
+    )
     req = GenerateDayRequest(city="杭州", day_no=1, days=1, feedback="第1天时间冲突：A 与 B 重叠")
     llm_open_day(req, set())
     assert "不是新指令" in captured["system"]
@@ -527,14 +526,16 @@ def test_open_day_feedback_is_delimited(monkeypatch):
 def test_region_hint_appears_in_destination_line(monkeypatch):
     captured = {}
 
-    class FakeClient:
+    class FakeClient(FakeBinding):
         def complete(self, user_prompt, system_prompt="", **_kwargs):
             captured["user"] = user_prompt
             return json.dumps(
                 {"note": "x", "items": [{"item_type": "attraction", "poi_name": "测试景点"}], "suggestions": []}
             )
 
-    monkeypatch.setattr("app.agent.generation.orchestration.day_stream.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        "app.agent.generation.orchestration.day_stream.get_llm_client", lambda _role="main": FakeClient()
+    )
     req = GenerateDayRequest(city="丽江", day_no=1, days=2, region_hint="云南")
     llm_open_day(req, set())
     assert "云南" in captured["user"]

@@ -45,6 +45,7 @@ from app.agent.runtime.trace import current_run_id, record_event
 from app.agent.runtime.usage_store import usage_store
 from app.common import llm_breaker, model_registry
 from app.common.config import settings
+from app.common.http_deadline import bounded_chunks, bounded_lines
 from app.common.llm_route import LLMRoute, current_route
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,11 @@ def _record_usage(
     started: float,
     success: bool,
     error: str | None = None,
-) -> None:
+    *,
+    provider: str | None = None,
+    usage_complete: bool = False,
+    record_id: int | None = None,
+) -> int | None:
     """把一次调用明细写入用量库（场景由 contextvar 推断）。
 
     run_id 直取 trace 上下文（P1-7）：llm_calls 由此获得 run 级归因键，
@@ -106,7 +111,8 @@ def _record_usage(
     """
     # 用量记录失败不影响主流程
     with contextlib.suppress(Exception):
-        usage_store.record(
+        limits = current_limits()
+        return usage_store.record(
             scene=current_scene(),
             model=model or settings.llm_model,
             prompt_tokens=prompt_tokens,
@@ -115,7 +121,14 @@ def _record_usage(
             success=success,
             error=error,
             run_id=current_run_id(),
+            task_id=limits.task_id if limits else None,
+            user_id=limits.user_id if limits else None,
+            itinerary_id=limits.itinerary_id if limits else None,
+            provider=provider,
+            usage_complete=usage_complete,
+            record_id=record_id,
         )
+    return None
 
 
 DEFAULT_SYSTEM_PROMPT = "你是一个专业的旅游行程规划助手，请用中文回答，只输出结构化结果。"
@@ -296,15 +309,24 @@ class LLMClient:
         timeout: float | None = None,
         max_attempts: int | None = None,
         follow_redirects: bool | None = None,
+        capabilities: frozenset[str] | None = None,
     ) -> None:
         # 显式传入即覆盖（角色 client / BYOK 路由走这里），缺省 = main 角色（见 model_registry）；
         # main 的解析带熔断备选链（P0-2）：主通道开窗且配了 LLM_MAIN_FALLBACK_PROVIDER
         # 时临时切到备选 provider，冷却窗过后自然切回（未配置/主通道健康时与
         # model_registry.binding("main") 完全一致）。
-        main = _resolve_main_binding()
-        self._base_url = base_url or main.base_url
-        self._api_key = api_key or main.provider.api_key
-        self._model = model or main.model
+        if base_url is None or api_key is None or model is None:
+            main = _resolve_main_binding()
+            base_url = main.base_url if base_url is None else base_url
+            api_key = main.provider.api_key if api_key is None else api_key
+            model = main.model if model is None else model
+            capabilities = main.capabilities() if capabilities is None else capabilities
+        self._base_url = base_url
+        self._api_key = api_key
+        self._model = model
+        self._capabilities = (
+            capabilities if capabilities is not None else model_registry._capabilities("byok", self._base_url)
+        )
         self._timeout = settings.llm_timeout if timeout is None else timeout
         self._max_attempts = _LLM_MAX_ATTEMPTS if max_attempts is None else max(1, max_attempts)
         # BYOK 网关地址不可信：30x 重定向可把携带用户密钥的 POST 引向内网地址
@@ -316,6 +338,15 @@ class LLMClient:
     def base_url(self) -> str:
         """本 client 实际打到的网关地址（通道能力判据的唯一来源，见 channel_serves_model）。"""
         return self._base_url
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    def json_response_format(self, name: str, schema: dict) -> dict:
+        if "json_schema" in self._capabilities:
+            return {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}}
+        return {"type": "json_object"}
 
     def chat_response(
         self,
@@ -354,7 +385,6 @@ class LLMClient:
         if tool_choice is not None:
             payload["tool_choice"] = tool_choice
         limits = current_limits()
-        started = time.monotonic()
         try:
             # 通道熔断（P0-2）：主网关宕机时不再每个请求都全额支付超时重试
             # （2026-10-05 全量失败 2 小时事故的根因模式）；开窗中快速失败，
@@ -364,24 +394,68 @@ class LLMClient:
                 limits.check("llm")
             timeout = self._timeout
             if limits and limits.deadline_seconds > 0:
-                remaining = limits.deadline_seconds - (time.monotonic() - limits.started_at)
+                remaining = limits.remaining()
                 timeout = min(timeout, max(0.1, remaining))
             for attempt in range(self._max_attempts):
                 try:
                     # 每次真实 HTTP 调用都消耗 run 预算，重试同样受限额约束。
                     if limits and attempt > 0:
                         limits.check("llm")
-                    resp = _get_http_client().post(
+                    attempt_started = time.monotonic()
+                    estimated = len(json.dumps(payload, ensure_ascii=False).encode("utf-8")) + 256
+                    reservation = limits.reserve_llm(estimated, max_tokens) if limits else None
+                    timeout = min(self._timeout, max(0.001, limits.remaining())) if limits else self._timeout
+                    usage_id = _record_usage(
+                        model or self._model,
+                        estimated,
+                        max_tokens,
+                        attempt_started,
+                        False,
+                        "inflight",
+                        provider=self._base_url,
+                    )
+                    with _get_http_client().stream(
+                        "POST",
                         url,
                         json=payload,
                         headers=headers,
                         timeout=_build_timeout(timeout),
                         follow_redirects=self._follow_redirects,
+                    ) as resp:
+                        resp.raise_for_status()
+                        body = json.loads(b"".join(bounded_chunks(resp, limits)))
+                    usage = body.get("usage")
+                    if limits and reservation:
+                        limits.settle_llm(reservation, usage)
+                    actual = usage or {"prompt_tokens": estimated, "completion_tokens": max_tokens}
+                    _record_usage(
+                        model or self._model,
+                        actual.get("prompt_tokens", estimated),
+                        actual.get("completion_tokens", max_tokens),
+                        attempt_started,
+                        True,
+                        provider=self._base_url,
+                        usage_complete=bool(usage and "prompt_tokens" in usage and "completion_tokens" in usage),
+                        record_id=usage_id,
                     )
-                    resp.raise_for_status()
-                    body = resp.json()
+                    if limits:
+                        limits.check("deadline")
                     break
+                except RunLimitExceeded:
+                    raise
                 except Exception as exc:
+                    if limits and reservation:
+                        limits.settle_llm(reservation, None)
+                    _record_usage(
+                        model or self._model,
+                        estimated,
+                        max_tokens,
+                        attempt_started,
+                        False,
+                        _describe_error(exc),
+                        provider=self._base_url,
+                        record_id=usage_id,
+                    )
                     # 瞬时错误（超时/429/5xx）指数退避后重试一次；其余直接上抛。
                     if attempt + 1 >= self._max_attempts or not _is_retryable(exc):
                         raise
@@ -403,7 +477,6 @@ class LLMClient:
             record_event("llm", "llm.request", status="error", error=str(exc), metadata={"budget_exhausted": True})
             raise
         except Exception as exc:
-            _record_usage(model, 0, 0, started, False, _describe_error(exc))
             if _is_retryable(exc):
                 # 只有连接层错误 / 可重试白名单状态计入通道熔断；业务 4xx、内容审查
                 # （空 choices）是"这条请求的问题"，不计数（llm_breaker 口径）。
@@ -412,25 +485,7 @@ class LLMClient:
         usage = body.get("usage") or {}
         # 全局 token 统计收口：无论是否处于 trace 上下文，每次真实调用都上报。
         metrics.record_llm_call(int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0))
-        _record_usage(
-            model, int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0), started, True
-        )
-        if limits:
-            try:
-                limits.record_llm(usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))
-            except RunLimitExceeded as exc:
-                record_event(
-                    "llm",
-                    "llm.request",
-                    status="error",
-                    error=str(exc),
-                    metadata={
-                        "budget_exhausted": True,
-                        "prompt_tokens": usage.get("prompt_tokens"),
-                        "completion_tokens": usage.get("completion_tokens"),
-                    },
-                )
-                raise
+
         choices = body.get("choices") or []
         choice = choices[0] if choices else {}
         record_event(
@@ -511,10 +566,16 @@ class LLMClient:
             limits.check("llm")
         timeout = self._timeout
         if limits and limits.deadline_seconds > 0:
-            remaining = limits.deadline_seconds - (time.monotonic() - limits.started_at)
+            remaining = limits.remaining()
             timeout = min(timeout, max(0.1, remaining))
 
         started = time.monotonic()
+        estimated = len(json.dumps(payload, ensure_ascii=False).encode("utf-8")) + 256
+        reservation = limits.reserve_llm(estimated, max_tokens) if limits else None
+        usage_id = _record_usage(
+            model or self._model, estimated, max_tokens, started, False, "inflight", provider=self._base_url
+        )
+        expiry_timer: threading.Timer | None = None
         stream_usage: dict = {}
         content_length = 0
         try:
@@ -527,7 +588,13 @@ class LLMClient:
                 follow_redirects=self._follow_redirects,
             ) as resp:
                 resp.raise_for_status()
-                for line in resp.iter_lines():
+                if limits:
+                    expiry_timer = threading.Timer(max(0.001, limits.remaining()), resp.close)
+                    expiry_timer.daemon = True
+                    expiry_timer.start()
+                for line in bounded_lines(resp, limits):
+                    if limits:
+                        limits.check("deadline")
                     if cancel is not None and cancel.is_set():
                         # 深度取消：抛异常退出 with 块即断开在途 HTTP 流（网关侧停止生成）。
                         # 用量分片未到（token 未知）故不写 usage 行；轨迹事件供成本排查。
@@ -560,34 +627,47 @@ class LLMClient:
                         content_length += len(content)
                         yield content
         except StreamCancelled:
-            # 客户端取消不是服务故障（StreamCancelled 类 docstring 口径）：不计通道失败
             raise
         except Exception as exc:
             if _is_retryable(exc):
                 llm_breaker.note_failure(self._base_url, retryable=True)
             raise
+        finally:
+            if expiry_timer is not None:
+                expiry_timer.cancel()
+            if limits and reservation:
+                limits.settle_llm(reservation, stream_usage or None)
+            _record_usage(
+                model or self._model,
+                stream_usage.get("prompt_tokens", estimated),
+                stream_usage.get("completion_tokens", max_tokens),
+                started,
+                False,
+                "stream-ended",
+                provider=self._base_url,
+                usage_complete=bool(stream_usage),
+                record_id=usage_id,
+            )
         # 整段收流成功：通道健康——半开探测通过则关窗并发恢复事件
         llm_breaker.note_success(self._base_url)
+        if expiry_timer is not None:
+            expiry_timer.cancel()
+        if limits:
+            limits.check("deadline")
         prompt = int(stream_usage.get("prompt_tokens") or 0)
         completion = int(stream_usage.get("completion_tokens") or 0)
         metrics.record_llm_call(prompt, completion)
-        _record_usage(model, prompt, completion, started, True)
-        # 流式与阻塞式共用同一份 RunLimits：不记这一次，max_llm_calls / max_tokens
-        # 在产品主路径（逐日流式）上永远读不到消耗，额度门等于只装了非流式那半边。
-        # 顺序照抄 `chat_response`：**先**记用量与账单，**后**扣额度——
-        # 否则恰好触发上限的那一次调用（最贵的一次）从用量表里消失，成本报表偏低。
-        if limits:
-            try:
-                limits.record_llm(prompt, completion)
-            except RunLimitExceeded as exc:
-                record_event(
-                    "llm",
-                    "llm.stream_request",
-                    status="error",
-                    error=str(exc),
-                    metadata={"budget_exhausted": True, "prompt_tokens": prompt, "completion_tokens": completion},
-                )
-                raise
+        _record_usage(
+            model or self._model,
+            prompt if stream_usage else estimated,
+            completion if stream_usage else max_tokens,
+            started,
+            True,
+            provider=self._base_url,
+            usage_complete=bool(stream_usage),
+            record_id=usage_id,
+        )
+
         record_event(
             "llm",
             "llm.stream_request",
@@ -612,7 +692,6 @@ class LLMClient:
         enable_thinking: bool | None = None,
     ) -> str:
         """流式调用 LLM，返回完整响应文本。适用于多日整段生成等长响应场景。"""
-        started = time.monotonic()
         content_parts: list[str] = []
         try:
             for delta in self.stream_chat_deltas(
@@ -631,9 +710,6 @@ class LLMClient:
             record_event(
                 "llm", "llm.stream_request", status="error", error=str(exc), metadata={"budget_exhausted": True}
             )
-            raise
-        except Exception as exc:
-            _record_usage(model, 0, 0, started, False, _describe_error(exc))
             raise
         return "".join(content_parts)
 
@@ -724,7 +800,7 @@ _llm_client: LLMClient | None = None
 # 单例按 (provider, base_url, model) 记键（P0-2）：main 角色熔断切到备选 / 冷却后
 # 切回时重建单例；键不变（默认部署：无备选、通道健康）时与旧实现一样只构造一次、
 # 恒同一实例——既有"单例身份"契约（test_llm_route）不受影响。
-_llm_client_key: tuple[str, str, str] | None = None
+_llm_client_key: tuple[str, str, str, str] | None = None
 
 # BYOK 路由专属 client 缓存：键 = (base_url, model, sha256(api_key)[:16])——api_key 只以
 # 摘要形式进键，缓存本身不构成第二份明文落点。容量到顶整体清空重建：BYOK 是低频
@@ -751,41 +827,41 @@ def _routed_client(route: LLMRoute) -> LLMClient:
         return client
 
 
-def get_llm_client() -> LLMClient:
-    """进程内 client 工厂：BYOK 路由生效时返回该路由的专属 client，否则返回默认单例。
-
-    名字与签名保持不变（agent 层 16 处调用与测试 mock 契约全靠它）；路由上下文由
-    services 层的 route_scope 在 worker 入口设置（contextvars 不跨线程池传播）。
-    main 角色熔断切备选 / 冷却后切回时单例按解析键重建（键见 _llm_client_key）。
-    """
-    global _llm_client, _llm_client_key
+def get_llm_client(role: str = "main") -> LLMClient:
+    """Resolve the provider, model and capabilities once for this call."""
     route = current_route()
     if route is not None:
         return _routed_client(route)
-    bound = _resolve_main_binding()
-    key = (bound.provider.name, bound.base_url, bound.model)
-    if _llm_client is None or _llm_client_key != key:
-        _llm_client = LLMClient(base_url=bound.base_url, api_key=bound.provider.api_key, model=bound.model)
-        _llm_client_key = key
-    return _llm_client
-
-
-def get_role_client(role: str) -> LLMClient:
-    """按角色取 client（model_registry 是唯一解析点）：judge / search / stt 等专用通道。
-
-    不用 `get_llm_client` 的单例：角色可能指向另一个 provider（例如联网搜索留在百炼
-    而主模型在 DeepSeek），共用单例会把密钥与地址串味。main 角色经熔断备选链解析
-    （P0-2）：主通道开窗且配了备选时这里同样切走。
-    """
-    bound = _resolve_main_binding() if role == "main" else model_registry.binding(role)
-    return LLMClient(base_url=bound.base_url, api_key=bound.provider.api_key, model=bound.model)
+    if role not in model_registry.ROLES:
+        raise ValueError(f"未知模型角色: {role}")
+    raw = getattr(settings, f"llm_role_{role}").strip()
+    bound = _resolve_main_binding() if role == "main" or not raw else model_registry.binding(role)
+    global _llm_client, _llm_client_key
+    key = (
+        bound.provider.name,
+        bound.base_url,
+        bound.model,
+        hashlib.sha256(bound.provider.api_key.encode()).hexdigest(),
+    )
+    if role == "main" or not raw:
+        if _llm_client is None or _llm_client_key != key:
+            _llm_client = LLMClient(
+                base_url=bound.base_url,
+                api_key=bound.provider.api_key,
+                model=bound.model,
+                capabilities=bound.capabilities(),
+            )
+            _llm_client_key = key
+        return _llm_client
+    return LLMClient(
+        base_url=bound.base_url, api_key=bound.provider.api_key, model=bound.model, capabilities=bound.capabilities()
+    )
 
 
 def get_judge_client() -> LLMClient:
     """judge 专用 client（PR-7 / D7）：跑 LLM_ROLE_JUDGE（留空 = 复用 main）。"""
-    bound = model_registry.binding("judge")
-    client = get_role_client("judge")
+    client = get_llm_client("judge")
     # 模型必须真由该通道提供：判分模型与网关不匹配时（如 qwen-max 发到 api.deepseek.com）
     # 只会吃一个 404，被读成"judge 不可用"。配置错要在发请求前响亮报出。
-    require_model_served(client.base_url, bound.model)
+    require_model_served(client.base_url, client.model)
     return client

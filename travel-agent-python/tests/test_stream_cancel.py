@@ -48,12 +48,15 @@ class _FakeStreamResponse:
     def raise_for_status(self):
         pass
 
-    def iter_lines(self):
+    def close(self):
+        self.closed = True
+
+    def iter_bytes(self):
         for index, line in enumerate(self._lines):
             if self._cancel_at is not None and index >= self._cancel_at:
                 self._cancel.set()
             self.consumed += 1
-            yield line
+            yield (line + "\n").encode()
 
 
 class _FakeHttpClient:

@@ -12,7 +12,8 @@ POI 权威库退役后的坐标/分类/图片来源（TREK 式"不存语料，�
 事实边界：两家数据源都**没有票价/营业时间**——这些字段由 LLM 估价并按
 `estimated` 如实标注，行程页以深链（见 `map_link`）引导用户出发前自行核实。
 
-依赖：common（external_client/http_client/config）；无 agent 内部依赖、无 DB。
+依赖：common（external_client/http_client/config）+ agent 内部（core.poi_identity
+实体判定、runtime 运行限额经构造期注入外呼基类）；无 DB。
 地图深链与 GCJ-02 换算在 `app/agent/data/map_link.py`。
 """
 
@@ -24,6 +25,7 @@ from typing import Any
 from urllib.parse import quote
 
 from app.agent.core.poi_identity import matches_any
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
 from app.common.external_client import BACKGROUND, INTERACTIVE, ExternalClient, fetch_json, redact_secrets
 from app.common.http_client import api_client, contact_user_agent
@@ -67,6 +69,8 @@ _otm_geo_client: ExternalClient = ExternalClient(
     timeout_seconds=settings.places_timeout_seconds,
     min_interval_seconds=0.35,
     rate_group="otm",
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 _otm_radius_client: ExternalClient = ExternalClient(
     name="otm_radius",
@@ -76,6 +80,8 @@ _otm_radius_client: ExternalClient = ExternalClient(
     min_interval_seconds=0.35,
     retry_attempts=1,
     rate_group="otm",
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 _otm_detail_client: ExternalClient = ExternalClient(
     name="otm_detail",
@@ -85,6 +91,8 @@ _otm_detail_client: ExternalClient = ExternalClient(
     min_interval_seconds=1.0,
     retry_attempts=1,
     rate_group="otm",
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 # Nominatim 政策：公共实例 1 rps —— 显式放宽车道间隔到 1.1s；瞬时失败重试 1 次
 # （重试同样过 1.1s 槽，不会跌破政策速率）。
@@ -95,6 +103,8 @@ _nominatim_client: ExternalClient = ExternalClient(
     timeout_seconds=settings.places_timeout_seconds,
     min_interval_seconds=1.1,
     retry_attempts=1,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 

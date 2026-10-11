@@ -35,6 +35,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from tests.llm_binding import FakeBinding
+
 # 直跑（uv run python tests/experience_cases/runner.py）时的导入根；pytest 下幂等
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -226,7 +228,7 @@ def e01_requirements() -> TripRequirements:
 def _fake_client_of(raw: str) -> Callable[[], Any]:
     """clarify.get_llm_client 的替身工厂：固定返回一份脚本抽取输出。"""
 
-    class _FakeClient:
+    class _FakeClient(FakeBinding):
         @staticmethod
         def complete(prompt: str, system_prompt: str = "", temperature: float = 0) -> str:
             return raw
@@ -471,7 +473,11 @@ def check_generation_pipeline_preserves_requirements(params: dict) -> CheckOutco
             patch.object(itinerary_generation, "run_generate_day", fake_day),
             patch.object(itinerary_generation, "run_generate_trip_stream", fake_stream),
             patch.object(itinerary_generation, "_submit_budget_recalculate", lambda itinerary_id: None),
-            patch.object(itinerary_generation.enricher_pool, "submit", lambda task, *args: None),
+            patch.object(
+                itinerary_generation.enricher_pool,
+                "submit",
+                lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+            ),
             patch.object(itinerary_generation.generation_pool, "submit", lambda task, *args: task(*args)),
         ):
             body = GenerateTripRequest(
@@ -485,7 +491,7 @@ def check_generation_pipeline_preserves_requirements(params: dict) -> CheckOutco
                 requirementsStruct=struct,
             )
             detail = itinerary_generation.generate(1, body)
-        itinerary_generation.reset_active_planning_for_tests()
+        itinerary_generation.planning_tasks.reset()
         trip_id = int(detail["id"])
 
         research = captured.get("research_request")

@@ -10,8 +10,9 @@ import json
 import logging
 
 from app.agent.data.web_search import search_channel_ready
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.external_client import BACKGROUND, ExternalClient
-from app.common.llm_client import get_role_client
+from app.common.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,8 @@ _price_client: ExternalClient = ExternalClient(
     ttl_seconds=3600,
     negative_ttl_seconds=180,
     timeout_seconds=30,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 _HOTEL_SYSTEM_PROMPT = (
@@ -67,7 +70,7 @@ def query_live_price(city: str, hotel_name: str, checkin_date: str | None) -> di
     question = f"{city}「{hotel_name}」标准房型 目前一晚 网络挂牌价大约多少人民币？只报一个有代表性的每晚价格。"
 
     def _load() -> dict | None:
-        client = get_role_client("search")
+        client = get_llm_client("search")
         raw = client.complete(
             question,
             system_prompt=_HOTEL_SYSTEM_PROMPT,
@@ -87,7 +90,7 @@ def query_live_food_price(city: str, restaurant_name: str) -> dict | None:
     question = f"{city}「{restaurant_name}」正常一餐人均消费大约多少人民币？只报一个有代表性的人均价格，已换算人民币。"
 
     def _load() -> dict | None:
-        client = get_role_client("search")
+        client = get_llm_client("search")
         raw = client.complete(
             question,
             system_prompt=_FOOD_SYSTEM_PROMPT,

@@ -10,13 +10,12 @@ import logging
 
 from app.agent.tools.function_calling import FunctionCallingError, run_tool_call_loop
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import model_for
 
 logger = logging.getLogger(__name__)
 
 
 def run_butler_note(req: dict) -> str:
-    client = get_llm_client()
+    client = get_llm_client("fast")
     preferences = "、".join(req.get("preferences") or []) or "无特别偏好"
     system = (
         "你是一对一专属旅游管家。行程已按用户偏好与特别要求安排完毕，请用管家的口吻向用户讲解你的安排思路，"
@@ -54,7 +53,7 @@ def run_poi_intros(city: str, names: list[str], intent: str | None = None) -> di
     不写库、不改行程。FC 失败时回退为无工具的单轮 complete（保持可用性）。
     intent 非空时要求每段介绍带一句与旅行意图的连接；为空时写口碑/地理理由。
     """
-    client = get_llm_client()
+    client = get_llm_client("fast")
     # 意图连接句规则随 intent 有无切换（无 intent 时降级为口碑/地理理由）
     link_rule = (
         f"每段末尾用一句话点出该地点与本趟旅行意图「{intent}」的连接。"
@@ -86,7 +85,6 @@ def run_poi_intros(city: str, names: list[str], intent: str | None = None) -> di
             client,
             messages,
             max_rounds=2,
-            model=model_for("fast"),
             max_tokens=max_tokens,
         )
         message = loop.get("message") or {}
@@ -104,7 +102,6 @@ def run_poi_intros(city: str, names: list[str], intent: str | None = None) -> di
             system_prompt=system,
             temperature=0.3,
             max_tokens=max_tokens,
-            model=model_for("fast"),
         )
     text = raw.strip()
     if text.startswith("```"):
@@ -137,7 +134,6 @@ def run_poi_intros(city: str, names: list[str], intent: str | None = None) -> di
                 system_prompt=retry_system,
                 temperature=0.3,
                 max_tokens=max_tokens,
-                model=model_for("fast"),
             )
             text2 = raw2.strip()
             if text2.startswith("```"):

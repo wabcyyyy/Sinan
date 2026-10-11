@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 import re
-import threading
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -32,12 +31,17 @@ from sqlalchemy import select, update
 
 from app.agent import (
     BUDGET_OVERAGE_MARK,
+    RunLimits,
+    current_limits,
     destination_problem,
+    new_task_budget,
     observe_run,
+    phase_scope,
     run_generate_day,
     run_generate_trip_stream,
     run_plan_context,
     use_scene,
+    use_task_limits,
     validate_plans,
 )
 from app.common import cache_store
@@ -64,6 +68,7 @@ from app.services import (
     itinerary_query,
     itinerary_version,
     llm_gateway_service,
+    planning_tasks,
     stay_hotels,
 )
 from app.services import preferences as preferences_service
@@ -102,9 +107,9 @@ class _StageClock:
 
     __slots__ = ("_fired", "_itinerary_id", "_submit")
 
-    def __init__(self, itinerary_id: int) -> None:
+    def __init__(self, itinerary_id: int, started_at: float | None = None) -> None:
         self._itinerary_id = itinerary_id
-        self._submit = time.monotonic()
+        self._submit = started_at if started_at is not None else time.monotonic()
         self._fired: set[str] = set()
 
     def mark(self, stage: str) -> None:
@@ -128,29 +133,6 @@ enricher_pool = _SlotExecutor("travel-enricher", 2, _ENRICHER_SLOTS)
 # submit_planning 登记、plan_days finally 注销；recover_one 开头查到即不碰。
 # 前提与 event_hub/幂等一致：**单进程**。多实例部署需升级为 DB 租约（带 TTL 的
 # 行级心跳），不能只靠本表。
-_ACTIVE_PLANNING: set[int] = set()
-_ACTIVE_PLANNING_LOCK = threading.Lock()
-
-
-def is_planning_active(itinerary_id: int) -> bool:
-    with _ACTIVE_PLANNING_LOCK:
-        return int(itinerary_id) in _ACTIVE_PLANNING
-
-
-def _register_planning(itinerary_id: int) -> None:
-    with _ACTIVE_PLANNING_LOCK:
-        _ACTIVE_PLANNING.add(int(itinerary_id))
-
-
-def _unregister_planning(itinerary_id: int) -> None:
-    with _ACTIVE_PLANNING_LOCK:
-        _ACTIVE_PLANNING.discard(int(itinerary_id))
-
-
-def reset_active_planning_for_tests() -> None:
-    """测试夹具用：把"提交了但池被 patch 成不执行"的登记清掉，防跨用例污染。"""
-    with _ACTIVE_PLANNING_LOCK:
-        _ACTIVE_PLANNING.clear()
 
 
 @dataclass
@@ -213,7 +195,11 @@ class GenerateCommand:
 
 
 def submit_planning(
-    user_id: int, itinerary_id: int, command: GenerateCommand, context: dict[str, Any] | None = None
+    user_id: int,
+    itinerary_id: int,
+    command: GenerateCommand,
+    context: dict[str, Any] | None = None,
+    limits: RunLimits | None = None,
 ) -> None:
     """把一次生成排进有界池；满了直接抛 `TaskRejected`（端点转 429）。
 
@@ -223,11 +209,11 @@ def submit_planning(
     登记活跃表（P1-1）：从提交这一刻起（含排队期）该 itinerary 就算"活着"，
     recovery 的存活探测据此跳过，最坏静默 19 分钟的研究段不再被误判成僵尸双跑。
     """
-    _register_planning(itinerary_id)
+    limits = planning_tasks.acquire(user_id, itinerary_id, limits)
     try:
-        generation_pool.submit(plan_days, user_id, itinerary_id, command, context)
+        generation_pool.submit(plan_days, user_id, itinerary_id, command, context, limits)
     except BaseException:
-        _unregister_planning(itinerary_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
         raise
 
 
@@ -237,7 +223,13 @@ def submit_planning(
 _CONTEXT_FP_KEY = "_requirements_fp"
 
 
-def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context: dict[str, Any] | None = None) -> None:
+def plan_days(
+    user_id: int,
+    itinerary_id: int,
+    command: GenerateCommand,
+    context: dict[str, Any] | None = None,
+    limits: RunLimits | None = None,
+) -> None:
     # BYOK 路由（2026-10-02 拍板）：contextvars 不跨线程池传播，必须在显式持 user_id 的
     # 工作线程入口内进入。plan_days 一处覆盖研究段/整段流式/逐日兜底全部 agent 调用；
     # 网关失败响亮报错、不回退默认通道（成本不转嫁 + 模型家族不割裂）。
@@ -246,7 +238,12 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
     # 409 裸穿 generation_pool 还会漏 _unregister_planning 造成注册表泄漏（终审补丁）。
     # M5b：timing 从本函数第一条语句起算——「submit→各里程碑」的 submit 就是
     # 任务体开始执行这一刻（排队耗时不在本函数视野内，如实不含）。
-    timing = _StageClock(itinerary_id)
+    limits = (
+        limits
+        if limits is not None
+        else planning_tasks.task_limits(itinerary_id) or new_task_budget(user_id, itinerary_id)
+    )
+    timing = _StageClock(itinerary_id, limits.started_at)
     try:
         route = llm_gateway_service.resolve_route(user_id)
     except ApiError as exc:
@@ -255,10 +252,11 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
         day_persistence.fail_trip(itinerary_id, str(exc) or None, user_facing=True)
         itinerary_query.evict_detail(user_id, itinerary_id)
         timing.mark("terminal")
-        _unregister_planning(itinerary_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
         return
-    with use_route(route):
+    with use_route(route), use_task_limits(limits):
         try:
+            limits.check("deadline")
             if not _shell_exists(itinerary_id):
                 logger.error("itinerary shell %s not visible before planning; abort", itinerary_id)
                 raise ApiError(500, "行程壳数据不存在，无法开始生成")
@@ -282,7 +280,11 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
                 # 用量报表把"生成的研究成本"记到匿名桶里。
                 # M1b：完整请求进研究层（真实 persons/budget/hotel_tier/结构化需求，
                 # 不再由 plan_context 内部 persons=1 重建）。
-                with use_scene("research"):
+                with (
+                    use_scene("research"),
+                    observe_run(request_id=f"itinerary-{itinerary_id}"),
+                    phase_scope(settings.research_deadline_seconds),
+                ):
                     context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
                 context[_CONTEXT_FP_KEY] = fingerprint
             # M5b：首个研究上下文可用（本轮返回或恢复复用）即记 research 里程碑
@@ -368,13 +370,11 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             # R2-F3：原始异常文本（含上游 URL）只进日志；SSE 错误帧与 plan_note 都给用户文案。
             # API-1：统一文案在通道级故障（如 LLM 网关连不上、100% 失败）时无诊断价值，
             # 稳定错误码（异常类别）随 error 帧与 plan_note 透出，可按码与 usage 库对归因。
-            code = error_code(exc)
-            generation_events.error(itinerary_id, code, user_reason(exc), True)
-            day_persistence.fail_trip(itinerary_id, str(exc) or None, code=code)
+            planning_tasks.finish_failure(itinerary_id, exc)
             itinerary_query.evict_detail(user_id, itinerary_id)
             timing.mark("terminal")
         finally:
-            _unregister_planning(itinerary_id)
+            planning_tasks.release(itinerary_id, limits.task_id, core_only=True)
 
 
 def _generate_day_with_trace(
@@ -442,7 +442,7 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
       参数变化 409）+ 活跃注册表（恢复扫描的存活探测据此跳过，见 generation_recovery）。
     """
     main = itinerary_query.find_owned_main(user_id, itinerary_id)
-    if main.gen_state == "GENERATING" or main.status == 1 or is_planning_active(itinerary_id):
+    if main.gen_state == "GENERATING" or main.status == 1 or planning_tasks.is_active(itinerary_id):
         # 在跑的 plan_days / 恢复续跑拥有这趟行程（含各未完成天），此刻抢跑同一天
         # 只会互相覆盖；用户等它终态后再来自救。
         raise ApiError(409, "行程正在生成中，请等本次生成结束后再重试")
@@ -455,10 +455,12 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
     if day.generation_status == "RUNNING":
         raise ApiError(409, "这一天正在生成中，请勿重复操作")
 
-    if not generation_gate.try_day_lock(itinerary_id, day_no):
-        raise ApiError(409, "这一天正在生成中，请稍后再试")
-    _register_planning(itinerary_id)
+    limits = planning_tasks.acquire(user_id, itinerary_id)
+    locked = False
     try:
+        locked = generation_gate.try_day_lock(itinerary_id, day_no)
+        if not locked:
+            raise ApiError(409, "这一天正在生成中，请稍后再试")
         # 恢复侧同源：从主表反推生成参数（origin_city/intent/requirements 一并读回），
         # 指纹与首次生成一致，幂等门不会把这次补齐拒在门外。函数内导入防环：
         # generation_recovery 模块级 import 本模块，反向只能在运行期解析。
@@ -470,14 +472,16 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
         generation_gate.verify_action(day, action_id, fingerprint)
         day_persistence.mark_running(day.id, action_id, fingerprint)
         generation_events.day_start(itinerary_id, day_no)
-        _regenerate_day_core(user_id, itinerary_id, day, command, day_no, action_id, fingerprint)
-        # 成功收尾与 plan_days 共用 _finish：预算是交付的一部分、终态按天状态重算
-        # （补齐最后缺口天时行程升级 COMPLETED）、版本快照与 SSE 终帧照发。
-        _finish(user_id, itinerary_id, command, snapshot_summary=f"重生成第 {day_no} 天")
+        with use_task_limits(limits):
+            _regenerate_day_core(user_id, itinerary_id, day, command, day_no, action_id, fingerprint)
+            # 成功收尾与 plan_days 共用 _finish：预算是交付的一部分、终态按天状态重算
+            # （补齐最后缺口天时行程升级 COMPLETED）、版本快照与 SSE 终帧照发。
+            _finish(user_id, itinerary_id, command, snapshot_summary=f"重生成第 {day_no} 天")
         return itinerary_query.detail(user_id, itinerary_id)
     finally:
-        _unregister_planning(itinerary_id)
-        generation_gate.release_day_lock(itinerary_id, day_no)
+        planning_tasks.release(itinerary_id, limits.task_id, core_only=True)
+        if locked:
+            generation_gate.release_day_lock(itinerary_id, day_no)
 
 
 def _regenerate_day_core(
@@ -503,7 +507,11 @@ def _regenerate_day_core(
             # 研究上下文不落库，重生成与「无检查点的恢复」同口径重跑一次研究
             # （恢复腿 submit_planning(context=None) 也是这么做的），保证补齐天
             # 与首次生成同一质量；scene 归位口径同 plan_days。
-            with use_scene("research"):
+            with (
+                use_scene("research"),
+                observe_run(request_id=f"itinerary-{itinerary_id}"),
+                phase_scope(settings.research_deadline_seconds),
+            ):
                 context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
             context[_CONTEXT_FP_KEY] = fingerprint
             _generate_day_with_trace(itinerary_id, command, context, day_no, [], chosen_hotel, action_id, fingerprint)
@@ -884,6 +892,9 @@ def _reset_stream_day(itinerary_id: int, day: ItineraryDay, fingerprint: str, is
         itinerary_id,
         reason,
     )
+    limits = current_limits()
+    if limits is not None:
+        limits.record_terminal_reset()
     day_persistence.reset_day_pending(day.id, action_id, fingerprint, reason)
 
 
@@ -989,6 +1000,12 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
     if main is None:
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
+    limits = current_limits()
+    if limits is not None and limits.remaining() <= 0:
+        all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
+        day_persistence.complete_trip(itinerary_id, all_succeeded)
+        itinerary_query.evict_detail(user_id, itinerary_id)
+        return
     stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
     # 最终预算是交付的一部分，不能依赖可能已满的后台富化队列。
     budget_engine.recalculate(itinerary_id)
@@ -1012,10 +1029,17 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         # M5b（spec §11）：富化任务绑定提交时的规划修订——core_ready 后用户的编辑
         # 会推进 revision，旧富化不得覆盖新行程；比对在富化侧写 suggestions_json
         # 的事务内逐次做（见 itinerary_enricher._store_suggestion_rows）。
+        planning_tasks.mark_enriching(itinerary_id, True)
         enricher_pool.submit(
-            itinerary_enricher.enrich_itinerary, user_id, itinerary_id, command, int(main.planning_revision or 0)
+            itinerary_enricher.enrich_itinerary,
+            user_id,
+            itinerary_id,
+            command,
+            int(main.planning_revision or 0),
+            current_limits(),
         )
     except TaskRejected as rejected:
+        planning_tasks.mark_enriching(itinerary_id, False)
         logger.warning("itinerary enrichment rejected for %s: %s", itinerary_id, rejected)
     itinerary_query.evict_detail(user_id, itinerary_id)
 
@@ -1169,7 +1193,7 @@ def generate(user_id: int, body: GenerateTripRequest, idempotency_key: str | Non
 
     try:
         submit_planning(user_id, itinerary_id, command)
-    except TaskRejected as exc:
+    except (TaskRejected, ApiError) as exc:
         # 生成池满：快速失败返回 429，绝不退回请求线程同步生成。
         # 壳数据置为失败终态（该状态不满足自动续跑条件），用户可见并可重新创建。
         with session_scope() as session:

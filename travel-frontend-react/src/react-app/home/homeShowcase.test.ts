@@ -1,6 +1,7 @@
+import { activateIntakeOwner, intakeSessionStorage } from './intakeStorage'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { destinations, inspirationTemplates } from '../data'
 import { HomeShowcase, SHOWCASE_CITIES, SHOWCASE_TEMPLATES, showcaseCityHref, showcaseTemplateHref } from './HomeShowcase'
 import { HomeStudio } from './HomeStudio'
@@ -56,7 +57,7 @@ describe('showcase 深链拼串（与 explore 页入口契约同构）', () => {
 })
 
 describe('HomeStudio × HomeShowcase（idle-only 挂载）', () => {
-  afterEach(() => sessionStorage.removeItem('sinan-intake-v1'))
+  afterEach(() => intakeSessionStorage.removeItem('current'))
 
   it('idle：展示区跟在一屏余量之后上屏', () => {
     const html = renderToStaticMarkup(createElement(HomeStudio, { query: new URLSearchParams() }))
@@ -77,3 +78,5 @@ describe('HomeStudio × HomeShowcase（idle-only 挂载）', () => {
     expect(html).not.toContain('home-showcase')
   })
 })
+
+beforeEach(() => { activateIntakeOwner(null) })

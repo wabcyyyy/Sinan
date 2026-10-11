@@ -15,13 +15,20 @@ from typing import Any
 
 from app.agent.core.poi_identity import strip_name_annotation
 from app.agent.grounding.existence import NOT_FOUND, ResolveResult, pick_row
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
 from app.common.external_client import ExternalClient, fetch_json
 from app.common.http_client import api_client
 
 # 密钥不进缓存键：失败日志会把缓存键原样打出来。
 _amap_client = ExternalClient(
-    name="existence_amap", ttl_seconds=24 * 3600, negative_ttl_seconds=300, timeout_seconds=8, max_entries=2048
+    name="existence_amap",
+    ttl_seconds=24 * 3600,
+    negative_ttl_seconds=300,
+    timeout_seconds=8,
+    max_entries=2048,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 _places_client = ExternalClient(
     name="existence_places",
@@ -29,6 +36,8 @@ _places_client = ExternalClient(
     negative_ttl_seconds=300,
     timeout_seconds=8,
     max_entries=2048,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 

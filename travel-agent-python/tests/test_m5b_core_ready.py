@@ -74,7 +74,7 @@ def env(monkeypatch, tmp_path):
     state_and_sessions.reset_for_tests()
     with db_session.session_scope() as session:
         session.add(SysUser(username="alice", password=user_service.hash_password(PASSWORD), status=1, role="user"))
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     yield
     db_session.init_engine(None, None)
     cache_store.reset_for_tests()
@@ -243,8 +243,9 @@ def test_core_ready_published_when_all_days_succeed(client, monkeypatch, capture
     assert ready[0]["daysEmitted"] == 2, "daysEmitted 来自 DB SUCCEEDED 天数，不从事件流推导"
     assert main.gen_state == "COMPLETED" and main.status == 2, "complete 收尾含义不变，CORE_READY 是过程态"
     assert _events_of(captured_events, "complete")[0]["status"] == "COMPLETED"
-    # 富化任务提交时捕获提交时的规划修订（M5b 绑定富化）
-    assert calls["enrich"] and calls["enrich"][0][-1] == main.planning_revision
+    # 富化任务提交时捕获提交时的规划修订（M5b 绑定富化）；参数序为
+    # (user_id, itinerary_id, command, revision, limits)，revision 固定在下标 3。
+    assert calls["enrich"] and calls["enrich"][0][3] == main.planning_revision
 
 
 def test_pending_day_suppresses_core_ready(client, monkeypatch, captured_events) -> None:
@@ -302,7 +303,7 @@ def test_recovery_treats_core_ready_as_in_progress(client, monkeypatch, captured
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: None)
     _fake_agents(monkeypatch, [_plan(1, ["西湖"]), _plan(2, ["灵隐寺"])])
     detail = _trip(client, {"city": CITY, "days": 2})
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     trip_id = detail["id"]
     with db_session.session_scope() as session:
         for day in session.execute(select(ItineraryDay)).scalars().all():
@@ -663,8 +664,9 @@ def test_finish_submits_enrichment_with_current_revision(client, monkeypatch, ca
     main = _get_main(detail["id"])
     assert enrich_submits, "富化任务已提交"
     task, args = enrich_submits[0]
-    _user_id, itinerary_id, _command, revision = args
+    _user_id, itinerary_id, _command, revision, limits = args
     assert task is itinerary_enricher.enrich_itinerary
     assert itinerary_id == detail["id"]
     assert revision == main.planning_revision, "绑定的是提交时刻的修订号"
+    assert limits is not None, "富化任务继承本次 run 的限额（RunLimits）"
     assert _events_of(captured_events, "complete")[0]["status"] == "COMPLETED"

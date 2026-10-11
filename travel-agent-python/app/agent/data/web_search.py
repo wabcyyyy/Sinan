@@ -15,13 +15,13 @@ import json
 import logging
 import re
 
-from app.agent.runtime.run_limits import current_limits
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.agent.runtime.trace import record_event
 from app.common.addons import addons
 from app.common.config import settings
 from app.common.external_client import BACKGROUND, ExternalClient, redact_secrets
-from app.common.llm_client import get_role_client
-from app.common.model_registry import binding, configured, model_for
+from app.common.llm_client import get_llm_client
+from app.common.model_registry import binding, configured
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,8 @@ _search_client: ExternalClient = ExternalClient(
     ttl_seconds=1800,
     negative_ttl_seconds=120,
     timeout_seconds=60,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 
@@ -100,7 +102,7 @@ def web_search_text(question: str, *, max_tokens: int = 400) -> str:
     if not web_search_enabled() or not search_channel_ready() or not question or not _check_budget("web_search_text"):
         return ""
     try:
-        client = get_role_client("search")
+        client = get_llm_client("search")
         return client.complete(
             question.strip()[:500],
             system_prompt=(
@@ -109,7 +111,6 @@ def web_search_text(question: str, *, max_tokens: int = 400) -> str:
             temperature=0.1,
             max_tokens=max_tokens,
             enable_search=True,
-            model=model_for("fast"),
         ).strip()
     except Exception as exc:
         logger.warning("web search failed: %s", exc)
@@ -125,14 +126,13 @@ def web_search_json(question: str, *, schema_hint: str, max_tokens: int = 800) -
     def _load() -> dict | list | None:
         if not _check_budget("web_search_json"):
             return None
-        client = get_role_client("search")
+        client = get_llm_client("search")
         raw = client.complete(
             question.strip()[:500],
             system_prompt=(f"你是旅行资料检索助手。基于联网搜索结果回答，不要编造。只输出 JSON，结构：{schema_hint}"),
             temperature=0.1,
             max_tokens=max_tokens,
             enable_search=True,
-            model=model_for("fast"),
             json_mode=True,
         ).strip()
         try:

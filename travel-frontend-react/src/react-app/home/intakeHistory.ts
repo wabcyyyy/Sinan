@@ -1,6 +1,7 @@
+import { intakeHistoryStorage } from './intakeStorage'
 import type { IntakeMessage, IntakeSlots } from './intakeSlots'
 
-export const INTAKE_SESSIONS_STORAGE_KEY = 'sinan-intake-sessions-v1'
+export const INTAKE_SESSIONS_STORAGE_KEY = 'history'
 
 export interface IntakeSessionRecord {
   id: string
@@ -28,7 +29,7 @@ export function deriveSessionTitle(slots: IntakeSlots, firstMessage: string): st
 
 export function listIntakeSessions(): IntakeSessionRecord[] {
   try {
-    const raw = localStorage.getItem(INTAKE_SESSIONS_STORAGE_KEY)
+    const raw = intakeHistoryStorage.getItem(INTAKE_SESSIONS_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -75,7 +76,7 @@ export function saveIntakeSession(data: {
   // 最多保留 10 条草稿
   const trimmed = sessions.slice(0, 10)
   try {
-    localStorage.setItem(INTAKE_SESSIONS_STORAGE_KEY, JSON.stringify(trimmed))
+    intakeHistoryStorage.setItem(INTAKE_SESSIONS_STORAGE_KEY, JSON.stringify(trimmed))
   } catch {
     // ignore
   }
@@ -85,7 +86,7 @@ export function saveIntakeSession(data: {
 export function deleteIntakeSession(id: string): void {
   const sessions = listIntakeSessions().filter((s) => s.id !== id)
   try {
-    localStorage.setItem(INTAKE_SESSIONS_STORAGE_KEY, JSON.stringify(sessions))
+    intakeHistoryStorage.setItem(INTAKE_SESSIONS_STORAGE_KEY, JSON.stringify(sessions))
   } catch {
     // ignore
   }
@@ -93,7 +94,7 @@ export function deleteIntakeSession(id: string): void {
 
 export function clearAllIntakeSessions(): void {
   try {
-    localStorage.removeItem(INTAKE_SESSIONS_STORAGE_KEY)
+    intakeHistoryStorage.removeItem(INTAKE_SESSIONS_STORAGE_KEY)
   } catch {
     // ignore
   }

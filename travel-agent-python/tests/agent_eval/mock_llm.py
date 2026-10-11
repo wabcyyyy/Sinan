@@ -108,12 +108,7 @@ def catalog(city: str, *, coords: bool = True) -> dict:
     for rows in pool.values():
         for row in rows:
             issue_evidence(row)
-    return {
-        "attractions": _attractions(city, coords=coords),
-        "foods": _foods(city, coords=coords),
-        "hotels": _hotels(city, coords=coords),
-        "consumption": {"city": city, "meal_price": 60, "transport_price": 35, "hotel_price": 300},
-    }
+    return {**pool, "consumption": {"city": city, "meal_price": 60, "transport_price": 35, "hotel_price": 300}}
 
 
 @traced("tool", "fixture.search_attractions")
@@ -163,7 +158,9 @@ def resolve_poi(name: str, city: str, *, coords: bool = True) -> ResolveResult:
         for poi in group:
             if poi["name"] != name:
                 continue
+            ticket = issue_evidence(poi)
             return ResolveResult(
+                evidence_id=ticket.evidence_id if ticket else None,
                 state=VERIFIED,
                 provider=str(poi.get("source") or "opentripmap"),
                 name=name,

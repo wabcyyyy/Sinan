@@ -121,6 +121,8 @@ class Settings(BaseSettings):
     agent_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     agent_internal_token: str = ""
     agent_deadline_seconds: float = 90
+    itinerary_deadline_seconds: float = 300
+    research_deadline_seconds: float = 60
     trusted_proxies: str = "127.0.0.1,0:0:0:0:0:0:0:1,::1"
 
     # ---- LLM ----
@@ -365,19 +367,14 @@ class Settings(BaseSettings):
                 "AGENT_HOST 绑定非回环地址但未配置 AGENT_INTERNAL_TOKEN，"
                 "生成类端点将匿名暴露并消耗 LLM 配额；请设置令牌或改回 127.0.0.1"
             )
-        # 会话签名密钥：默认空串必须拦下——那等于任何人都能伪造登录票。
         if len(self.jwt_secret) < 32:
             raise RuntimeError(
                 "JWT_SECRET 未配置或短于 32 字符：本服务负责签发会话票，弱密钥可被伪造登录；"
                 "请在 .env 里配置与（双跑期）Java 侧一致的密钥"
             )
-        # R1-5：TRUSTED_PROXIES 里任何一项写错，app.common.client_ip 都会静默不信任那台
-        # 代理（症状："所有访客共用代理 IP 一个限速桶"，倒不回配置），所以启动即拒。
         unparsable = [item.strip() for item in self.trusted_proxies.split(",") if item.strip() and not _proxy_ok(item)]
         if unparsable:
             raise RuntimeError(f"TRUSTED_PROXIES 含无法解析的条目：{unparsable}（支持 IP 或 CIDR，如 172.16.0.0/12）")
-        # BYOK_ENC_KEY 配置了就必须是「解码后恰 32 字节」的 urlsafe base64——错配的 key
-        # 只会让全部存量密文在运行期解不开，启动即拒（空值派生回落路径不受影响）。
         raw_byok = self.byok_enc_key.strip()
         if raw_byok:
             try:
@@ -386,8 +383,6 @@ class Settings(BaseSettings):
                 material = b""
             if len(material) != 32:
                 raise RuntimeError("BYOK_ENC_KEY 非法：须为解码后恰 32 字节的 urlsafe base64 串")
-        # 明文链路上的会话票会被同网段摘取。compose 的 nginx 目前只 listen 80，
-        # 所以这里不 fail-fast，只把风险写在启动日志里（改成 TLS 后请删掉显式 false）。
         if not self.auth_cookie_secure and self.agent_host not in LOCAL_HOSTS:
             logger.warning(
                 "AUTH_COOKIE_SECURE=false 且绑定 %s：会话票将以明文 Cookie 传输，"

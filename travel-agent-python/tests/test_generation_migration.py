@@ -61,7 +61,7 @@ def env(monkeypatch, tmp_path):
     with db_session.session_scope() as session:
         session.add(SysUser(username="alice", password=user_service.hash_password(PASSWORD), status=1, role="user"))
     # 事件与幂等锁都走进程内兜底：Redis 指向不可达端口
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     yield
     db_session.init_engine(None, None)
     cache_store.reset_for_tests()
@@ -163,7 +163,11 @@ def _fake_agents(monkeypatch, per_day: list[DailyPlan], stream_events: list[dict
     monkeypatch.setattr(itinerary_generation, "run_generate_day", fake_day)
     monkeypatch.setattr(itinerary_generation, "run_generate_trip_stream", fake_stream)
     monkeypatch.setattr(itinerary_generation, "_submit_budget_recalculate", lambda itinerary_id: None)
-    monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", lambda task, *args: None)  # 富化留到单独用例验证
+    monkeypatch.setattr(
+        itinerary_generation.enricher_pool,
+        "submit",
+        lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+    )  # 富化留到单独用例验证
     return calls
 
 
@@ -601,7 +605,7 @@ def broken_trip(client: TestClient, monkeypatch) -> int:
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: None)
     _fake_agents(monkeypatch, [_plan(1, ["西湖"])])
     detail = _trip(client, {"city": CITY, "days": 2})
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     with db_session.session_scope() as session:
         for day in session.execute(select(ItineraryDay)).scalars().all():
             day.generation_status = "PENDING"
@@ -678,7 +682,7 @@ def test_recovery_resumes_failed_trip_only_once(broken_trip: int, monkeypatch) -
     # 挡）。这里按生产路径收尾第二次尝试的前件：plan_days 真跑完（finally 注销注册表）、
     # 重拉的生成再次失败（fail_trip 有意不清 gen_resumed）、resume 锁已过期释放——
     # 此时唯一能挡住重拉的就是 gen_resumed 读取闸（防死循环护栏本体）。
-    itinerary_generation._unregister_planning(broken_trip)
+    itinerary_generation.planning_tasks.release(broken_trip)
     generation_gate.release_resume_lock(broken_trip)
     submitted.clear()
     with db_session.session_scope() as session:
@@ -722,12 +726,12 @@ def test_recovery_skips_trip_registered_active_in_process(broken_trip: int, monk
     """P1-1 存活探测：注册表里的行程即使 updated_at 超时也不许二次放行。"""
     submitted: list[int] = []
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: submitted.append(args[1]))
-    itinerary_generation._register_planning(broken_trip)
+    itinerary_generation.planning_tasks.acquire(1, broken_trip)
     try:
         assert generation_recovery.recover() == 0
         assert submitted == [], "研究段静默 19 分钟 ≫ 5 分钟阈值：活着 ≠ 僵尸，recovery 不许双跑"
     finally:
-        itinerary_generation._unregister_planning(broken_trip)
+        itinerary_generation.planning_tasks.release(broken_trip)
     assert generation_recovery.recover() == 0, "注销后僵尸分支照常接手（Java 口径返回 0）"
     assert submitted == [broken_trip]
 
@@ -760,7 +764,11 @@ def test_recovery_six_day_stream_break_resumes_without_whole_rerun(client: TestC
     # 经 _run_inline 绕开提交点）；预算重算/行程富化与本用例断言无关，提交一律空转，
     # 免得撞上 "cannot schedule new futures after shutdown"（_submit_budget_recalculate
     # 只挡 TaskRejected，关停期的 RuntimeError 会炸穿 plan_days 主循环）。
-    monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", lambda task, *args: None)
+    monkeypatch.setattr(
+        itinerary_generation.enricher_pool,
+        "submit",
+        lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+    )
     detail = _trip(client, {"city": CITY, "days": 6, "stayNights": 5})
     trip_id = detail["id"]
 
@@ -853,7 +861,7 @@ def test_recovery_resumes_partially_failed_trip_once(broken_trip: int, monkeypat
         assert main.gen_resumed is True and main.gen_state == "GENERATING"
 
     # 恢复后再失败：与全失败行程同一面闸——gen_resumed=1 封顶，不重拉
-    itinerary_generation._unregister_planning(broken_trip)
+    itinerary_generation.planning_tasks.release(broken_trip)
     generation_gate.release_resume_lock(broken_trip)
     submitted.clear()
     with db_session.session_scope() as session:
