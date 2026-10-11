@@ -56,9 +56,34 @@ try {
   await page.screenshot({ path: `${artifacts}/demo-mobile.png`, fullPage: true })
   await page.reload({ waitUntil: 'networkidle' })
   assert.match(await page.locator('output').textContent(), /1\/7/)
+  await page.getByRole('button', { name: '播放', exact: true }).click()
+  await page.getByRole('button', { name: '查看编辑示例', exact: true }).waitFor({ state: 'visible' })
+  await page.waitForFunction(() => document.querySelector('output')?.textContent?.includes('行程就绪'), null, { timeout: 15000 })
+  await page.getByRole('button', { name: '重置', exact: true }).click()
+  assert.match(await page.locator('output').textContent(), /1\/7/)
   assert.equal(await page.evaluate(() => localStorage.getItem('sinan-username')), 'existing-user-do-not-touch')
   assert.deepEqual(apiRequests, [])
   assert.deepEqual(errors, [])
+  // A second context exercises real MapLibre initialization with a local empty style.
+  // It proves rendering and marker placement, not external tile availability.
+  const mapContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' })
+  const mapPage = await mapContext.newPage()
+  await mapPage.route('**/*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.startsWith('/api/')) { apiRequests.push(url.pathname); return route.abort() }
+    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ version: 8, sources: {}, layers: [] }),
+    })
+    if (url.origin !== new URL(base).origin) return route.abort()
+    return route.continue()
+  })
+  await mapPage.goto(`${base}/demo`)
+  for (let i = 0; i < 6; i++) await mapPage.getByRole('button', { name: '单步', exact: true }).click()
+  await mapPage.locator('.map-pin-wrap').first().waitFor({ state: 'visible' })
+  assert.equal(await mapPage.locator('.map-pin-wrap').count(), 6)
+  await mapPage.screenshot({ path: `${artifacts}/demo-map.png`, fullPage: true })
+  assert.deepEqual(apiRequests, [])
+  await mapContext.close()
   console.log('PASS: replay, pause, step, reset, scoped edit, budget, refresh, mobile and map fallback; zero API calls')
 } finally {
   await browser.close()
