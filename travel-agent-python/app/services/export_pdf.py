@@ -28,7 +28,7 @@ from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTempl
 
 logger = logging.getLogger(__name__)
 
-FONT_NAME = "SimHei"
+FONT_NAME = "SinanSansSC"
 INK = colors.HexColor("#14181f")
 PAPER = colors.HexColor("#fffdf8")
 MASTHEAD = colors.HexColor("#0b2927")
@@ -61,7 +61,7 @@ SOURCE_LABELS = {
 
 
 def register_font(path: Path) -> None:
-    """注册嵌入字体；SimHei 无粗体字面，把粗体也映射到同一支，避免 reportlab 找不到变体。"""
+    """注册随仓静态字体；当前只有 regular，所有字面统一映射到该字体。"""
     pdfmetrics.registerFont(TTFont(FONT_NAME, str(path)))
     pdfmetrics.registerFontFamily(FONT_NAME, normal=FONT_NAME, bold=FONT_NAME, italic=FONT_NAME, boldItalic=FONT_NAME)
 

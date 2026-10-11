@@ -1,6 +1,6 @@
 # Sinan one-click launcher
 # Starts redis(6380), backend-python(8000, serves /api + /api/agent), frontend-react(5173).
-# The Spring module (travel-backend-java/) was deleted after the migration; see ARCHIVED.md to recover it from git history.
+# The Spring module (travel-backend-java/) was deleted after the migration.
 # Services already running are skipped. Background services run without extra console windows.
 # NOTE: keep this file ASCII-only. Windows PowerShell 5.1 reads BOM-less files as ANSI and
 # non-ASCII comments break parsing (start-all.cmd calls powershell.exe, i.e. 5.1).

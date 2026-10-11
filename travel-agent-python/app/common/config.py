@@ -86,8 +86,8 @@ def _get(name: str, default: str) -> str:
 
 
 def _default_font_path() -> str:
-    """印刷字体（simhei）已随「Java 退役」git mv 进本仓，全仓唯一一份。"""
-    return str(BASE_DIR / "app" / "resources" / "fonts" / "simhei.ttf")
+    """随仓 OFL 中文静态字体；许可与固定来源见字体目录。"""
+    return str(BASE_DIR / "app" / "resources" / "fonts" / "SinanSansSC-Regular.ttf")
 
 
 def byok_key_material(raw: str) -> bytes:
@@ -216,7 +216,7 @@ class Settings(BaseSettings):
     byok_enc_key: str = ""
 
     # ---- 导出与上传 ----
-    # PDF 导出（M6）：字体全仓唯一一份 simhei.ttf 已随 Java 退役迁入 app/resources/fonts/。
+    # PDF 导出：随仓 Sinan Sans SC（派生自 Noto，OFL），不依赖宿主机字体。
     # 部署可用 EXPORT_DIR / EXPORT_FONT_FILE 覆盖。
     export_dir: str = Field(default_factory=lambda: str(BASE_DIR / "data" / "export"))
     export_font_file: str = Field(default_factory=_default_font_path)

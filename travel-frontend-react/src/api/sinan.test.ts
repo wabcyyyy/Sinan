@@ -148,6 +148,19 @@ describe('waitForItinerary 终态口径（M6：不再仅以 status==2 判断完�
 })
 
 describe('reportClientError 会话防刷', () => {
+  it('固定回放上的渲染错误也不调用业务 API', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const previous = window.location.href
+    window.history.replaceState(null, '', '/demo')
+    try {
+      reportClientError({ message: 'demo-render-error', source: 'errorboundary', path: '/demo',
+        stack: null, userAgent: 'preview-test', ts: '2026-10-11T00:00:00Z' })
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      window.history.replaceState(null, '', previous)
+    }
+  })
   it('同源同消息去重、会话总量封顶、失败静默', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL) => ({
       ok: true,

@@ -58,6 +58,10 @@ travel-agent-python/.pytest-tmp*/
 
 # 内部工作文档（不入库，本地保留）
 docs/
+!/docs/
+/docs/*
+!/docs/public/
+!/docs/public/**
 
 # 本地侦察/探针临时物（TREK 稀疏克隆、无头截图与 stub 等，不入库）
 .tmp-*

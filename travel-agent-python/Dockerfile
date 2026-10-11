@@ -17,6 +17,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY . .
+COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /app/
 ENV PATH="/app/.venv/bin:$PATH" \
     AGENT_HOST=0.0.0.0
 EXPOSE 8000

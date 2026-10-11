@@ -2,9 +2,6 @@
 # 用法：
 #   docker compose up -d mysql redis
 #   docker compose --profile apps up -d   # 可选：容器化后端(FastAPI) + 前端（需先构建镜像）
-#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml --profile prod up -d
-#                                         # 生产：MySQL + Redis + agent + Caddy 边缘（自动 TLS），
-#                                         # 叠加层负责生产专属覆盖（Secure Cookie 等），见 deploy/README.md
 #
 # 默认仅起 MySQL + Redis，避免与宿主机已占用端口冲突时难排查。
 # 后端已统一到 FastAPI（travel-agent-python 的 agent-python 服务，:8000 承载 /api 与 /api/agent）。
@@ -26,13 +23,12 @@ services:
     volumes:
       - ta-mysql-data:/var/lib/mysql
       # 表结构由后端（travel-agent-python）启动时自动迁移创建（见 app/db/migrations/sql/），
-      # 不需要挂载初始化 SQL；如需兜底种子，后端建表后手工导入 sql/seed_data.sql
+      # 不需要挂载初始化 SQL。
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     # 日志轮转上限（审计 §3.5.5/P1-6）：Docker 默认 json-file 无大小限制，日志与
-    # MySQL 数据同盘会慢性写满。各服务统一 50m×5；生产叠加层（deploy/docker-compose.prod.yml）
-    # 不复制服务定义，经 compose 合并直接继承这里的配置。
+    # MySQL 数据同盘会慢性写满。各服务统一 50m×5。
     logging:
       driver: json-file
       options:
@@ -84,11 +80,12 @@ services:
   # 镜像需自行 build；模型/密钥通过 .env 注入。未开启 apps profile 时不会启动。
 
   agent-python:
-    # apps = 本地容器化演示；prod = 生产（deploy/docker-compose.prod.yml 叠加层配套）
-    profiles: ["apps", "prod"]
+    profiles: ["apps"]
     build:
       context: ./travel-agent-python
       dockerfile: Dockerfile
+      additional_contexts:
+        project: .
     container_name: ta-agent
     env_file:
       - ./travel-agent-python/.env
@@ -114,7 +111,7 @@ services:
       # 才允许后端按可信网段从右往左取跳。网段是 compose 默认 bridge 段。
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,::1,172.16.0.0/12}
       # 分享卡外壳取壳地址（P1-5）：本地演示链路的静态源是 frontend-react 容器；
-      # 生产叠加层按拓扑覆盖为 caddy。与 nginx.conf / deploy/Caddyfile 的 /s/ 反代配套。
+      # 与 nginx.conf 的 /s/ 反代配套。
       FRONTEND_SHELL_URL: http://frontend-react/index.html
       # compose 的 nginx 只 listen 80（明文），Secure Cookie 会被浏览器丢掉；
       # 上 TLS 后删掉这行，回到 config.py 的安全默认值（R1-6）。
@@ -150,8 +147,9 @@ services:
     build:
       context: ./travel-frontend-react
       dockerfile: Dockerfile
-      # 必须显式指 target：Dockerfile 末段是 caddy（生产边缘），漏写会默认
-      # build 到 caddy——5173 吐 Caddy 默认页且 /api 反代消失（重建实测）
+      additional_contexts:
+        project: .
+      # 前端由 nginx 托管并反代 /api。
       target: web
     container_name: ta-frontend
     ports:
@@ -164,45 +162,13 @@ services:
     depends_on:
       # M7-b 切流量：nginx.conf 里 /api/ 的上游已是 FastAPI，依赖跟着改
       - agent-python
-    restart: unless-stopped
-
-  # 生产边缘（仅 prod profile）：单一入口，自动 HTTPS（Let's Encrypt），
-  # 静态托管 + /api 反代二合一；镜像用前端 Dockerfile 的 caddy target（同一构建产物）。
-  # 路由语义与 nginx.conf 对齐：agent 直调面与 /mcp 绝不经边缘可达（R1-8）。
-  caddy:
-    profiles: ["prod"]
-    build:
-      context: ./travel-frontend-react
-      dockerfile: Dockerfile
-      # 复用 build 阶段产物，不重复 npm 构建（构建真相单一源见该 Dockerfile 头注）
-      target: caddy
-    container_name: ta-caddy
-    environment:
-      # 站点域名单一来源：根 .env 的 DOMAIN（Caddy 据此自动签发/续期证书）。
-      # 软默认 localhost（本机预演/漏配时不炸常用命令）；真域名缺失由 deploy/deploy.sh 拦截
-      DOMAIN: ${DOMAIN:-localhost}
-    ports:
-      - "80:80"
-      - "443:443"
-      # HTTP/3（QUIC）走 UDP 443；VPS 防火墙需放行
-      - "443:443/udp"
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      # 证书与 ACME 账户状态：不挂卷则每次重建都重签（触发 Let's Encrypt 限速）
-      - ta-caddy-data:/data
-      - ta-caddy-config:/config
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "5"
-    depends_on:
-      agent-python:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
 volumes:
   ta-mysql-data:
   ta-redis-data:
-  ta-caddy-data:
-  ta-caddy-config:

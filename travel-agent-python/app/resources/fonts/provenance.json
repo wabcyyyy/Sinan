@@ -1,0 +1,11 @@
+{
+  "source": "https://github.com/notofonts/noto-cjk/blob/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/Variable/TTF/Subset/NotoSansSC-VF.ttf",
+  "revision": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+  "source_sha256": "d68bafcb48a2707749396aa12bbbd833cb70401f3a9a689fd2902c7e0d295964",
+  "output_sha256": "49646aa768ae4143ecaeb5153fdb5de3aabd8a8ad34a43ca3760d273aa8815cc",
+  "license": "OFL-1.1",
+  "weight": 400,
+  "subset": false,
+  "fonttools_version": "4.66.1",
+  "command": "uv run python scripts/build_preview_font.py SOURCE.ttf"
+}

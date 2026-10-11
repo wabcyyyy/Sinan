@@ -8,6 +8,8 @@
 # which the git ls-files check below catches. Keep this file ASCII-only: Windows
 # PowerShell 5.1 reads UTF-8 without BOM as ANSI and can mangle non-ASCII comments.
 
+param([switch]$History)
+
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
@@ -44,11 +46,41 @@ $found = New-Object System.Collections.Generic.List[string]
 
 function Add-Hit([string]$rel, [string]$line, [int]$lineNumber) {
     Write-Host "HIT $rel"
-    if ($line.Length -gt 140) { $line = $line.Substring(0, 140) }
-    # Never echo the matched literal back into CI logs.
-    $line = $line -replace '([=:]\s*)["\x27][^"\x27]{3,}["\x27]', '$1"<redacted>"'
-    Write-Host ("  L{0}: {1}" -f $lineNumber, $line)
+    # File/line metadata only: unquoted literals and key-shaped text are secrets too.
+    Write-Host ("  L{0}: suspicious credential (content withheld)" -f $lineNumber)
     if (-not $found.Contains($rel)) { $found.Add($rel) | Out-Null }
+}
+
+if ($History) {
+    $commit = ''
+    $path = ''
+    $seen = @{}
+    $patch = git -C $root log --all --full-history --format='@@COMMIT %H' --patch --no-ext-diff --no-color
+    if ($LASTEXITCODE -ne 0) { Write-Host 'FAIL: cannot read Git history'; exit 1 }
+    foreach ($entry in $patch) {
+        if ($entry -match '^@@COMMIT ([a-f0-9]+)$') { $commit = $Matches[1]; continue }
+        if ($entry -match '^\+\+\+ b/(.+)$') { $path = $Matches[1]; continue }
+        if (-not $entry.StartsWith('+') -or $entry.StartsWith('+++')) { continue }
+        if ($path -match 'check-secrets\.ps1$|package-lock|uv\.lock|\.min\.(js|css)$') { continue }
+        $rule = ''
+        if (($patterns | Where-Object { $entry -match $_ }).Count -gt 0) { $rule = 'key-shape' }
+        foreach ($pattern in @($entropyPattern, $assignPattern)) {
+            if ($entry -match $pattern) {
+                $literal = $Matches[1].ToLower()
+                $placeholder = @($placeholderMarkers | Where-Object { $literal.Contains($_) }).Count -gt 0
+                if (-not $placeholder) { $rule = 'credential-assignment' }
+            }
+        }
+        if ($path -match '(^|/)\.env($|\.)' -and $path -notmatch '\.example$') { $rule = 'tracked-env' }
+        $identity = "$commit $path $rule"
+        if ($rule -and -not $seen.ContainsKey($identity)) {
+            $seen[$identity] = $true
+            Write-Host "HISTORY $commit $path [$rule; content withheld]"
+        }
+    }
+    Write-Host ("History scan: {0} suspicious commit/file/rule combinations; triage required, not proof of active keys." -f $seen.Count)
+    if ($seen.Count) { exit 1 }
+    exit 0
 }
 
 # ---- 1. Tracked .env files (except *.example templates) fail immediately ----

@@ -1,0 +1,4 @@
+# Root is only the named license context; do not send configuration or user data.
+**
+!LICENSE
+!THIRD_PARTY_NOTICES.md

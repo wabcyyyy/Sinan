@@ -61,11 +61,6 @@ fe-check:
     cd {{fe}}; npm run ep:lint
     cd {{fe}}; npm run test:unit
 
-# trek 双站像素对照（v2.8 视觉复刻验收）：本地 dev server 与 demo.liketrek.com 同视口截图 +
-# 并排图 + pixelmatch 差异热图，产物落 travel-frontend-react/.tmp-vdiff/。先起 just dev-fe 再跑
-vdiff:
-    cd {{fe}}; node scripts/vdiff.mjs
-
 # ---- 开发 ----
 
 # 起后端（需本机 MySQL/Redis，见 README）
