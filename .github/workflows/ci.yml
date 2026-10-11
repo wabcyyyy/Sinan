@@ -132,6 +132,7 @@ jobs:
           uv run python tests/agent_eval/eval_agent.py
           uv run python tests/agent_eval/eval_research.py
           uv run python tests/agent_eval/eval_editing.py
+          uv run python tests/agent_eval/eval_experience.py
           uv run python scripts/eval_ratchet.py
 
   eval-determinism:

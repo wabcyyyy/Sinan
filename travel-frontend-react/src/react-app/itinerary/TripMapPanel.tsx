@@ -108,9 +108,11 @@ export function TripMapPanel({
 
   const resetBounds = () => {
     const map = mapRef.current
-    if (!map || !pins.length) return
-    const bounds = new LngLatBounds([pins[0].longitude, pins[0].latitude], [pins[0].longitude, pins[0].latitude])
-    pins.forEach((pin) => bounds.extend([pin.longitude, pin.latitude]))
+    // Style loading can finish after another day arrives; fit the latest full itinerary.
+    const currentPins = pinsRef.current
+    if (!map || !currentPins.length) return
+    const bounds = new LngLatBounds([currentPins[0].longitude, currentPins[0].latitude], [currentPins[0].longitude, currentPins[0].latitude])
+    currentPins.forEach((pin) => bounds.extend([pin.longitude, pin.latitude]))
     map.fitBounds(bounds, { padding: 56, maxZoom: 14, duration: 600 })
   }
 

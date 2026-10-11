@@ -81,6 +81,13 @@ try {
   for (let i = 0; i < 6; i++) await mapPage.getByRole('button', { name: '单步', exact: true }).click()
   await mapPage.locator('.map-pin-wrap').first().waitFor({ state: 'visible' })
   assert.equal(await mapPage.locator('.map-pin-wrap').count(), 6)
+  await mapPage.waitForFunction(() => {
+    const map = document.querySelector('.trip-map')?.getBoundingClientRect()
+    return map && [...document.querySelectorAll('.map-pin-wrap')].every((pin) => {
+      const box = pin.getBoundingClientRect()
+      return box.left >= map.left && box.right <= map.right && box.top >= map.top && box.bottom <= map.bottom
+    })
+  })
   await mapPage.screenshot({ path: `${artifacts}/demo-map.png`, fullPage: true })
   assert.deepEqual(apiRequests, [])
   await mapContext.close()

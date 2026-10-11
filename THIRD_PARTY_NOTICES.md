@@ -12,7 +12,7 @@
 
 `travel-agent-python/app/resources/fonts/SinanSansSC-Regular.ttf` 派生自 Noto Sans SC，使用 SIL OFL 1.1。
 同目录 `OFL.txt` 为完整许可，`provenance.json` 记录上游提交、原始及产物 SHA256、转换参数。
-转换后字体使用 Sinan Sans SC 名称，固定 400 字重，未裁剪字符集。不会在运行时下载字体。
+转换后字体使用 Sinan Sans SC 名称，固定 400 字重，未额外裁剪上游字符集。不会在运行时下载字体。
 
 ## 软件依赖与地图
 

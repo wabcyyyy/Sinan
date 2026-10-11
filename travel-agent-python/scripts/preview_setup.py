@@ -8,6 +8,16 @@ import stat
 from pathlib import Path
 
 
+class SetupError(ValueError):
+    """Safe diagnostic containing instructions, never configuration values."""
+
+
+def require_credentials(values: dict[str, str], keys: tuple[str, ...]) -> None:
+    missing = [key for key in keys if not values.get(key)]
+    if missing:
+        raise SetupError(f"Missing configuration keys: {', '.join(missing)}; existing files preserved")
+
+
 def read_values(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8-sig").splitlines():
@@ -24,7 +34,7 @@ def render(template: Path, replacements: dict[str, str]) -> str:
         if key in replacements:
             lines[index] = f"{key}={replacements.pop(key)}"
     if replacements:
-        raise ValueError("Configuration template lacks required keys")
+        raise SetupError("Configuration template lacks required keys; restore the tracked template")
     return "\n".join(lines) + "\n"
 
 
@@ -42,7 +52,7 @@ def create_env(path: Path, template: Path, values: dict[str, str]) -> None:
 
 def check_data(path: Path) -> None:
     if not path.is_dir():
-        raise ValueError("data directory missing; run initialization")
+        raise SetupError("data directory missing; run initialization")
     if os.name != "nt":
         info = path.stat()
         required = stat.S_IWOTH | stat.S_IXOTH
@@ -51,7 +61,7 @@ def check_data(path: Path) -> None:
         elif info.st_gid == 1000:
             required = stat.S_IWGRP | stat.S_IXGRP
         if info.st_mode & required != required:
-            raise ValueError("data is not writable by UID 1000; inspect ownership before changing existing data")
+            raise SetupError("data is not writable by UID 1000; inspect ownership before changing existing data")
 
 
 def initialize(root: Path) -> None:
@@ -78,8 +88,7 @@ def initialize(root: Path) -> None:
             },
         )
         current = read_values(compose_env)
-    if any(not current.get(key) for key in ("MYSQL_ROOT_PASSWORD", "REDIS_PASSWORD")):
-        raise ValueError("root environment lacks MySQL/Redis credentials; existing file preserved")
+    require_credentials(current, ("MYSQL_ROOT_PASSWORD", "REDIS_PASSWORD"))
     if not backend_env.exists():
         create_env(
             backend_env,
@@ -95,8 +104,7 @@ def initialize(root: Path) -> None:
             },
         )
     effective = {**read_values(backend_env), **current}
-    if any(not effective.get(key) for key in ("JWT_SECRET", "AGENT_INTERNAL_TOKEN")):
-        raise ValueError("application credentials missing; existing file preserved")
+    require_credentials(effective, ("JWT_SECRET", "AGENT_INTERNAL_TOKEN"))
     if not data.exists():
         data.mkdir(mode=0o750)
         if os.name != "nt" and os.geteuid() == 0:
@@ -108,8 +116,12 @@ def initialize(root: Path) -> None:
 def check(root: Path) -> None:
     for path in (root / ".env", root / "travel-agent-python/.env"):
         if not path.is_file():
-            raise ValueError("Environment file missing; run initialization")
+            raise SetupError("Environment file missing; run initialization")
         read_values(path)
+    current = read_values(root / ".env")
+    require_credentials(current, ("MYSQL_ROOT_PASSWORD", "REDIS_PASSWORD"))
+    effective = {**read_values(root / "travel-agent-python/.env"), **current}
+    require_credentials(effective, ("JWT_SECRET", "AGENT_INTERNAL_TOKEN"))
     check_data(root / "travel-agent-python/data")
     print("OK: files and data permissions. Run preview_doctor.py in the running backend for dependency checks.")
 
@@ -121,6 +133,9 @@ def main() -> int:
     args = parser.parse_args()
     try:
         (initialize if args.command == "init" else check)(args.root.resolve())
+    except SetupError as error:
+        print(f"FAIL: {error}. See docs/public/troubleshooting.md.")
+        return 1
     except (OSError, ValueError):
         print(
             "FAIL: missing/invalid template, unreadable environment file or data permissions. "
