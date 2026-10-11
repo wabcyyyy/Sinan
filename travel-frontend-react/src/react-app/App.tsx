@@ -73,13 +73,13 @@ function BusinessApp() {
   if (location.path === '/login') return <LoginPage onAuthenticated={authenticated} />
   if (location.path.startsWith('/s/')) return <SharePage path={location.path} />
   let page: ReactNode
-  if (location.path === '/') page = <HomePage />
+  if (location.path === '/') page = <HomePage signedIn={Boolean(username)} />
   else if (location.path === '/explore' || location.path === '/explore/') page = <ExplorePage />
   else if (location.path.startsWith('/explore/guide/')) page = <GuideDetailPage path={location.path} />
   else if (location.path === '/trips') page = <TripsPage />
   else if (location.path === '/settings') page = <SettingsPage />
   else if (location.path.startsWith('/trips/')) page = <TripDetailPage path={location.path} />
-  else page = <NotFoundBlock onHome={() => navigate('/')} />
+  else page = <div className="page-content"><NotFoundBlock onHome={() => navigate('/')} /></div>
   return (
     <AppShell onLogin={() => navigate('/login')} username={username} onLogout={handleLogout}>
       <Suspense fallback={<LoadingBlock label="正在打开行程…" />}>{page}</Suspense>

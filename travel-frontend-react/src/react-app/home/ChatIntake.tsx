@@ -101,8 +101,9 @@ export function ChatIntake({
               <HeroLogo />
               <span className="intake-hero-badge">✦ AI 目的地探索与智能编排</span>
             </div>
-            <h1 className="intake-hero-title">去哪里？说一句话，行程就有了</h1>
-            <p className="intake-hero-subtitle">信息不够司南会问你，不会瞎猜 · 随时调整路线与偏好</p>
+            {/* 分段 inline-block：窄屏只在段间换行，不把「行程」这类词拆到两行 */}
+            <h1 className="intake-hero-title"><span>去哪里？</span><span className="intake-hero-accent">说一句话，行程就有了</span></h1>
+            <p className="intake-hero-subtitle"><span>信息不够司南会问你，不会瞎猜</span><span>随时调整路线与偏好</span></p>
           </header>
         )}
 

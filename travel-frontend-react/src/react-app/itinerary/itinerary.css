@@ -129,10 +129,12 @@
 /* 通勤流向过渡行与导航链接（流线胶囊化） */
 .day-item-group { display: grid; gap: 0; }
 .day-transit-row { display: grid; grid-template-columns: 58px 24px minmax(0, 1fr); gap: 14px; align-items: center; padding: 4px 12px 6px 8px; }
-.transit-track { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+/* 行里只有两个子元素：轨道点对齐 day-item 的竖线列（第 2 列），药丸落正文列（第 3 列）；
+   不显式落位时药丸会被挤进 24px 竖线列，文字逐字竖排 */
+.transit-track { grid-column: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
 .transit-track > i { width: 6px; height: 6px; border-radius: 50%; background: var(--sinan-accent); box-shadow: 0 0 0 2px var(--sinan-accent-soft); animation: transit-pulse 2s infinite ease-in-out; }
 @keyframes transit-pulse { 0%, 100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.3); opacity: 1; } }
-.transit-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--sinan-surface); color: var(--sinan-muted); font-size: 11.5px; width: fit-content; border: 1px solid var(--sinan-line); box-shadow: var(--sinan-shadow-soft); transition: all 0.2s var(--sinan-ease); }
+.transit-pill { grid-column: 3; display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--sinan-surface); color: var(--sinan-muted); font-size: 11.5px; width: fit-content; border: 1px solid var(--sinan-line); box-shadow: var(--sinan-shadow-soft); transition: all 0.2s var(--sinan-ease); }
 .transit-pill:hover { border-color: var(--sinan-accent); color: var(--sinan-ink-soft); transform: translateX(2px); }
 .transit-pill svg { color: var(--sinan-azure); }
 
@@ -191,6 +193,7 @@
   .day-content { padding: 21px 16px; }
   .day-content-head h2 { font-size: 23px; }
   .day-item { grid-template-columns: 45px 12px minmax(0, 1fr) 60px; gap: 8px; padding: 10px 8px; }
+  .day-transit-row { grid-template-columns: 45px 12px minmax(0, 1fr); gap: 8px; padding: 2px 8px 4px; }
   .day-item-media { width: 60px; height: 60px; }
   .item-heading h3 { font-size: 17px; }
   .item-meta { gap: 9px; }

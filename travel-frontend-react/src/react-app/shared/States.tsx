@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { BrandMark } from './Brand'
 import { Icon } from './Icon'
 
 export function LoadingBlock({ label = '正在读取…' }: { label?: string }) {
@@ -20,8 +21,14 @@ function errorTitle(message: string): string {
   return hasCjk ? '这一步没走通' : '暂时没有连上司南'
 }
 
-export function ErrorBlock({ message, onRetry, onLogin }: { message: string; onRetry?: () => void; onLogin?: () => void }) {
-  return <div className="state-block error-block" role="alert"><span className="error-icon"><Icon name="alert" size={22} /></span><strong>{errorTitle(message)}</strong><span className="state-hint">{message}</span><div className="state-actions">{onRetry && <button className="button button-secondary" type="button" onClick={onRetry}><Icon name="refresh" size={16} />再试一次</button>}{onLogin && <button className="button button-primary" type="button" onClick={onLogin}>重新登录<Icon name="arrow" size={16} /></button>}</div></div>
+export function ErrorBlock({ message, title, retryLabel = '再试一次', onRetry, onLogin }: { message: string; title?: string; retryLabel?: string; onRetry?: () => void; onLogin?: () => void }) {
+  return <div className="state-block error-block" role="alert"><span className="error-icon"><Icon name="alert" size={22} /></span><strong>{title ?? errorTitle(message)}</strong><span className="state-hint">{message}</span><div className="state-actions">{onRetry && <button className="button button-secondary" type="button" onClick={onRetry}><Icon name="refresh" size={16} />{retryLabel}</button>}{onLogin && <button className="button button-primary" type="button" onClick={onLogin}>重新登录<Icon name="arrow" size={16} /></button>}</div></div>
+}
+
+/** 整屏状态：会话确认中/确认失败/退出失败这几支在 AppShell 之外渲染（没有导航与页面容器），
+ * 自带品牌标与视口居中，不让裸文本落在左上角。 */
+export function ScreenState({ children }: { children: ReactNode }) {
+  return <div className="screen-state"><BrandMark />{children}</div>
 }
 
 /** FEUX-3：未知路径不再静默渲染首页——明确 404 语义并给回首页出口。 */

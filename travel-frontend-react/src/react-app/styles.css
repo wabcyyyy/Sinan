@@ -27,6 +27,12 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .top-nav-link { font-size: 13px; font-weight: 500; }
 .top-nav-login { border: 1px solid var(--sinan-accent); border-radius: 999px; background: var(--sinan-accent); color: var(--sinan-on-image); padding: 11px 22px; font-size: 12px; }
 .top-nav-login:hover { background: var(--sinan-accent-dark); }
+/* 已登录：用户名做成头像胶囊，登出降为次级文字链——主色胶囊只留给「登录 / 注册」这一个转化入口 */
+.top-nav-user { display: inline-flex; align-items: center; gap: 8px; max-width: 200px; padding: 4px 13px 4px 4px; border: 1px solid var(--sinan-line-soft); border-radius: 999px; background: var(--sinan-surface); color: var(--sinan-ink); font-size: 13px; font-weight: 600; }
+.top-nav-avatar { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--sinan-accent-soft); color: var(--sinan-accent-dark); font-size: 12px; font-weight: 750; }
+.top-nav-username { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-nav-link.top-nav-logout { color: var(--sinan-muted); }
+.top-nav-link.top-nav-logout:hover { color: var(--sinan-ink); }
 .sinan-brand-copy strong { font-weight: 750; letter-spacing: .06em; }
 .button { border-radius: var(--sinan-radius-sm); box-shadow: none; font-weight: 600; white-space: nowrap; text-decoration: none; }
 .button-primary { color: var(--sinan-on-image); }
@@ -87,6 +93,10 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .footer-links { flex-shrink: 0; }
 .skip-link { position: fixed; left: 16px; top: -80px; z-index: var(--sinan-z-modal); padding: 12px 20px; border-radius: var(--sinan-radius-sm); color: var(--sinan-on-image); background: var(--sinan-accent); }
 .skip-link:focus { top: 10px; }
+/* 整屏状态（ScreenState）：AppShell 之外的会话确认/失败态，品牌标 + 居中卡 */
+.screen-state { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 22px; padding: 32px 20px; background: var(--sinan-paper); }
+.screen-state > .sinan-mark { width: 40px; height: 40px; }
+.screen-state .state-block { width: min(440px, calc(100vw - 40px)); padding: 36px 28px; border-style: solid; border-color: var(--sinan-line-soft); box-shadow: var(--sinan-shadow-soft); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 @media (max-width: 1100px) {
@@ -108,6 +118,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
   .top-nav-link::after { display: none; }
   .top-nav-divider { width: 100%; height: 1px; margin: 3px 0; }
   .top-nav-login { text-align: center; margin-top: 4px; }
+  .top-nav-user { align-self: flex-start; margin: 6px 12px 2px; }
   .top-nav-menu { display: grid; place-items: center; }
   .top-nav-links { z-index: var(--sinan-z-nav); }
   .top-nav-login { color: var(--sinan-on-image); }

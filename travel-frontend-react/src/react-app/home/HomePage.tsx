@@ -5,10 +5,10 @@ import { HomeStudio } from './HomeStudio'
  * 之后挂轻展示区 HomeShowcase（PLAN 2026-10-03 §2.2），开聊后变双栏。旧 home-story /
  * 重型灵感 / 攻略区块不回归，只留轻导流；query 变化（/?city= 等深链）时重挂会话，
  * 保 seedFromQuery 预填语义。 */
-export function HomePage() {
+export function HomePage({ signedIn = false }: { signedIn?: boolean }) {
   const { query } = useLocation()
+  // 固定示例回放入口只给未登录访客，收进首屏对话卡下方；不再占页顶整条横幅
   return <div className="home-page">
-    <p className="demo-entry"><a href="/demo">无需登录或模型密钥，体验固定示例回放 →</a></p>
-    <HomeStudio key={query.toString()} query={query} />
+    <HomeStudio key={query.toString()} query={query} showDemoLink={!signedIn} />
   </div>
 }
