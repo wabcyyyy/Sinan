@@ -40,7 +40,7 @@ npm run dev            # http://localhost:5173，/api 代理到 8000（FastAPI�
 npm run test:unit    # vitest（纯逻辑 + 组件静态渲染；happy-dom）
 npm run theme:lint   # 外观契约：禁裸色/野 z-index/!important；豁免表只准变短（当前清零）
 npm run ep:lint      # 去 EP：产品面禁引入 Element Plus，允许清单只减不增（当前清零）
-npm run e2e:golden   # 金路径 E2E（先 start-all.ps1 起活栈；真实 LLM 生成，分钟级）
+npm run e2e:golden   # 金路径 E2E（先跑仓库根的 scripts/start-all.ps1 起活栈；真实 LLM 生成，分钟级）
 ```
 
 ## 环境变量

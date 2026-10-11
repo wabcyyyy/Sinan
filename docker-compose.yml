@@ -1,4 +1,4 @@
-# 本地/演示编排：基础设施一键起，应用可继续用 start-all 或 profile 拉起。
+# 本地/演示编排：基础设施一键起，应用可继续用 scripts/start-all.ps1 或 profile 拉起。
 # 用法：
 #   docker compose up -d mysql redis
 #   docker compose --profile apps up -d   # 可选：容器化后端(FastAPI) + 前端（需先构建镜像）
@@ -48,7 +48,7 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-ta_dev_redis_only}
     ports:
-      # 默认与项目 start-all 使用的 6380 对齐，避免与本机已有 6379 冲突；
+      # 默认与项目 scripts/start-all.ps1 使用的 6380 对齐，避免与本机已有 6379 冲突；
       # 只绑 127.0.0.1（R1-7）：这个库里放着 JWT 吊销黑名单与登录锁桶，
       # 之前的 `--protected-mode no` + 无口令 + 0.0.0.0:6380 等于让同网段任意主机
       # 清空白名单（被踢的票继续有效 24h）并抹掉失败计数。

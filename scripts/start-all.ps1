@@ -5,7 +5,7 @@
 # NOTE: keep this file ASCII-only. Windows PowerShell 5.1 reads BOM-less files as ANSI and
 # non-ASCII comments break parsing (start-all.cmd calls powershell.exe, i.e. 5.1).
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $PSScriptRoot
 
 # Use a project-local uv cache; a broken global cache path would block the Agent from starting.
 $env:UV_CACHE_DIR = Join-Path $root ".uv-cache"

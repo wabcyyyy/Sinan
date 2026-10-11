@@ -3,7 +3,7 @@
 一句话描述旅行想法，生成每日行程，再用对话提出调整、查看差异并确认。
 司南使用 React + FastAPI + LangGraph，提供逐日交付、SSE 进度、地图深链与中文 PDF 导出。
 
-[English](README.en.md) · [架构](docs/public/architecture.md) · [开发](docs/public/development.md) · [参与贡献](CONTRIBUTING.md)
+[English](README.en.md) · [架构](docs/public/architecture.md) · [开发](docs/public/development.md) · [参与贡献](.github/CONTRIBUTING.md)
 
 本批实现与验收结果见 [开源预览验收记录](docs/public/preview-verification.md)。
 
@@ -51,10 +51,10 @@ CI 检查类型、分层、契约漂移、离线测试、评测棘轮、前端�
 
 开发环境为 Python 3.12 + uv、Node 22.12+；CI 与容器使用 Node 22，依赖由锁文件安装。
 启动、门禁和字体维护命令见 [开发指南](docs/public/development.md)。
-欢迎可复现 Bug、文档修正与小范围改进，流程见 [贡献指南](CONTRIBUTING.md)。
+欢迎可复现 Bug、文档修正与小范围改进，流程见 [贡献指南](.github/CONTRIBUTING.md)。
 
 ## 许可与安全
 
 自身代码与文档使用 [MIT](LICENSE)。图片、字体与依赖使用各自许可，详见 [第三方资源](THIRD_PARTY_NOTICES.md)。
-安全漏洞请按 [安全政策](SECURITY.md) 私密报告，不要在公开 Issue 放置漏洞细节或凭据。
+安全漏洞请按 [安全政策](.github/SECURITY.md) 私密报告，不要在公开 Issue 放置漏洞细节或凭据。
 当前为开源预览阶段，尚无长期支持版本承诺。版本化镜像与正式 Release 不属于本批交付。

@@ -23,7 +23,7 @@ For real generation, configure a model provider in the backend environment file.
 
 The [Chinese README](README.md) is the primary guide. See [architecture](docs/public/architecture.md),
 [configuration](docs/public/configuration.md), [development](docs/public/development.md),
-[troubleshooting](docs/public/troubleshooting.md), and [contributing](CONTRIBUTING.md).
-Use the private channel in [SECURITY.md](SECURITY.md) for vulnerabilities.
+[troubleshooting](docs/public/troubleshooting.md), and [contributing](.github/CONTRIBUTING.md).
+Use the private channel in [SECURITY.md](.github/SECURITY.md) for vulnerabilities.
 
 Project code is MIT licensed. Photographs and fonts retain separate licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
