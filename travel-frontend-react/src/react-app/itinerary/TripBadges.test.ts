@@ -57,3 +57,20 @@ describe('React 详情页文案与徽章', () => {
     expect(html).toContain('估算信息')
   })
 })
+
+describe('详情页核实提示合并与空日期（视觉体检 2026-10-11）', () => {
+  it('草案提示带上待核实条数，0 条时不出数字', () => {
+    const html = renderToStaticMarkup(createElement(DraftOnlyBanner, { status: 'draft_only', pending: 3 }))
+    expect(html).toContain(DRAFT_ONLY_TEXT)
+    expect(html).toContain('3 项待核实')
+    expect(renderToStaticMarkup(createElement(DraftOnlyBanner, { status: 'draft_only' }))).not.toContain('项待核实')
+  })
+  it('没有出发日期时不单占「待定」卡，并进天数卡说明', () => {
+    const trip = { totalAmount: 3200 } as unknown as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(TripMetrics, { trip, dateText: null, weatherDays: 4, hasWeather: false }))
+    expect(html).not.toContain('出发日期')
+    expect(html).not.toContain('待定')
+    expect(html).toContain('日期未定 · 路线草案')
+    expect(html).toContain(budgetCaption())
+  })
+})
