@@ -2,8 +2,9 @@ import type { CSSProperties } from 'react'
 import { destinations } from '../data'
 import type { DestinationCard } from '../data'
 
-/** 首屏照片拼贴的城市（取画面最出片的 6 张，弱图不上首屏）；窄屏只露前 3 张。 */
-const COLLAGE_CITIES = ['京都', '巴黎', '巴厘岛', '首尔', '厦门', '新加坡']
+/** 首屏照片拼贴的城市：取下方展示区（热门城市 = destinations 前 6、灵感起点 = 大理/首尔/厦门/大阪）
+ * 之外的 6 座，同一页不出现重复照片；窄屏只露前 3 张。 */
+const COLLAGE_CITIES = ['京都', '西安', '曼谷', '北京', '重庆', '新加坡']
 
 /** 导出仅供测试：拼贴必须全部命中 destinations（图源复用已登记署名的封面，见 CREDITS.md）。 */
 export const HERO_COLLAGE: DestinationCard[] = COLLAGE_CITIES

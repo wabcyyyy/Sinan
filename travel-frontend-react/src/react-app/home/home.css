@@ -752,7 +752,7 @@
   display: none;
 }
 .showcase-cities { grid-auto-columns: minmax(248px, 264px); }
-.showcase-ideas { grid-auto-columns: minmax(272px, 292px); }
+.showcase-ideas { grid-auto-columns: minmax(248px, 1fr); }
 .showcase-city { padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; scroll-snap-align: start; transition: transform .25s var(--sinan-ease); }
 .showcase-city:hover { transform: translateY(-3px); }
 .showcase-city-media { position: relative; display: block; overflow: hidden; border-radius: var(--sinan-radius); box-shadow: var(--sinan-shadow-soft); transform: translateZ(0); transition: box-shadow .3s var(--sinan-ease); }
@@ -764,12 +764,21 @@
 .showcase-city-name { position: absolute; left: 14px; right: 14px; bottom: 11px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--sinan-on-image); font-size: 17px; font-weight: 700; letter-spacing: var(--lp-track-display); }
 .showcase-city-name small { font-weight: 400; font-size: 11px; color: color-mix(in srgb, var(--sinan-on-image) 76%, transparent); }
 .showcase-city-copy { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.7em + 11px); padding: 11px 4px 0; font-size: 12.5px; line-height: 1.7; color: var(--sinan-muted); }
-.showcase-idea { position: relative; display: grid; gap: 7px; align-content: start; padding: 18px 20px 16px 22px; text-align: left; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius); background: var(--sinan-surface); box-shadow: var(--sinan-shadow-soft); cursor: pointer; scroll-snap-align: start; transition: transform .25s var(--sinan-ease), box-shadow .25s var(--sinan-ease), border-color .25s; }
-.showcase-idea::before { content: ''; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 999px; background: var(--sinan-accent); }
-.showcase-idea:hover { transform: translateY(-4px); box-shadow: var(--sinan-shadow); border-color: color-mix(in srgb, var(--sinan-accent) 25%, var(--sinan-line)); }
-.showcase-idea .card-kicker { color: var(--sinan-accent-dark); font-weight: 700; }
-.showcase-idea strong { font-size: 14.5px; line-height: 1.45; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); font-weight: 750; }
-.showcase-idea > span:last-child { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12.5px; line-height: 1.7; color: var(--sinan-muted); }
+.showcase-idea { position: relative; display: block; overflow: hidden; padding: 0; text-align: left; border: 0; border-radius: var(--sinan-radius); background: var(--sinan-photo-shade); box-shadow: var(--sinan-shadow-soft); cursor: pointer; scroll-snap-align: start; transform: translateZ(0); transition: transform .25s var(--sinan-ease), box-shadow .25s var(--sinan-ease); }
+/* 灵感卡 = 竖版故事卡（4/5 实拍满铺 + 底部压字），与上一行横版城市卡拉开节奏 */
+.showcase-idea .smart-img { border-radius: 0; }
+.showcase-idea img { transition: opacity var(--lp-dur-reveal) var(--lp-ease-out-quint), transform .6s var(--sinan-ease); }
+.showcase-idea:hover { transform: translateY(-4px); box-shadow: var(--sinan-shadow); }
+.showcase-idea:hover img { transform: scale(1.06); }
+.showcase-idea-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--sinan-photo-shade) 88%, transparent) 100%); }
+.showcase-idea-theme { position: absolute; left: 14px; top: 14px; padding: 4px 10px; border-radius: var(--sinan-radius-pill); background: color-mix(in srgb, var(--sinan-surface) 88%, transparent); backdrop-filter: blur(8px); color: var(--sinan-ink); font-size: 11px; font-weight: 700; }
+.showcase-idea-body { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: 6px; padding: 18px 18px 16px; color: var(--sinan-on-image); }
+.showcase-idea .card-kicker { justify-content: flex-start; color: color-mix(in srgb, var(--sinan-on-image) 80%, transparent); font-weight: 650; }
+.showcase-idea strong { font-size: 19px; line-height: 1.35; color: var(--sinan-on-image); letter-spacing: var(--lp-track-display); font-weight: 750; }
+.showcase-idea-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12.5px; line-height: 1.7; color: color-mix(in srgb, var(--sinan-on-image) 82%, transparent); }
+.showcase-idea-cta { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; color: var(--sinan-on-image); font-size: 12.5px; font-weight: 700; }
+.showcase-idea-cta svg { transition: transform .2s var(--sinan-ease); }
+.showcase-idea:hover .showcase-idea-cta svg { transform: translateX(3px); }
 
 /* 对话管理：未完成规划草稿恢复条与弹层（2026-10-03 对话防丢失系统） */
 .intake-resume-bar {
