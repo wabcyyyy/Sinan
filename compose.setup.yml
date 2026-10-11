@@ -1,0 +1,9 @@
+# Separate file: initialization must work before the runtime env_file files exist.
+services:
+  setup:
+    image: python:3.12-slim
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: [python, travel-agent-python/scripts/preview_setup.py, init, --root, /workspace]
+    network_mode: none

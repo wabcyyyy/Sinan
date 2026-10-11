@@ -164,6 +164,11 @@ services:
     depends_on:
       # M7-b 切流量：nginx.conf 里 /api/ 的上游已是 FastAPI，依赖跟着改
       - agent-python
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   # 生产边缘（仅 prod profile）：单一入口，自动 HTTPS（Let's Encrypt），
