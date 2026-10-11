@@ -155,9 +155,15 @@ export function HomeShowcase() {
             {SHOWCASE_TEMPLATES.map((item) => (
               <button key={item.id} className="showcase-idea" type="button"
                 onClick={() => navigate(showcaseTemplateHref(item))}>
-                <span className="card-kicker">{item.city} · {item.days} 天</span>
-                <strong>{item.title}</strong>
-                <span>{item.description}</span>
+                <SmartImg src={item.image} alt={`${item.city}灵感封面`} ratio="4 / 5" />
+                <span className="showcase-idea-scrim" aria-hidden="true" />
+                <span className="showcase-idea-theme">{item.theme}</span>
+                <span className="showcase-idea-body">
+                  <span className="card-kicker">{item.city} · {item.days} 天</span>
+                  <strong>{item.title}</strong>
+                  <span className="showcase-idea-desc">{item.description}</span>
+                  <span className="showcase-idea-cta">用这句开场<Icon name="arrow" size={13} /></span>
+                </span>
               </button>
             ))}
           </div>

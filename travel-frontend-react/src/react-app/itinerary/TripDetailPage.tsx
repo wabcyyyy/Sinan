@@ -69,11 +69,10 @@ function getExperienceTag(item: DayPlan['items'][0]): string | null {
   return null
 }
 
+/** 价格只说有数据的事：没有 cost 时不再补「特色美食/精选打卡」这类无出处的装饰词。 */
 function getItemPriceTag(item: DayPlan['items'][0]): string | null {
   if (item.cost === 0) return '免费开放'
   if (item.cost && item.cost > 0) return `￥${item.cost}/人`
-  if (item.itemType === 'food') return '特色美食'
-  if (item.itemType === 'attraction') return '精选打卡'
   return null
 }
 
@@ -337,17 +336,19 @@ export function TripDetailPage({ path }: { path: string }) {
       </div>
     </div>
     {offline && <div className="detail-offline"><span>示例状态</span> 这是本地预览，服务恢复后可打开真实行程。</div>}
-    <DraftOnlyBanner status={trip.destinationStatus} />
     {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />{detailGeneratingCopy(trip.coreReady)}</div>}
     <section className="detail-hero">
       <div>
         <span className="section-eyebrow">{trip.city} · {trip.days} 天 · {trip.persons} 人</span>
         <h1>{trip.title}</h1>
         <p>{trip.tripTheme || trip.planNote}</p>
-        <QualityNotice status={trip.qualityStatus} pending={trip.pendingFactCount || 0} />
+        {/* 核实提示只留这一处：草案态由 DraftOnlyBanner 承担（含待核实条数），其余走 QualityNotice */}
+        {trip.destinationStatus === 'draft_only'
+          ? <DraftOnlyBanner status={trip.destinationStatus} pending={trip.pendingFactCount || 0} />
+          : <QualityNotice status={trip.qualityStatus} pending={trip.pendingFactCount || 0} />}
         <TripMetrics
           trip={trip}
-          dateText={trip.startDate ? displayDate(trip.startDate) : '待定'}
+          dateText={trip.startDate ? displayDate(trip.startDate) : null}
           weatherDays={weather?.daily?.length || trip.days}
           hasWeather={Boolean(weather?.daily?.length)}
         />
@@ -389,12 +390,11 @@ export function TripDetailPage({ path }: { path: string }) {
                   <span className={`item-type item-type-${item.itemType}`}><Icon name={ITEM_TYPE_ICONS[item.itemType] || 'pin'} size={12} strokeWidth={2} />{ITEM_TYPE_LABELS[item.itemType] || '安排'}</span>
                   <h3>{item.poiName}</h3>
                   {getExperienceTag(item) && <span className="item-tag-exp">{getExperienceTag(item)}</span>}
-                  {item.itemType === 'food' && <span className="item-tag-flavor"><Icon name="utensils" size={11} />推荐打卡</span>}
-                  {getItemPriceTag(item) && <span className="item-tag-price"><Icon name="ticket" size={11} />{getItemPriceTag(item)}</span>}
                 </div>
                 <p>{item.remark || item.whyThis || '为这一段旅程保留一点自由。'}</p>
                 <div className="item-meta">
                   <span><Icon name="clock" size={14} />{item.durationMin ? `${item.durationMin} 分钟` : '时间可调整'}</span>
+                  {getItemPriceTag(item) && <span><Icon name="ticket" size={14} />{getItemPriceTag(item)}</span>}
                   <ItemEvidence item={item} />
                   {hasCoord && (
                     <a
@@ -476,7 +476,7 @@ export function TripDetailPage({ path }: { path: string }) {
             </div>
           </div>
         )}
-        {day.practicalNotes?.length ? <div className="day-note"><Icon name="alert" size={17} /><div><strong>出发前看一眼</strong>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
+        {day.practicalNotes?.length ? <div className="day-note is-tips"><Icon name="compass" size={17} /><div><strong>出发前看一眼</strong>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
       </> : <EmptyBlock title="这一天还没有安排" description="可以先切换到其他天，或重新生成当天内容。" />}</section>
     </div>
     {shareUrl && <div className="share-result"><span>分享链接</span>{safeShareUrl ? <a href={safeShareUrl} target="_blank" rel="noreferrer">{safeShareUrl}</a> : <span>{shareUrl}</span>}<button type="button" onClick={() => setShareUrl('')} aria-label="关闭分享链接"><Icon name="close" size={15} /></button></div>}

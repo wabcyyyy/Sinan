@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { GenerateInput } from '../../api/sinan'
 import { ChatIntake } from './ChatIntake'
+import { HeroCollage } from './HeroCollage'
 import { HomeShowcase } from './HomeShowcase'
+import { Icon } from '../shared/Icon'
 import { TripPanel } from './TripPanel'
 import { saveIntakeSession } from './intakeHistory'
 import type { IntakeSessionRecord } from './intakeHistory'
@@ -21,7 +23,7 @@ export type HomePhase = 'idle' | 'active'
  * 生成完成后留在首页看预览（拍板①）：done 态由右栏 TripBoard 呈现，
  * 详情页经预览板 CTA（/trips/:id）进入，不再自动跳转。idle 态在一屏余量之后
  * 挂轻展示区 HomeShowcase（PLAN 2026-10-03 §2.2），active 双栏不渲染。 */
-export function HomeStudio({ query }: { query: URLSearchParams }) {
+export function HomeStudio({ query, showDemoLink = false }: { query: URLSearchParams; showDemoLink?: boolean }) {
   const planning = useHomePlanning()
   const chat = useIntakeChat()
   const [resetToIdle, setResetToIdle] = useState(false)
@@ -95,6 +97,7 @@ export function HomeStudio({ query }: { query: URLSearchParams }) {
           <div className="aurora-blob aurora-warm" />
         </div>
       )}
+      {!active && <HeroCollage />}
       <div className="home-studio-chat" ref={chatCardRef}>
         <ChatIntake
           query={query}
@@ -103,6 +106,7 @@ export function HomeStudio({ query }: { query: URLSearchParams }) {
           variant={active ? 'dock' : 'centered'}
           onResumeSession={handleResumeSession}
         />
+        {!active && showDemoLink && <a className="home-demo-link" href="/demo">无需登录或模型密钥，体验固定示例回放<Icon name="arrow" size={14} /></a>}
       </div>
       {active && <div className="home-studio-panel"><TripPanel planning={planning} chat={{ ...chat, reset: handleChatReset }} onStart={startGeneration} /></div>}
     </div>

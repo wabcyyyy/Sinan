@@ -19,11 +19,13 @@ export function budgetCaption(): string {
 /** 草案横幅文案（P1-2）：destinationStatus=draft_only 时的面级提示。 */
 export const DRAFT_ONLY_TEXT = '本次为未核实草案，点位未经数据源验证'
 
-export function DraftOnlyBanner({ status }: { status?: string | null }): ReactNode {
+/** 草案提示落在 hero 标题下、替代同位的 QualityNotice（两者都在说「草案、出发前核实」，
+ * 不再页顶一条、标题下再一条）；待核实条数并进同一块。 */
+export function DraftOnlyBanner({ status, pending = 0 }: { status?: string | null; pending?: number }): ReactNode {
   if (status !== 'draft_only') return null
   return (
     <div className="detail-draft-banner" role="status">
-      <span>未核实草案</span> {DRAFT_ONLY_TEXT}。价格与营业时间均为估算，出发前请逐项核实。
+      <span>未核实草案</span>{pending > 0 && <small>{pending} 项待核实</small>}<p>{DRAFT_ONLY_TEXT}。价格与营业时间均为估算，出发前请逐项核实。</p>
     </div>
   )
 }
@@ -37,7 +39,8 @@ export function ItemEvidence({ item }: { item: TripItem }): ReactNode {
   return <span className={evidenceTone(item) === 'warning' ? 'fact-warning' : ''}>{itemEvidenceText(item)}</span>
 }
 
-/** 详情页指标行（预算/日期/天数）——预算行的估算口径在此单点定义。 */
+/** 详情页指标行（预算/日期/天数）——预算行的估算口径在此单点定义。
+ * 没有出发日期时不单占一张「待定」卡，并进天数卡的说明行。 */
 export function TripMetrics({
   trip,
   dateText,
@@ -45,7 +48,7 @@ export function TripMetrics({
   hasWeather,
 }: {
   trip: ItineraryDetail
-  dateText: string
+  dateText: string | null
   weatherDays: number
   hasWeather: boolean
 }): ReactNode {
@@ -58,13 +61,13 @@ export function TripMetrics({
         <small>{budgetCaption()}</small>
         {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>
-      <span>
+      {dateText && <span>
         <strong>{dateText}</strong>
         <small>出发日期</small>
-      </span>
+      </span>}
       <span>
         <strong>{weatherDays} 天</strong>
-        <small>{hasWeather ? '天气已接通' : '路线草案'}</small>
+        <small>{`${dateText ? '' : '日期未定 · '}${hasWeather ? '天气已接通' : '路线草案'}`}</small>
       </span>
     </div>
   )
