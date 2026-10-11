@@ -1,0 +1,22 @@
+name: Bug 报告
+description: 提交可以复现的问题（安全漏洞请走私密报告）
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 提交 SHA、系统、Docker/Node/Python 版本、启动方式；不要填写密钥。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 输入、操作步骤、预期和实际结果，注明是否为固定回放或真实模型。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏日志与截图
+      description: 移除 Cookie、令牌、API key 和个人数据。

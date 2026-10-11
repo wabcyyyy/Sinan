@@ -63,7 +63,7 @@ def test_font_default_resolves_to_the_in_repo_copy(monkeypatch, tmp_path) -> Non
     java_font = tmp_path / "repo" / "travel-backend-java" / "src" / "main" / "resources" / "fonts" / "simhei.ttf"
     java_font.parent.mkdir(parents=True)
     java_font.write_bytes(b"font")
-    assert config._default_font_path() == str(service_root / "app" / "resources" / "fonts" / "simhei.ttf")
+    assert config._default_font_path() == str(service_root / "app" / "resources" / "fonts" / "SinanSansSC-Regular.ttf")
 
 
 def test_schema_contract_notes_the_skipped_java_half(monkeypatch, tmp_path, capsys) -> None:
