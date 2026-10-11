@@ -68,6 +68,7 @@ try {
   // It proves rendering and marker placement, not external tile availability.
   const mapContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' })
   const mapPage = await mapContext.newPage()
+  mapPage.on('pageerror', (error) => errors.push(String(error)))
   await mapPage.route('**/*', async (route) => {
     const url = new URL(route.request().url())
     if (url.pathname.startsWith('/api/')) { apiRequests.push(url.pathname); return route.abort() }
@@ -81,6 +82,8 @@ try {
   for (let i = 0; i < 6; i++) await mapPage.getByRole('button', { name: '单步', exact: true }).click()
   await mapPage.locator('.map-pin-wrap').first().waitFor({ state: 'visible' })
   assert.equal(await mapPage.locator('.map-pin-wrap').count(), 6)
+  // Wait past the component's 600 ms fitBounds transition before inspecting its final view.
+  await mapPage.waitForTimeout(800)
   await mapPage.waitForFunction(() => {
     const map = document.querySelector('.trip-map')?.getBoundingClientRect()
     return map && [...document.querySelectorAll('.map-pin-wrap')].every((pin) => {
@@ -91,6 +94,25 @@ try {
   await mapPage.screenshot({ path: `${artifacts}/demo-map.png`, fullPage: true })
   assert.deepEqual(apiRequests, [])
   await mapContext.close()
+  const unavailableContext = await browser.newContext({ reducedMotion: 'reduce' })
+  const unavailablePage = await unavailableContext.newPage()
+  unavailablePage.on('pageerror', (error) => errors.push(String(error)))
+  await unavailablePage.route('**/*', (route) => {
+    const url = new URL(route.request().url())
+    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({
+      status: 403, body: 'test-only unavailable map style',
+    })
+    if (url.pathname.startsWith('/api/')) apiRequests.push(url.pathname)
+    return url.origin === new URL(base).origin && !url.pathname.startsWith('/api/') ? route.continue() : route.abort()
+  })
+  await unavailablePage.goto(`${base}/demo`)
+  for (let i = 0; i < 6; i++) await unavailablePage.getByRole('button', { name: '单步', exact: true }).click()
+  await unavailablePage.getByText('底图暂时加载不出来', { exact: false }).waitFor()
+  assert.equal(await unavailablePage.locator('.board-day-chip').count(), 2)
+  assert.equal(await unavailablePage.locator('.demo-links a').count(), 6)
+  assert.deepEqual(apiRequests, [])
+  assert.deepEqual(errors, [])
+  await unavailableContext.close()
   console.log('PASS: replay, pause, step, reset, scoped edit, budget, refresh, mobile and map fallback; zero API calls')
 } finally {
   await browser.close()
