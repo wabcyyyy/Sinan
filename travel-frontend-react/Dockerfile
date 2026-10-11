@@ -12,6 +12,8 @@ RUN npm run build
 # 错build到末尾的 caddy 段，5173 变 Caddy 默认页且 /api 反代消失）
 FROM nginx:1.27-alpine AS web
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /usr/share/nginx/html/licenses/
+COPY --from=build /app/src/assets/img/CREDITS.md /usr/share/nginx/html/licenses/photo-credits.md
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
@@ -19,3 +21,5 @@ EXPOSE 80
 # 只带静态产物，Caddyfile 由 compose 挂载——静态托管 + /api 反代 + 自动 TLS 一体。
 FROM caddy:2-alpine AS caddy
 COPY --from=build /app/dist /srv
+COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /srv/licenses/
+COPY --from=build /app/src/assets/img/CREDITS.md /srv/licenses/photo-credits.md

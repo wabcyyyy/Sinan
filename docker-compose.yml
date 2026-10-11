@@ -89,6 +89,8 @@ services:
     build:
       context: ./travel-agent-python
       dockerfile: Dockerfile
+      additional_contexts:
+        project: .
     container_name: ta-agent
     env_file:
       - ./travel-agent-python/.env
@@ -150,6 +152,8 @@ services:
     build:
       context: ./travel-frontend-react
       dockerfile: Dockerfile
+      additional_contexts:
+        project: .
       # 必须显式指 target：Dockerfile 末段是 caddy（生产边缘），漏写会默认
       # build 到 caddy——5173 吐 Caddy 默认页且 /api 反代消失（重建实测）
       target: web
@@ -179,6 +183,8 @@ services:
     build:
       context: ./travel-frontend-react
       dockerfile: Dockerfile
+      additional_contexts:
+        project: .
       # 复用 build 阶段产物，不重复 npm 构建（构建真相单一源见该 Dockerfile 头注）
       target: caddy
     container_name: ta-caddy

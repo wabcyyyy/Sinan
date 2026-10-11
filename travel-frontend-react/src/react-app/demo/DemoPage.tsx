@@ -43,6 +43,6 @@ export function DemoPage() {
         <ul className="demo-links">{buildPins(detail.dayList).map((pin) => <li key={pin.key}><a href={amapLink(pin)} target="_blank" rel="noopener noreferrer">第 {pin.dayNo} 天 · {pin.poiName} · 地图核实</a></li>)}</ul>
       </aside>
     </div>
-    <footer>固定回放仅演示交付与确认交互，不保存、分享或导出真实行程。真实生成请按 README 配置模型。</footer>
+    <footer>固定回放仅演示交付与确认交互，不保存、分享或导出真实行程。真实生成请按 README 配置模型。<br /><a href="https://github.com/wabcyyyy/Sinan/blob/master/travel-frontend-react/src/assets/img/CREDITS.md">摄影署名与图片许可</a></footer>
   </main>
 }
