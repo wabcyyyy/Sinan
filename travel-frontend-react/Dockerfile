@@ -1,10 +1,10 @@
 # 构建前端静态资源后用 nginx 托管，并反代 /api 到后端。
 # build 阶段是唯一的前端构建真相：本文件末尾的 caddy 阶段（生产边缘，见
 # deploy/Caddyfile 与 docker-compose.yml 的 caddy 服务）复用同一产物，不重复构建步骤。
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 

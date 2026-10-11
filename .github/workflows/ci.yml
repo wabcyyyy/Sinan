@@ -178,7 +178,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: travel-frontend-react/package-lock.json
       - name: Install deps
@@ -239,3 +239,50 @@ jobs:
       - name: Cross-check schema contract (Python 只读列 vs 全部迁移)
         # 防 schema 漂移：迁移文件（V1+V*）必须覆盖查询用到的全部列（纯静态，无需 DB）
         run: python3 travel-agent-python/scripts/check_schema_contract.py
+
+  preview-stack:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: travel-frontend-react/package-lock.json
+      - name: Initialize from an empty checkout (no model secrets)
+        run: |
+          docker compose -f compose.setup.yml run --rm setup
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          paths = [Path('.env'), Path('travel-agent-python/.env')]
+          before = [path.read_bytes() for path in paths]
+          subprocess.run(['docker', 'compose', '-f', 'compose.setup.yml', 'run', '--rm', 'setup'], check=True)
+          assert before == [path.read_bytes() for path in paths], 'Initialization changed existing configuration'
+          PY
+          docker compose --profile apps config --quiet
+      - name: Build and start all services
+        run: docker compose --profile apps up -d --build --wait --wait-timeout 300
+      - name: Read-only dependency and proxy diagnostics
+        run: docker compose exec -T agent-python python scripts/preview_doctor.py
+      - name: Browser dependencies
+        working-directory: travel-frontend-react
+        run: |
+          npm ci
+          node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Fixed replay browser acceptance
+        working-directory: travel-frontend-react
+        env:
+          E2E_CHANNEL: bundled
+        run: npm run e2e:demo
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-browser-evidence
+          path: travel-frontend-react/e2e/artifacts/demo-*.png
+          if-no-files-found: ignore
+      - name: Stop isolated CI stack
+        if: always()
+        run: docker compose --profile apps down --volumes

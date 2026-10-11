@@ -2,6 +2,8 @@
   "name": "travel-frontend-react",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +12,7 @@
     "preview": "vite preview",
     "test:unit": "vitest run && node --test e2e/delivery-gate.test.mjs",
     "e2e:golden": "node e2e/golden-path.mjs",
+    "e2e:demo": "node e2e/demo-path.mjs",
     "theme:lint": "node scripts/theme-lint.mjs",
     "ep:lint": "node scripts/ep-allowlist.mjs"
   },

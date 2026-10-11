@@ -983,3 +983,5 @@
   .showcase-cities { grid-auto-columns: minmax(224px, 248px); }
   .showcase-ideas { grid-auto-columns: minmax(240px, 264px); }
 }
+.demo-entry { text-align: center; padding: 12px; font-size: 14px; }
+.demo-entry a { color: var(--sinan-accent-dark); }

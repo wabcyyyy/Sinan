@@ -19,6 +19,7 @@ export function installErrorProbe(): void {
   })
 
   window.addEventListener('error', (event) => {
+    if (window.location.pathname === '/demo') return
     if (!(event instanceof ErrorEvent)) return
     reportClientError({
       message: event.message || 'unknown error',
@@ -29,6 +30,7 @@ export function installErrorProbe(): void {
   })
 
   window.addEventListener('unhandledrejection', (event) => {
+    if (window.location.pathname === '/demo') return
     const reason: unknown = event.reason
     reportClientError({
       message: reason instanceof Error ? reason.message : String(reason ?? 'unhandled rejection'),

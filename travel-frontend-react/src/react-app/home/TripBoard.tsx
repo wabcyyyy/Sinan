@@ -43,10 +43,13 @@ function displayDate(value: string | null | undefined) {
  * 本板「不新发请求」红线下该行恒无数据可显。
  * M5a：previews 为当前在途候选（终态即清，常规 ready 进板时恒空）；若终态竞态下
  * 仍有迟到候选帧，按 dayNo 追加进对应天、带「正在完善」徽标，不静默丢弃。 */
-export function TripBoard({ draft, previews, onReset }: {
+export function TripBoard({ draft, previews, onReset, onOpen, openDisabled }: {
   draft: ItineraryDetail
   previews?: ItemPreviewCandidate[]
   onReset?: () => void
+  /** Fixed demo supplies a local action instead of navigating to a real itinerary. */
+  onOpen?: () => void
+  openDisabled?: boolean
 }) {
   const dayList = draft.dayList
   // 点击切换当天；默认选中第一个已完成的天（逐日生成中途就绪的兜底：全空落第一天）
@@ -96,14 +99,14 @@ export function TripBoard({ draft, previews, onReset }: {
         <strong className="board-budget-total">￥{draft.totalAmount || draft.budget || 0}</strong>
         {draft.budgetList.map((row) => <em key={row.category}>{row.category} ￥{row.amount}</em>)}
       </div>}
-      <p className="board-map-hint"><Icon name="pin" size={13} />地图与逐点编辑在完整行程里</p>
+      <p className="board-map-hint"><Icon name="pin" size={13} />{onOpen ? '固定示例中的费用与位置均待核实' : '地图与逐点编辑在完整行程里'}</p>
       <div className="board-actions">
         {onReset && (
           <button type="button" className="text-action trip-board-reset" onClick={onReset} title="返回首页重新开始">
             返回首页
           </button>
         )}
-        <a
+        {onOpen ? <button className="button button-primary trip-board-cta" type="button" disabled={openDisabled} onClick={onOpen}>查看编辑示例</button> : <a
           className="button button-primary trip-board-cta"
           href={`/trips/${draft.id}`}
           onClick={(event) => {
@@ -112,7 +115,7 @@ export function TripBoard({ draft, previews, onReset }: {
             event.preventDefault()
             navigate(`/trips/${draft.id}`)
           }}
-        >打开完整行程<Icon name="arrow" size={16} /></a>
+        >打开完整行程<Icon name="arrow" size={16} /></a>}
       </div>
     </footer>
   </div>

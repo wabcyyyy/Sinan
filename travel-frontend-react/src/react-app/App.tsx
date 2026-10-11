@@ -18,6 +18,7 @@ import { SharePage } from './shared/SharePage'
 const TripDetailPage = lazy(() =>
   import('./itinerary/TripDetailPage').then((module) => ({ default: module.TripDetailPage })),
 )
+const DemoPage = lazy(() => import('./demo/DemoPage').then((module) => ({ default: module.DemoPage })))
 
 function pageTitle(path: string) {
   if (path === '/') return '司南 Sinan · 让每一段旅程找到方向'
@@ -25,10 +26,19 @@ function pageTitle(path: string) {
   if (path === '/trips' || path.startsWith('/trips/')) return '我的行程 · 司南 Sinan'
   if (path === '/settings') return '设置 · 司南 Sinan'
   if (path === '/login') return '登录 · 司南 Sinan'
+  if (path === '/demo') return '固定示例回放 · 司南 Sinan'
   return '司南 Sinan'
 }
 
 export default function App() {
+  const location = useLocation()
+  useEffect(() => { document.title = pageTitle(location.path) }, [location.path])
+  // The demo never mounts the session bootstrap or reads identity storage.
+  if (location.path === '/demo') return <Suspense fallback={<LoadingBlock label="正在打开固定示例…" />}><DemoPage /></Suspense>
+  return <BusinessApp />
+}
+
+function BusinessApp() {
   const location = useLocation()
   const [username, setUsername] = useState(() => localStorage.getItem('sinan-username') || '')
   useEffect(() => { document.title = pageTitle(location.path) }, [location.path])

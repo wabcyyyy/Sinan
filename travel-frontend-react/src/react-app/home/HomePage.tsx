@@ -8,6 +8,7 @@ import { HomeStudio } from './HomeStudio'
 export function HomePage() {
   const { query } = useLocation()
   return <div className="home-page">
+    <p className="demo-entry"><a href="/demo">无需登录或模型密钥，体验固定示例回放 →</a></p>
     <HomeStudio key={query.toString()} query={query} />
   </div>
 }
