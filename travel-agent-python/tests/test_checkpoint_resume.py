@@ -266,7 +266,7 @@ def test_cleanup_old_threads_removes_expired_history(monkeypatch) -> None:
         day_workflow,
         "generate_day_once",
         lambda req, *, force_fallback=False: (
-            DailyPlan(day_no=1, note="待清理", items=[TripItem(poi_name="测试景点", item_type="attraction")]),
+            _reusable_plan("待清理"),
             "llm",
         ),
     )
@@ -278,6 +278,29 @@ def test_cleanup_old_threads_removes_expired_history(monkeypatch) -> None:
 
 
 # ---------- 恢复保真（P0-3：四不变量） ----------
+
+
+def test_resume_rejects_unusable_terminal_day_but_retains_research_context(monkeypatch):
+    from app.agent.generation.orchestration import day_workflow
+
+    calls = []
+
+    def coffee_only(req, **kwargs):
+        calls.append(req.day_no)
+        return DailyPlan(day_no=2, items=[TripItem(item_type="food", poi_name="咖啡", cost=45)]), "open"
+
+    monkeypatch.setattr(day_workflow, "generate_day_once", coffee_only)
+    thread = f"test-unusable-{uuid4().hex}"
+    request = trip_graph.GenerateDayRequest(
+        city="东京", day_no=2, days=2, per_day_chain=True, context={"retained": True}
+    )
+    with pytest.raises(ValueError, match="未安排任何景点"):
+        trip_graph.run_day(request, thread_id=thread)
+    resumed = trip_graph.resume_day(thread)
+    assert resumed is not None and resumed.plan is None
+    assert resumed.context == {"retained": True}
+    assert len(calls) == 3, "已终止的检查点不重跑，但不能返回不可交付草稿"
+
 
 _QUOTE_SENTINEL = [{"provider": "observed-test", "price": 1234, "airline": "测试航空"}]
 

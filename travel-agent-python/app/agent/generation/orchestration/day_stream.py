@@ -39,14 +39,14 @@ from app.agent.generation.content.day_prompts import (
 )
 from app.agent.generation.content.generators import pick_hotels
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_day_output
-from app.agent.generation.content.landing import drop_refuted_items, drop_used_items
+from app.agent.generation.content.landing import drop_refuted_items, drop_used_items, require_playable_items
 from app.agent.generation.content.narrative import normalize_name_mentions, sanitize_narrative, sync_schedule_summary
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
 from app.agent.generation.output.facts import field_fact_evidence
-from app.agent.generation.rules.budget import budget_clause, budget_tier, clamp_meal_cost
-from app.agent.generation.rules.day_policy import MAX_DAILY_ATTRACTIONS, MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
+from app.agent.generation.rules.budget import budget_tier, clamp_meal_cost, pricing_clause
+from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import (
     day_hotel_clause,
     sanitize_itinerary_items,
@@ -117,6 +117,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     # 降级 json_object，见 day_prompts.json_response_format）：守约网关保证符合
     # 契约 schema（含"禁产经纬度/poi_id/来源字段"的闭合约束）；坏输出走修复重试 → 兜底。
     response_format = json_response_format("fast", "day_output", open_day_output_schema(req.day_no))
+    policy = day_policy_for(req.requirements_struct, req.day_no)
     # 终检时长窗口常量由本层传入（prompt 模块不依赖 agent 层，也不自留副本）。
     system = open_day_system_prompt(
         day_no=req.day_no,
@@ -124,9 +125,9 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         hotel_clause=hotel_clause,
         hotel_hint=hotel_hint,
         mem=mem,
-        min_active_minutes=MIN_ACTIVE_MINUTES,
-        max_daily_minutes=MAX_DAILY_MINUTES,
-        max_daily_attractions=MAX_DAILY_ATTRACTIONS,
+        min_active_minutes=policy.min_active_minutes,
+        max_daily_minutes=policy.max_daily_minutes,
+        max_daily_attractions=policy.max_attractions,
         compact_output=response_format.get("type") != "json_schema",
     )
     # intent 注入点：最高优先级信号排 reference 前；有结构化需求时跳过 distill（M1b §6.6）
@@ -137,7 +138,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     reference_block = pool.block()
     if reference_block:
         system += "\n" + reference_block
-    budget_text = budget_clause(req.budget, req.persons, total_days)
+    budget_text = pricing_clause(req.budget, req.persons, total_days, req.city)
     if budget_text:
         system += budget_text
     requirements_text = requirements_clause(req.requirements)
@@ -204,8 +205,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     直接拼装行程冒充生成结果。
 
     force_fallback 不改变生成来源（LLM-only 下不存在"确定性兜底拼装"），
-    仅由 day_workflow 在最后一次尝试时置 True 并清空 feedback，语义是
-    "不再按校验反馈修复、直接再试一次"；本函数不读取该标志。
+    最后一次仍携校验反馈重新采样；本函数不读取该标志。
     """
     ctx = req.context or {}
     candidates = filter_used(ctx.get("candidates") or [], set(req.used_names))[:DAY_ATTRACTION_CONTEXT_LIMIT]
@@ -270,10 +270,9 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             "day %s inner llm produced 0 items (json_object degradation shape loss?); reflect 将按 issue 重采样",
             req.day_no,
         )
-    drafts = sanitize_itinerary_items(plan.get("items"))
+    drafts = sanitize_itinerary_items(plan.get("items"), city=req.city)
     if inner_items and not drafts:
         logger.warning("day %s sanitize dropped all %s inner items", req.day_no, len(inner_items))
-    pre_drop = len(drafts)
     name_aliases: dict[str, str] = {}
     for item in drafts:
         original_name = item["poi_name"]
@@ -286,10 +285,11 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     normalize_name_mentions(plan, name_aliases)
     # 与本次行程矛盾的点位（解析到别处 / 有否证资格的源明确说没有）先出局，
     # 再进装配：留在行程里把一个名字指到别的城市，比少一个点更糟（G5）。
+    before_filter = [item["poi_name"] for item in drafts]
     drafts = drop_refuted_items(drafts, city=req.city)
     drafts = drop_used_items(drafts, req.used_names, day_no=req.day_no)
-    if pre_drop and not drafts:
-        logger.warning("day %s refutation dropped all %s drafts -> empty day", req.day_no, pre_drop)
+    policy = day_policy_for(req.requirements_struct, req.day_no)
+    require_playable_items(before_filter, drafts, day_no=req.day_no, playable=policy.playable)
 
     # 生成后确定性微调：相邻点位转场留白不足就地修（判据与 validate_plans 同源，
     # 见 rules/transfer_time），减少 day.reflect 的无效重试；修不掉的原样上报。

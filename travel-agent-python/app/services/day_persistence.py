@@ -204,6 +204,8 @@ def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:
         plan_note = main.plan_note
         if plan_note and LEGACY_RESUME_MARKER in plan_note:
             plan_note = plan_note.replace(LEGACY_RESUME_MARKER, "").strip()
+        if all_succeeded and plan_note and plan_note.startswith((FAIL_TRIP_NOTE, "生成失败：")):
+            plan_note = None
         session.execute(
             update(ItineraryMain)
             .where(ItineraryMain.id == itinerary_id)
@@ -219,10 +221,8 @@ def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:
 
 
 def fail_trip(itinerary_id: int, message: str | None, *, user_facing: bool = False, code: str | None = None) -> None:
-    """行程级失败终态；**不清 `gen_resumed`**（防死循环）；plan_note 只存用户文案（R2-F3，见 envelope.user_reason）。
-
-    `code`（API-1，envelope.error_code 的产物）：追加进 plan_note 的稳定错误码（只含异常类别，不含异常原文）——
-    统一「请稍后重试」文案在通道级故障（如 LLM 网关连不上）时无诊断价值，码让详情页副标题与运维检索对上同一类失败。
+    """行程级失败终态；保留 gen_resumed 防无限续跑，plan_note 仅存用户文案。
+    code 来自 envelope.error_code，只透出异常类别，供用户与运维关联，不透出原始异常。
     """
     text = (message or "").strip()
     logger.warning("itinerary %s failed: %s", itinerary_id, text[:MAX_ERROR_LENGTH])

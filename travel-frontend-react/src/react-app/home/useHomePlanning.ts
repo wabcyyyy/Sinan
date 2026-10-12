@@ -18,7 +18,7 @@ export type PlanningStatus = 'idle' | 'creating' | 'planning' | 'ready' | 'pendi
 
 // 生成中的行程 id 暂存：刷新/断流后重挂载时据此续上监控（行程本身在服务端继续生成）；
 // done 态也保留（F4，PLAN 2026-10-03 §2.4）——刷新后 resume 靠它拉详情恢复 ready+draft，
-// 唯一清空点是会话重置（reset），中途清掉就会落回 confirm 态、可一键重复生成。
+// 会话重置与已知终态失败才清空；通道瞬断保留原 id，避免重复生成。
 const GENERATION_KEY = 'sinan-intake-generation'
 
 function readGenerationId(): number | null {
@@ -158,7 +158,7 @@ function settleAttempt(attemptId: string, itineraryId: number) {
 
 /** 结果已知的失败（终态 FAILED/建壳被拒）后清 attempt：用户重试该拿到新一次尝试，
  * 而不是被回放到同一个失败壳。与 clearGenerationId 分开用——resume 拉不到详情属于
- *「结果未知」，只清 generationId，attempt 保留让下次提交复用键把行程找回来。 */
+ *「结果未知」，保留 generationId 与 attempt，让恢复仍能找到同一行程。 */
 function clearAttempt() {
   writeAttempt(null)
 }
@@ -173,9 +173,14 @@ export function useHomePlanning() {
   const [previewState, setPreviewState] = useState<ItemPreviewState>(emptyPreviewState)
   const [coreReady, setCoreReady] = useState(false)
   const request = useRef<AbortController | null>(null)
+  const requestVersion = useRef(0)
+  const mounted = useRef(true)
   const busy = status === 'creating' || status === 'planning'
 
-  useEffect(() => () => request.current?.abort(), [])
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; request.current?.abort() }
+  }, [])
 
   const monitor = useCallback(async (created: ItineraryDetail, controller: AbortController) => {
     const onEvent = (event: ItineraryStreamEvent) => {
@@ -231,7 +236,7 @@ export function useHomePlanning() {
         // attempt 记录一并清（结果已知，重试拿新一次尝试而不是回放失败壳）
         clearGenerationId()
         clearAttempt()
-        setStatus('pending')
+        setStatus('error')
         setMessage(result.planNote || '行程未能全部生成，已保留当前内容，可稍后重试。')
       } else {
         setProgress(4); setStatus('ready')
@@ -242,20 +247,24 @@ export function useHomePlanning() {
             : '你的行程已准备好',
         )
       }
+      controller.abort()
     } catch (error) {
       if (controller.signal.aborted) return
       if (lastStatus === 3) {
         clearGenerationId()
         clearAttempt()
       }
-      setStatus('pending')
+      setStatus(lastStatus === 3 ? 'error' : 'pending')
+      setPreviewState(emptyPreviewState()); setCoreReady(false)
       setMessage(error instanceof Error ? error.message : '进度暂时不可用，已保留当前行程。')
+      controller.abort()
     }
     await sse
   }, [])
 
   async function submit(input: GenerateInput) {
     if (request.current) return
+    requestVersion.current += 1
     const controller = new AbortController()
     request.current = controller
     setStatus('creating'); setMessage('正在创建你的行程'); setProgress(0); setDraft(null)
@@ -292,22 +301,25 @@ export function useHomePlanning() {
    * 卸载掐死；挂晚了轮询开始前真卸载照样能被卸载 abort / reset 掐断，SPA 内
    * 路由切换后不再 30 分钟后台空转。 */
   const resumedRef = useRef(false)
-  const resumePending = useCallback(async () => {
-    if (resumedRef.current) return
-    resumedRef.current = true
-    const id = readGenerationId()
-    if (!id) return
+  const resumeGeneration = useCallback(async (id: number) => {
+    request.current?.abort()
+    request.current = null
+    const version = ++requestVersion.current
     const controller = new AbortController()
+    saveGenerationId(id)
     try {
       const shell = await getItineraryDetail(id)
-      if (!request.current) request.current = controller
-      if (shell.status === 3) {
+      if (!mounted.current || version !== requestVersion.current) return
+      request.current = controller
+      setDraft(shell)
+      if (shell.status === 3 || shell.genState === 'FAILED') {
         // 终态失败是结果已知：resume 标记与 attempt 记录一并清，重试拿新一次尝试
         clearGenerationId()
         clearAttempt()
+        setStatus('error')
+        setMessage(shell.planNote || '行程未能全部生成，可查看已有内容或重新规划。')
         return
       }
-      setDraft(shell)
       if (shell.status === 2) {
         // 刷新恢复 done 态：与刚生成完的 ready 同一呈现分支（TripPanel 的 TripBoard），
         // id 继续保留——再刷新仍能恢复；清空只发生在会话重置。
@@ -323,21 +335,29 @@ export function useHomePlanning() {
       saveGenerationId(id)
       setStatus('planning'); setMessage('上次的规划还在进行，接着看'); setProgress(2)
       await monitor(shell, controller)
-    } catch {
-      // 只有无 abort 的真失败才清标记；abort（导航离开）保留续看入口
-      if (!controller.signal.aborted) clearGenerationId()
+    } catch (error) {
+      if (!controller.signal.aborted && version === requestVersion.current) {
+        setStatus(isUnauthorized(error) ? 'login' : 'pending')
+        setMessage(isUnauthorized(error) ? '登录后即可继续查看上次的行程。' : '暂时无法读取上次的行程，请刷新重试。')
+      }
     } finally {
       if (request.current === controller) request.current = null
     }
   }, [monitor])
 
-  useEffect(() => { void resumePending() }, [resumePending])
+  useEffect(() => {
+    if (resumedRef.current) return
+    resumedRef.current = true
+    const id = readGenerationId()
+    if (id) void resumeGeneration(id)
+  }, [resumeGeneration])
 
   /** 会话重置（「重新说」链路，HomeStudio.handleChatReset 调用）：done 态保留的
    * generationId 在这里清——重置后的刷新不会被 resume 拉回旧行程，下次生成必是新行程。
    * 生成态与草稿一并归零，重置解锁后右栏不残留旧预览板；abort 兜底在位请求
    * （当前 reset 只在非 busy 态可达，正常为空）。 */
   const reset = useCallback(() => {
+    requestVersion.current += 1
     request.current?.abort()
     request.current = null
     clearGenerationId()
@@ -352,6 +372,6 @@ export function useHomePlanning() {
     previews: previewState.candidates,
     /** M5b：主行程已可查看、备选仍在完善的非阻断提示态 */
     coreReady,
-    busy, submit, reset,
+    busy, submit, reset, resumeGeneration,
   }
 }

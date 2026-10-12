@@ -17,11 +17,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.agent import check_constraints, day_policy_for, validate_plans
+from app.agent import hard_day_issues
 from app.schemas.trip import DailyPlan
 from app.schemas.trip_requirements import TripRequirements
-
-_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀")
 
 
 def _rule_item(item: Any) -> dict[str, Any]:
@@ -29,6 +27,7 @@ def _rule_item(item: Any) -> dict[str, Any]:
     return {
         "item_type": item.item_type,
         "poi_name": item.poi_name,
+        "fact_evidence": {key: value.model_dump(mode="json") for key, value in item.fact_evidence.items()},
         "start_time": item.start_time,
         "end_time": item.end_time,
         "duration_min": item.duration_min,
@@ -54,21 +53,5 @@ def hard_delivery_blockers(
     - 需求违例（ConstraintReport）：指定日必去/排除点类别/明确窗口/锁定条目/
       strict 预算/时间冲突——判 status/blocking，不再靠中文子串。
     """
-    if not plan.items:
-        return [f"第 {day_no} 天没有生成任何条目"]
     plan_dict = {"day_no": day_no, "items": [_rule_item(item) for item in plan.items]}
-    issues, _log = validate_plans([plan_dict], requirements=requirements)
-    structural = [issue for issue in issues if any(tag in issue for tag in _HARD_DELIVERY_TAGS)]
-    policy = day_policy_for(requirements, day_no)
-    report = check_constraints(
-        plan_dict, requirements, day_no, policy, locked_names=locked_names, strict_budget=strict_budget
-    )
-    constraint_blockers = [
-        f"第 {day_no} 天需求违例（{check.kind}）：{check.reason}" for check in report.blocking_checks
-    ]
-    unknown = [
-        f"第 {day_no} 天待确认（{check.kind}）：{check.reason}" for check in report.unknown_checks if check.reason
-    ]
-    # unknown 不阻断（spec：关键 unknown 提示待确认，非阻断事实带警告交付），
-    # 但要进 error 备注让上游/用户看得到
-    return [*structural, *constraint_blockers, *unknown]
+    return hard_day_issues(plan_dict, requirements, locked_names=locked_names, strict_budget=strict_budget)

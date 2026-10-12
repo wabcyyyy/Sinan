@@ -305,6 +305,24 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
     expect(final.previews).toEqual([])
   })
 
+  it('终态失败结束 SSE 并清掉失败 attempt，保留可重新提交的 error 态', async () => {
+    waitForMock.mockImplementationOnce(async (_id, options) => {
+      streamChannel!.handlers.onEvent(previewFrame('run-1:1:1', 1, 1, '未落库候选'))
+      streamChannel!.handlers.onEvent({ type: 'core_ready', data: {} })
+      options?.onUpdate?.({ ...readyDetail, status: 3 })
+      throw new Error('生成失败')
+    })
+    const container = await mountProbe()
+    await act(async () => { (container.querySelector('.probe-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(stateOf(container).status).toBe('error')
+    expect(stateOf(container).previews).toEqual([])
+    expect(stateOf(container).coreReady).toBe(false)
+    expect(streamChannel!.signal.aborted).toBe(true)
+    expect(sessionStorage.getItem('sinan-intake-generation')).toBeNull()
+    expect(sessionStorage.getItem('sinan-intake-attempt')).toBeNull()
+  })
+
   it('SSE 终态帧（complete/done）也清残余预览与 core_ready 提示', async () => {
     const container = await mountProbe()
     await startGeneration(container)
@@ -542,6 +560,36 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
     // 成功后绑定 itineraryId（此后恢复只轮询这一条）
     expect(storedAttempt()).toMatchObject({ attemptId: posts[0].key, phase: 'submitted', itineraryId: 7 })
     expect(stateOf(container).status).toBe('planning')
+  })
+
+  it('恢复详情迟到时不能覆盖用户已重置并开始的新行程', async () => {
+    let resolveOld!: (detail: ItineraryDetail) => void
+    getDetailMock.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve }))
+    sessionStorage.setItem('sinan-intake-generation', '6')
+    const container = await mount()
+    await click(container, '.probe-reset')
+    await click(container, '.probe-start-a')
+    await act(async () => { resolveOld({ ...readyDetail, id: 6 }) })
+    await flush()
+    expect(stateOf(container).status).toBe('planning')
+    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('7')
+    await settleWait()
+    expect(stateOf(container).status).toBe('ready')
+  })
+
+  it('恢复详情未返回就离开页面，迟到响应不得启动后台轮询', async () => {
+    let resolveOld!: (detail: ItineraryDetail) => void
+    getDetailMock.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve }))
+    sessionStorage.setItem('sinan-intake-generation', '6')
+    await mount()
+    const record = idemRoots.pop()!
+    await act(async () => { record.root.unmount() })
+    record.container.remove()
+    await act(async () => { resolveOld({ ...readyDetail, status: 1 }) })
+    await flush()
+    expect(waitForMock).not.toHaveBeenCalled()
+    expect(streamMock).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('6')
   })
 
   it('网络失败后的重试复用同一 key（E13：创建已接受丢响应仍只有一条行程）', async () => {

@@ -1,0 +1,1181 @@
+{
+  "case": "candidate",
+  "repeat": 0,
+  "input": {
+    "city": "东京",
+    "days": 2,
+    "persons": 2,
+    "budget": 3000,
+    "preferences": [
+      "美食",
+      "慢节奏"
+    ],
+    "requirements": "带70岁老人，不去寺庙，每天最多两个景点，素食。",
+    "intent": "东京两天省力游，不去寺庙，每天最多两个景点，素食",
+    "requirementsStruct": {
+      "schemaVersion": 1,
+      "dayWindows": [],
+      "requiredPlaces": [],
+      "excludedPlaces": [],
+      "excludedCategories": [
+        "temple"
+      ],
+      "pace": "relaxed",
+      "maxAttractionsPerDay": 2,
+      "dietaryRequirement": "vegetarian",
+      "diningEvidencePolicy": "review_candidates",
+      "transportPreference": null,
+      "maxWalkMinutesPerLeg": null,
+      "budgetPolicy": null,
+      "lodging": null,
+      "unresolvedRequests": []
+    }
+  },
+  "seconds": 68.99,
+  "snapshots": [
+    {
+      "seconds": 0.17,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 4.28,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 8.28,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 12.31,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 16.36,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 20.39,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "PENDING",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 24.5,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 28.52,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "PENDING"
+      ]
+    },
+    {
+      "seconds": 32.55,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 36.58,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 40.62,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 44.72,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 48.74,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 52.75,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 56.8,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 60.81,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 64.94,
+      "genState": "GENERATING",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "RUNNING"
+      ]
+    },
+    {
+      "seconds": 68.99,
+      "genState": "FAILED",
+      "dayStatuses": [
+        "SUCCEEDED",
+        "FAILED"
+      ]
+    }
+  ],
+  "body": {
+    "code": 200,
+    "message": "success",
+    "data": {
+      "schemaVersion": "1.0",
+      "id": 14,
+      "title": "东京2日游",
+      "city": "东京",
+      "startDate": null,
+      "endDate": null,
+      "days": 2,
+      "stayNights": 1,
+      "persons": 2,
+      "budget": 3000.0,
+      "preferences": "美食,慢节奏",
+      "hotelTier": null,
+      "originCity": null,
+      "status": 3,
+      "genState": "FAILED",
+      "coreReady": false,
+      "planNote": "行程生成失败，请稍后重试或调整条件重新生成（错误码 ValueError）",
+      "tripTheme": "东京新宿·慢享美食与城市绿意（宿新宿华盛顿酒店）",
+      "coverUrl": null,
+      "coverSource": null,
+      "coverCredit": null,
+      "favorite": false,
+      "archived": false,
+      "shareToken": null,
+      "templatePublishedAt": null,
+      "destinationStatus": "researched",
+      "qualityStatus": "BLOCKED",
+      "qualityRuleVersion": "travel-quality-1.2",
+      "validatedAt": null,
+      "pendingFactCount": 9,
+      "qualityReport": {
+        "qualityStatus": "BLOCKED",
+        "qualityRuleVersion": "travel-quality-1.2",
+        "blockingIssues": [
+          {
+            "code": "DAY_GENERATION_FAILED",
+            "message": "至少一天的行程生成失败"
+          },
+          {
+            "code": "DIETARY_EVIDENCE_REVIEW",
+            "message": "第 1 天：「都厅职员食堂」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+          },
+          {
+            "code": "DIETARY_EVIDENCE_REVIEW",
+            "message": "第 1 天：「新宿御苑前 ソラノイロ」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+          },
+          {
+            "code": "DIETARY_EVIDENCE_REVIEW",
+            "message": "第 2 天：「Ain Soph Journey」有外部素食标签，当前菜单仍须出发前核实"
+          },
+          {
+            "code": "DIETARY_EVIDENCE_REVIEW",
+            "message": "第 2 天：「Sushi Tokyo Ten」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+          }
+        ],
+        "warnings": [],
+        "metrics": {
+          "pendingFactCount": 9
+        }
+      },
+      "sources": [
+        {
+          "sourceId": "llm.open_day",
+          "storageSource": "llm.open_day",
+          "provider": "llm.open_day"
+        },
+        {
+          "sourceId": "nominatim",
+          "storageSource": "nominatim",
+          "provider": "nominatim"
+        }
+      ],
+      "suggestions": [
+        {
+          "poiId": "Q963514",
+          "name": "Tōkaidō",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68939971923828,
+          "longitude": 139.6916961669922,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q3530518",
+          "name": "Tokyo City Hall Tower II",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.6879997253418,
+          "longitude": 139.69200134277344,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "W35863704",
+          "name": "Shinjuku Central Park",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68907165527344,
+          "longitude": 139.68983459472656,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "W54044218",
+          "name": "Shinjuku Niagara Falls",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.69009017944336,
+          "longitude": 139.6896209716797,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "W95937718",
+          "name": "Juniso Kumano Shrine",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.69024658203125,
+          "longitude": 139.68833923339844,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q2413330",
+          "name": "Shinjuku Mitsui Building",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.691898345947266,
+          "longitude": 139.69390869140625,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q35134652",
+          "name": "Chueigekijo Theater",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68948745727539,
+          "longitude": 139.69171142578125,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q35134697",
+          "name": "Grant Heights Theater",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68948745727539,
+          "longitude": 139.69171142578125,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q35134725",
+          "name": "Meigaza Theater",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68948745727539,
+          "longitude": 139.69171142578125,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "Q35134751",
+          "name": "Shingekijo Theater",
+          "category": "attraction",
+          "address": null,
+          "latitude": 35.68948745727539,
+          "longitude": 139.69171142578125,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N5561328322",
+          "name": "keio plaza hotel tokyo",
+          "category": "activity",
+          "address": null,
+          "latitude": 35.69053268432617,
+          "longitude": 139.693603515625,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": "H2468674",
+          "name": "keio plaza hotel tokyo premier grand",
+          "category": "activity",
+          "address": null,
+          "latitude": 35.68988037109375,
+          "longitude": 139.69395446777344,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": "N1420779754",
+          "name": "Memorial Museum for Soldiers, Detainees in Siberia, and Postwar Repatriates",
+          "category": "activity",
+          "address": null,
+          "latitude": 35.691261291503906,
+          "longitude": 139.6925048828125,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": "Q863588",
+          "name": "Shinjuku Sumitomo Building",
+          "category": "activity",
+          "address": null,
+          "latitude": 35.69126510620117,
+          "longitude": 139.69261169433594,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": "N3623334130",
+          "name": "Tully's Coffee",
+          "category": "food",
+          "address": "ふれあい通り タリーズコーヒー 新宿区 東京都",
+          "latitude": 35.688331604003906,
+          "longitude": 139.69200134277344,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N4260791791",
+          "name": "Metropolitan Officers' Cafeteria",
+          "category": "food",
+          "address": null,
+          "latitude": 35.6897087097168,
+          "longitude": 139.69155883789062,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N4316501890",
+          "name": "Tochō",
+          "category": "food",
+          "address": null,
+          "latitude": 35.68927001953125,
+          "longitude": 139.6918182373047,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N5066928881",
+          "name": "Eau de Vie",
+          "category": "food",
+          "address": null,
+          "latitude": 35.690853118896484,
+          "longitude": 139.6910400390625,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N4316519393",
+          "name": "Kyubei Sushi at Keio Plaza Hotel",
+          "category": "food",
+          "address": null,
+          "latitude": 35.68973159790039,
+          "longitude": 139.6943817138672,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": "N4497496490",
+          "name": "The Wine Bar - 50th Floor",
+          "category": "food",
+          "address": null,
+          "latitude": 35.690982818603516,
+          "longitude": 139.6927490234375,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "N810644323",
+          "name": "Hyatt Regency Tokyo",
+          "category": "hotel",
+          "address": "新宿区 東京都",
+          "latitude": 35.690711975097656,
+          "longitude": 139.691162109375,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": null,
+          "used": false
+        },
+        {
+          "poiId": "W116596175",
+          "name": "Keio Plaza Hotel",
+          "category": "hotel",
+          "address": null,
+          "latitude": 35.68983459472656,
+          "longitude": 139.6944122314453,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": null,
+          "name": "shinjuku washington hotel annex",
+          "category": "hotel",
+          "address": null,
+          "latitude": null,
+          "longitude": null,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        },
+        {
+          "poiId": null,
+          "name": "Shinjuku Washington Hotel",
+          "category": "hotel",
+          "address": null,
+          "latitude": null,
+          "longitude": null,
+          "intro": null,
+          "needReservation": false,
+          "estimatedCost": 0.0,
+          "used": false
+        }
+      ],
+      "flightQuotes": [],
+      "dayList": [
+        {
+          "dayId": 24,
+          "dayNo": 1,
+          "generationStatus": "SUCCEEDED",
+          "travelDate": null,
+          "note": "09:30–11:30 东京都厅展望室；11:45–12:45 都厅职员食堂；13:30–15:30 新宿中央公园；18:00–19:30 新宿御苑前 ソラノイロ；20:00–08:00 新宿华盛顿酒店（价格为估算，请以现场或官方渠道为准）",
+          "theme": "东京都厅展望室 → 都厅职员食堂",
+          "miniRoute": null,
+          "backupPlan": [
+            {
+              "if": "都厅职员食堂不营业",
+              "action": "改为都厅内咖啡厅或附近便利店购买素食饭团便当。"
+            },
+            {
+              "if": "下雨不便户外活动",
+              "action": "将新宿中央公园替换为新宿NS大厦展望台或购物中心室内漫步。"
+            }
+          ],
+          "photoSpots": [
+            {
+              "name": "都厅展望室",
+              "tip": "以东京塔和晴空塔为背景拍摄城市全景，建议使用广角镜头。",
+              "bestTime": "上午10点前光线较柔和"
+            },
+            {
+              "name": "新宿中央公园",
+              "tip": "在公园草坪以高楼为背景拍摄人像，利用绿植构图。",
+              "bestTime": "下午3点后阳光斜射"
+            }
+          ],
+          "practicalNotes": [
+            "都厅展望室需安检，建议轻装前往，避免携带大件行李。",
+            "都厅职员食堂仅工作日开放，若逢周末可改为都厅内咖啡厅轻食。",
+            "新宿中央公园内步行道平坦，但部分区域有台阶，注意老人行走安全。",
+            "素食拉面店可能需排队，可提前到店或选择非高峰时段。"
+          ],
+          "dayOptions": [
+            {
+              "label": "休闲版",
+              "summary": "上午都厅展望，中午食堂，下午公园，晚上拉面。",
+              "tradeoff": "景点少，留白多，适合老人体力。",
+              "items": []
+            },
+            {
+              "label": "加游版",
+              "summary": "增加新宿御苑（如开放）或购物中心。",
+              "tradeoff": "步行距离增加，可能较累。",
+              "items": []
+            }
+          ],
+          "items": [
+            {
+              "id": 149,
+              "itemType": "attraction",
+              "poiName": "东京都厅展望室",
+              "poiId": null,
+              "address": null,
+              "latitude": null,
+              "longitude": null,
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "durationMin": 120,
+              "cost": 0.0,
+              "tag": "城市地标",
+              "remark": "开放时间9:30-23:00，北展望室更推荐；无需预约，但需安检，建议早到避开人流。",
+              "whyThis": "免费高空展望台，可俯瞰东京全景，室内电梯直达，适合老人省力游览，且位于新宿核心区，与酒店步行可达。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "llm.open_day",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "estimated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"llm.open_day\", \"sourceUrl\": null, \"provider\": \"llm.open_day\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "llm.open_day",
+                  "sourceUrl": null,
+                  "provider": "llm.open_day",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 0
+            },
+            {
+              "id": 150,
+              "itemType": "food",
+              "poiName": "都厅职员食堂",
+              "poiId": null,
+              "address": null,
+              "latitude": null,
+              "longitude": null,
+              "startTime": "11:45",
+              "endTime": "12:45",
+              "durationMin": 60,
+              "cost": 60.0,
+              "tag": "平价食堂",
+              "remark": "位于都厅第一本厅舍32层，需从展望室下到1楼换乘电梯；仅工作日开放，周末可能不营业，建议提前确认。",
+              "whyThis": "位于都厅内的职员食堂，提供多种定食，有素食选项如蔬菜定食、豆腐料理，价格实惠，适合老人。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "llm.open_day",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "estimated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"llm.open_day\", \"sourceUrl\": null, \"provider\": \"llm.open_day\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "llm.open_day",
+                  "sourceUrl": null,
+                  "provider": "llm.open_day",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 1
+            },
+            {
+              "id": 151,
+              "itemType": "attraction",
+              "poiName": "新宿中央公园",
+              "poiId": "osm:relation:13272644",
+              "address": "Shinjuku Central Park, Park Bridge, Nishi-Shinjuku 2, Nishi-Shinjuku, 新宿区, 东京都/東京都, 160-0023, 日本",
+              "latitude": 35.690029,
+              "longitude": 139.689585,
+              "startTime": "13:30",
+              "endTime": "15:30",
+              "durationMin": 120,
+              "cost": 0.0,
+              "tag": "城市公园",
+              "remark": "公园内有多处休息区，可自带茶水；从都厅步行约10分钟。",
+              "whyThis": "新宿高楼群中的绿洲，步道平坦，有长椅和草坪，适合老人散步休息，免费开放。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "nominatim",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "partially_verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/relation/13272644\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "nominatim",
+                  "sourceUrl": "https://www.openstreetmap.org/relation/13272644",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 2
+            },
+            {
+              "id": 152,
+              "itemType": "food",
+              "poiName": "新宿御苑前 ソラノイロ",
+              "poiId": null,
+              "address": null,
+              "latitude": null,
+              "longitude": null,
+              "startTime": "18:00",
+              "endTime": "19:30",
+              "durationMin": 90,
+              "cost": 80.0,
+              "tag": "素食拉面",
+              "remark": "晚餐时段可能排队，建议提前前往；菜单有英文标识，可确认素食选项。",
+              "whyThis": "东京知名素食拉面店，提供纯素拉面及素食小菜，汤底浓郁，适合素食者，且位于新宿区，离酒店不远。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "llm.open_day",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "estimated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"llm.open_day\", \"sourceUrl\": null, \"provider\": \"llm.open_day\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "llm.open_day",
+                  "sourceUrl": null,
+                  "provider": "llm.open_day",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 3
+            },
+            {
+              "id": 153,
+              "itemType": "hotel",
+              "poiName": "新宿华盛顿酒店",
+              "poiId": "osm:node:475090896",
+              "address": "新宿华盛顿酒店, One Day Street, Nishi-Shinjuku 3, Nishi-Shinjuku, 新宿区, 东京都/東京都, 160-0023, 日本",
+              "latitude": 35.686832,
+              "longitude": 139.692856,
+              "startTime": "20:00",
+              "endTime": "08:00",
+              "durationMin": 720,
+              "cost": 800.0,
+              "tag": "舒适酒店",
+              "remark": "入住时间14:00后，退房时间11:00前；酒店有行李寄存服务，方便早到或晚走。",
+              "whyThis": "位于新宿站南口，交通便利，房间舒适，价格适中，符合舒适档预算，且连住两晚无需换店。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "nominatim",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "partially_verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/node/475090896\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "nominatim",
+                  "sourceUrl": "https://www.openstreetmap.org/node/475090896",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 4
+            }
+          ]
+        },
+        {
+          "dayId": 25,
+          "dayNo": 2,
+          "generationStatus": "FAILED",
+          "travelDate": null,
+          "note": "09:30–11:30 明治神宫外苑银杏并木；12:00–12:57 Ain Soph Journey；14:00–16:00 表參道；18:00–19:30 Sushi Tokyo Ten（价格为估算，请以现场或官方渠道为准）",
+          "theme": "明治神宫外苑银杏并木 → Ain Soph Journey",
+          "miniRoute": null,
+          "backupPlan": [
+            {
+              "if": "银杏未黄或天气不佳",
+              "action": "改为参观明治神宫外苑内的圣德纪念绘画馆（如开放）。"
+            },
+            {
+              "if": "Ain Soph Journey满座",
+              "action": "改为表參道另一家素食咖啡馆，如“Brown Rice by Neal's Yard Remedies”。"
+            }
+          ],
+          "photoSpots": [
+            {
+              "name": "银杏并木",
+              "tip": "以银杏树为前景，拍摄纵深感，建议低角度。",
+              "bestTime": "上午9-10点光线柔和"
+            },
+            {
+              "name": "表參道",
+              "tip": "利用林荫道和橱窗拍摄街拍风格。",
+              "bestTime": "下午3-4点"
+            }
+          ],
+          "practicalNotes": [
+            "明治神宫外苑银杏并木在秋季人多，建议早到避开人流。",
+            "Ain Soph Journey需提前预约，可要求靠窗座位。",
+            "表參道散步注意避让自行车，部分人行道较窄。",
+            "素食寿司店需提前确认素食菜单，避免临时无法安排。"
+          ],
+          "dayOptions": [
+            {
+              "label": "休闲版",
+              "summary": "银杏并木+表參道，午餐素食法餐，晚餐素食寿司。",
+              "tradeoff": "景点少，步行适中，适合老人。",
+              "items": []
+            },
+            {
+              "label": "加游版",
+              "summary": "增加根津美术馆或青山灵园。",
+              "tradeoff": "步行距离增加，可能较累。",
+              "items": []
+            }
+          ],
+          "items": [
+            {
+              "id": 154,
+              "itemType": "attraction",
+              "poiName": "明治神宫外苑银杏并木",
+              "poiId": null,
+              "address": null,
+              "latitude": null,
+              "longitude": null,
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "durationMin": 120,
+              "cost": 0.0,
+              "tag": "自然景观",
+              "remark": "银杏最佳观赏期为11月下旬至12月上旬；从新宿站乘JR中央线至信浓町站步行5分钟。",
+              "whyThis": "东京著名银杏大道，秋季金黄一片，步道宽阔平坦，适合老人散步拍照，免费开放。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "llm.open_day",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "estimated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"llm.open_day\", \"sourceUrl\": null, \"provider\": \"llm.open_day\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "llm.open_day",
+                  "sourceUrl": null,
+                  "provider": "llm.open_day",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 0
+            },
+            {
+              "id": 155,
+              "itemType": "food",
+              "poiName": "Ain Soph Journey",
+              "poiId": "osm:node:4559935689",
+              "address": "AIN SOPH. journey, 9, Shinjuku 3, Shinjuku, 新宿区, 东京都/東京都, 160-0022, 日本",
+              "latitude": 35.690675,
+              "longitude": 139.706754,
+              "startTime": "12:00",
+              "endTime": "12:57",
+              "durationMin": 57,
+              "cost": 150.0,
+              "tag": "素食法餐",
+              "remark": "建议提前预约，可通过官网或电话；有英文菜单，可确认素食。",
+              "whyThis": "表參道知名素食餐厅，提供纯素法式料理和甜点，环境优雅，适合慢享午餐。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "nominatim",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "partially_verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/node/4559935689\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegan\": {\"sourceRef\": \"osm:node:4559935689:diet:vegan\", \"sourceUrl\": \"https://www.openstreetmap.org/node/4559935689\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegetarian\": {\"sourceRef\": \"osm:node:4559935689:diet:vegetarian\", \"sourceUrl\": \"https://www.openstreetmap.org/node/4559935689\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "nominatim",
+                  "sourceUrl": "https://www.openstreetmap.org/node/4559935689",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "diet:vegan": {
+                  "sourceRef": "osm:node:4559935689:diet:vegan",
+                  "sourceUrl": "https://www.openstreetmap.org/node/4559935689",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "diet:vegetarian": {
+                  "sourceRef": "osm:node:4559935689:diet:vegetarian",
+                  "sourceUrl": "https://www.openstreetmap.org/node/4559935689",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 1
+            },
+            {
+              "id": 156,
+              "itemType": "attraction",
+              "poiName": "表參道",
+              "poiId": "osm:way:41521096",
+              "address": "表參道, Jingumae 4, Jingumae, 澀谷區, 东京都/東京都, 150-0001, 日本",
+              "latitude": 35.667704,
+              "longitude": 139.707207,
+              "startTime": "14:00",
+              "endTime": "16:00",
+              "durationMin": 120,
+              "cost": 0.0,
+              "tag": "时尚街区",
+              "remark": "表參道之丘有休息区和洗手间，可中途休息；从银杏并木步行约15分钟。",
+              "whyThis": "东京时尚街区，林荫道适合散步，两旁有精品店和咖啡馆，可感受都市氛围，且离午餐地点近。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "nominatim",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "partially_verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/way/41521096\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "nominatim",
+                  "sourceUrl": "https://www.openstreetmap.org/way/41521096",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 2
+            },
+            {
+              "id": 157,
+              "itemType": "food",
+              "poiName": "Sushi Tokyo Ten",
+              "poiId": "osm:node:12452266955",
+              "address": "Ten, 3, Shibuya 3, Shibuya, 澀谷區, 东京都/東京都, 150-0002, 日本",
+              "latitude": 35.657085,
+              "longitude": 139.703136,
+              "startTime": "18:00",
+              "endTime": "19:30",
+              "durationMin": 90,
+              "cost": 200.0,
+              "tag": "素食寿司",
+              "remark": "需提前预约并说明素食需求；可能需日语沟通，建议通过酒店礼宾协助。",
+              "whyThis": "新宿站附近寿司店，提供素食寿司套餐（需提前咨询），食材新鲜，适合体验日式料理。",
+              "openTime": null,
+              "image": null,
+              "imageUrl": null,
+              "source": "nominatim",
+              "sourceUpdatedAt": null,
+              "verificationStatus": "partially_verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure",
+              "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/node/12452266955\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+              "factEvidence": {
+                "identity": {
+                  "sourceRef": "nominatim",
+                  "sourceUrl": "https://www.openstreetmap.org/node/12452266955",
+                  "provider": "nominatim",
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "verified",
+                  "valueKind": "observed",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                },
+                "cost": {
+                  "sourceRef": null,
+                  "sourceUrl": null,
+                  "provider": null,
+                  "retrievedAt": null,
+                  "expiresAt": null,
+                  "verificationStatus": "unverified",
+                  "valueKind": "generated",
+                  "freshnessStatus": "unknown",
+                  "reviewRequirement": "before_departure"
+                }
+              },
+              "intro": null,
+              "description": null,
+              "sortNo": 3
+            }
+          ]
+        }
+      ],
+      "budgetList": [
+        {
+          "category": "门票",
+          "amount": 0.0,
+          "itemCount": 4
+        },
+        {
+          "category": "餐饮",
+          "amount": 980.0,
+          "itemCount": 4
+        },
+        {
+          "category": "交通",
+          "amount": 140.0,
+          "itemCount": 2
+        },
+        {
+          "category": "酒店",
+          "amount": 800.0,
+          "itemCount": 1
+        }
+      ],
+      "totalAmount": 1920.0,
+      "myRole": "owner"
+    }
+  }
+}

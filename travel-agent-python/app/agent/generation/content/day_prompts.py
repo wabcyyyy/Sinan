@@ -3,7 +3,7 @@
 职责：
 - destination_line：目的地描述行（单日/整段共用）；
 - 约束句拼装：intent_clause（意图，最高优先级）/ requirements_clause（特别要求）
-  / budget_clause（见 budget）/ QUALITY_CLAUSE（选点质量，供 Prompt 基座引用）；
+  / pricing_clause（币种+预算，见 budget）/ QUALITY_CLAUSE（选点质量，供 Prompt 基座引用）；
 - 文风节奏：_pace_guidance（按天数给出每日景点数建议）；
 - open_trip_prompt / llm_open_trip：整段生成的提示组装与一次 LLM 调用入口
   （逐日编排仍用 day_stream.llm_open_day）；M5a 流式逐项形态
@@ -29,7 +29,7 @@ from app.agent.generation.content.requirement_directives import (
     has_structured_requirements,
     requirements_directives_clause,
 )
-from app.agent.generation.rules.budget import budget_clause
+from app.agent.generation.rules.budget import pricing_clause
 from app.agent.generation.rules.day_policy import MAX_DAILY_MINUTES, MIN_ACTIVE_MINUTES
 from app.agent.generation.rules.generation_core import hotel_prompt_clause
 from app.agent.runtime.trace import traced
@@ -214,7 +214,7 @@ def open_trip_prompt(req: GenerateDayRequest) -> tuple[str, str]:
     reference_block = pool.block()
     if reference_block:
         system += "\n" + reference_block
-    budget_text = budget_clause(req.budget, req.persons, days)
+    budget_text = pricing_clause(req.budget, req.persons, days, req.city)
     if budget_text:
         system += budget_text
     requirements_text = requirements_clause(req.requirements)

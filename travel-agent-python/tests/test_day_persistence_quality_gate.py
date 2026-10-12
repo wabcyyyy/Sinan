@@ -15,7 +15,9 @@ from app.common import cache_store
 from app.db import session as db_session
 from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain
 from app.schemas.trip import DailyPlan, TripItem
+from app.schemas.trip_requirements import TripRequirements
 from app.services import day_persistence, stay_hotels
+from app.services.itinerary_query import build_detail
 
 
 @pytest.fixture()
@@ -181,6 +183,27 @@ def test_healthy_day_still_succeeds(db):
     assert status == "SUCCEEDED"
     assert error is None
     assert _item_count(2) == 5, "day 2 ≤ stay_nights 3：酒店项照常落库（退房日是第 4 天）"
+
+
+def test_dietary_candidate_warning_survives_persistence_and_detail_read(db):
+    requirements = TripRequirements(dietary_requirement="vegetarian", dining_evidence_policy="review_candidates")
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, 1)
+        assert main is not None
+        main.requirements_json = requirements.model_dump(mode="json", by_alias=True)
+        for day in session.execute(select(ItineraryDay)).scalars():
+            day.generation_status = "SUCCEEDED" if day.day_no == 2 else "PENDING"
+    request = type("Request", (), {"days": 4, "stay_nights": 3, "requirements_struct": requirements})()
+    day_persistence.persist(1, request, 1, _healthy_plan(), "day-1-1", "fp")
+    with db_session.session_scope() as session:
+        for item in session.execute(select(ItineraryItem)).scalars():
+            item.review_requirement = "none"
+            item.freshness_status = "fresh"
+    detail = build_detail(1, 1)
+    assert detail["qualityStatus"] == "READY_WITH_WARNINGS"
+    dietary = [issue for issue in detail["qualityReport"]["warnings"] if issue["code"] == "DIETARY_EVIDENCE_REVIEW"]
+    assert len(dietary) == 3  # 两家餐厅候选 + 未提供餐饮的第二天
+    assert any("餐厅乙" in issue["message"] and "不能确认满足饮食要求" in issue["message"] for issue in dietary)
 
 
 def test_saved_summary_does_not_keep_clock_rejected_by_storage(db):

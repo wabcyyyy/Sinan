@@ -20,6 +20,7 @@ from app.agent.data.route_service import (
     ROUTE_FIXED_BUFFER_MIN,
     is_estimated,
 )
+from app.agent.generation.rules.constraint_checks import check_constraints
 from app.agent.generation.rules.day_policy import (
     day_policy_for,
 )
@@ -35,6 +36,38 @@ from app.schemas.trip_requirements import TripRequirements
 # 预算超支 issue 的稳定标记（单一真源）：整趟终检的调用方据此从合并 issues 里认出
 # 预算项（BIZ-1），不许在别处再写字面量。
 BUDGET_OVERAGE_MARK = "超出预算"
+
+_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀")
+
+
+def hard_day_issues(
+    plan: dict,
+    requirements: TripRequirements | None = None,
+    *,
+    locked_names: set[str] | None = None,
+    strict_budget: float | None = None,
+) -> list[str]:
+    """图的最后一次尝试与业务落库共用的单日交付闸，不放宽已有判据。"""
+    day_no = plan["day_no"]
+    if not plan.get("items"):
+        return [f"第 {day_no} 天没有生成任何条目"]
+    issues, _log = validate_plans([plan], requirements=requirements)
+    structural = [issue for issue in issues if any(tag in issue for tag in _HARD_DELIVERY_TAGS)]
+    report = check_constraints(
+        plan,
+        requirements,
+        day_no,
+        day_policy_for(requirements, day_no),
+        locked_names=locked_names,
+        strict_budget=strict_budget,
+    )
+    blockers = [f"第 {day_no} 天需求违例（{check.kind}）：{check.reason}" for check in report.blocking_checks]
+    unknown = [
+        f"第 {day_no} 天待确认（{check.kind}）：{check.reason}"
+        for check in report.unknown_checks
+        if check.reason and (check.kind != "dietary_requirement" or check.blocking)
+    ]
+    return [*structural, *blockers, *unknown]
 
 
 def _route_from_matrix(first: dict, second: dict, route_matrix: dict | None) -> dict | None:
@@ -79,6 +112,13 @@ def validate_plans(
         # M3（spec §8.2）：当日规则按有效需求派生——到达/返程日不要求凑满 240、
         # 慢游降景点上限、窗口钳制时长上限；无需求 = 普通全天（现状基线不变）
         policy = day_policy_for(requirements, int(day_no) if isinstance(day_no, int) else 1)
+        if requirements is not None:
+            report = check_constraints(plan, requirements, policy.day_no, policy)
+            issues.extend(
+                f"第 {day_no} 天需求检查（{check.kind}）：{check.reason}"
+                for check in report.checks
+                if check.blocking and check.status in ("violation", "unknown")
+            )
 
         timed = [it for it in items if it.get("item_type") in ("attraction", "food")]
         timed.sort(key=item_start)

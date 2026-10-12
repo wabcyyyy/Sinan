@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { evidenceLabel, evidenceTone, type EvidenceShape } from '../../shared/evidence'
 import type { ItineraryDetail, TripItem } from '../../types/itinerary'
+import { CountUp } from '../shared/motion'
 
 /**
  * React 详情页的可测展示片段（从 TripDetailPage 抽出）。
@@ -39,6 +40,16 @@ export function ItemEvidence({ item }: { item: TripItem }): ReactNode {
   return <span className={evidenceTone(item) === 'warning' ? 'fact-warning' : ''}>{itemEvidenceText(item)}</span>
 }
 
+export function DietaryEvidenceNotice({ trip }: { trip: ItineraryDetail }): ReactNode {
+  const issues = [...(trip.qualityReport?.warnings || []), ...(trip.qualityReport?.blockingIssues || [])]
+    .filter(issue => issue.code === 'DIETARY_EVIDENCE_REVIEW')
+  if (!issues.length) return null
+  return <div className="detail-draft-banner" role="status" aria-label="饮食要求核实">
+    <span>{trip.qualityStatus === 'BLOCKED' ? '行程未完成，请核实餐饮与饮食要求' : '餐饮与饮食要求'}</span>
+    {issues.map((issue, index) => <p key={index}>{issue.message}</p>)}
+  </div>
+}
+
 /** 详情页指标行（预算/日期/天数）——预算行的估算口径在此单点定义。
  * 没有出发日期时不单占一张「待定」卡，并进天数卡的说明行。 */
 export function TripMetrics({
@@ -57,7 +68,7 @@ export function TripMetrics({
   return (
     <div className="detail-metrics">
       <span>
-        <strong>￥{trip.totalAmount || trip.budget || 0}</strong>
+        <strong><CountUp value={trip.totalAmount || trip.budget || 0} prefix="￥" /></strong>
         <small>{budgetCaption()}</small>
         {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>

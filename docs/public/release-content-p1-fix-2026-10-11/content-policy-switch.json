@@ -1,0 +1,139 @@
+[
+  {
+    "message": "改成只安排有素食依据的餐厅，不再接受待核实餐饮候选。",
+    "response": {
+      "code": 200,
+      "message": "success",
+      "data": {
+        "state": {
+          "schemaVersion": 1,
+          "city": "东京",
+          "days": 2,
+          "persons": 2,
+          "budget": 3000.0,
+          "startDate": null,
+          "stayNights": null,
+          "preferences": [
+            "慢节奏",
+            "素食（可蛋奶）"
+          ],
+          "hotelTier": null,
+          "originCity": null,
+          "requirements": {
+            "schemaVersion": 1,
+            "dayWindows": [],
+            "requiredPlaces": [],
+            "excludedPlaces": [],
+            "excludedCategories": [
+              "temple"
+            ],
+            "pace": "relaxed",
+            "maxAttractionsPerDay": 2,
+            "dietaryRequirement": "vegetarian",
+            "diningEvidencePolicy": null,
+            "transportPreference": null,
+            "maxWalkMinutesPerLeg": null,
+            "budgetPolicy": null,
+            "lodging": null,
+            "unresolvedRequests": []
+          },
+          "optionalAsked": [
+            "start_date"
+          ],
+          "optionalPending": [],
+          "negotiations": {},
+          "acceptances": {}
+        },
+        "slots": {
+          "city": "东京",
+          "days": 2,
+          "persons": 2,
+          "budget": 3000.0,
+          "preferences": [
+            "慢节奏",
+            "素食（可蛋奶）"
+          ]
+        },
+        "missing": [],
+        "question": "餐厅的饮食资料可能不齐全。你希望只安排有素食依据的餐厅，还是先看候选、再自行核实？",
+        "ready": false,
+        "options": [
+          "只安排有饮食依据的餐厅",
+          "先给餐饮候选，我会自行核实"
+        ],
+        "blocked": true,
+        "degraded": false,
+        "reply": null,
+        "replyFor": null,
+        "next": "dining_evidence_policy"
+      }
+    }
+  },
+  {
+    "message": "只安排有饮食依据的餐厅",
+    "response": {
+      "code": 200,
+      "message": "success",
+      "data": {
+        "state": {
+          "schemaVersion": 1,
+          "city": "东京",
+          "days": 2,
+          "persons": 2,
+          "budget": 3000.0,
+          "startDate": null,
+          "stayNights": null,
+          "preferences": [
+            "慢节奏",
+            "素食（可蛋奶）"
+          ],
+          "hotelTier": null,
+          "originCity": null,
+          "requirements": {
+            "schemaVersion": 1,
+            "dayWindows": [],
+            "requiredPlaces": [],
+            "excludedPlaces": [],
+            "excludedCategories": [
+              "temple"
+            ],
+            "pace": "relaxed",
+            "maxAttractionsPerDay": 2,
+            "dietaryRequirement": "vegetarian",
+            "diningEvidencePolicy": "verified_only",
+            "transportPreference": null,
+            "maxWalkMinutesPerLeg": null,
+            "budgetPolicy": null,
+            "lodging": null,
+            "unresolvedRequests": []
+          },
+          "optionalAsked": [
+            "start_date"
+          ],
+          "optionalPending": [],
+          "negotiations": {},
+          "acceptances": {}
+        },
+        "slots": {
+          "city": "东京",
+          "days": 2,
+          "persons": 2,
+          "budget": 3000.0,
+          "preferences": [
+            "慢节奏",
+            "素食（可蛋奶）"
+          ]
+        },
+        "missing": [],
+        "question": null,
+        "ready": true,
+        "options": [],
+        "blocked": false,
+        "degraded": false,
+        "reply": "信息都齐了～右侧确认一下就能开始规划。",
+        "replyFor": "confirm",
+        "next": "confirm"
+      }
+    }
+  }
+]

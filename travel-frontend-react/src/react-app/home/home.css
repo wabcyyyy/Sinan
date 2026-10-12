@@ -1,13 +1,31 @@
 .home-page { width: 100%; max-width: 100%; margin: 0; padding: 0; }
 .planning-result-heading { display: flex; align-items: center; gap: 12px; }
-.planning-result-heading > p { flex: 1; margin: 0; font-size: 14px; line-height: 1.7; }
+.planning-result-heading p { margin: 0; font-size: 14px; line-height: 1.7; }
 .planning-result-heading .loading-orbit { width: 22px; height: 22px; flex-shrink: 0; }
-.planning-result-icon { display: flex; }
-.planning-stages { display: grid; grid-template-columns: repeat(2, 1fr); list-style: none; gap: 12px 8px; padding: 18px 0 0; margin: 0; }
-.planning-stages li { display: flex; align-items: center; gap: 7px; color: var(--sinan-faint); font-size: 12px; }
-.planning-stages .is-active { color: var(--sinan-ink); }
-.planning-stage-mark { width: 6px; height: 6px; border: 1px solid currentColor; border-radius: 50%; }
-.is-active .planning-stage-mark { background: currentColor; }
+.planning-result-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; background: var(--sinan-warm); color: var(--sinan-ink-soft); }
+.planning-result-icon.is-ready { background: var(--sinan-accent); color: var(--sinan-on-image); }
+.planning-result-copy { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.planning-result-copy p { font-weight: 650; color: var(--sinan-ink); }
+.planning-result-copy small { color: var(--sinan-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+/* 生成期指南针：左右摆针，「正在找方向」 */
+.planning-compass { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; background: var(--sinan-surface); color: var(--sinan-accent); box-shadow: var(--sinan-shadow-soft); }
+.planning-compass svg { animation: compass-swing 2.4s var(--sinan-ease) infinite; }
+@keyframes compass-swing { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(22deg); } }
+.planning-percent { font-size: 24px; font-weight: 750; color: var(--sinan-accent-dark); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.planning-hero { display: grid; gap: 14px; padding: 18px 18px 16px; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius); background: var(--sinan-paper); }
+.planning-hero.is-busy { border-color: color-mix(in srgb, var(--sinan-accent) 18%, var(--sinan-line-soft)); background: linear-gradient(135deg, var(--sinan-accent-wash), var(--sinan-paper) 72%); }
+.planning-bar { height: 6px; overflow: hidden; border-radius: 999px; background: var(--sinan-surface); box-shadow: inset 0 0 0 1px var(--sinan-line-soft); }
+.planning-bar-fill { position: relative; display: block; height: 100%; overflow: hidden; border-radius: inherit; background: linear-gradient(90deg, var(--sinan-accent), var(--sinan-accent-dark)); }
+.planning-bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--lp-stream-glow), transparent); transform: translateX(-100%); animation: bar-sheen 1.8s var(--sinan-ease) infinite; }
+@keyframes bar-sheen { to { transform: translateX(100%); } }
+.planning-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; gap: 8px; padding: 0; margin: 0; }
+.planning-stages li { display: flex; align-items: center; gap: 6px; color: var(--sinan-faint); font-size: 12px; white-space: nowrap; transition: color .3s var(--sinan-ease); }
+.planning-stages .is-passed { color: var(--sinan-ink-soft); }
+.planning-stages .is-now { color: var(--sinan-accent-dark); font-weight: 650; }
+.planning-stage-mark { width: 8px; height: 8px; flex-shrink: 0; border: 1.5px solid currentColor; border-radius: 50%; }
+.is-now .planning-stage-mark { border-color: var(--sinan-accent); background: var(--sinan-accent); animation: step-breathe 1.4s ease-in-out infinite; }
+.planning-stage-check { display: grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; background: var(--sinan-accent); color: var(--sinan-on-image); }
+@keyframes step-breathe { 0%, 100% { box-shadow: 0 0 0 0 var(--sinan-accent-soft); } 50% { box-shadow: 0 0 0 5px var(--sinan-accent-soft); } }
 .planning-retry-hint { color: var(--sinan-muted); font-size: 12px; margin-bottom: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 /* —— 首页工作台（HomeStudio：idle 居中单卡，active 左对话右 TripPanel 双栏）—— */
@@ -71,14 +89,21 @@
   100% { transform: translate(-28px, 22px) scale(0.94); }
 }
 
-/* active：app-like 舒适呼吸感工作台，避免全高死锁，双栏自然呼吸 */
+/* active：左对话吸顶定高（栏内滚动，输入框永远在手边），右面板随内容自然增长、
+   最低一屏高——两栏底边对齐，不再出现「左栏被右栏撑成 1200px 空白」。
+   --studio-top = 顶栏 80px + 上外边距 18px，吸顶的对话栏与 stepper 共用 */
 .home-studio.is-active {
-  max-width: 1400px;
+  --studio-top: 98px;
+  --studio-h: calc(100svh - var(--studio-top) - 24px);
+  max-width: var(--sinan-page-max);
   margin: 18px auto 32px;
-  padding: 0 32px;
-  min-height: calc(100svh - 96px);
+  padding: 0 var(--sinan-page-pad);
+  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+  align-items: start;
   gap: 24px;
 }
+.home-studio.is-active .home-studio-chat { position: sticky; top: var(--studio-top); height: var(--studio-h); }
+.home-studio.is-active .trip-panel { min-height: var(--studio-h); }
 .home-studio-chat { display: flex; min-width: 0; min-height: 0; position: relative; }
 .home-studio.is-idle .home-studio-chat {
   position: relative;
@@ -311,8 +336,8 @@
 }
 
 /* dock：active 左栏栏内变体——卡片撑满栏高，对话 log 吃掉剩余空间内部滚动 */
-.intake-dock { width: 100%; min-height: 0; max-height: 100%; flex: 1; overflow-y: auto; }
-.intake-dock .intake-log { flex: 1; min-height: 120px; max-height: none; }
+.intake-dock { width: 100%; min-height: 0; height: 100%; flex: 1; overflow: hidden; }
+.intake-dock .intake-log { flex: 1; min-height: 0; max-height: none; padding-right: 6px; scrollbar-width: thin; }
 .intake-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .intake-head-brand { display: flex; align-items: center; gap: 12px; }
 .intake-reset-btn { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 13px; color: var(--sinan-muted); cursor: pointer; transition: color .2s; }
@@ -527,6 +552,12 @@
 
 /* 方案概览卡片（Plan Brief Card）：杂志化排版，呈现对话成果，减负免点 */
 .plan-brief-card { display: grid; gap: 14px; padding: 18px; border-radius: var(--sinan-radius); background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); }
+.plan-brief-card.has-cover { overflow: hidden; padding-top: 0; }
+.plan-brief-cover { position: relative; margin: 0 -18px -26px; }
+.plan-brief-cover .smart-img { border-radius: 0; }
+.plan-brief-cover-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, var(--sinan-paper) 96%); }
+.plan-brief-card.has-cover .plan-brief-hero { position: relative; }
+.plan-brief-card.has-cover .plan-brief-city { font-size: 28px; }
 .plan-brief-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--sinan-line-soft); }
 .plan-brief-dest { display: flex; align-items: baseline; gap: 10px; }
 .plan-brief-city { font-size: 22px; font-weight: 750; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); }
@@ -565,17 +596,26 @@
 .intake-prefs button:hover { border-color: var(--sinan-accent); color: var(--sinan-accent-dark); }
 .intake-prefs button[aria-pressed='true'] { color: var(--sinan-on-image); background: var(--sinan-accent); border-color: var(--sinan-accent); box-shadow: var(--sinan-shadow-soft); }
 /* —— TripPanel：active 右栏容器（常驻四步 stepper + 当态内容区，PLAN §2.4/§3.1）—— */
-.trip-panel { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 22px; background: var(--sinan-surface); border: 1px solid var(--sinan-line-soft); border-radius: 24px; box-shadow: var(--sinan-shadow); }
-/* stepper sticky（PLAN 2026-10-03 §2.3 F6）：右栏内容滚动时四步总览钉在面板顶部
-   不消失（滚动容器是 .home-studio-panel）；背景填卡面色盖住底下滚过的条目，
-   z-index 走全站唯一刻度（theme-lint 禁裸数字），低于顶栏让位；底部细分隔 */
-.trip-steps { position: sticky; top: 0; z-index: var(--lp-z-sticky); background: var(--sinan-surface); display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; list-style: none; margin: 0; padding: 0 0 14px; border-bottom: 1px solid var(--sinan-line-soft); }
-.trip-steps li { display: flex; align-items: center; gap: 6px; color: var(--sinan-faint); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--sinan-paper); transition: all .2s var(--sinan-ease); }
-.trip-steps li + li::before { content: '›'; margin-right: 2px; font-size: 13px; font-weight: 600; color: var(--sinan-faint); }
+.trip-panel { display: flex; flex-direction: column; gap: 18px; min-height: 0; padding: 0 22px 22px; background: var(--sinan-surface); border: 1px solid var(--sinan-line-soft); border-radius: 24px; box-shadow: var(--sinan-shadow); }
+.trip-panel-body { display: flex; flex-direction: column; gap: 16px; flex: 1; min-width: 0; }
+/* stepper（2026-10-12 动效改版）：四个节点 + 底轨，填充轨随步弹簧推进。
+   外层 wrap 吸顶在顶栏下方（右栏内容长时进度总览常驻），半透明磨砂盖住滚过的条目；
+   负外边距吃掉面板左右内边距，顶部圆角与面板同步。z-index 走全站刻度。
+   轨道按节点圆心定位：首尾节点圆心 = 内容宽 × 1/8（四等分列居中）。 */
+.trip-steps-wrap { position: sticky; top: var(--studio-top, 0px); z-index: var(--lp-z-sticky); margin: 0 -22px; padding: 18px 22px 14px; border-bottom: 1px solid var(--sinan-line-soft); border-radius: 24px 24px 0 0; background: color-mix(in srgb, var(--sinan-surface) 90%, transparent); backdrop-filter: blur(14px); }
+.trip-steps-track { position: absolute; top: 29px; left: calc(22px + (100% - 44px) / 8); right: calc(22px + (100% - 44px) / 8); height: 2px; overflow: hidden; border-radius: 2px; background: var(--sinan-line-soft); }
+.trip-steps-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sinan-accent), var(--sinan-accent-dark)); }
+.trip-steps { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.trip-steps li { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--sinan-faint); font-size: 12px; font-weight: 600; transition: color .3s var(--sinan-ease); }
+.trip-step-node { display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px solid var(--sinan-line); border-radius: 50%; background: var(--sinan-surface); transition: border-color .3s var(--sinan-ease), background .3s var(--sinan-ease), box-shadow .3s var(--sinan-ease); }
+.trip-step-check { display: grid; place-items: center; }
+.trip-step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sinan-line); }
 .trip-steps .is-done { color: var(--sinan-ink-soft); }
-.trip-steps .is-current { color: var(--sinan-accent-dark); background: var(--sinan-accent-soft); box-shadow: var(--sinan-shadow-soft); }
-.trip-step-dot { width: 10px; height: 10px; flex-shrink: 0; border: 1.5px solid currentColor; border-radius: 50%; }
-.trip-steps .is-current .trip-step-dot { background: currentColor; box-shadow: 0 0 0 2px var(--sinan-surface); }
+.trip-steps .is-done .trip-step-node { border-color: var(--sinan-accent); background: var(--sinan-accent); color: var(--sinan-on-image); }
+.trip-steps .is-current { color: var(--sinan-accent-dark); }
+.trip-steps .is-current .trip-step-node { border-color: var(--sinan-accent); box-shadow: 0 0 0 4px var(--sinan-accent-wash); }
+.trip-steps .is-current .trip-step-dot { background: var(--sinan-accent); }
+.trip-step-dot.is-busy { animation: step-breathe 1.4s ease-in-out infinite; }
 /* —— SlotChecklist：collecting 态信息收集进度与灵感意境画卷 —— */
 .slot-checklist { display: grid; gap: 14px; }
 .slot-hero-card { overflow: hidden; border-radius: var(--sinan-radius-sm); border: 1px solid var(--sinan-line-soft); background: var(--sinan-paper); box-shadow: var(--sinan-shadow-soft); }
@@ -621,64 +661,84 @@
 /* —— 生成/兜底态内容区（原 TripPreview 壳，卡4 迁入 TripPanel，PLAN §3.4/§3.6）：
    常驻 trip-panel 卡内，不再自带独立卡壳与 is-empty 空态（原「.trip-panel 内剥壳」
    一对规则随之消亡），类名全部保持——ol.planning-stages 是金路径 E2E 契约 */
-.trip-preview { display: flex; flex-direction: column; gap: 12px; }
-.trip-preview .planning-result-heading > p { margin: 0; font-size: 13px; line-height: 1.7; }
-.trip-preview-days { list-style: none; display: grid; gap: 10px; margin: 0; padding: 0; max-height: 400px; overflow-y: auto; }
-.trip-preview-days li { display: grid; gap: 6px; padding: 13px 15px; background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius-sm); transition: all 0.25s var(--sinan-ease); }
-.trip-preview-days li.is-done { border-color: var(--sinan-line); background: var(--sinan-surface); box-shadow: var(--sinan-shadow-soft); }
-.trip-preview-days li.is-pending { border-style: dashed; opacity: .75; }
-.trip-preview-days li.is-pending.is-generating {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--sinan-accent) 35%, transparent);
-  background: linear-gradient(135deg, var(--sinan-accent-wash), var(--sinan-paper));
-  box-shadow: var(--sinan-shadow-soft);
-  opacity: 1;
-  animation: generating-breathe 2.4s infinite ease-in-out;
-}
-@keyframes generating-breathe {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-1px); }
-}
-.trip-preview-days li.is-pending.is-queued {
-  border-style: dashed;
-  opacity: 0.65;
-}
+.trip-preview { display: flex; flex-direction: column; gap: 14px; }
+/* 逐日生长卡：排队=虚线淡出；正在规划=实线 + 顶部扫描光带；完成=勾选弹出 + 地点芯片依次长出。
+   不再限高内滚（双滚动条），整页自然增长 */
+.trip-preview-days { list-style: none; display: grid; gap: 12px; margin: 0; padding: 0; }
+.trip-preview-days > li { position: relative; display: grid; gap: 8px; overflow: hidden; padding: 15px 18px; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius); background: var(--sinan-paper); transition: border-color .35s var(--sinan-ease), background .35s var(--sinan-ease), box-shadow .35s var(--sinan-ease), opacity .35s var(--sinan-ease); }
+.trip-preview-days > li.is-done { border-color: var(--sinan-line); background: var(--sinan-surface); box-shadow: var(--sinan-shadow-soft); }
+.trip-preview-days > li.is-pending.is-queued { border-style: dashed; opacity: .62; }
+.trip-preview-days > li.is-verifying { border-color: color-mix(in srgb, var(--sinan-accent) 28%, transparent); background: var(--sinan-surface); }
+.trip-preview-days > li.is-verifying .trip-preview-pois { opacity: .6; }
+.trip-preview-days > li.is-verifying .trip-preview-dayindex { border-style: solid; border-color: var(--sinan-accent); color: var(--sinan-accent-dark); }
+.trip-preview-days > li.is-pending.is-generating { border-color: color-mix(in srgb, var(--sinan-accent) 38%, transparent); background: linear-gradient(135deg, var(--sinan-accent-wash), var(--sinan-surface) 65%); box-shadow: var(--sinan-shadow-soft); }
+.trip-preview-days > li.is-generating::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--sinan-accent), transparent) no-repeat; background-size: 40% 100%; animation: card-scan 1.6s linear infinite; }
+@keyframes card-scan { from { background-position: -60% 0; } to { background-position: 160% 0; } }
 .trip-preview-dayhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.trip-preview-dayno { font-size: 11px; font-weight: 700; color: var(--sinan-ink-soft); }
-.trip-preview-status-pill { font-size: 10.5px; font-weight: 650; padding: 1.5px 8px; border-radius: 999px; background: var(--sinan-warm); color: var(--sinan-muted); }
+.trip-preview-dayno { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--sinan-ink-soft); }
+.trip-preview-dayindex, .trip-preview-daycheck { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; font-size: 11px; font-variant-numeric: tabular-nums; }
+.trip-preview-dayindex { border: 1.5px dashed var(--sinan-line); color: var(--sinan-muted); }
+.is-generating .trip-preview-dayindex { border-style: solid; border-color: var(--sinan-accent); color: var(--sinan-accent-dark); animation: step-breathe 1.4s ease-in-out infinite; }
+.trip-preview-daycheck { background: var(--sinan-accent); color: var(--sinan-on-image); box-shadow: var(--sinan-shadow-coral); }
+.trip-preview-status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; padding: 2px 9px; border-radius: 999px; background: var(--sinan-warm); color: var(--sinan-muted); }
 .trip-preview-status-pill.is-active { background: var(--sinan-accent); color: var(--sinan-on-image); box-shadow: var(--sinan-shadow-coral); }
-.trip-preview-daybody { display: grid; gap: 3px; }
-.trip-preview-daybody strong { font-size: 13.5px; color: var(--sinan-ink); }
+.trip-preview-status-pill.is-active::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: sinan-pulse 1.2s ease-in-out infinite; }
+.trip-preview-daybody { display: grid; gap: 4px; }
+.trip-preview-daybody strong { font-size: 15px; font-weight: 700; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); }
 .trip-preview-daybody small { font-size: 12px; line-height: 1.7; color: var(--sinan-muted); }
-.trip-preview-shimmer { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.trip-preview-pois { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; }
+.trip-preview-poi { padding: 4px 11px; border: 1px solid var(--sinan-line-soft); border-radius: 999px; background: var(--sinan-paper); color: var(--sinan-ink-soft); font-size: 12px; line-height: 1.5; }
+.trip-preview-poi.is-attraction { border-color: color-mix(in srgb, var(--sinan-accent) 20%, transparent); background: var(--sinan-accent-wash); color: var(--sinan-accent-dark); }
+.trip-preview-poi.is-food { border-color: color-mix(in srgb, var(--lp-warning) 22%, transparent); background: var(--lp-warning-soft); color: var(--lp-warning); }
+.trip-preview-poi.is-hotel { border-color: color-mix(in srgb, var(--lp-info) 22%, transparent); background: var(--lp-info-soft); color: var(--lp-info); }
+.trip-preview-poi.is-more { color: var(--sinan-muted); font-variant-numeric: tabular-nums; }
+.trip-preview-shimmer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .shimmer-line { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--sinan-warm) 25%, var(--sinan-line-soft) 50%, var(--sinan-warm) 75%); background-size: 200% 100%; animation: sinan-shimmer-flow 1.8s infinite linear; }
 .shimmer-line-long { width: 85%; }
 .shimmer-line-mid { width: 55%; }
+.shimmer-chip { display: inline-block; width: 76px; height: 26px; border-radius: 999px; background: linear-gradient(90deg, var(--sinan-warm) 25%, var(--sinan-line-soft) 50%, var(--sinan-warm) 75%); background-size: 200% 100%; animation: sinan-shimmer-flow 1.8s infinite linear; }
+.shimmer-chip:nth-child(2n) { width: 96px; }
 @keyframes sinan-shimmer-flow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-/* —— M5a 逐项候选（spec §10.2）：未排天的在途候选条目就地亮出，徽标复用
-   .trip-preview-status-pill 既有 badge 体系（is-active 朱砂态=正在完善），不新造裸色 —— */
-.trip-preview-candidates { list-style: none; display: grid; gap: 5px; margin: 8px 0 0; padding: 0; }
-.trip-preview-candidate { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--sinan-ink-soft); }
+/* —— M5a 在途候选（spec §10.2）：虚线芯片 =「未定稿」，徽标沿用朱砂洗染 —— */
+.trip-preview-candidates { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; }
+.trip-preview-candidate { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 5px 3px 11px; border: 1px dashed color-mix(in srgb, var(--sinan-accent) 45%, transparent); border-radius: 999px; background: var(--sinan-surface); font-size: 12px; color: var(--sinan-ink-soft); }
+.trip-preview-candidate.is-unnamed { padding: 3px 11px; border-color: var(--sinan-line); color: var(--sinan-muted); }
 .trip-preview-candidate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-preview-candidate-tag { flex-shrink: 0; padding: 1px 7px; border-radius: 999px; background: var(--sinan-accent-wash); color: var(--sinan-accent-dark); font-size: 10.5px; font-weight: 650; }
 /* —— M5b core_ready 轻提示条（spec §11）：非阻断状态条，accent 洗染色系 —— */
 .planning-core-hint { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; font-size: 12px; line-height: 1.6; color: var(--sinan-accent-dark); background: var(--sinan-accent-wash); border: 1px solid var(--sinan-accent-soft); border-radius: var(--sinan-radius-sm); }
 /* —— done 态只读预览板（TripBoard，PLAN §3.5）：头部摘要条 + DAY 横向 chips +
    当天紧凑时间线（复用全局 .day-item 视觉语言，作用域内做紧凑化覆盖）+ 预算/CTA 底栏 —— */
-.trip-board { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
-.board-head { display: grid; gap: 10px; }
-.board-cover { margin: 0; overflow: hidden; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius-sm); }
-.board-headline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
-.board-city { font-size: 20px; font-weight: 700; letter-spacing: var(--lp-track-display); }
+.trip-board { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+/* 头部：有城市封面时字压图（scrim 走 photo-shade 混色），无封面退回纯文字行 */
+.board-head { position: relative; display: grid; gap: 10px; }
+.board-head.has-cover { overflow: hidden; border-radius: var(--sinan-radius); box-shadow: var(--sinan-shadow-soft); }
+.board-cover { margin: 0; overflow: hidden; }
+.board-cover .smart-img { border-radius: 0; }
+.board-cover-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--sinan-photo-shade) 10%, transparent) 0%, transparent 35%, color-mix(in srgb, var(--sinan-photo-shade) 80%, transparent) 100%); }
+.board-ready { display: inline-flex; align-items: center; gap: 5px; width: fit-content; padding: 4px 11px; border-radius: 999px; background: var(--sinan-accent); color: var(--sinan-on-image); font-size: 12px; font-weight: 700; box-shadow: var(--sinan-shadow-coral); }
+.board-head.has-cover .board-ready { position: absolute; top: 14px; left: 16px; }
+.board-headline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.board-head.has-cover .board-headline { position: absolute; left: 18px; right: 16px; bottom: 14px; }
+.board-city { font-size: 22px; font-weight: 750; letter-spacing: var(--lp-track-display); }
 .board-meta { color: var(--sinan-muted); font-size: 13px; }
 .board-date { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 5px 11px; border-radius: 999px; background: var(--sinan-warm); color: var(--sinan-ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
-.board-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-.board-day-chip { display: grid; gap: 2px; flex-shrink: 0; padding: 8px 13px; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius-sm); background: var(--sinan-paper); text-align: left; cursor: pointer; transition: border-color .2s var(--sinan-ease), background .2s var(--sinan-ease); }
+.board-head.has-cover .board-city { color: var(--sinan-on-image); font-size: 28px; }
+.board-head.has-cover .board-meta { color: color-mix(in srgb, var(--sinan-on-image) 82%, transparent); }
+.board-head.has-cover .board-date { background: color-mix(in srgb, var(--sinan-on-image) 18%, transparent); backdrop-filter: blur(10px); color: var(--sinan-on-image); }
+/* 天切换：选中底块是一块 layoutId 滑块（motion），在芯片间滑动；文字叠在滑块上层 */
+.board-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.board-days::-webkit-scrollbar { display: none; }
+.board-day-chip { position: relative; isolation: isolate; display: grid; gap: 2px; flex-shrink: 0; padding: 9px 14px; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius-sm); background: var(--sinan-paper); text-align: left; cursor: pointer; transition: border-color .2s var(--sinan-ease), transform .2s var(--sinan-ease); }
+.board-day-chip:hover { border-color: var(--sinan-line); transform: translateY(-1px); }
+.board-day-chip > :not(.board-day-chip-bg) { position: relative; }
+.board-day-chip-bg { position: absolute; inset: -1px; border: 1px solid var(--sinan-accent); border-radius: inherit; background: var(--sinan-accent-wash); box-shadow: var(--sinan-shadow-soft); }
 .board-day-chip strong { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--sinan-ink-soft); font-variant-numeric: tabular-nums; }
-.board-day-chip small { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--sinan-muted); }
-.board-day-chip.is-active { border-color: var(--sinan-accent); background: var(--sinan-accent-wash); }
+.board-day-chip small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--sinan-muted); }
+.board-day-chip.is-active { border-color: transparent; }
 .board-day-chip.is-active strong { color: var(--sinan-accent-dark); }
 .board-day-chip.is-active small { color: var(--sinan-ink-soft); }
-.board-day-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--sinan-ink); }
+.board-day-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); }
 .board-day-empty { margin: 0; padding: 14px; border: 1px dashed var(--sinan-line); border-radius: var(--sinan-radius-sm); color: var(--sinan-muted); font-size: 12px; line-height: 1.7; }
 /* 紧凑化：详情页时间线是阅读版式（大标题/32px 底距），预览板要一屏多排几条并带有精致微图 */
 .trip-board .day-item { grid-template-columns: 48px 20px minmax(0, 1fr) 56px; gap: 10px; align-items: center; }
@@ -692,7 +752,11 @@
 .trip-board .day-item.is-preview { grid-template-columns: 48px 20px minmax(0, 1fr); border-style: dashed; opacity: .82; cursor: default; }
 .trip-board .day-item.is-preview:hover { background: transparent; border-color: var(--sinan-line-soft); transform: none; box-shadow: none; }
 .trip-board .day-item.is-preview .item-heading .trip-preview-status-pill { flex-shrink: 0; }
-.board-foot { display: grid; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--sinan-line); }
+.board-foot { display: grid; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--sinan-line-soft); }
+/* 首页工作面板内底栏吸底：长时间线滚动时「打开完整行程」始终在手边；负外边距贴满面板底边
+   （demo 页的预览板不在面板里，保持普通底栏） */
+.trip-panel .board-foot { position: sticky; bottom: 0; margin: auto -22px -22px; padding: 14px 22px 18px; border-radius: 0 0 24px 24px; background: color-mix(in srgb, var(--sinan-surface) 94%, transparent); backdrop-filter: blur(14px); }
+.board-map-hint { display: inline-flex; align-items: center; gap: 5px; margin: 0; color: var(--sinan-muted); font-size: 12px; }
 .board-budget { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .board-budget-label { color: var(--sinan-muted); font-size: 12px; }
 .board-budget-total { font-size: 17px; font-weight: 700; color: var(--sinan-ink); font-variant-numeric: tabular-nums; }
@@ -706,7 +770,7 @@
    scrim 用 color-mix 出半透明墨——theme-lint 禁裸 rgba），描述两行定高对齐，悬停图
    缓放+阴影加深；灵感卡=纸面小卡+朱砂侧标，描述两行截断保等高；两行都是真横向
    滚动（大卡溢出容器产生翻页感 + scroll-snap 对齐），滚动条走全局样式 —— */
-.home-showcase { display: grid; gap: 48px; max-width: 1320px; margin: 24px auto 68px; padding: 0 48px; }
+.home-showcase { display: grid; gap: 48px; max-width: var(--sinan-page-max); margin: 24px auto 68px; padding: 0 var(--sinan-page-pad); }
 .showcase-row { display: grid; gap: 16px; }
 .showcase-row-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .showcase-row-head h2 { margin: 0; font-size: 19px; letter-spacing: var(--lp-track-display); }
@@ -1012,6 +1076,9 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* 对话气泡方向感入场（与详情页 chat-bubble 同一组关键帧，定义在 itinerary.css） */
+  .intake-msg.is-user { animation: sinan-msg-user var(--lp-dur-modal) var(--lp-ease-out-quint) both; }
+  .intake-msg.is-assistant { animation: sinan-msg-ai var(--lp-dur-modal) var(--lp-ease-out-quint) both; }
   .home-studio.is-idle { animation: home-arrive .65s var(--sinan-ease) both; }
   @keyframes home-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   /* 右栏淡入：延迟 ≈ FLIP 时长的 60%（--flip-duration 由 HomeStudio 内联注入，
@@ -1024,9 +1091,11 @@
   .home-showcase { padding: 0 32px; gap: 36px; }
   .home-studio { grid-template-columns: 1fr; }
   /* 单栏堆叠：active 退回流式布局，右面板排到对话下方（PLAN §9），不再锁一屏高 */
-  .home-studio.is-active { height: auto; overflow: visible; padding: 0 20px; }
+  .home-studio.is-active { --studio-top: 66px; height: auto; overflow: visible; padding: 0 20px; grid-template-columns: 1fr; }
+  .home-studio.is-active .home-studio-chat { position: static; height: auto; }
+  .home-studio.is-active .trip-panel { min-height: 0; }
   .home-studio-panel { overflow: visible; }
-  .intake-dock { max-height: none; overflow: visible; }
+  .intake-dock { height: auto; max-height: none; overflow: visible; }
   .intake-dock .intake-log { flex: initial; max-height: 360px; }
   .intake { min-height: 0; }
 }
@@ -1043,6 +1112,8 @@
   .resume-bar-actions { width: 100%; justify-content: flex-end; }
   .intake-grid { grid-template-columns: 1fr 1fr; }
   .planning-result-heading { flex-wrap: wrap; }
+  .planning-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trip-steps li { font-size: 11px; }
   .showcase-cities { grid-auto-columns: minmax(224px, 248px); }
   .showcase-ideas { grid-auto-columns: minmax(240px, 264px); }
 }

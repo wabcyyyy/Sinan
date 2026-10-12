@@ -32,12 +32,16 @@ MAX_TRIP_DAYS = 7
 #: 本版需求结构版本；旧行程缺失时按旧默认规则（空结构 = 无额外约束），不反推用户没说过的约束。
 REQUIREMENTS_SCHEMA_VERSION = 1
 
-#: 排除类别受控词表：首期至少支持 museum；不等同 TripItem.item_type，词表外类别
+#: 排除类别受控词表；不等同 TripItem.item_type，词表外类别
 #: 在 patch 应用时拒绝并记入 unresolved_requests，不静默丢弃。
-SUPPORTED_EXCLUDED_CATEGORIES: tuple[str, ...] = ("museum",)
+SUPPORTED_EXCLUDED_CATEGORIES: tuple[str, ...] = ("museum", "temple")
 
 #: 词表的展示名（prompt 渲染用）；与受控词表同点维护，不另建第二份词表。
-EXCLUDED_CATEGORY_LABELS: dict[str, str] = {"museum": "博物馆"}
+EXCLUDED_CATEGORY_LABELS: dict[str, str] = {"museum": "博物馆", "temple": "寺庙/神社"}
+EXCLUDED_CATEGORY_TOKENS: dict[str, tuple[str, ...]] = {
+    "museum": ("博物馆", "博物館", "museum"),
+    "temple": ("寺", "庙", "廟", "神社", "神宫", "神宮", "temple", "shrine"),
+}
 
 _BoundedStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 _FreeText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)]
@@ -87,6 +91,9 @@ class TripRequirements(WireModel):
     excluded_places: list[_BoundedStr] = Field(default_factory=list, max_length=20)
     excluded_categories: list[_BoundedStr] = Field(default_factory=list, max_length=10)
     pace: Literal["normal", "relaxed"] | None = None
+    max_attractions_per_day: int | None = Field(default=None, ge=1, le=20)
+    dietary_requirement: Literal["vegetarian", "vegan"] | None = None
+    dining_evidence_policy: Literal["verified_only", "review_candidates"] | None = None
     transport_preference: Literal["walking", "driving", "mixed", "unspecified"] | None = None
     max_walk_minutes_per_leg: int | None = Field(default=None, gt=0, le=480)
     budget_policy: BudgetPolicy | None = None

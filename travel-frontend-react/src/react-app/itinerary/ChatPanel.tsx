@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import type { ItineraryChatMessage } from '../../types/chat'
 import type { DayPlan, HotelOption, ItineraryDetail } from '../../types/itinerary'
 import { interpretImageIntent, isUnauthorized, liveHotelQuotes } from '../../api/sinan'
 import { ChatComposer, composeDraft, imageFeedbackText } from '../shared/ChatComposer'
 import { Icon } from '../shared/Icon'
+import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { renderChatMarkdown } from './chatMarkdown'
 import { activeActionIndex, describeStructuredChange, diffBadge, hotelDefaultSelection, pendingActionSummary, structuredDraftChanges, unverifiedNames } from './chatDraft'
 import { getDayQuickPrompts, getPromptSceneGroups } from './chatPrompts'
@@ -37,6 +39,8 @@ export function ChatPanel({
   const chat = useTripChat(itineraryId, onApplied, onReconcile)
   const [draft, setDraft] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
+  const [sceneIdx, setSceneIdx] = useState(0)
+  const sceneTabsId = useId()
   const logRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -76,6 +80,8 @@ export function ChatPanel({
     recentMessages: chat.msgs.map((msg) => ({ role: msg.role, content: msg.content })),
   })
   const sceneGroups = getPromptSceneGroups(currentDayNo, city)
+  const scene = sceneGroups[Math.min(sceneIdx, sceneGroups.length - 1)]
+  const hasConversation = chat.msgs.length > 0
 
   return <section className={collapsed ? 'chat-panel is-collapsed' : 'chat-panel'} aria-label="行程对话编排">
     <div className="chat-panel-head">
@@ -91,30 +97,29 @@ export function ChatPanel({
     <div className="chat-log" role="log" aria-live="polite" ref={logRef}>
       {!chat.loaded && <div className="chat-empty">正在载入对话…</div>}
       {chat.loaded && !chat.msgs.length && (
-        <div className="chat-empty">
-          <div className="chat-empty-lead">
-            <span>还没有对话。对行程说一句话，立即智能微调：</span>
-          </div>
-          <div className="chat-suggest">
-            {['第二天加个博物馆', '换个舒服点的酒店', '把第二天安排松一点'].map((hint) => (
-              <button key={hint} type="button" onClick={() => handleQuickSend(hint)}>{hint}</button>
-            ))}
-          </div>
-          <div className="chat-scenes-guide">
-            {sceneGroups.map((group) => (
-              <div key={group.sceneTitle} className="chat-scene-group">
-                <span className="chat-scene-title">{group.sceneTitle}</span>
-                <div className="chat-scene-chips">
-                  {group.prompts.map((p) => (
-                    <button key={p} type="button" className="chat-scene-chip" onClick={() => handleQuickSend(p)}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <motion.div className="chat-empty" variants={staggerChildren(0.06)} initial="hidden" animate="show">
+          <motion.div className="chat-msg is-ai" variants={fadeUp}>
+            <div className="chat-bubble chat-greeting">想怎么调整这段行程？直接告诉我，比如「第 {currentDayNo} 天加个博物馆」「换个舒服点的酒店」。改动会先给你看，确认后才落到行程里。</div>
+          </motion.div>
+          {/* 场景建议：一次只亮一组（分组页签 + 滑块），不再把十几个按钮同时摊开 */}
+          <motion.div className="chat-scenes-guide" variants={fadeUp}>
+            <div className="chat-scene-tabs" role="tablist" aria-label="建议分类">
+              {sceneGroups.map((group, index) => (
+                <button key={group.sceneTitle} type="button" role="tab" aria-selected={group === scene} aria-label={group.sceneTitle} title={group.sceneTitle} className={group === scene ? 'chat-scene-tab is-active' : 'chat-scene-tab'} onClick={() => setSceneIdx(index)}>
+                  {group === scene && <motion.span className="chat-scene-tab-bg" layoutId={`chat-scene-${sceneTabsId}`} transition={SPRING_SNAPPY} aria-hidden="true" />}
+                  <span>{shortSceneTitle(group.sceneTitle)}</span>
+                </button>
+              ))}
+            </div>
+            <motion.div className="chat-scene-chips" key={scene.sceneTitle} role="tabpanel" variants={staggerChildren(0.05)} initial="hidden" animate="show">
+              {scene.prompts.map((p) => (
+                <motion.button key={p} type="button" className="chat-scene-chip" variants={fadeUp} onClick={() => handleQuickSend(p)}>
+                  <span>{p}</span><Icon name="arrow" size={13} />
+                </motion.button>
+              ))}
+            </motion.div>
+          </motion.div>
+        </motion.div>
       )}
       {chat.msgs.map((msg, index) => {
         const isUser = msg.role === 'user'
@@ -147,8 +152,8 @@ export function ChatPanel({
       </p>
     )}
 
-    {/* 针对当前查看天数的智能微调指令条（对话改一切） */}
-    <div className="chat-quick-bar" aria-label="智能快捷微调">
+    {/* 针对当前查看天数的智能微调指令条（对话改一切）：空会话时由上方场景建议承担，不重复摆 */}
+    {hasConversation && <div className="chat-quick-bar" aria-label="智能快捷微调">
       <div className="chat-quick-label">
         <Icon name="spark" size={12} />
         <span>第 {currentDayNo} 天微调：</span>
@@ -167,14 +172,14 @@ export function ChatPanel({
           </button>
         ))}
       </div>
-    </div>
+    </div>}
 
     <ChatComposer
       className="chat-composer"
       value={draft}
       onChange={setDraft}
       onSend={submit}
-      placeholder="例如：第二天加个博物馆、顺路重排"
+      placeholder={`例如：第 ${currentDayNo} 天加个博物馆、顺路重排`}
       ariaLabel="对行程说话"
       maxLength={2000}
       disabled={chat.sending}
@@ -184,6 +189,13 @@ export function ChatPanel({
     />
     </>}
   </section>
+}
+
+/** 场景页签短名：「🗺️ 路线与节奏顺心」→「🗺️ 路线」，窄栏里三组并排放得下（全名进 title/aria-label） */
+function shortSceneTitle(title: string) {
+  const [emoji, ...rest] = title.split(' ')
+  const text = rest.join(' ')
+  return text ? `${emoji} ${text.slice(0, 2)}` : title
 }
 
 /** 草稿卡/确认卡：挂在带草稿的 AI 消息下方（导出仅供单测静态渲染）。 */

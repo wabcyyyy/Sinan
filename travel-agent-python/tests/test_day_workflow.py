@@ -1,3 +1,5 @@
+import pytest
+
 from app.agent.generation.orchestration import day_workflow
 from app.schemas.trip import DailyPlan, GenerateDayRequest, TripItem
 
@@ -62,7 +64,7 @@ def test_day_graph_retries_after_reflection(monkeypatch):
     assert calls[1][1] is False
 
 
-def test_day_graph_uses_deterministic_fallback_after_second_failure(monkeypatch):
+def test_day_graph_rejects_hard_conflict_after_final_attempt(monkeypatch):
     calls = []
 
     def fake_once(req, *, force_fallback=False):
@@ -77,9 +79,8 @@ def test_day_graph_uses_deterministic_fallback_after_second_failure(monkeypatch)
         return bad, "fallback" if force_fallback else "llm"
 
     monkeypatch.setattr(day_workflow, "generate_day_once", fake_once)
-    result = day_workflow.run_day_agent(GenerateDayRequest(city="杭州"))
-
-    assert result.day_no == 1
+    with pytest.raises(ValueError, match="time_conflict"):
+        day_workflow.run_day_agent(GenerateDayRequest(city="杭州"))
     assert calls == [False, False, True]
 
 
@@ -143,3 +144,33 @@ def test_day_graph_resamples_empty_plan(monkeypatch):
     assert len(calls) == 2
     assert "没有生成任何条目" in calls[1][0]
     assert calls[1][1] is False
+
+
+def test_last_day_attempt_keeps_filtered_poi_feedback(monkeypatch):
+    calls = []
+
+    def fake_once(req, *, force_fallback=False):
+        calls.append((req.feedback, force_fallback))
+        if force_fallback and "东京都厅展望室" in req.feedback:
+            return _plan(), "open"
+        raise ValueError("去重后没有可游玩景点：东京都厅展望室已在其他天安排，请选不同地点")
+
+    monkeypatch.setattr(day_workflow, "generate_day_once", fake_once)
+    result = day_workflow.run_day_agent(GenerateDayRequest(city="东京", days=2, day_no=2, per_day_chain=True))
+
+    assert result.items[0].poi_name == "测试景点"
+    assert len(calls) == 3 and calls[-1][1] is True
+    assert "东京都厅展望室" in calls[-1][0]
+
+
+def test_day_graph_rejects_coffee_only_after_all_attempts(monkeypatch):
+    monkeypatch.setattr(
+        day_workflow,
+        "generate_day_once",
+        lambda req, **kwargs: (
+            DailyPlan(day_no=2, items=[TripItem(item_type="food", poi_name="Tully's Coffee", cost=45)]),
+            "open",
+        ),
+    )
+    with pytest.raises(ValueError, match="未安排任何景点"):
+        day_workflow.run_day_agent(GenerateDayRequest(city="东京", days=2, day_no=2, per_day_chain=True))

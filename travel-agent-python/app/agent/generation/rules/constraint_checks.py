@@ -22,7 +22,8 @@ import itertools
 from app.agent.generation.rules.day_policy import DayPolicy
 from app.agent.generation.rules.transfer_time import item_end, item_start
 from app.schemas.constraints import ConstraintCheck, ConstraintReport
-from app.schemas.trip_requirements import SUPPORTED_EXCLUDED_CATEGORIES, TripRequirements
+from app.schemas.trip import FactEvidence
+from app.schemas.trip_requirements import EXCLUDED_CATEGORY_TOKENS, SUPPORTED_EXCLUDED_CATEGORIES, TripRequirements
 
 
 def _norm(name: str) -> str:
@@ -102,7 +103,9 @@ def _check_excluded(requirements: TripRequirements | None, day_no: int, items: l
             continue
         # 类别判据受限于条目 item_type 语义（museum 类别 ≠ item_type 枚举）：
         # 按名称包含类别展示名做保守判定，命中才违例，未命中不冒充 pass 依据充分
-        label_hit = [name for name in names if any(token and token in name for token in _category_tokens(category))]
+        label_hit = [
+            name for name in names if any(token in name.casefold() for token in EXCLUDED_CATEGORY_TOKENS[category])
+        ]
         checks.append(
             ConstraintCheck(
                 constraint_id=f"excluded-category:{_norm(category)}",
@@ -118,12 +121,70 @@ def _check_excluded(requirements: TripRequirements | None, day_no: int, items: l
     return checks
 
 
-def _category_tokens(category: str) -> tuple[str, ...]:
-    """类别的保守名称判据（受控词表 → 展示名同源）。"""
-    from app.schemas.trip_requirements import EXCLUDED_CATEGORY_LABELS
+def _fact_dict(raw: object) -> dict:
+    if isinstance(raw, FactEvidence):
+        return raw.model_dump()
+    return raw if isinstance(raw, dict) else {}
 
-    label = EXCLUDED_CATEGORY_LABELS.get(category, category)
-    return (label,)
+
+def _check_content(
+    requirements: TripRequirements | None, day_no: int, items: list[dict], policy: DayPolicy
+) -> list[ConstraintCheck]:
+    """数量是硬限制；饮食只有外部字段证据才算有据，候选策略必须由用户明确选择。"""
+    checks: list[ConstraintCheck] = []
+    if requirements is None:
+        return checks
+    if requirements.max_attractions_per_day is not None:
+        count = sum(item.get("item_type") == "attraction" for item in items)
+        checks.append(
+            ConstraintCheck(
+                constraint_id=f"attractions:day:{day_no}",
+                kind="attraction_limit",
+                day_no=day_no,
+                status="violation" if count > policy.max_attractions else "pass",
+                blocking=True,
+                reason=f"安排 {count} 个景点，用户上限为 {policy.max_attractions} 个"
+                if count > policy.max_attractions
+                else "",
+            )
+        )
+    diet = requirements.dietary_requirement
+    if not diet:
+        return checks
+    for index, item in enumerate(items):
+        if item.get("item_type") != "food":
+            continue
+        facts = item.get("fact_evidence") or item.get("factEvidence") or {}
+        raw = facts.get(f"diet:{diet}") if isinstance(facts, dict) else None
+        raw = _fact_dict(raw)
+        identity = _fact_dict(facts.get("identity")) if isinstance(facts, dict) else {}
+        valid = (
+            isinstance(raw, dict)
+            and raw.get("verification_status", raw.get("verificationStatus")) == "verified"
+            and raw.get("value_kind", raw.get("valueKind")) == "observed"
+            and bool(raw.get("source_url", raw.get("sourceUrl")))
+            and raw.get("freshness_status", raw.get("freshnessStatus")) != "stale"
+            and identity.get("verification_status", identity.get("verificationStatus")) == "verified"
+        )
+        name = str(item.get("poi_name") or "餐厅")
+        label = "纯素" if diet == "vegan" else "素食"
+        checks.append(
+            ConstraintCheck(
+                constraint_id=f"diet:day:{day_no}:item:{index}",
+                kind="dietary_requirement",
+                day_no=day_no,
+                status="pass" if valid else "unknown",
+                item_refs=[name],
+                blocking=requirements.dining_evidence_policy != "review_candidates",
+                reason=f"「{name}」有外部{label}标签，当前菜单仍须出发前核实"
+                if valid
+                else f"「{name}」尚无{label}可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
+                evidence_refs=[str(raw.get("source_url", raw.get("sourceUrl")))]
+                if valid and isinstance(raw, dict)
+                else [],
+            )
+        )
+    return checks
 
 
 def _check_window(plan: dict | None, policy: DayPolicy) -> ConstraintCheck:
@@ -225,10 +286,27 @@ def check_constraints(
     checks: list[ConstraintCheck] = [
         *_check_required(requirements, day_no, items),
         *_check_excluded(requirements, day_no, items),
+        *_check_content(requirements, day_no, items, policy),
         _check_window(plan, policy),
         _check_time_conflicts(plan, day_no),
     ]
     locked = _check_locked(plan, locked_names, day_no)
+    if (
+        requirements
+        and requirements.dietary_requirement
+        and policy.playable
+        and not any(item.get("item_type") == "food" for item in items)
+    ):
+        checks.append(
+            ConstraintCheck(
+                constraint_id=f"diet:day:{day_no}:missing",
+                kind="dietary_requirement",
+                day_no=day_no,
+                status="unknown",
+                reason="本日未提供餐饮安排，无法确认饮食要求已满足",
+                blocking=requirements.dining_evidence_policy != "review_candidates",
+            )
+        )
     if locked is not None:
         checks.append(locked)
     if strict_budget is not None:

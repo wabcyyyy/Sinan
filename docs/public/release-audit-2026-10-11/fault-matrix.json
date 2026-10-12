@@ -1,0 +1,142 @@
+[
+  {
+    "case": "timeout",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "http500",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "http429",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "invalid-key",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "empty",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "markdown-prose",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "markdown-json",
+    "crashed": false,
+    "degraded": false,
+    "ready": true,
+    "city_retained": true,
+    "question": "大概哪天出发？还没定的话说「待定」也行。",
+    "reply": null,
+    "missing": []
+  },
+  {
+    "case": "truncated-json",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "missing-fields",
+    "crashed": false,
+    "degraded": false,
+    "ready": false,
+    "city_retained": true,
+    "question": "还想确认一下出行天数～",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "oversized-prose",
+    "crashed": false,
+    "degraded": true,
+    "ready": false,
+    "city_retained": true,
+    "question": "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  },
+  {
+    "case": "incompatible-schema",
+    "crashed": false,
+    "degraded": false,
+    "ready": false,
+    "city_retained": true,
+    "question": "还想确认一下出行天数～",
+    "reply": null,
+    "missing": [
+      "days",
+      "persons"
+    ]
+  }
+]

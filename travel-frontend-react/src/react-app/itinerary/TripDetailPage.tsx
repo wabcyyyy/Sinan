@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   createPdfExport,
   createShare,
@@ -24,14 +25,15 @@ import { loginRedirect, navigate, routeId } from '../router'
 import { safeAppLink } from '../../shared/map-link'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
+import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
-import { DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
+import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
 import { feedbackIndex } from './itemFeedback'
 import { ItemFeedbackControl } from './ItemFeedbackControl'
 import { TripMapPanel } from './TripMapPanel'
-import { amapLink, poiPhotoUrl } from './mapPins'
+import { amapLink, googleMapsLink, poiPhotoUrl } from './mapPins'
 import type { MapPin } from './mapPins'
 
 /** 时间线与类型徽章共用的图标映射（新类型先落到 pin，不裸奔）。 */
@@ -72,7 +74,7 @@ function getExperienceTag(item: DayPlan['items'][0]): string | null {
 /** 价格只说有数据的事：没有 cost 时不再补「特色美食/精选打卡」这类无出处的装饰词。 */
 function getItemPriceTag(item: DayPlan['items'][0]): string | null {
   if (item.cost === 0) return '免费开放'
-  if (item.cost && item.cost > 0) return `￥${item.cost}/人`
+  if (item.cost && item.cost > 0) return `￥${item.cost}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
   return null
 }
 
@@ -92,6 +94,9 @@ export function TripDetailPage({ path }: { path: string }) {
   const [editingTheme, setEditingTheme] = useState(false)
   const [themeDraft, setThemeDraft] = useState('')
   const [activePin, setActivePin] = useState<string | null>(null)
+  // 条目点击展开（2026-10-12 反馈）：悬停不再联动地图——悬停就抢焦点/飞图会把页面拽走；
+  // 点击才选中并展开地图出口，「在地图中定位」才主动把页面滚到地图
+  const [expandedItem, setExpandedItem] = useState<string | null>(null)
   // 对话栏折叠（2026-09-30 评审拍板）：默认展开；收起后内容列占满剩余宽度。
   // 会话级状态不持久化——默认展开是产品主面。
   const [chatCollapsed, setChatCollapsed] = useState(false)
@@ -110,6 +115,18 @@ export function TripDetailPage({ path }: { path: string }) {
   const selectPin = (pin: MapPin) => {
     setDayNo(pin.dayNo)
     setActivePin(pin.key)
+  }
+
+  /** 时间线条目点击：选中（地图飞到该点，不滚页面）+ 展开/收起地图出口 */
+  const toggleItem = (itemKey: string) => {
+    setActivePin(itemKey)
+    setExpandedItem((current) => (current === itemKey ? null : itemKey))
+  }
+
+  /** 「在上方地图中定位」：用户明确要看地图时才把页面滚过去 */
+  const locateOnMap = (itemKey: string) => {
+    setActivePin(itemKey)
+    document.querySelector('.trip-map-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   const load = () => {
@@ -338,14 +355,16 @@ export function TripDetailPage({ path }: { path: string }) {
     {offline && <div className="detail-offline"><span>示例状态</span> 这是本地预览，服务恢复后可打开真实行程。</div>}
     {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />{detailGeneratingCopy(trip.coreReady)}</div>}
     <section className="detail-hero">
-      <div>
-        <span className="section-eyebrow">{trip.city} · {trip.days} 天 · {trip.persons} 人</span>
-        <h1>{trip.title}</h1>
-        <p>{trip.tripTheme || trip.planNote}</p>
+      <motion.div variants={staggerChildren(0.07)} initial="hidden" animate="show">
+        <motion.span className="section-eyebrow" variants={fadeUp}>{trip.city} · {trip.days} 天 · {trip.persons} 人</motion.span>
+        <motion.h1 variants={fadeUp}>{trip.title}</motion.h1>
+        <motion.p variants={fadeUp}>{trip.tripTheme || trip.planNote}</motion.p>
+        <motion.div className="detail-hero-facts" variants={fadeUp}>
         {/* 核实提示只留这一处：草案态由 DraftOnlyBanner 承担（含待核实条数），其余走 QualityNotice */}
         {trip.destinationStatus === 'draft_only'
           ? <DraftOnlyBanner status={trip.destinationStatus} pending={trip.pendingFactCount || 0} />
           : <QualityNotice status={trip.qualityStatus} pending={trip.pendingFactCount || 0} />}
+        <DietaryEvidenceNotice trip={trip} />
         <TripMetrics
           trip={trip}
           dateText={trip.startDate ? displayDate(trip.startDate) : null}
@@ -353,8 +372,9 @@ export function TripDetailPage({ path }: { path: string }) {
           hasWeather={Boolean(weather?.daily?.length)}
         />
         {weather?.daily?.length ? <div className="detail-weather" aria-label="天气参考"><span className="weather-label"><Icon name="sun" size={16} />天气参考</span>{weather.daily.slice(0, trip.days).map((item) => <span className="weather-day" key={item.date}><strong>{displayDate(item.date)}</strong><small>{item.text} · {item.tMin ?? '--'}–{item.tMax ?? '--'}℃</small></span>)}</div> : null}
-      </div>
-      <figure className="detail-cover"><SmartImg src={destinations.find((item) => item.city === trip.city)?.image || poiPhotoUrl(trip.city, trip.city)} alt={`${trip.city} 城市参考图`} ratio="16 / 10" eager /><figcaption><Icon name="pin" size={14} />{trip.city} · 城市印象</figcaption></figure>
+        </motion.div>
+      </motion.div>
+      <motion.figure className="detail-cover" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}><SmartImg src={destinations.find((item) => item.city === trip.city)?.image || poiPhotoUrl(trip.city, trip.city)} alt={`${trip.city} 城市参考图`} ratio="16 / 10" eager /><figcaption><Icon name="pin" size={14} />{trip.city} · 城市印象</figcaption></motion.figure>
     </section>
     <div className={offline ? 'detail-workspace' : `detail-workspace has-chat${chatCollapsed ? ' is-chat-collapsed' : ''}`}>
       {!offline && (
@@ -369,20 +389,45 @@ export function TripDetailPage({ path }: { path: string }) {
           city={trip.city}
         />
       )}
-      <aside className="day-sidebar"><div className="sidebar-head"><span className="section-eyebrow">Daily plan</span><strong>{trip.days} 天行程</strong></div>{trip.dayList.map((item) => <button key={item.dayNo} className={item.dayNo === dayNo ? 'day-tab active' : 'day-tab'} type="button" onClick={() => setDayNo(item.dayNo)}><span>DAY {String(item.dayNo).padStart(2, '0')}</span><strong>{item.theme || `第 ${item.dayNo} 天`}</strong><small>{trip.status === 1 && !item.items.length ? '生成中…' : `${item.items.length} 个安排`}</small></button>)}</aside>
-      <section className="day-content">{day ? <>
+      <section className="day-content">
+        {/* 天切换（2026-10-12 改版）：原独立侧栏列收进内容卡顶部的吸顶横条，工作区从三栏
+            收成「对话 | 行程」两栏（与首页工作台同一心智）；选中底块是 layoutId 滑块 */}
+        <nav className="day-tabs" aria-label="按天切换">{trip.dayList.map((item) => {
+          const isActive = item.dayNo === day?.dayNo
+          return <button key={item.dayNo} className={isActive ? 'day-tab active' : 'day-tab'} type="button" aria-current={isActive ? 'true' : undefined} onClick={() => setDayNo(item.dayNo)}>
+            {isActive && <motion.span className="day-tab-bg" layoutId="detail-day-tab" transition={SPRING_SNAPPY} aria-hidden="true" />}
+            <span>DAY {String(item.dayNo).padStart(2, '0')}</span>
+            <strong>{item.theme || `第 ${item.dayNo} 天`}</strong>
+            <small>{trip.status === 1 && !item.items.length ? '生成中…' : `${item.items.length} 个安排`}</small>
+          </button>
+        })}</nav>
+        {day ? <>
         <TripMapPanel days={trip.dayList} activeKey={activePin} onSelect={selectPin} focusDayNo={dayNo} />
+        <motion.div className="day-content-body" key={day.dayNo} variants={fadeUp} initial="hidden" animate="show">
         <div className="day-content-head"><div><span className="section-eyebrow">DAY {String(day.dayNo).padStart(2, '0')}</span>{editingTheme ? <div className="day-theme-editor"><input value={themeDraft} maxLength={80} onChange={(event) => setThemeDraft(event.target.value)} aria-label="当天标题" /><div><button className="button button-primary" type="button" disabled={working} onClick={saveTheme}>保存</button><button className="button button-secondary" type="button" disabled={working} onClick={() => { setThemeDraft(day.theme || ''); setEditingTheme(false) }}>取消</button></div></div> : <><h2>{day.theme || `第 ${day.dayNo} 天`}</h2><p>{day.note}</p></>}</div><div className="day-head-actions">{!offline && <button className="button button-secondary day-head-ai-btn" type="button" title="用对话微调当天的节奏、路线或美食" onClick={() => { setChatCollapsed(false); const input = document.querySelector('.chat-composer input, .chat-composer textarea') as HTMLInputElement | null; input?.focus() }}><Icon name="spark" size={15} />AI 编排此日</button>}{!editingTheme && <button className="button button-secondary" type="button" onClick={() => offline ? setNotice('示例行程不会写入账号') : setEditingTheme(true)}><Icon name="edit" size={16} />编辑标题</button>}<button className="button button-secondary" type="button" disabled={working || editingTheme} onClick={regenerateDay}><Icon name="refresh" size={16} />{working ? '正在整理…' : '重新生成这一天'}</button></div></div>
         <div className="day-items" key={day.dayNo}>{day.items.map((item, index) => {
           const itemKey = `${day.dayNo}:${index}`
           const isItemActive = activePin === itemKey
+          const isExpanded = expandedItem === itemKey
           const hasCoord = item.latitude != null && item.longitude != null
           const nextItem = day.items[index + 1]
           // 实景图只认条目自身图片或服务端按名字解析的实景链——不再退回另一座
           // 城市的硬编码封面（那是把别处照片当本地点位展示，alt 还挂着本点名）。
           const itemImg = item.image || item.imageUrl || poiPhotoUrl(item.poiName, trip.city)
           return <div key={`${item.poiName}-${index}`} className="day-item-group">
-            <article className={`day-item${isItemActive ? ' is-active' : ''}`} id={`day-item-${itemKey}`} style={{ '--stagger-i': index } as CSSProperties} onClick={() => setActivePin(itemKey)} onMouseEnter={() => setActivePin(itemKey)}>
+            <article
+              className={`day-item${isItemActive ? ' is-active' : ''}${isExpanded ? ' is-expanded' : ''}`}
+              id={`day-item-${itemKey}`}
+              style={{ '--stagger-i': index } as CSSProperties}
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              onClick={() => toggleItem(itemKey)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+                event.preventDefault()
+                toggleItem(itemKey)
+              }}
+            >
               <div className="day-item-time">{item.startTime || '--:--'}<span>{item.endTime || ''}</span></div>
               <div className="day-item-line"><i><Icon name={ITEM_TYPE_ICONS[item.itemType] || 'pin'} size={12} strokeWidth={2.2} /></i><span /></div>
               <div className="day-item-copy">
@@ -396,21 +441,30 @@ export function TripDetailPage({ path }: { path: string }) {
                   <span><Icon name="clock" size={14} />{item.durationMin ? `${item.durationMin} 分钟` : '时间可调整'}</span>
                   {getItemPriceTag(item) && <span><Icon name="ticket" size={14} />{getItemPriceTag(item)}</span>}
                   <ItemEvidence item={item} />
-                  {hasCoord && (
-                    <a
-                      className="item-nav-link"
-                      href={amapLink({ latitude: item.latitude!, longitude: item.longitude!, poiName: item.poiName || '' })}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="在高德地图中打开导航"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Icon name="pin" size={12} />
-                      地图导航
-                    </a>
-                  )}
+                  <span className="item-expand-hint"><Icon name="pin" size={12} />{isExpanded ? '收起' : '地图与导航'}<Icon name="chevron" size={12} className={isExpanded ? 'is-open' : ''} /></span>
                 </div>
-                {feedbackOn && item.id ? <ItemFeedbackControl itemId={item.id} feedback={feedbacks.get(item.id)} onSet={applyFeedback} onRevoke={() => removeFeedback(item.id!)} /> : null}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      className="item-expand"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="item-expand-inner">
+                        {hasCoord ? <>
+                          <a className="item-map-link" href={amapLink({ latitude: item.latitude!, longitude: item.longitude!, poiName: item.poiName || '' })} target="_blank" rel="noreferrer"><Icon name="pin" size={13} />高德地图导航</a>
+                          <a className="item-map-link" href={googleMapsLink({ latitude: item.latitude!, longitude: item.longitude!, poiName: item.poiName || '' })} target="_blank" rel="noreferrer"><Icon name="compass" size={13} />Google 地图</a>
+                          <button className="item-map-link is-locate" type="button" onClick={() => locateOnMap(itemKey)}><Icon name="arrow" size={13} className="is-up" />在上方地图中定位</button>
+                        </> : <span className="item-expand-note">这个地点暂时没有坐标，可以在地图 App 里搜索「{item.poiName}」核实位置。</span>}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {/* 反馈控件里的点击不冒泡成「展开/收起」 */}
+                {feedbackOn && item.id ? <div onClick={(event) => event.stopPropagation()}><ItemFeedbackControl itemId={item.id} feedback={feedbacks.get(item.id)} onSet={applyFeedback} onRevoke={() => removeFeedback(item.id!)} /></div> : null}
               </div>
               <div className="day-item-media" aria-hidden="true">
                 <SmartImg src={itemImg} alt={item.poiName || '地点实景'} ratio="1 / 1" />
@@ -477,6 +531,7 @@ export function TripDetailPage({ path }: { path: string }) {
           </div>
         )}
         {day.practicalNotes?.length ? <div className="day-note is-tips"><Icon name="compass" size={17} /><div><strong>出发前看一眼</strong>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
+        </motion.div>
       </> : <EmptyBlock title="这一天还没有安排" description="可以先切换到其他天，或重新生成当天内容。" />}</section>
     </div>
     {shareUrl && <div className="share-result"><span>分享链接</span>{safeShareUrl ? <a href={safeShareUrl} target="_blank" rel="noreferrer">{safeShareUrl}</a> : <span>{shareUrl}</span>}<button type="button" onClick={() => setShareUrl('')} aria-label="关闭分享链接"><Icon name="close" size={15} /></button></div>}

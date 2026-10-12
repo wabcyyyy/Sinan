@@ -5,8 +5,10 @@
 - budget_clause：预算约束句（无预算返回空串——调用方按空串跳过注入）；
 - clamp_meal_cost：餐饮单价相对城市人均餐价的硬顶/软顶钳制。
 
-依赖：无（纯函数，最底层）。
+依赖：data.fx（目的地币种口径）；其余纯函数。
 """
+
+from app.agent.data.fx import currency_clause
 
 TIER_KEYWORDS = {
     "经济型": ("经济",),
@@ -48,13 +50,23 @@ def budget_clause(budget: float | None, persons: int, days: int) -> str:
     label, guidance, ppd = budget_tier(budget, persons, days)
     if not label or budget is None:
         return ""
+    # 币种/换算口径不在这里：无预算的行程也要约束币种，单一定义在 data.fx.currency_clause
     return (
+        "以下 ¥/￥ 均指人民币；总预算覆盖全部人数与天数，禁止重复乘人数。"
         f"预算要求（硬性）：总预算 ¥{float(budget):g}，{persons} 人 {days} 天，人均每天约 ¥{ppd:.0f}，"
         f"按「{label}」标准规划——{guidance}"
         "酒店与餐饮的选择必须与该预算档次匹配；"
         "全程估算总价不得超过总预算，禁止为凑必去点排出明显超支的豪华组合；"
         "预算紧张时优先免费/低价景点与平价餐饮。"
     )
+
+
+def pricing_clause(budget: float | None, persons: int, days: int, city: str | None) -> str:
+    """生成 Prompt 的费用口径：币种约束（每次都有）+ 预算约束（有预算才有）。
+
+    2026-10-12：币种句此前只挂在 budget_clause 里，无预算的海外行程整句缺席，
+    东京行程 cost 混入日元按人民币展示。"""
+    return currency_clause(city) + budget_clause(budget, persons, days)
 
 
 def clamp_meal_cost(

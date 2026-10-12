@@ -10922,6 +10922,49 @@
             ],
             "title": "Pace"
           },
+          "maxAttractionsPerDay": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxattractionsperday"
+          },
+          "dietaryRequirement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vegetarian",
+                  "vegan"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dietaryrequirement"
+          },
+          "diningEvidencePolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "verified_only",
+                  "review_candidates"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diningevidencepolicy"
+          },
           "transportPreference": {
             "anyOf": [
               {

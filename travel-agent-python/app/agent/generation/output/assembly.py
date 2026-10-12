@@ -81,7 +81,7 @@ def format_output(state: UnifiedAgentState) -> dict:
         if bool((state.schedule_report or {}).get("open_research")) and note:
             note = (note + PRICE_ESTIMATE_NOTE_SUFFIX).strip()
         # LLM 可能输出 souvenir/activity 等扩展类型：归一到 TripItem 契约，避免 Pydantic 500
-        for item in sanitize_itinerary_items(plan.get("items")):
+        for item in sanitize_itinerary_items(plan.get("items"), city=req.city):
             if item.get("item_type") == "hotel" and int(plan["day_no"] or 0) > stay_nights:
                 continue
             # city 必须传：证据票按 `name:{城市}|{归一名}` 建键，漏传等于查询侧换了

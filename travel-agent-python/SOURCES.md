@@ -26,6 +26,14 @@ DNS 走 fake-IP 代理，须 DoH（`https://dns.google/resolve?name=<host>&type=
 
 ## 深链出口（浏览器侧可用性，非数据 API）
 
+饮食字段证据的实体来源链接使用 `https://www.openstreetmap.org/` 下的 `node/{id}`、
+`way/{id}` 或 `relation/{id}` 页面。它们是 Nominatim 结果对应的 OSM 实体页，
+不是新增抓取 API，也不代表餐厅当前菜单。点名解析携带 `extratags=1`，仅把
+`diet:vegetarian` / `diet:vegan` 的 `yes` 或 `only` 记为饮食依据；`limited`、缺失
+不算已证实，菜单仍须出发前复核。实体页未另做可用性探针，不能据此宣称实时菜单可达。
+参数与标签口径见 [Nominatim Search](https://nominatim.org/release-docs/latest/api/Search/)
+和 [OSM diet 标签](https://wiki.openstreetmap.org/wiki/Key%3Adiet%3A%2A)。
+
 | 源 | 用途 | 端点 | 免费额度 | 结论 | 最后验证 | 验证方式 |
 |---|---|---|---|---|---|---|
 | aviasales 深链 | 机票核实跳转（`deep_link` 基座） | `https://www.aviasales.com` | — | `ok`（200） | 2026-09-25 | 探针 |

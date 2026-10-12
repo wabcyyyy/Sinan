@@ -63,6 +63,7 @@ export function HomeStudio({ query, showDemoLink = false }: { query: URLSearchPa
         slots: chat.slots,
         messages: chat.messages,
         firstMessage: chat.firstMessage,
+        serverState: chat.serverState ?? undefined,
         generationId: planning.draft?.id ? String(planning.draft.id) : null,
       })
     }
@@ -72,7 +73,10 @@ export function HomeStudio({ query, showDemoLink = false }: { query: URLSearchPa
   }
 
   const handleResumeSession = (session: IntakeSessionRecord) => {
+    planning.reset()
     chat.restoreSession(session)
+    const id = Number(session.generationId)
+    if (Number.isInteger(id) && id > 0) void planning.resumeGeneration(id)
     setResetToIdle(false)
   }
 

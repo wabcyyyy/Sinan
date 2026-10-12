@@ -203,7 +203,9 @@ export function TripMapPanel({
     addLink('高德核实', amapLink(pin))
     addLink('Google 核实', googleMapsLink(pin))
     content.append(name, meta, links)
-    popupRef.current = new Popup({ offset: 18, closeButton: false })
+    // focusAfterOpen 关掉：maplibre 默认把焦点移进弹窗首个链接，浏览器会为可见焦点把整页
+    // 滚到地图处——时间线里选中条目时页面会被「拽」回地图（2026-10-12 反馈）
+    popupRef.current = new Popup({ offset: 18, closeButton: false, focusAfterOpen: false })
       .setLngLat([pin.longitude, pin.latitude])
       .setDOMContent(content)
       .addTo(map)

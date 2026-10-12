@@ -84,16 +84,7 @@ def clarify(user_id: int, message: str, slots: dict[str, Any], state: dict[str, 
 
     with llm_gateway_service.route_scope(user_id):
         response = guard_agent_call("意图解析服务暂不可用", lambda: run_clarify(build_request()))
-    return {
-        "state": response.state.model_dump(mode="json", by_alias=True),
-        "slots": response.slots,
-        "missing": response.missing,
-        "question": response.question,
-        "ready": bool(response.ready),
-        "options": list(response.options or []),
-        "blocked": bool(response.blocked),
-        "degraded": bool(response.degraded),
-    }
+    return response.model_dump(mode="json", by_alias=True)
 
 
 def city_guide(user_id: int, input_text: str, history: list[dict[str, Any]] | None) -> dict[str, Any]:

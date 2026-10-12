@@ -5,6 +5,9 @@
 @import './itinerary/itinerary.css';
 @import './settings/settings.css';
 
+/* 页面内容最大宽度（2026-10-12：1320 在 1920 全屏下两侧各留 300px 空白，放宽到 1600）；
+   顶栏 / 页脚 / 列表页 / 首页工作台 / 详情页共用这一个值，左右边线对齐 */
+:root { --sinan-page-max: 1600px; --sinan-page-pad: clamp(24px, 3vw, 48px); }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 /* 字体栈口径：拉丁走 Poppins（trek 复刻主字体）→ Geist Sans 回退；中文名必须显式排在
@@ -22,7 +25,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .sinan-app h1, .sinan-app h2, .sinan-app h3, .auth-card h1 { font-weight: 700; color: var(--sinan-ink); }
 .detail-metrics strong, .day-item-time, .detail-weather, .trip-card-meta, .card-kicker { font-variant-numeric: tabular-nums; }
 .top-nav { height: 80px; background: var(--sinan-paper); backdrop-filter: none; }
-.top-nav-inner { max-width: 1320px; padding: 0 48px; }
+.top-nav-inner { max-width: var(--sinan-page-max); padding: 0 var(--sinan-page-pad); }
 .top-nav-links { gap: 30px; }
 .top-nav-link { font-size: 13px; font-weight: 500; }
 .top-nav-login { border: 1px solid var(--sinan-accent); border-radius: 999px; background: var(--sinan-accent); color: var(--sinan-on-image); padding: 11px 22px; font-size: 12px; }
@@ -37,7 +40,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .button { border-radius: var(--sinan-radius-sm); box-shadow: none; font-weight: 600; white-space: nowrap; text-decoration: none; }
 .button-primary { color: var(--sinan-on-image); }
 .button-primary:hover { transform: translateY(-1px); }
-.page-content { max-width: 1320px; padding: 54px 48px 80px; }
+.page-content { max-width: var(--sinan-page-max); padding: 54px var(--sinan-page-pad) 80px; }
 .page-header h1 { max-width: 20ch; font-size: clamp(32px, 3.4vw, 48px); font-weight: 700; line-height: 1.35; letter-spacing: var(--lp-track-display); }
 .page-header p { font-size: 14px; }
 .page-header .section-eyebrow { display: none; }
@@ -89,7 +92,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .guide-detail-hero .section-eyebrow { margin-top: 22px; }
 .guide-offline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 20px; color: var(--sinan-muted); font-size: 12.5px; line-height: 1.7; }
 .site-footer { margin-top: 0; }
-.footer-inner { max-width: 1320px; padding: 32px 48px; }
+.footer-inner { max-width: var(--sinan-page-max); padding: 32px var(--sinan-page-pad); }
 .footer-brand .sinan-mark { transform: scale(.8); }
 .footer-note { max-width: 230px; line-height: 1.7; }
 .footer-links { flex-shrink: 0; }

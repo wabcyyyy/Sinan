@@ -265,6 +265,22 @@ def enrich_with_details(places: list[dict[str, Any]], *, top: int = 12) -> list[
 # ---- Nominatim 兜底 ---------------------------------------------------------
 
 
+def _osm_facts(item: dict[str, Any]) -> dict[str, Any]:
+    """仅采信 OSM 实体的明确饮食标签；limited/缺失不推断为适用。"""
+    raw_tags = item.get("extratags")
+    tags = raw_tags if isinstance(raw_tags, dict) else {}
+    diets = {diet for diet in ("vegetarian", "vegan") if tags.get(f"diet:{diet}") in ("yes", "only")}
+    if "vegan" in diets:
+        diets.add("vegetarian")
+    osm_type, osm_id = item.get("osm_type"), str(item.get("osm_id") or "")
+    valid = osm_type in ("node", "way", "relation") and osm_id.isdigit()
+    return {
+        "place_id": f"osm:{osm_type}:{osm_id}" if valid else None,
+        "source_url": f"https://www.openstreetmap.org/{osm_type}/{osm_id}" if valid else None,
+        "dietary_options": sorted(diets),
+    }
+
+
 def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool = False) -> list[dict[str, Any]] | None:
     """点名→候选要素列表；**None 与 [] 是两种结论**，不可合并。
 
@@ -284,8 +300,9 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
     params: dict[str, Any] = {"q": query[:120], "format": "jsonv2", "limit": 5 if namedetails else 1}
     if namedetails:
         params["namedetails"] = "1"
+        params["extratags"] = "1"
     payload = _nominatim_client.call(
-        f"q:{query[:120]}:{int(namedetails)}",
+        f"q:v2:{query[:120]}:{int(namedetails)}",
         lambda: fetch_json(
             _nominatim_client,
             api_client(),
@@ -322,6 +339,7 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
                 "category": str(item.get("category") or ""),
                 "type": str(item.get("type") or ""),
                 "source": "nominatim",
+                **_osm_facts(item),
             }
         )
     return rows

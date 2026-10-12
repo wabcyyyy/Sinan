@@ -342,12 +342,15 @@ def test_complete_trip_keeps_gen_resumed_on_partial_and_resets_on_completed(part
         row = session.get(ItineraryMain, partial_trip)
         assert row is not None
         row.gen_resumed = True
+        row.plan_note = "行程生成失败，请稍后重试或调整条件重新生成（错误码 ValueError）"
     day_persistence.complete_trip(partial_trip, all_succeeded=False)
     main = _main(partial_trip)
     assert main.gen_state == "PARTIAL" and main.gen_resumed is True
+    assert main.plan_note and "生成失败" in main.plan_note
     day_persistence.complete_trip(partial_trip, all_succeeded=True)
     main = _main(partial_trip)
     assert main.gen_state == "COMPLETED" and main.gen_resumed is False
+    assert main.plan_note is None, "补齐成功后不能继续显示旧失败文案"
 
 
 def test_recovery_skips_partial_trip_with_visible_day_content(clients, partial_trip, monkeypatch) -> None:

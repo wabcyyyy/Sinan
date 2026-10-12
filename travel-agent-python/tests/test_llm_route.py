@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, update
@@ -20,6 +19,7 @@ from app.common.envelope import FAIL_TRIP_NOTE
 from app.common.llm_route import LLMRoute, current_route, use_route
 from app.db import session as db_session
 from app.db.models import Base, ItineraryDay, ItineraryMain
+from app.schemas.trip import ClarifyResponse
 from app.schemas.trip_requirements import IntakeState
 from app.services import (
     generation_recovery,
@@ -138,9 +138,8 @@ def test_resolve_route_fail_open_on_db_error(monkeypatch, caplog) -> None:
 # ---------- 业务腿注入探针（迁移面契约） ----------
 
 
-def _fake_clarify_response() -> SimpleNamespace:
-    # M1a：clarify 响应恒带权威 state（服务端序列化走 state.model_dump）
-    return SimpleNamespace(
+def _fake_clarify_response() -> ClarifyResponse:
+    return ClarifyResponse(
         state=IntakeState(),
         slots={},
         missing=["days"],

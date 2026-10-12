@@ -1,0 +1,543 @@
+[
+  {
+    "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+    "request_id": "itinerary-1",
+    "events": [
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "d6e20e45c014447892ca86e5921c4cbf",
+        "parent_span_id": "ffa05519462343a685c0e9a8f7740ee5",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "东京都厅展望室"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "01bfb3bcfed94bcba5c313454e9ed7a2",
+        "parent_span_id": "ffa05519462343a685c0e9a8f7740ee5",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "df7f915877444f8dbe7d8bce97629c3b",
+        "parent_span_id": "ffa05519462343a685c0e9a8f7740ee5",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "d28183fa68384d5cabb1269c11d4bf21",
+        "parent_span_id": "98cf8ef4860e412ab000ad4b93cdd2e4",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "route",
+        "name": "retry",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "9c42ed9eb48d4c8097ce590a0f2bb1ec",
+        "action_id": "day-1-2",
+        "metadata": {
+          "reason": "validation_issue"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "8a8710342d434b69b09bbc1027838f4f",
+        "parent_span_id": "64ce68d66d0d4138b713b537f76d8047",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "2bfb6afe7c97425e9c39316df9fdbbdb",
+        "parent_span_id": "64ce68d66d0d4138b713b537f76d8047",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿中央公园"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "e11b174be1094045a53994b2403bf966",
+        "parent_span_id": "64ce68d66d0d4138b713b537f76d8047",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "c54f40ad6dfd4548bddb03481eed5821",
+        "parent_span_id": "2b09f28ae3574d24857210b855eb9957",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "route",
+        "name": "fallback",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "e32e8b49301e4c79b0f8cdd4b5fbdba8",
+        "action_id": "day-1-2",
+        "metadata": {
+          "reason": "retry_exhausted"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "5fdaa96de16441db9af7617d6978c6a2",
+        "parent_span_id": "d63441dd35a34bb7827d4d6da0bb932c",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "东京都厅展望室"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "94ddf80fbf2a4a22ab2d7c847ed6e644",
+        "parent_span_id": "d63441dd35a34bb7827d4d6da0bb932c",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "38223660d51c46ce95ef589dbdc28668",
+        "parent_span_id": "d63441dd35a34bb7827d4d6da0bb932c",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿中央公园"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "6282bbb80d934bd8a6a85a3242ae577c",
+        "parent_span_id": "d63441dd35a34bb7827d4d6da0bb932c",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "6af88888f38c4ea18f9460ac6ce6335c",
+        "parent_span_id": "6ea53dfa9aaf470fb5e65af0efebf31b",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "run_status",
+        "status": "error",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "acc3c195514f4cf98672666274e3a8f9",
+        "action_id": "day-1-2",
+        "metadata": {
+          "status": "failed",
+          "error_type": "ValueError",
+          "limits": {
+            "keys": [
+              "completion_tokens",
+              "deadline_seconds",
+              "elapsed_ms",
+              "existence_checks",
+              "llm_calls",
+              "max_existence_checks",
+              "max_llm_calls",
+              "max_replans",
+              "max_research_calls",
+              "max_retrievals",
+              "max_tokens",
+              "no_progress_count",
+              "prompt_tokens",
+              "replans",
+              "research_calls",
+              "retrievals"
+            ],
+            "size": 16
+          }
+        },
+        "error": "单日行程生成失败"
+      },
+      {
+        "kind": "decision",
+        "name": "run_limits",
+        "status": "ok",
+        "run_id": "ff1467f4534947d9ad5dc6012fddacef",
+        "request_id": "itinerary-1",
+        "span_id": "4060f2dd665a464b8e79f60db35791c1",
+        "action_id": "day-1-2",
+        "metadata": {
+          "elapsed_ms": 36734.0,
+          "deadline_seconds": 300.0,
+          "llm_calls": 3,
+          "max_llm_calls": 32,
+          "retrievals": 0,
+          "max_retrievals": 64,
+          "research_calls": 0,
+          "max_research_calls": 12,
+          "existence_checks": 21,
+          "max_existence_checks": 24,
+          "prompt_tokens": 6886,
+          "completion_tokens": 6682,
+          "max_tokens": 80000,
+          "replans": 0,
+          "max_replans": 3,
+          "no_progress_count": 0
+        }
+      }
+    ]
+  },
+  {
+    "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+    "request_id": "itinerary-1",
+    "events": [
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "10b7a1faeb604cb280f46747c22974ac",
+        "parent_span_id": "af24adabbee84846b247db93d9e59525",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "东京都厅展望室"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "64c8a2f5e0754212b394f9b206868769",
+        "parent_span_id": "af24adabbee84846b247db93d9e59525",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "8a15357a98ee418ab3172dded5ae455e",
+        "parent_span_id": "af24adabbee84846b247db93d9e59525",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿中央公园"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "9b85c190d35d47a4b59cd4b3e0ef8c68",
+        "parent_span_id": "af24adabbee84846b247db93d9e59525",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "f76de33c378a43e2b08abd928ce30dde",
+        "parent_span_id": "b72de00e4ec2425aba4d7ba8b47fb32f",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "route",
+        "name": "retry",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "bf08bd518c0c40c6ad8c84ba9d70fc25",
+        "action_id": "day-1-2",
+        "metadata": {
+          "reason": "validation_issue"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "93f4aadbbcba457cba5031ada7858686",
+        "parent_span_id": "2be260f6924d46afad9204f5a1a217bf",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "东京都厅展望室"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "e88285146c044020a1bdf2cf22ec585e",
+        "parent_span_id": "2be260f6924d46afad9204f5a1a217bf",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "d3c05143dabd4b4d86927d64264f3a78",
+        "parent_span_id": "2be260f6924d46afad9204f5a1a217bf",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿中央公园"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "f8592bb0410b42679e5988402c5fcc8b",
+        "parent_span_id": "2be260f6924d46afad9204f5a1a217bf",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "cb23f766c57341029bea452fd1c53d62",
+        "parent_span_id": "2917befcff5441a8ac03eeb841ecb0e8",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "route",
+        "name": "fallback",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "cf04689704ed413d81bda40785d59176",
+        "action_id": "day-1-2",
+        "metadata": {
+          "reason": "retry_exhausted"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "36c38c478982429bb97fb40c93acc0d9",
+        "parent_span_id": "dc537d97813549d4a7a9ef47721b23ea",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "东京都厅展望室"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "544fd9ddcb9d4778a94a2e413eecff9d",
+        "parent_span_id": "dc537d97813549d4a7a9ef47721b23ea",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "T's たんたん 新宿店"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "52c068f2c36342e780508549017fbb86",
+        "parent_span_id": "dc537d97813549d4a7a9ef47721b23ea",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿中央公园"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "duplicate_dropped",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "8ac5265e856d460da52a65990572f482",
+        "parent_span_id": "dc537d97813549d4a7a9ef47721b23ea",
+        "action_id": "day-1-2",
+        "metadata": {
+          "day_no": 2,
+          "poi_name": "新宿华盛顿酒店 素食餐厅"
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "day.reflect_result",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "406864151aca40d199d559ece3f9663c",
+        "parent_span_id": "db2bf65c150e4e7094b3fadb560ef766",
+        "action_id": "day-1-2",
+        "metadata": {
+          "issue_count": 1,
+          "needs_fix": true
+        }
+      },
+      {
+        "kind": "decision",
+        "name": "run_limits",
+        "status": "ok",
+        "run_id": "841a4a4b661b4eb9b12c1d8c9a5f7587",
+        "request_id": "itinerary-1",
+        "span_id": "b858a13645284e2480e4aaec16983263",
+        "action_id": "day-1-2",
+        "metadata": {
+          "elapsed_ms": 34828.0,
+          "deadline_seconds": 300.0,
+          "llm_calls": 3,
+          "max_llm_calls": 32,
+          "retrievals": 0,
+          "max_retrievals": 64,
+          "research_calls": 0,
+          "max_research_calls": 12,
+          "existence_checks": 18,
+          "max_existence_checks": 24,
+          "prompt_tokens": 6969,
+          "completion_tokens": 6719,
+          "max_tokens": 80000,
+          "replans": 0,
+          "max_replans": 3,
+          "no_progress_count": 0
+        }
+      }
+    ]
+  }
+]

@@ -45,6 +45,9 @@ PatchTarget = Literal[
     "excluded_place",
     "excluded_category",
     "pace",
+    "max_attractions_per_day",
+    "dietary_requirement",
+    "dining_evidence_policy",
     "transport_preference",
     "max_walk_minutes_per_leg",
     "budget_policy_mode",
@@ -85,6 +88,7 @@ _INT_BOUNDS = {
     "stay_nights": (0, None),
     "lodging_rooms": (1, 20),
     "max_walk_minutes_per_leg": (1, 480),
+    "max_attractions_per_day": (1, 20),
 }
 _STATE_INT_FIELDS = {"days", "persons", "stay_nights"}
 _STATE_STR_LIMITS = {"city": 64, "origin_city": 64, "hotel_tier": 16, "start_date": 10}
@@ -100,6 +104,9 @@ _REQ_SCALAR_FIELDS = {
     # TripRequirements 侧字段（含嵌套结构；点路径由 _set_nested 处理）
     "lodging_rooms": "lodging.rooms",
     "pace": "pace",
+    "max_attractions_per_day": "max_attractions_per_day",
+    "dietary_requirement": "dietary_requirement",
+    "dining_evidence_policy": "dining_evidence_policy",
     "transport_preference": "transport_preference",
     "max_walk_minutes_per_leg": "max_walk_minutes_per_leg",
     "budget_policy_mode": "budget_policy.mode",
@@ -122,7 +129,14 @@ _STR_TARGETS = (
     "start_date",
     "lodging_locked_hotel",
 )
-_INT_TARGETS = ("days", "persons", "stay_nights", "max_walk_minutes_per_leg", "lodging_rooms")
+_INT_TARGETS = (
+    "days",
+    "persons",
+    "stay_nights",
+    "max_walk_minutes_per_leg",
+    "lodging_rooms",
+    "max_attractions_per_day",
+)
 
 
 def _reject(patches: list[str], patch: RequirementPatch, reason: str) -> None:
@@ -150,6 +164,10 @@ def _set_nested(req: TripRequirements, path: str, value: Any) -> None:
 
 def _coerce_scalar(target: str, value: PatchValue) -> tuple[bool, Any]:
     """patch 值类型守卫：类型不符返回 (False, None)，由调用方拒绝（不猜测转换）。"""
+    if target == "dietary_requirement":
+        return (value in ("vegetarian", "vegan"), value)
+    if target == "dining_evidence_policy":
+        return (value in ("verified_only", "review_candidates"), value)
     if target in _STR_TARGETS:
         return (isinstance(value, str), value)
     if target in _INT_TARGETS:
@@ -219,7 +237,7 @@ def _apply_collection_set_unset(
     state: IntakeState, req: TripRequirements, patch: RequirementPatch, rejected: list[str]
 ) -> None:
     """集合目标的 set/unset：preferences set 接受整体列表替换；unset 清空集合；
-    required_place set 按 name upsert（替换日约束，不保留冲突副本）。"""
+    required_place set 按 name upsert；排除项的单条 set 同样 upsert，不清除其它排除项。"""
     target = patch.target
     if patch.op == "unset":
         if target == "preferences":
@@ -233,6 +251,9 @@ def _apply_collection_set_unset(
         return
     if target == "preferences" and isinstance(patch.value, list):
         state.preferences = [str(item) for item in patch.value][:10]
+        return
+    if target in ("excluded_place", "excluded_category"):
+        _apply_element_op(state, req, patch.model_copy(update={"op": "add"}), rejected)
         return
     if target == "required_place":
         name = (patch.name or "").strip()
@@ -262,6 +283,8 @@ def _apply_scalar_op(state: IntakeState, req: TripRequirements, patch: Requireme
             setattr(state, target, None)
         elif target in _REQ_SCALAR_FIELDS:
             _set_nested(req, _REQ_SCALAR_FIELDS[target], None)
+            if target == "dietary_requirement":
+                req.dining_evidence_policy = None
         else:
             _reject(rejected, patch, "未知目标")
         return
@@ -291,6 +314,8 @@ def _apply_scalar_op(state: IntakeState, req: TripRequirements, patch: Requireme
         setattr(state, target, value)
         return
     if target in _REQ_SCALAR_FIELDS:
+        if target == "dietary_requirement" and req.dietary_requirement != coerced:
+            req.dining_evidence_policy = None
         if target == "lodging_locked_hotel" and isinstance(coerced, str):
             coerced = coerced.strip()[:128]
             if not coerced:

@@ -17,6 +17,7 @@ BUDGET_WARN_SLOT / MULTICITY_WARN_SLOT / REQUIRED_SLOTS / LABELS / DEFAULT_OPTIO
 
 from app.agent.data.city_center import destination_problem
 from app.agent.data.city_reference import known_city_hits
+from app.agent.data.fx import destination_currency
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyResponse
 from app.schemas.trip_requirements import IntakeState
 
@@ -39,12 +40,25 @@ BUDGET_WARN_SLOT = "_budget_warned"  # 一次性协商闸标记：随 state.nego
 _MULTICITY_MAX_PER_DAY = 2
 MULTICITY_WARN_SLOT = "_multicity_warned"
 
-#: 模型 reply 的长度上限：超长视为越界，走规则回退（spec §7.1）
-_REPLY_MAX = 500
+#: 模型 reply 的长度上限：超长视为越界，走规则回退（spec §7.1）。
+#: 2026-10-12 收紧 500 → 160：回复要简短，长篇大论不如规则话术
+_REPLY_MAX = 160
+#: 模型 ack（接话）上限：一句话，超长或带问号（接话不该提问，否则与追问叠成两问）即弃用
+_ACK_MAX = 40
 
-#: 服务端主动追问的可选槽位（重要度序）；其余可选信息走右侧表单，不一律阻断
-_OPTIONAL_ORDER = ("start_date", "preferences")
+#: 缺必填时的追问（2026-10-12：替换「还想确认一下{X}～」这种表单腔）
+SLOT_QUESTIONS = {
+    "city": "想去哪座城市呀？还没想好的话，我也可以帮你推荐～",
+    "days": "打算玩几天呢？",
+    "persons": "这次几个人一起出发？",
+}
+
+#: 服务端主动追问的可选槽位（重要度序）；其余可选信息走右侧表单，不一律阻断。
+#: 2026-10-12 预算提到最前：没有预算时酒店/餐饮档次全靠猜，且无预算行程曾整段缺失币种约束
+_OPTIONAL_ORDER = ("budget", "start_date", "preferences")
+#: budget 的点选项按天数×人数现算（见 _budget_options），这里留空
 OPTIONAL_ASK: dict[str, tuple[str, list[str]]] = {
+    "budget": ("全程预算大概多少？给个大概范围就行，我好把住宿和吃饭配得刚刚好。", []),
     "start_date": ("大概哪天出发？还没定的话说「待定」也行。", ["下周五出发", "近期周末出发", "日期待定"]),
     "preferences": (
         "这趟有什么特别的偏好吗？比如美食、自然风光，或者带爸妈要少走路。",
@@ -54,6 +68,7 @@ OPTIONAL_ASK: dict[str, tuple[str, list[str]]] = {
 # 规则回退话术（模型 reply 缺失/目标不符/超长时使用）
 CONFIRM_REPLY = "信息都齐了～右侧确认一下就能开始规划。"
 BUDGET_CAUTION_REPLY = "按这个预算我会尽量排得实惠些，具体花费出发前记得再核对～"
+DINING_CHOICES = {"只安排有饮食依据的餐厅": "verified_only", "先给餐饮候选，我会自行核实": "review_candidates"}
 
 
 def negotiation_summary(state: IntakeState) -> str:
@@ -72,6 +87,30 @@ def adopted_reply(llm_reply: str | None, reply_for: str | None, target: str) -> 
     if not text or len(text) > _REPLY_MAX:
         return None
     return text
+
+
+def _with_ack(ack: str | None, question: str) -> str | None:
+    """模型接话 + 规则追问拼成一条回复：模型 reply 目标不符被弃用时，热情不随之丢失。"""
+    text = (ack or "").strip()
+    if not text or len(text) > _ACK_MAX or "?" in text or "？" in text:
+        return None
+    joiner = "" if text.endswith(("！", "。", "～", "~", "!", "，", ",")) else "！"
+    return f"{text}{joiner}{question}"
+
+
+def _round_budget(value: float) -> int:
+    step = 500 if value >= 3000 else 100
+    return int(round(value / step) * step)
+
+
+def _budget_options(state: IntakeState) -> list[str]:
+    """预算点选项：人均每天三档 × 人数 × 天数估出全程总额。
+
+    国内 300 / 600 / 1200；海外（目的地有本币）600 / 1000 / 1800——东京两人两天给「全程 1200」不像话。"""
+    persons = state.persons if isinstance(state.persons, int) and state.persons > 0 else 1
+    days = state.days if isinstance(state.days, int) and state.days > 0 else 1
+    tiers = (600, 1000, 1800) if destination_currency(state.city) else (300, 600, 1200)
+    return [f"全程约 {_round_budget(ppd * persons * days)} 元" for ppd in tiers] + ["预算不限"]
 
 
 def _slot_filled(state: IntakeState, slot: str) -> bool:
@@ -123,6 +162,7 @@ def _hard_block(
     llm_reply: str | None,
     reply_for: str | None,
     build,
+    llm_ack: str | None = None,
 ) -> ClarifyResponse | None:
     """硬阻断三连：超天协商 → 非法目的地 → 缺必填。命中返回响应，否则 None。"""
     # ① 天数超上限（不静默截断，原值保留走协商）
@@ -144,12 +184,13 @@ def _hard_block(
     # ③ 缺必填：问哪个槽位就给哪个槽位的候选
     if missing:
         slot = missing[0]
+        slot_question = SLOT_QUESTIONS[slot]
         return build(
             missing=missing,
-            question=f"还想确认一下{LABELS[slot]}～",
+            question=slot_question,
             ready=False,
             options=DEFAULT_OPTIONS.get(slot, []),
-            reply=adopted_reply(llm_reply, reply_for, slot),
+            reply=adopted_reply(llm_reply, reply_for, slot) or _with_ack(llm_ack, slot_question),
             reply_for=reply_for,
             next=slot,
         )
@@ -210,29 +251,42 @@ def respond(
     options: list[str] | None,
     llm_reply: str | None,
     reply_for: str | None,
+    llm_ack: str | None = None,
 ) -> ClarifyResponse:
     """出口策略（spec §7.1）：非法/冲突阻断 → 缺必填 → 最重要的可选问题 → 确认。
 
     每轮最多一个主要追问（next），已给的信息不重问；F10 沿用——追问文本与
     chips 按当前目标现生成，LLM 的 question/options 只在协商分支透传；
-    reply 采用规则见 adopted_reply。slots 兼容投影由调用方在出口后重算
+    reply 采用规则见 adopted_reply；模型 reply 被弃用时，用模型的一句接话（llm_ack）
+    拼上规则追问（_with_ack），协商/阻断分支不拼。slots 兼容投影由调用方在出口后重算
     （协商闸标记在出口内新写入，必须进当轮投影）。
     """
 
     def build(**kw) -> ClarifyResponse:
         return ClarifyResponse(state=state, slots={}, **kw)
 
-    blocked = _hard_block(state, missing, question, options, llm_reply, reply_for, build)
+    blocked = _hard_block(state, missing, question, options, llm_reply, reply_for, build, llm_ack)
     if blocked is not None:
         return blocked
     negotiation, budget_caution = _negotiation_block(state, llm_reply, reply_for, build)
     if negotiation is not None:
         return negotiation
+    if state.requirements.dietary_requirement and state.requirements.dining_evidence_policy is None:
+        return build(
+            missing=[],
+            ready=False,
+            blocked=True,
+            next="dining_evidence_policy",
+            question="餐厅的饮食资料可能不齐全。你希望只安排有素食依据的餐厅，还是先看候选、再自行核实？",
+            options=list(DINING_CHOICES),
+        )
     # 就绪：最重要的未问可选问题（不阻断生成，选择交给确认卡）
     optional = next((s for s in _OPTIONAL_ORDER if s not in state.optional_asked and not _slot_filled(state, s)), None)
     if optional is not None:
         state.optional_asked.append(optional)
         ask_question, ask_options = OPTIONAL_ASK[optional]
+        if optional == "budget":
+            ask_options = _budget_options(state)
         # 未接受的低预算：提示优先于模型回复（估算草案必须带提示，spec §7.2）
         caution_reply = BUDGET_CAUTION_REPLY if budget_caution else None
         return build(
@@ -240,7 +294,7 @@ def respond(
             ready=True,
             question=ask_question,
             options=ask_options,
-            reply=caution_reply or adopted_reply(llm_reply, reply_for, optional),
+            reply=caution_reply or adopted_reply(llm_reply, reply_for, optional) or _with_ack(llm_ack, ask_question),
             reply_for=reply_for,
             next=optional,
         )
@@ -248,5 +302,5 @@ def respond(
     if budget_caution:
         reply: str | None = BUDGET_CAUTION_REPLY
     else:
-        reply = adopted_reply(llm_reply, reply_for, "confirm") or CONFIRM_REPLY
+        reply = adopted_reply(llm_reply, reply_for, "confirm") or _with_ack(llm_ack, CONFIRM_REPLY) or CONFIRM_REPLY
     return build(missing=[], ready=True, question=None, options=[], reply=reply, reply_for="confirm", next="confirm")

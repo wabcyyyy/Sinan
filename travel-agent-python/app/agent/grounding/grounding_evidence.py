@@ -22,7 +22,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from app.agent.core.poi_identity import haversine_m, norm_poi_key
+from app.agent.core.poi_identity import haversine_m, norm_poi_key, same_entity
 from app.common import cache_store
 
 NAMESPACE = "grounding_evidence"
@@ -42,6 +42,9 @@ class EvidenceTicket:
     latitude: float | None
     longitude: float | None
     city: str
+    dietary_options: tuple[str, ...] = ()
+    source_url: str | None = None
+    aliases: tuple[str, ...] = ()
 
 
 def _keys(name: str, city: str, external_id: str) -> list[str]:
@@ -69,6 +72,9 @@ def issue_evidence(row: Mapping[str, Any]) -> EvidenceTicket | None:
         latitude=_as_float(row.get("latitude")),
         longitude=_as_float(row.get("longitude")),
         city=city,
+        dietary_options=tuple(diet for diet in (row.get("dietary_options") or ()) if diet in ("vegetarian", "vegan")),
+        source_url=str(row.get("source_url") or "") or None,
+        aliases=tuple(str(alias) for alias in (row.get("aliases") or ())),
     )
     payload = asdict(ticket)
     for key in _keys(name, city, external_id):
@@ -88,6 +94,11 @@ def lookup_ticket(name: str, city: str = "", external_id: str = "") -> EvidenceT
                     latitude=_as_float(raw.get("latitude")),
                     longitude=_as_float(raw.get("longitude")),
                     city=str(raw.get("city") or ""),
+                    dietary_options=tuple(
+                        diet for diet in (raw.get("dietary_options") or ()) if diet in ("vegetarian", "vegan")
+                    ),
+                    source_url=str(raw.get("source_url") or "") or None,
+                    aliases=tuple(str(alias) for alias in (raw.get("aliases") or ())),
                 )
             except (TypeError, ValueError):
                 continue
@@ -102,7 +113,9 @@ def verify_evidence(row: Mapping[str, Any]) -> bool:
     external_id = str(row.get("xid") or row.get("external_id") or row.get("poi_id") or "").strip()
     city = str(row.get("city") or "").strip()
     ticket = lookup_ticket(name, city, external_id)
-    if ticket is None:
+    if ticket is None or not any(same_entity(name, alias) for alias in (ticket.name, *ticket.aliases)):
+        return False
+    if str(row.get("source") or "").strip() != ticket.provider:
         return False
     lat, lng = _as_float(row.get("latitude")), _as_float(row.get("longitude"))
     if lat is None or lng is None:

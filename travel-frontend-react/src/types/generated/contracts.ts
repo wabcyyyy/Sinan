@@ -37,6 +37,9 @@ export interface TripRequirements {
   excludedPlaces: string[]
   excludedCategories: string[]
   pace: "normal" | "relaxed" | null
+  maxAttractionsPerDay: number | null
+  dietaryRequirement: "vegetarian" | "vegan" | null
+  diningEvidencePolicy: "verified_only" | "review_candidates" | null
   transportPreference: "walking" | "driving" | "mixed" | "unspecified" | null
   maxWalkMinutesPerLeg: number | null
   budgetPolicy: BudgetPolicy | null

@@ -69,7 +69,7 @@ def test_trip_output_must_contain_unique_in_range_usable_days(plans):
     validate_trip_output({"daily_plans": [_day()]}, 2)  # 缺口走既有逐日补齐。
 
 
-def test_day_graph_exhaustion_is_failure_and_last_attempt_clears_feedback(monkeypatch):
+def test_day_graph_exhaustion_is_failure_and_last_attempt_keeps_feedback(monkeypatch):
     calls = []
 
     def empty(req, *, force_fallback=False):
@@ -81,4 +81,4 @@ def test_day_graph_exhaustion_is_failure_and_last_attempt_clears_feedback(monkey
         day_workflow.run_day_agent(GenerateDayRequest(city="成都", per_day_chain=True))
     assert len(calls) == 3
     assert calls[1][0]
-    assert calls[2] == ("", True)
+    assert calls[2][1] is True and "没有生成任何条目" in calls[2][0]

@@ -54,7 +54,9 @@ export function ChatIntake({
 
   const locked = disabled || chat.sending
   const last = chat.messages[chat.messages.length - 1]
-  const chips = !chat.ready && !locked && last?.role === 'assistant' && last.options?.length ? last.options : null
+  // 就绪后服务端仍会追问可选项（预算/出发日期/偏好，ready=true 但带 options）：chips 跟着最后一条
+  // 助手消息走，不再按 ready 隐藏——否则预算这类追问永远没有点选项
+  const chips = !locked && last?.role === 'assistant' && last.options?.length ? last.options : null
   // 纯 greeting 的冷启动会话：greeting 下挂模板 chips 导流，开聊即收起
   const fresh = chat.messages.length === 1 && chat.messages[0].id === GREETING.id
 
@@ -88,6 +90,7 @@ export function ChatIntake({
   }
 
   const [sessions, setSessions] = useState<IntakeSessionRecord[]>(() => listIntakeSessions())
+  useEffect(() => { setSessions(listIntakeSessions()) }, [chat.messages])
   const [showSessionsModal, setShowSessionsModal] = useState(false)
   const refreshSessions = () => setSessions(listIntakeSessions())
 

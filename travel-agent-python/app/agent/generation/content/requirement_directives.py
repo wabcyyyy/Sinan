@@ -72,6 +72,15 @@ def _preference_lines(req_struct: TripRequirements) -> list[str]:
         lines.append(f"用户明确不去以下类别（禁止排入行程）：{labels}")
     if req_struct.pace == "relaxed":
         lines.append("节奏偏好：慢游（每日安排留白，宁可少而精）")
+    if req_struct.max_attractions_per_day is not None:
+        lines.append(f"每天景点数硬上限：最多 {req_struct.max_attractions_per_day} 个，不得通过改写条目类型绕过")
+    if req_struct.dietary_requirement:
+        diet = "纯素（不含蛋奶）" if req_struct.dietary_requirement == "vegan" else "素食（可含蛋奶）"
+        lines.append(f"饮食要求：每一餐均需适合{diet}；店名、坐标、模型知识不能证明菜单适用")
+        if req_struct.dining_evidence_policy == "review_candidates":
+            lines.append("用户接受待核实餐饮候选：证据不足的餐厅不可声称已满足饮食要求，不可虚构分店")
+        else:
+            lines.append("只安排有外部饮食依据的餐厅；无依据时需更换，不可凭名称宣称素食可用")
     transport = {
         "walking": "交通偏好：市内尽量步行可达的选点与路线",
         "driving": "交通偏好：用户接受打车/驾车为主的市内交通",

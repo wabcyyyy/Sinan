@@ -341,6 +341,9 @@ def test_clarify_shape_and_empty_message_rejection(client: TestClient, monkeypat
             missing=["days"],
             question="去玩几天？",
             ready=True,
+            reply="杭州的目的地已记下，想玩几天？",
+            reply_for="days",
+            next="days",
         ),
     )
     data = client.post("/api/itinerary/clarify", json={"message": "想去杭州", "slots": {}}).json()["data"]
@@ -355,6 +358,9 @@ def test_clarify_shape_and_empty_message_rejection(client: TestClient, monkeypat
         "blocked": False,
         # AILIVE-2 起 ClarifyResponse 恒带 degraded（正常轮 False，见 test_clarify_intake）
         "degraded": False,
+        "reply": "杭州的目的地已记下，想玩几天？",
+        "replyFor": "days",
+        "next": "days",
     }
 
     unavailable = client.post("/api/itinerary/clarify", json={"message": ""}).json()

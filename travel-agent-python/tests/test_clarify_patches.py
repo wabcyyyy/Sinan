@@ -76,7 +76,7 @@ def test_unsupported_category_patch_goes_to_unresolved(monkeypatch) -> None:
     )
     assert res.state.requirements.excluded_categories == []
     assert res.state.requirements.unresolved_requests == [
-        "add excluded_category bar：暂不支持排除类别，当前支持：museum"
+        "add excluded_category bar：暂不支持排除类别，当前支持：museum、temple"
     ]
 
 

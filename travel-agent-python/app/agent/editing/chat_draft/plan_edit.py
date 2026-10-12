@@ -190,6 +190,7 @@ def _apply_decision_patches(data: dict, req: ChatTurnRequest) -> list[dict] | No
             )
             by_day[empty_day_no]["items"].append(donor_items.pop(moving_index))
     result = [by_day[day_no] for day_no in range(1, target_days + 1)]
+    original_by_day = {plan["day_no"]: plan for plan in req.plans}
     # move/add 默认追加到末尾；按时间重新排序，保证时间线展示顺序与实际游览顺序一致。
     for plan in result:
         indexed = list(enumerate(plan.get("items") or []))
@@ -201,6 +202,10 @@ def _apply_decision_patches(data: dict, req: ChatTurnRequest) -> list[dict] | No
             )
         )
         plan["items"] = [item for _, item in indexed]
+        original = original_by_day.get(plan["day_no"])
+        if original and plan.get("items") != original.get("items") and plan.get("note") == original.get("note"):
+            # 小修补丁未更新摘要时，旧文字可能仍含已删除地点或旧时间。
+            plan["note"] = "行程已调整，请以当天安排为准。"
     return result
 
 

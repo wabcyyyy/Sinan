@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { fallbackCities } from '../data'
+import type { TripRequirements } from '../../types/generated/contracts'
+import { destinations, fallbackCities } from '../data'
 import { Icon } from '../shared/Icon'
+import { SmartImg } from '../shared/SmartImg'
 import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
 
@@ -14,6 +16,7 @@ import type { IntakeSlots } from './intakeSlots'
  * 触发 onStart；重验未过保持禁用，任何前端路径都不在 !ready 时触发生成。 */
 export function IntakeConfirm({
   slots,
+  requirements,
   busy,
   ready,
   needsReconfirm,
@@ -23,6 +26,7 @@ export function IntakeConfirm({
   onStart,
 }: {
   slots: IntakeSlots
+  requirements?: TripRequirements | null
   busy: boolean
   ready: boolean
   needsReconfirm: boolean
@@ -71,6 +75,7 @@ export function IntakeConfirm({
   const persons = slots.persons || 2
   const hasDate = Boolean(slots.start_date)
   const hasPrefs = preferences.length > 0
+  const cover = slots.city ? destinations.find((d) => slots.city?.includes(d.city) || d.city.includes(slots.city || ''))?.image : undefined
 
   return (
     <div className="intake-confirm trip-confirm">
@@ -88,7 +93,8 @@ export function IntakeConfirm({
       </div>
 
       {/* 方案概览卡片（Plan Brief Card）：核心信息对话确认，免去手动按键 */}
-      <div className="plan-brief-card" aria-label="AI 为你整理的行程方案">
+      <div className={cover ? 'plan-brief-card has-cover' : 'plan-brief-card'} aria-label="AI 为你整理的行程方案">
+        {cover && <div className="plan-brief-cover" aria-hidden="true"><SmartImg src={cover} alt="" ratio="16 / 6" /><span className="plan-brief-cover-scrim" /></div>}
         <div className="plan-brief-hero">
           <div className="plan-brief-dest">
             <span className="plan-brief-city">{city}</span>
@@ -139,6 +145,15 @@ export function IntakeConfirm({
           </div>
         </div>
       </div>
+
+      {requirements && <div className="plan-brief-pills" aria-label="明确要求">
+        {requirements.maxAttractionsPerDay != null && <span className="plan-brief-pill">每天最多 {requirements.maxAttractionsPerDay} 个景点</span>}
+        {requirements.excludedCategories?.includes('temple') && <span className="plan-brief-pill">不去寺庙/神社</span>}
+        {requirements.dietaryRequirement && <span className="plan-brief-pill">
+          {requirements.dietaryRequirement === 'vegan' ? '纯素（不含蛋奶）' : '素食（可含蛋奶）'} ·
+          {requirements.diningEvidencePolicy === 'review_candidates' ? '餐饮候选需自行核实' : '只安排有饮食依据的餐厅'}
+        </span>}
+      </div>}
 
       {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
       <button
