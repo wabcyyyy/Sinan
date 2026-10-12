@@ -46,7 +46,7 @@ def test_question_and_options_align_with_first_missing_slot(monkeypatch) -> None
     res = _run(monkeypatch, raw)
     assert res.ready is False
     assert res.missing == ["city", "days", "persons"]
-    assert res.question == "还想确认一下目的地城市～"
+    assert res.question == policy.SLOT_QUESTIONS["city"]
     assert res.options == ["帮我推荐目的地"]
 
 
@@ -59,23 +59,58 @@ def test_optional_slot_never_shadows_required(monkeypatch) -> None:
     res = _run(monkeypatch, raw)
     assert res.slots["start_date"] == "2026-10-01", "可选槽位照常抽取入库"
     assert res.missing == ["persons"]
-    assert res.question == "还想确认一下出行人数～"
+    assert res.question == policy.SLOT_QUESTIONS["persons"]
     assert res.options == ["2 人", "4 人", "一家人"]
 
 
 def test_ready_ignores_llm_question(monkeypatch) -> None:
-    """LLM 的自由追问不透传：就绪轮的问题由服务端按目标生成（F10 语义保留）。"""
+    """LLM 的自由追问不透传：就绪轮的问题由服务端按目标生成（F10 语义保留）。
+
+    2026-10-12：未给预算时第一个可选追问是预算，点选项按天数×人数现算。"""
     raw = '{"city":"成都","days":3,"persons":2,"question":"还想问点什么","options":["a"]}'
     res = _run(monkeypatch, raw)
     assert res.ready is True
-    assert res.question == policy.OPTIONAL_ASK["start_date"][0], "是服务端的追问，不是 LLM 那句"
-    assert res.options == policy.OPTIONAL_ASK["start_date"][1]
+    assert res.next == "budget"
+    assert res.question == policy.OPTIONAL_ASK["budget"][0], "是服务端的追问，不是 LLM 那句"
+    assert res.options == ["全程约 1800 元", "全程约 3500 元", "全程约 7000 元", "预算不限"]
+
+
+def test_budget_options_scale_up_overseas(monkeypatch) -> None:
+    """海外目的地的预算档位按人均每天 600/1000/1800 估（国内档位在东京明显不够）。"""
+    res = _run(monkeypatch, '{"city":"东京","days":2,"persons":2}')
+    assert res.next == "budget"
+    assert res.options == ["全程约 2400 元", "全程约 4000 元", "全程约 7000 元", "预算不限"]
+
+
+def test_budget_asked_once_then_start_date(monkeypatch) -> None:
+    """预算问过一次（用户说不限/没给）就不再追问，下一轮问出发日期。"""
+    raw = '{"city":"成都","days":3,"persons":2}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.next == "start_date"
+    assert res.state.optional_asked == ["budget", "start_date"]
+
+
+def test_ack_prefixes_rule_question_when_reply_rejected(monkeypatch) -> None:
+    """模型 reply 目标不符被弃用时，模型的一句接话仍拼在规则追问前，不退回干巴巴的模板。"""
+    raw = '{"city":"成都","ack":"成都吃火锅逛老街，这个组合太对味了！","reply":"几天？","reply_for":"persons"}'
+    res = _run(monkeypatch, raw)
+    assert res.next == "days"
+    assert res.reply == "成都吃火锅逛老街，这个组合太对味了！" + policy.SLOT_QUESTIONS["days"]
+
+
+def test_ack_with_question_or_overlong_is_dropped(monkeypatch) -> None:
+    """接话带问号（会叠成两问）或超长 → 弃用，回到规则追问。"""
+    for ack in ("去成都吗？", "啊" * 60):
+        raw = '{"city":"成都","ack":"' + ack + '"}'
+        res = _run(monkeypatch, raw)
+        assert res.reply is None and res.question == policy.SLOT_QUESTIONS["days"]
 
 
 def test_ready_goes_confirm_after_optional_asked(monkeypatch) -> None:
     """可选槽位已问过/已填则不再问，进入确认分支（每轮最多一个主要追问）。"""
     raw = '{"city":"成都","days":3,"persons":2,"question":null,"options":null}'
-    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget", "start_date", "preferences"])
     res = _run(monkeypatch, raw, state=asked)
     assert res.ready is True
     assert res.next == "confirm"
@@ -216,7 +251,7 @@ def test_multicity_check_fails_open_without_dictionary(monkeypatch) -> None:
 def test_reply_adopted_only_when_target_matches(monkeypatch) -> None:
     """reply 采用规则：服务端重算目标与模型声明的 reply_for 一致才采用。"""
     raw = '{"city":"成都","days":3,"persons":2,"reply":"成都 3 天 2 人，带上爸妈我会排松一点。","reply_for":"confirm"}'
-    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget", "start_date", "preferences"])
     res = _run(monkeypatch, raw, state=asked)
     assert res.ready is True and res.next == "confirm"
     assert res.reply == "成都 3 天 2 人，带上爸妈我会排松一点。", "目标一致 → 采用模型回复"
@@ -225,7 +260,7 @@ def test_reply_adopted_only_when_target_matches(monkeypatch) -> None:
 def test_reply_falls_back_when_target_mismatch(monkeypatch) -> None:
     """模型声明的目标与服务器重算不一致 → 规则回退话术，不用模型那句。"""
     raw = '{"city":"成都","days":3,"persons":2,"reply":"不如去西藏？","reply_for":"city"}'
-    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget", "start_date", "preferences"])
     res = _run(monkeypatch, raw, state=asked)
     assert res.ready is True and res.next == "confirm"
     assert res.reply == policy.CONFIRM_REPLY, "目标不符（声明 city 实为 confirm）→ 规则回退"
@@ -235,7 +270,7 @@ def test_reply_overlong_falls_back(monkeypatch) -> None:
     """超长 reply 视为越界：规则回退（无第二次润色调用）。"""
     long_reply = "啊" * 600
     raw = '{"city":"成都","days":3,"persons":2,"reply":"' + long_reply + '","reply_for":"confirm"}'
-    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["start_date", "preferences"])
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget", "start_date", "preferences"])
     res = _run(monkeypatch, raw, state=asked)
     assert res.reply == policy.CONFIRM_REPLY
 
@@ -286,3 +321,12 @@ def test_days_limit_cannot_be_skipped_by_confirm_reply(monkeypatch) -> None:
     assert res.reply is None, "目标不符（blocked 分支）→ 不采用"
     assert res.next == "days_limit"
     assert res.state.days == 14, "超限原值保留"
+
+
+def test_ack_prefixes_confirm_reply(monkeypatch) -> None:
+    """确认轮同样带上模型接话；接话已以标点收尾时不再补「！」。"""
+    raw = '{"city":"成都","days":3,"persons":2,"ack":"带爸妈吃遍成都，安排！"}'
+    asked = IntakeState(city="成都", days=3, persons=2, optional_asked=["budget", "start_date", "preferences"])
+    res = _run(monkeypatch, raw, state=asked)
+    assert res.next == "confirm"
+    assert res.reply == "带爸妈吃遍成都，安排！" + policy.CONFIRM_REPLY

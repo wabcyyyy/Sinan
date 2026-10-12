@@ -45,7 +45,7 @@ from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
 from app.agent.generation.output.facts import field_fact_evidence
-from app.agent.generation.rules.budget import budget_clause, budget_tier, clamp_meal_cost
+from app.agent.generation.rules.budget import budget_tier, clamp_meal_cost, pricing_clause
 from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import (
     day_hotel_clause,
@@ -138,7 +138,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     reference_block = pool.block()
     if reference_block:
         system += "\n" + reference_block
-    budget_text = budget_clause(req.budget, req.persons, total_days)
+    budget_text = pricing_clause(req.budget, req.persons, total_days, req.city)
     if budget_text:
         system += budget_text
     requirements_text = requirements_clause(req.requirements)
@@ -270,7 +270,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             "day %s inner llm produced 0 items (json_object degradation shape loss?); reflect 将按 issue 重采样",
             req.day_no,
         )
-    drafts = sanitize_itinerary_items(plan.get("items"))
+    drafts = sanitize_itinerary_items(plan.get("items"), city=req.city)
     if inner_items and not drafts:
         logger.warning("day %s sanitize dropped all %s inner items", req.day_no, len(inner_items))
     name_aliases: dict[str, str] = {}
