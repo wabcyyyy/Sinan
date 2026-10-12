@@ -30,14 +30,26 @@ def filter_plan_items(items: list[Any] | None) -> list[dict]:
     return filter_dirty_items(items)
 
 
-def drop_used_items(items: list[dict], used_names: list[str], *, day_no: int) -> list[dict]:
+def drop_used_items(
+    items: list[dict],
+    used_names: list[str],
+    *,
+    day_no: int,
+    used_points: list[tuple[str, str, float | None, float | None]] | None = None,
+) -> list[dict]:
     """单日接地后也走生成期判重；已安排名称和同日坐标共用 PoiSeenRegistry。
 
-    酒店豁免由登记表统一定义；去重清空日程时，交图的失败/修复边界处理。
+    `used_points`（P1-B）：跨天重试时已成功天落库的 (名字, 类型, 纬度, 经度)。
+    只登记名字时，重生成日换个名称变体（"都厅展望室"→"都厅南展望室"）就绕过
+    了坐标通道；带类型+坐标登记后，变体只要落地出真实坐标就会被同类型近距离
+    判重抓到。酒店豁免由登记表统一定义；去重清空日程时，交图的失败/修复边界处理。
     """
     seen = PoiSeenRegistry()
     for name in used_names:
         seen.register(name, None)
+    for point in used_points or []:
+        if isinstance(point, tuple) and len(point) == 4:
+            seen.register(*point)
     kept = []
     for item in items:
         name, kind = item["poi_name"], item["item_type"]
@@ -68,12 +80,17 @@ def ground_item(item: dict, *, city: str, ref_pool: ReferencePool) -> bool:
     return hit
 
 
+#: 去重/否证清空当日的判据标记：同 BUDGET_OVERAGE_MARK 口径，交图的有界重试
+#: 按它识别「这条反馈值得再问模型一次」，消息与路由共用一份常量才不会漂。
+DEDUP_EMPTIED_MARK = "去重或事实核验后没有可游玩景点"
+
+
 def require_playable_items(before_names: list[str], items: list[dict], *, day_no: int, playable: bool) -> None:
     """把过滤导致的不可交付缺口连同被删名称反馈给下一次生成。"""
     removed = sorted(set(before_names) - {item["poi_name"] for item in items})
     if removed and playable and not any(item["item_type"] == "attraction" for item in items):
         raise ValueError(
-            f"第 {day_no} 天去重或事实核验后没有可游玩景点；已移除：{'、'.join(removed)}。"
+            f"第 {day_no} 天{DEDUP_EMPTIED_MARK}；已移除：{'、'.join(removed)}。"
             "这些地点不可再次用于本日；保留其他天安排，改选目的地其他片区的真实景点和餐厅，补齐本日。"
         )
 

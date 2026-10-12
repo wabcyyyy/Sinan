@@ -287,7 +287,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     # 再进装配：留在行程里把一个名字指到别的城市，比少一个点更糟（G5）。
     before_filter = [item["poi_name"] for item in drafts]
     drafts = drop_refuted_items(drafts, city=req.city)
-    drafts = drop_used_items(drafts, req.used_names, day_no=req.day_no)
+    drafts = drop_used_items(drafts, req.used_names, day_no=req.day_no, used_points=ctx.get("used_points"))
     policy = day_policy_for(req.requirements_struct, req.day_no)
     require_playable_items(before_filter, drafts, day_no=req.day_no, playable=policy.playable)
 

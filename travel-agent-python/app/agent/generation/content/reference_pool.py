@@ -165,6 +165,10 @@ class ReferencePool:
                 value = str(poi.get(key) or "").strip()
                 if value:
                     segments.append(value)
+            # 外部饮食标签随行标注（P1-A）：模型据此优先把已证实条目排为每一餐
+            diets = [str(d) for d in (poi.get("dietary_options") or ()) if d in ("vegetarian", "vegan")]
+            if diets:
+                segments.append("外部饮食标签已证实:" + "、".join("纯素" if d == "vegan" else "素食" for d in diets))
             lines.append(f'[R{no}] """{poi.get("name")}｜' + "｜".join(segments) + '"""')
         if not lines:
             return ""
@@ -176,7 +180,14 @@ class ReferencePool:
         )
 
     def match(self, item: dict) -> dict | None:
-        """行程项 → 参考资料匹配：名称精确/归一化优先，其次 refs 编号。"""
+        """行程项 → 参考资料匹配：名称精确/归一化优先，其次 refs 编号，最后同实体扫描。
+
+        模型常在池内店名前后补位置前缀（"新宿御苑前 ソラノイロ" vs 池内
+        "ソラノイロ"），精确/归一化都接不住，条目因此错过已证实条目、退回
+        未判定。同实体扫描沿用 refs 命中的同一名称门槛（same_entity），命中即
+        视同引用：ground() 会按"名称通道未命中"处理——重过 same_entity、名称
+        归一为权威名。池是本次检索的有界集合（≤26 行），扫描无外呼。
+        """
         name = str(item.get("poi_name") or "").strip()
         poi = self.by_name.get(name) or self.by_normalized.get(normalize_poi_name(name))
         if poi is not None:
@@ -186,7 +197,12 @@ class ReferencePool:
                 continue
             if 1 <= ref <= len(self.references):
                 return self.references[ref - 1]
-        return None
+        if not name:
+            return None
+        return next(
+            (ref for ref in self.references if same_entity(name, str(ref.get("name") or ""))),
+            None,
+        )
 
     def _count_refs(self, item: dict) -> None:
         refs = item.get("refs") or []

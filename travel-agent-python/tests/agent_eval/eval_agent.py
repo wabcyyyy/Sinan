@@ -110,7 +110,9 @@ def run_case(case: dict) -> dict:
         )
         enter(
             patch.object(
-                tools, "search_foods", lambda city, limit=10: mock_llm.search_foods(city, limit, coords=coords)
+                tools,
+                "search_foods",
+                lambda city, limit=10, dietary=None: mock_llm.search_foods(city, limit, dietary=dietary, coords=coords),
             )
         )
         enter(patch.object(tools, "get_consumption", mock_llm.get_consumption))

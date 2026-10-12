@@ -25,12 +25,14 @@ OpenTripMap 的半径池按热度截断 top-40、对"不存在"根本无资格�
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from app.agent.core.poi_identity import haversine_m, matches_any, same_entity
 from app.agent.data import city_center as city_center_data
 from app.agent.data import places
+from app.agent.grounding.core_name import core_name_via_llm, reset_core_name_cache
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
@@ -59,6 +61,8 @@ class ResolveResult:
     authoritative_negative: bool = False
     dietary_options: tuple[str, ...] = ()
     source_url: str | None = None
+    #: 外部主分类原样搬运（(amenity, place_of_worship) 等），不在这里下语义结论
+    category_tags: tuple[tuple[str, str], ...] = ()
 
     @property
     def grounded(self) -> bool:
@@ -182,8 +186,25 @@ class NominatimProvider:
         if rows is None:
             return ResolveResult.unknown("provider_unavailable")
         if not rows:
+            # 描述性名称全串查询实测必空（"新宿御苑前 ソラノイロ"0 行，短名命中
+            # 同一实体；"明治神宫外苑银杏并木"同理）。让 fast 模型抽一次核心店名
+            # 重查：名称门槛仍按原名判，抽错实体过不了 same_entity，最坏多一次 1rps 查询。
+            core = core_name_via_llm(name, city)
+            if core and core != name and same_entity(core, name):
+                retry_rows = places.geocode_place_rows(core, city, namedetails=True)
+                if retry_rows:
+                    return pick_row(retry_rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
             return ResolveResult(state=NOT_FOUND, provider=self.name, reason="provider_empty")
-        return pick_row(rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+        result = pick_row(rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+        if result.grounded or result.out_of_area:
+            return result
+        core = core_name_via_llm(name, city)
+        if not core or core == name or not same_entity(core, name):
+            return result
+        retry_rows = places.geocode_place_rows(core, city, namedetails=True)
+        if not retry_rows:
+            return result
+        return pick_row(retry_rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
 
 
 def _nominatim_spellings(row: dict[str, Any]) -> list[str]:
@@ -218,6 +239,7 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
             address=str(row.get("display_name") or row.get("address") or "") or None,
             dietary_options=tuple(row.get("dietary_options") or ()),
             source_url=row.get("source_url") or None,
+            category_tags=_category_tags_of(row),
         )
         if _in_destination_area(south_east[0], south_east[1], city) is False:
             first_mismatch = first_mismatch or replace(
@@ -228,6 +250,18 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
     if first_mismatch is not None:
         return first_mismatch
     return ResolveResult.unknown("name_gate_rejected")
+
+
+def _category_tags_of(row: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """行上的类别证据原样搬运成有序元组；无/形状不对返回空。"""
+    tags = row.get("category_tags")
+    if not isinstance(tags, Mapping):
+        return ()
+    return tuple(
+        (str(key), str(value))
+        for key, value in sorted(tags.items(), key=lambda kv: str(kv[0]))
+        if str(key or "").strip() and str(value or "").strip()
+    )[:8]
 
 
 # 免费源常驻；收费留白源见 `existence_commercial`（它要用本模块的结论类型，
@@ -285,6 +319,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
                 "dietary_options": result.dietary_options,
                 "source_url": result.source_url,
                 "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
+                "category_tags": dict(result.category_tags),
             }
         )
     if result.state != UNKNOWN:
@@ -303,9 +338,10 @@ _memo: dict[str, ResolveResult] = {}
 
 
 def reset_existence_state() -> None:
-    """测试/评测用：清掉城市中心与判定结果记忆。"""
+    """测试/评测用：清掉城市中心、判定结果与核心名抽取记忆。"""
     _memo.clear()
     _center_memo.clear()
+    reset_core_name_cache()
 
 
 def _run_providers(target: str, city: str) -> ResolveResult:

@@ -88,6 +88,7 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `content/trip_stream.py` | 整段流式 LLM 调用：与阻塞 `llm_open_trip` 同 prompt/schema，逐 chunk 喂解析器产出候选泵，EOF 走有界修复（M5a） |
 | `rules/day_policy.py` | DayPolicy 到/离日窗口语义：每天可用窗与时长上限（M3 共用规则单源，reflect 不再各带一份） |
 | `rules/constraint_checks.py` | ConstraintReport 硬约束检查（必去/排除/窗口/冲突）：core_ready 交付门与编辑草稿确定性硬校验共用（M3/M4） |
+| `rules/category_evidence.py` | 类别证据资格与三态判定：已验证字段绑定同一地点身份，未知/过期证据不能解除名称排除 |
 | `content/reflect.py::hard_day_issues` | 单日结构伤及需求交付闸：图内修复、最后尝试和业务落库共用同一判据；过滤缺口由 `content/landing.py` 回喂生成 |
 | `workflow.py` | 图工作流的门面：生成 → 校验 → 修复循环 |
 | `grounding/official_pages.py` | 官方页面证据 adapter：限域抓取（仅 http(s)/私网 fail-closed/2MB/10s），只认登记过的公告句式，认不出 = unknown（M7） |

@@ -266,18 +266,33 @@ def enrich_with_details(places: list[dict[str, Any]], *, top: int = 12) -> list[
 
 
 def _osm_facts(item: dict[str, Any]) -> dict[str, Any]:
-    """仅采信 OSM 实体的明确饮食标签；limited/缺失不推断为适用。"""
+    """仅采信 OSM 实体的明确饮食标签；limited/缺失不推断为适用。
+
+    类别证据（category_tags）同场提取：jsonv2 的 category/type 是实体主分类
+    （amenity/place_of_worship、leisure/park…），extratags 补 religion 等定性标签。
+    两者都只做"原样搬运"，语义判定（是不是寺庙/博物馆）由消费方做。
+    """
     raw_tags = item.get("extratags")
     tags = raw_tags if isinstance(raw_tags, dict) else {}
     diets = {diet for diet in ("vegetarian", "vegan") if tags.get(f"diet:{diet}") in ("yes", "only")}
     if "vegan" in diets:
         diets.add("vegetarian")
+    category_tags: dict[str, str] = {}
+    main_category = str(item.get("category") or "").strip()
+    main_type = str(item.get("type") or "").strip()
+    if main_category and main_type:
+        category_tags[main_category] = main_type
+    for key in ("religion", "tourism", "leisure", "historic"):
+        value = str(tags.get(key) or "").strip()
+        if value:
+            category_tags.setdefault(key, value)
     osm_type, osm_id = item.get("osm_type"), str(item.get("osm_id") or "")
     valid = osm_type in ("node", "way", "relation") and osm_id.isdigit()
     return {
         "place_id": f"osm:{osm_type}:{osm_id}" if valid else None,
         "source_url": f"https://www.openstreetmap.org/{osm_type}/{osm_id}" if valid else None,
         "dietary_options": sorted(diets),
+        "category_tags": category_tags,
     }
 
 

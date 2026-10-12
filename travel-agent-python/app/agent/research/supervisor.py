@@ -36,10 +36,11 @@ logger = logging.getLogger(__name__)
 
 
 def _requirement_fields(req: GenerateRequest) -> dict:
-    """从请求抽取结构化需求的研究投影（M1b）：必去/排除/人数。
+    """从请求抽取结构化需求的研究投影（M1b）：必去/排除/饮食/人数。
 
     必去地点名并入 attraction 域补池检索词（必去项就是该查证的检索关键词）；
-    排除随任务卡携带，供检索侧避免主动推荐。
+    排除随任务卡携带，供检索侧避免主动推荐；饮食要求只由 food 域消费——
+    它决定餐饮候选池要不要并入带外部 diet 标签的已证实条目。
     """
     struct = req.requirements_struct
     required = [p.name for p in struct.required_places] if struct is not None else []
@@ -48,6 +49,7 @@ def _requirement_fields(req: GenerateRequest) -> dict:
         "required_names": required,
         "excluded_names": list(struct.excluded_places) if struct is not None else [],
         "excluded_categories": list(struct.excluded_categories) if struct is not None else [],
+        "dietary": struct.dietary_requirement if struct is not None else None,
     }
 
 

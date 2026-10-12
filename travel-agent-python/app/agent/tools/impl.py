@@ -25,7 +25,7 @@ import logging
 import re
 
 from app.agent.core.poi_identity import same_entity
-from app.agent.data import city_reference, places, web_search
+from app.agent.data import city_reference, overpass, places, web_search
 from app.agent.data.city_center import city_center
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.trace import traced
@@ -148,8 +148,27 @@ def search_attractions(city: str, preferences: list[str], limit: int = 30) -> li
 
 
 @traced("tool", "poi.search_foods")
-def search_foods(city: str, limit: int = 10) -> list[dict]:
-    return _merge_by_name(_otm_pool(city, "food", limit), _web_pool(city, "food", limit))[:limit]
+def search_foods(city: str, limit: int = 10, dietary: str | None = None) -> list[dict]:
+    """餐饮候选池；携带饮食要求时，带外部 diet 标签的 Overpass 行排在前。
+
+    顺序即证据优先级：OTM/web 行没有饮食标签，模型从池里选餐时，已证实条目
+    必须先进 参考资料 注入窗口（REFERENCE_FOOD_LIMIT 截断），否则严格模式的
+    饮食证据在池源头就断供。合并去重仍按名称先到先得，已证实名称不被覆盖。
+
+    Overpass 行同样要走 `_as_candidate` 当场签票：落地阶段只信票不信行上的
+    source 字符串，没签票的行拿不到背书，poi_id 不会被 graft，随后按名重解析
+    可能落到同一连锁店的另一个 OSM 元素（实测 2026-10-12：diet 标签在 node、
+    重解析命中 way），饮食证据就在源头断掉。
+    """
+    diet_pool = (
+        [
+            _as_candidate(row, city)
+            for row in overpass.search_diet_tagged_places(city, str(dietary), limit=min(limit, 8))
+        ]
+        if dietary
+        else []
+    )
+    return _merge_by_name(diet_pool, _otm_pool(city, "food", limit), _web_pool(city, "food", limit))[:limit]
 
 
 @traced("tool", "poi.search_hotels")
@@ -169,6 +188,12 @@ def get_poi_detail(city: str, name: str) -> dict | None:
             "longitude": hit["longitude"],
             "address": hit.get("display_name") or None,
             "source": hit.get("source") or "nominatim",
+            # 证据字段随票带走：`hit` 已由 `_osm_facts` 填好 diet/类别/实体链接，
+            # 这里不搬就等于当场签一张无饮食依据的票——严格模式在点名解析路径上
+            # 会和池路径一样断供（与 Overpass 池补签同源，实测 2026-10-12）。
+            "dietary_options": hit.get("dietary_options") or [],
+            "category_tags": hit.get("category_tags") or {},
+            "source_url": hit.get("source_url") or None,
         },
         city,
     )

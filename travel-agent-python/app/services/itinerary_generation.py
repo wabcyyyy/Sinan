@@ -266,6 +266,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             day_persistence.mark_generating(itinerary_id)
 
             used_names: list[str] = []
+            used_points: list[tuple[str, str, float | None, float | None]] = []
             chosen_hotel: str | None = None
             first_day_suggestions: list[Any] | None = None
             fingerprint = generation_gate.request_fingerprint(command)
@@ -318,7 +319,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
                     if day.generation_status == "SUCCEEDED":
                         # 已成功的天只做幂等校验与跨天去重登记，不重写（也跳过收尾失效：无变更）
                         generation_gate.verify_action(day, action_id, fingerprint)
-                        day_persistence.append_existing_items(day.id, used_names)
+                        day_persistence.append_existing_items(day.id, used_names, used_points)
                         if chosen_hotel is None:
                             chosen_hotel = day_persistence.existing_hotel(day.id)
                         continue
@@ -345,7 +346,7 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
                         raise
                     persisted = day_persistence.find_day(itinerary_id, day_no)
                     if persisted is not None:
-                        day_persistence.append_existing_items(persisted.id, used_names)
+                        day_persistence.append_existing_items(persisted.id, used_names, used_points)
                         if chosen_hotel is None:
                             chosen_hotel = day_persistence.existing_hotel(persisted.id)
                 finally:
@@ -378,6 +379,29 @@ def plan_days(user_id: int, itinerary_id: int, command: GenerateCommand, context
             _unregister_planning(itinerary_id)
 
 
+def _other_completed_points(itinerary_id: int, day_no: int) -> list[tuple[str, str, float | None, float | None]]:
+    """修复早期一天时也避开后面保留的成功日；失败草稿不占去重名额（名字+类型+坐标）。
+
+    坐标进跨天近距离判重（P1-B）：单日重试只带名字时，名称变体绕过坐标通道。
+    """
+    with session_scope() as session:
+        rows = session.execute(
+            select(ItineraryItem.poi_name, ItineraryItem.item_type, ItineraryItem.latitude, ItineraryItem.longitude)
+            .join(ItineraryDay, ItineraryDay.id == ItineraryItem.day_id)
+            .where(
+                ItineraryItem.itinerary_id == itinerary_id,
+                ItineraryDay.day_no != day_no,
+                ItineraryDay.generation_status == "SUCCEEDED",
+            )
+            .order_by(ItineraryDay.day_no, ItineraryItem.sort_no)
+        ).all()
+    return [
+        (name, str(item_type or ""), latitude, longitude)
+        for name, item_type, latitude, longitude in rows
+        if name and name.strip()
+    ]
+
+
 def _generate_day_with_trace(
     itinerary_id: int,
     command: GenerateCommand,
@@ -387,8 +411,15 @@ def _generate_day_with_trace(
     chosen_hotel: str | None,
     action_id: str,
     fingerprint: str,
+    used_points: list[tuple[str, str, float | None, float | None]] | None = None,
 ) -> DailyPlan:
-    retained_names = day_persistence.other_completed_names(itinerary_id, day_no)
+    retained_points = _other_completed_points(itinerary_id, day_no)
+    # 坐标随请求进 context（P1-B）：单日重试时已成功天的真实坐标参与近距离判重，
+    # 名称变体（同建筑不同写法）不能再靠"只有名字、没有坐标"绕过跨天去重。
+    # 只改请求侧副本，不写回共享研究上下文与 checkpoint。
+    request_context = dict(context or {})
+    if used_points or retained_points:
+        request_context["used_points"] = [*(used_points or []), *retained_points]
     request = GenerateDayRequest(
         city=command.city,
         persons=command.persons,
@@ -399,7 +430,7 @@ def _generate_day_with_trace(
         # 选奢华档）；per_day_chain=True 保住单日链的重试预算（不再从 days 推断）
         days=command.days,
         per_day_chain=True,
-        used_names=list(dict.fromkeys([*used_names, *retained_names])),
+        used_names=list(dict.fromkeys([*used_names, *(name for name, _item_type, _lat, _lng in retained_points)])),
         hotel_tier=command.hotel_tier,
         preferences=command.preferences,
         chosen_hotel=chosen_hotel,
@@ -411,7 +442,7 @@ def _generate_day_with_trace(
         region_hint=command.region_hint,
         request_id=f"itinerary-{itinerary_id}",
         action_id=action_id,
-        context=context,
+        context=request_context,
     )
     # days 用于预算分档；per_day_chain=True 保留逐日修复的反思重试预算。
     with use_scene("generate"), observe_run(request_id=f"itinerary-{itinerary_id}", action_id=action_id):

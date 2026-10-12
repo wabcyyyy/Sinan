@@ -1,0 +1,438 @@
+{
+  "sample": 0,
+  "variant": "current_off",
+  "thinking": false,
+  "requestedEffort": null,
+  "promptSha256": "261e8f2fad5a5d283beca2233b5266da0824e1c0bf246140f284ddc82ceed13b",
+  "usage": {
+    "prompt_tokens": 1831,
+    "completion_tokens": 2101,
+    "total_tokens": 3932,
+    "prompt_tokens_details": {
+      "cached_tokens": 1664
+    },
+    "prompt_cache_hit_tokens": 1664,
+    "prompt_cache_miss_tokens": 167
+  },
+  "finishReason": "stop",
+  "rawFinal": "{\n  \"trip_theme\": \"东京·慢食漫游（新宿为据点，公园绿意与市井美味）\",\n  \"daily_plans\": [\n    {\n      \"day_no\": 1,\n      \"theme\": \"新宿绿意慢行：都厅展望台俯瞰城市，新宿御苑散步，回转寿司晚餐\",\n      \"note\": \"上午登都厅免费展望台，午后逛新宿御苑，傍晚吃くら寿司，全程节奏舒缓。\",\n      \"items\": [\n        {\n          \"item_type\": \"attraction\",\n          \"poi_name\": \"Tokyo City Hall Tower II\",\n          \"why_this\": \"免费展望台，电梯直达，无需长时间步行，适合老人俯瞰东京全景，作为慢节奏第一站。\",\n          \"start_time\": \"09:30\",\n          \"end_time\": \"11:00\",\n          \"duration_min\": 90,\n          \"cost\": 0,\n          \"tag\": \"城市展望\",\n          \"remark\": \"北展望室开放时间通常为9:30-23:00，入场免费，需过安检；建议早到避开人流。\",\n          \"refs\": [2]\n        },\n        {\n          \"item_type\": \"food\",\n          \"poi_name\": \"くら寿司 新宿店\",\n          \"why_this\": \"外部饮食标签已证实提供素食，回转寿司形式轻松，可自选蛋奶素寿司与蔬菜天妇罗，适合慢食午餐。\",\n          \"start_time\": \"11:30\",\n          \"end_time\": \"12:30\",\n          \"duration_min\": 60,\n          \"cost\": 70,\n          \"tag\": \"素食友好\",\n          \"remark\": \"午市高峰可能需取号排队，可提前在官网或店内取号机预约；素食选项以店内标示为准。\",\n          \"refs\": [7]\n        },\n        {\n          \"item_type\": \"attraction\",\n          \"poi_name\": \"新宿御苑\",\n          \"why_this\": \"东京市中心大型庭园，步道平坦，四季有花，适合老人慢走休息，与都厅同属新宿片区，衔接顺畅。\",\n          \"start_time\": \"13:30\",\n          \"end_time\": \"15:30\",\n          \"duration_min\": 120,\n          \"cost\": 24,\n          \"tag\": \"城市绿洲\",\n          \"remark\": \"开放时间通常为9:00-16:30（周一休园，具体以官网为准）；园内可租借轮椅，建议穿舒适步行鞋。\",\n          \"refs\": [5]\n        },\n        {\n          \"item_type\": \"food\",\n          \"poi_name\": \"Délifrance 新宿店\",\n          \"why_this\": \"外部饮食标签已证实提供素食，法式面包轻食适合作为下午茶或早晚餐，蛋奶素可选三明治与沙拉。\",\n          \"start_time\": \"16:00\",\n          \"end_time\": \"17:00\",\n          \"duration_min\": 60,\n          \"cost\": 50,\n          \"tag\": \"轻食咖啡\",\n          \"remark\": \"位于新宿站附近，适合逛完御苑后休息；素食选项以店内标示为准，可外带。\",\n          \"refs\": [6]\n        },\n        {\n          \"item_type\": \"hotel\",\n          \"poi_name\": \"Shinjuku Washington Hotel\",\n          \"why_this\": \"新宿站步行可达，交通便利，舒适档酒店，适合作为两日慢游的固定据点，减少换乘奔波。\",\n          \"start_time\": \"18:00\",\n          \"end_time\": \"18:30\",\n          \"duration_min\": 30,\n          \"cost\": 720,\n          \"tag\": \"舒适住宿\",\n          \"remark\": \"入住时间通常为14:00后，可提前寄存行李；从新宿站南口步行约8分钟。\",\n          \"refs\": [8]\n        }\n      ],\n      \"practical_notes\": [\n        \"都厅展望台免费但需安检，建议9:30前到达，避开旅行团高峰。\",\n        \"新宿御苑周一休园，出发前请确认当日开放情况，园内禁止饮酒。\",\n        \"くら寿司可提前在官网预约取号，减少排队等待。\",\n        \"全天以新宿站为中心步行或短途巴士衔接，穿舒适步行鞋。\"\n      ],\n      \"photo_spots\": [\n        {\n          \"name\": \"都厅北展望室\",\n          \"tip\": \"靠窗拍摄东京天际线，傍晚可拍夕阳与富士山剪影。\",\n          \"best_time\": \"上午10:00前或日落前\"\n        },\n        {\n          \"name\": \"新宿御苑草坪\",\n          \"tip\": \"以绿树和城市高楼为背景，拍摄人物散步照。\",\n          \"best_time\": \"午后光线柔和时\"\n        }\n      ],\n      \"backup_plan\": [\n        {\n          \"if\": \"新宿御苑临时休园\",\n          \"action\": \"改去新宿中央公园散步，同样免费且平坦。\"\n        },\n        {\n          \"if\": \"都厅展望台排队过长\",\n          \"action\": \"先前往新宿御苑，下午再返回都厅。\"\n        }\n      ],\n      \"day_options\": [\n        {\n          \"label\": \"休闲版\",\n          \"summary\": \"只去都厅展望台和新宿御苑，午餐后回酒店午休。\",\n          \"tradeoff\": \"减少一个轻食点，留更多休息时间。\"\n        },\n        {\n          \"label\": \"美食版\",\n          \"summary\": \"保留都厅、御苑，增加Délifrance下午茶。\",\n          \"tradeoff\": \"步行稍多，但餐饮体验更丰富。\"\n        }\n      ]\n    },\n    {\n      \"day_no\": 2,\n      \"theme\": \"新宿站前慢食收尾：京王广场酒店寿司午餐，中央公园散步，轻松返程\",\n      \"note\": \"上午新宿中央公园散步，中午京王广场酒店久兵卫寿司，下午自由购物或休息后返程。\",\n      \"items\": [\n        {\n          \"item_type\": \"attraction\",\n          \"poi_name\": \"Shinjuku Central Park\",\n          \"why_this\": \"免费城市公园，步道平缓，有长椅可休息，适合老人晨间散步，与酒店距离近。\",\n          \"start_time\": \"09:30\",\n          \"end_time\": \"11:00\",\n          \"duration_min\": 90,\n          \"cost\": 0,\n          \"tag\": \"城市公园\",\n          \"remark\": \"全天开放，园内有洗手间和自动贩卖机；早晨人少安静。\",\n          \"refs\": [1]\n        },\n        {\n          \"item_type\": \"food\",\n          \"poi_name\": \"Kyubei Sushi at Keio Plaza Hotel\",\n          \"why_this\": \"位于京王广场酒店内的高级寿司店，可提前沟通蛋奶素需求，环境安静，适合慢节奏午餐。\",\n          \"start_time\": \"11:30\",\n          \"end_time\": \"13:00\",\n          \"duration_min\": 90,\n          \"cost\": 300,\n          \"tag\": \"寿司料理\",\n          \"remark\": \"建议提前电话预约并说明素食需求；午市套餐相对实惠，着装整洁即可。\",\n          \"refs\": [3]\n        },\n        {\n          \"item_type\": \"food\",\n          \"poi_name\": \"Délifrance 新宿店\",\n          \"why_this\": \"外部饮食标签已证实提供素食，可作为下午轻食或返程前简餐，蛋奶素可选。\",\n          \"start_time\": \"15:00\",\n          \"end_time\": \"16:00\",\n          \"duration_min\": 60,\n          \"cost\": 50,\n          \"tag\": \"轻食咖啡\",\n          \"remark\": \"位于新宿站附近，适合候车前休息；素食选项以店内标示为准。\",\n          \"refs\": [6]\n        }\n      ],\n      \"practical_notes\": [\n        \"京王广场酒店久兵卫寿司需提前预约，并明确告知蛋奶素需求。\",\n        \"新宿中央公园早晨较凉，建议带薄外套。\",\n        \"返程若从新宿站出发，预留至少30分钟步行与检票时间。\",\n        \"全天以新宿站西口为中心，步行即可衔接各点。\"\n      ],\n      \"photo_spots\": [\n        {\n          \"name\": \"新宿中央公园\",\n          \"tip\": \"以公园绿地和远处都厅双塔为背景拍摄。\",\n          \"best_time\": \"上午9:00-10:00\"\n        }\n      ],\n      \"backup_plan\": [\n        {\n          \"if\": \"久兵卫寿司无法预约到素食\",\n          \"action\": \"改去くら寿司新宿店，同样有素食选项。\"\n        },\n        {\n          \"if\": \"下雨不便散步\",\n          \"action\": \"改在新宿站内商场地下街慢逛，减少户外停留。\"\n        }\n      ],\n      \"day_options\": [\n        {\n          \"label\": \"轻松返程\",\n          \"summary\": \"公园散步后直接午餐，餐后回酒店取行李前往机场。\",\n          \"tradeoff\": \"放弃下午轻食，时间更宽裕。\"\n        },\n        {\n          \"label\": \"美食收尾\",\n          \"summary\": \"保留公园、寿司午餐，增加Délifrance下午茶。\",\n          \"tradeoff\": \"返程时间稍紧，需控制停留。\"\n        }\n      ]\n    }\n  ]\n}",
+  "validJson": true,
+  "days": [
+    {
+      "dayNo": 1,
+      "attractions": 2,
+      "meals": 2,
+      "evidencedMeals": 0,
+      "blockers": [
+        "第 1 天待确认（dietary_requirement）：「くら寿司 新宿店」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
+        "第 1 天待确认（dietary_requirement）：「Délifrance 新宿店」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+      ]
+    },
+    {
+      "dayNo": 2,
+      "attractions": 2,
+      "meals": 0,
+      "evidencedMeals": 0,
+      "blockers": [
+        "第 2 天安排过稀（有效活动约 180 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白",
+        "第 2 天待确认（dietary_requirement）：本日未提供餐饮安排，无法确认饮食要求已满足"
+      ]
+    }
+  ],
+  "issues": [
+    "第 1 天需求检查（dietary_requirement）：「くら寿司 新宿店」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
+    "第 1 天需求检查（dietary_requirement）：「Délifrance 新宿店」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
+    "第 2 天需求检查（dietary_requirement）：本日未提供餐饮安排，无法确认饮食要求已满足",
+    "第 2 天安排过稀（有效活动约 180 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白",
+    "第 2 天未安排餐饮"
+  ],
+  "strictRulePass": false,
+  "twoMealsEachDay": false,
+  "plans": [
+    {
+      "day_no": 1,
+      "theme": "新宿绿意慢行：都厅展望台俯瞰城市，新宿御苑散步，回转寿司晚餐",
+      "note": "上午登都厅免费展望台，午后逛新宿御苑，傍晚吃くら寿司，全程节奏舒缓。",
+      "items": [
+        {
+          "item_type": "attraction",
+          "poi_name": "Tokyo City Hall Tower II",
+          "why_this": "免费展望台，电梯直达，无需长时间步行，适合老人俯瞰东京全景，作为慢节奏第一站。",
+          "start_time": "09:30",
+          "end_time": "11:00",
+          "duration_min": 90,
+          "cost": 0,
+          "tag": "城市展望",
+          "remark": "北展望室开放时间通常为9:30-23:00，入场免费，需过安检；建议早到避开人流。",
+          "source": "opentripmap",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "Q3530518",
+          "address": null,
+          "latitude": 35.688,
+          "longitude": 139.692001,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "opentripmap",
+              "source_url": null,
+              "provider": "opentripmap",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "food",
+          "poi_name": "くら寿司 新宿店",
+          "why_this": "外部饮食标签已证实提供素食，回转寿司形式轻松，可自选蛋奶素寿司与蔬菜天妇罗，适合慢食午餐。",
+          "start_time": "11:30",
+          "end_time": "12:30",
+          "duration_min": 60,
+          "cost": 70,
+          "tag": "素食友好",
+          "remark": "午市高峰可能需取号排队，可提前在官网或店内取号机预约；素食选项以店内标示为准。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "attraction",
+          "poi_name": "新宿御苑",
+          "why_this": "东京市中心大型庭园，步道平坦，四季有花，适合老人慢走休息，与都厅同属新宿片区，衔接顺畅。",
+          "start_time": "13:30",
+          "end_time": "15:30",
+          "duration_min": 120,
+          "cost": 24,
+          "tag": "城市绿洲",
+          "remark": "开放时间通常为9:00-16:30（周一休园，具体以官网为准）；园内可租借轮椅，建议穿舒适步行鞋。",
+          "source": "nominatim",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "osm:way:15772074",
+          "address": null,
+          "latitude": 35.685072,
+          "longitude": 139.709547,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "nominatim",
+              "source_url": "https://www.openstreetmap.org/way/15772074",
+              "provider": "nominatim",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "food",
+          "poi_name": "Délifrance 新宿店",
+          "why_this": "外部饮食标签已证实提供素食，法式面包轻食适合作为下午茶或早晚餐，蛋奶素可选三明治与沙拉。",
+          "start_time": "16:00",
+          "end_time": "17:00",
+          "duration_min": 60,
+          "cost": 50,
+          "tag": "轻食咖啡",
+          "remark": "位于新宿站附近，适合逛完御苑后休息；素食选项以店内标示为准，可外带。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "hotel",
+          "poi_name": "Shinjuku Washington Hotel",
+          "why_this": "新宿站步行可达，交通便利，舒适档酒店，适合作为两日慢游的固定据点，减少换乘奔波。",
+          "start_time": "18:00",
+          "end_time": "18:30",
+          "duration_min": 30,
+          "cost": 720,
+          "tag": "舒适住宿",
+          "remark": "入住时间通常为14:00后，可提前寄存行李；从新宿站南口步行约8分钟。",
+          "source": "opentripmap",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "N475090896",
+          "address": null,
+          "latitude": 35.686832,
+          "longitude": 139.692856,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "opentripmap",
+              "source_url": null,
+              "provider": "opentripmap",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        }
+      ],
+      "practical_notes": [
+        "都厅展望台免费但需安检，建议9:30前到达，避开旅行团高峰。",
+        "新宿御苑周一休园，出发前请确认当日开放情况，园内禁止饮酒。",
+        "くら寿司可提前在官网预约取号，减少排队等待。",
+        "全天以新宿站为中心步行或短途巴士衔接，穿舒适步行鞋。"
+      ],
+      "photo_spots": [
+        {
+          "name": "都厅北展望室",
+          "tip": "靠窗拍摄东京天际线，傍晚可拍夕阳与富士山剪影。",
+          "best_time": "上午10:00前或日落前"
+        },
+        {
+          "name": "新宿御苑草坪",
+          "tip": "以绿树和城市高楼为背景，拍摄人物散步照。",
+          "best_time": "午后光线柔和时"
+        }
+      ],
+      "backup_plan": [
+        {
+          "if": "新宿御苑临时休园",
+          "action": "改去新宿中央公园散步，同样免费且平坦。"
+        },
+        {
+          "if": "都厅展望台排队过长",
+          "action": "先前往新宿御苑，下午再返回都厅。"
+        }
+      ],
+      "day_options": [
+        {
+          "label": "休闲版",
+          "summary": "只去都厅展望台和新宿御苑，午餐后回酒店午休。",
+          "tradeoff": "减少一个轻食点，留更多休息时间。"
+        },
+        {
+          "label": "美食版",
+          "summary": "保留都厅、御苑，增加Délifrance下午茶。",
+          "tradeoff": "步行稍多，但餐饮体验更丰富。"
+        }
+      ]
+    },
+    {
+      "day_no": 2,
+      "theme": "新宿站前慢食收尾：京王广场酒店寿司午餐，中央公园散步，轻松返程",
+      "note": "上午新宿中央公园散步，中午京王广场酒店久兵卫寿司，下午自由购物或休息后返程。",
+      "items": [
+        {
+          "item_type": "attraction",
+          "poi_name": "Shinjuku Central Park",
+          "why_this": "免费城市公园，步道平缓，有长椅可休息，适合老人晨间散步，与酒店距离近。",
+          "start_time": "09:30",
+          "end_time": "11:00",
+          "duration_min": 90,
+          "cost": 0,
+          "tag": "城市公园",
+          "remark": "全天开放，园内有洗手间和自动贩卖机；早晨人少安静。",
+          "source": "opentripmap",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "W35863704",
+          "address": null,
+          "latitude": 35.689072,
+          "longitude": 139.689835,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "opentripmap",
+              "source_url": null,
+              "provider": "opentripmap",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "attraction",
+          "poi_name": "Kyubei Sushi at Keio Plaza Hotel",
+          "why_this": "位于京王广场酒店内的高级寿司店，可提前沟通蛋奶素需求，环境安静，适合慢节奏午餐。",
+          "start_time": "11:30",
+          "end_time": "13:00",
+          "duration_min": 90,
+          "cost": 300,
+          "tag": "寿司料理",
+          "remark": "建议提前电话预约并说明素食需求；午市套餐相对实惠，着装整洁即可。",
+          "source": "opentripmap",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "N4316519393",
+          "address": null,
+          "latitude": 35.689732,
+          "longitude": 139.694382,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "opentripmap",
+              "source_url": null,
+              "provider": "opentripmap",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        }
+      ],
+      "practical_notes": [
+        "京王广场酒店久兵卫寿司需提前预约，并明确告知蛋奶素需求。",
+        "新宿中央公园早晨较凉，建议带薄外套。",
+        "返程若从新宿站出发，预留至少30分钟步行与检票时间。",
+        "全天以新宿站西口为中心，步行即可衔接各点。"
+      ],
+      "photo_spots": [
+        {
+          "name": "新宿中央公园",
+          "tip": "以公园绿地和远处都厅双塔为背景拍摄。",
+          "best_time": "上午9:00-10:00"
+        }
+      ],
+      "backup_plan": [
+        {
+          "if": "久兵卫寿司无法预约到素食",
+          "action": "改去くら寿司新宿店，同样有素食选项。"
+        },
+        {
+          "if": "下雨不便散步",
+          "action": "改在新宿站内商场地下街慢逛，减少户外停留。"
+        }
+      ],
+      "day_options": [
+        {
+          "label": "轻松返程",
+          "summary": "公园散步后直接午餐，餐后回酒店取行李前往机场。",
+          "tradeoff": "放弃下午轻食，时间更宽裕。"
+        },
+        {
+          "label": "美食收尾",
+          "summary": "保留公园、寿司午餐，增加Délifrance下午茶。",
+          "tradeoff": "返程时间稍紧，需控制停留。"
+        }
+      ]
+    }
+  ],
+  "seconds": 12.75
+}

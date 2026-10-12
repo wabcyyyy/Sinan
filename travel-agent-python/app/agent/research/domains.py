@@ -31,7 +31,12 @@ def _attraction_params(task: ResearchTask) -> dict:
 
 
 def _food_params(task: ResearchTask) -> dict:
-    return {"city": task.city, "limit": task.limit or DEFAULT_LIMITS["food"]}
+    return {
+        "city": task.city,
+        "limit": task.limit or DEFAULT_LIMITS["food"],
+        # 饮食要求贯通（P1-A）：带外部 diet 标签的已证实条目因此进得了池
+        "dietary": task.dietary,
+    }
 
 
 def _hotel_params(task: ResearchTask) -> dict:

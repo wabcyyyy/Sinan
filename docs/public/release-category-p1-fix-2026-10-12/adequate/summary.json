@@ -1,0 +1,133 @@
+[
+  {
+    "sample": 0,
+    "variant": "current_off",
+    "thinking": false,
+    "requestedEffort": null,
+    "promptSha256": "1a57272391faa68a7f1e369d281e0e368c0d4eb7e91463e46a58ccafebebbd7b",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 1,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 1,
+        "evidencedMeals": 1,
+        "blockers": []
+      }
+    ],
+    "issues": [
+      "第 1 天路线时间不足：新宿御苑 → Shogun Burger 仅留 30 分钟，按坐标估算需约 37 分钟（含 10 分钟固定缓冲和 25% 容错）"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": false,
+    "seconds": 10.05,
+    "reasoningTokens": null
+  },
+  {
+    "sample": 1,
+    "variant": "current_high",
+    "thinking": true,
+    "requestedEffort": "high",
+    "promptSha256": "1a57272391faa68a7f1e369d281e0e368c0d4eb7e91463e46a58ccafebebbd7b",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 1,
+        "evidencedMeals": 1,
+        "blockers": []
+      }
+    ],
+    "issues": [],
+    "strictRulePass": true,
+    "twoMealsEachDay": false,
+    "seconds": 65.66,
+    "reasoningTokens": 9379
+  },
+  {
+    "sample": 2,
+    "variant": "compact_off",
+    "thinking": false,
+    "requestedEffort": null,
+    "promptSha256": "501e65a2161b2331c3b392090d436130f2feabda374070be898c50832c014086",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 1,
+        "meals": 1,
+        "evidencedMeals": 1,
+        "blockers": [
+          "第 2 天安排过稀（有效活动约 150 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+        ]
+      }
+    ],
+    "issues": [
+      "第 2 天安排过稀（有效活动约 150 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": false,
+    "seconds": 8.58,
+    "reasoningTokens": null
+  },
+  {
+    "sample": 3,
+    "variant": "compact_high",
+    "thinking": true,
+    "requestedEffort": "high",
+    "promptSha256": "501e65a2161b2331c3b392090d436130f2feabda374070be898c50832c014086",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 1,
+        "evidencedMeals": 1,
+        "blockers": [
+          "第 2 天安排过稀（有效活动约 195 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+        ]
+      }
+    ],
+    "issues": [
+      "第 1 天路线时间不足：新宿御苑 → Shinjuku Central Park 仅留 30 分钟，按坐标估算需约 52 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 2 天安排过稀（有效活动约 195 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": false,
+    "seconds": 48.61,
+    "reasoningTokens": 6198
+  }
+]

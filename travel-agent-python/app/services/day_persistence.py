@@ -155,17 +155,30 @@ def reset_day_pending(day_id: int, action_id: str, fingerprint: str, reason: str
         itinerary_version.bump_planning_revision(session, day.itinerary_id)
 
 
-def append_existing_items(day_id: int, used_names: list[str]) -> None:
-    """把某天已有的点名字就地登记进跨天去重表（按 sort_no 升序）。"""
+_Point = tuple[str, str, float | None, float | None]
+
+
+def _query_points(stmt: Any) -> list[_Point]:
+    """执行点位查询 → (名字, 类型, 纬度, 经度)；空名剔除（P1-B 跨天判重口径）。"""
     with session_scope() as session:
-        rows = (
-            session.execute(
-                select(ItineraryItem.poi_name).where(ItineraryItem.day_id == day_id).order_by(ItineraryItem.sort_no)
-            )
-            .scalars()
-            .all()
-        )
-    used_names.extend(name for name in rows if name and name.strip())
+        rows = session.execute(stmt).all()
+    return [(name, str(t or ""), lat, lng) for name, t, lat, lng in rows if name and name.strip()]
+
+
+def append_existing_items(day_id: int, used_names: list[str], used_points: list[_Point] | None = None) -> None:
+    """把某天已有的点位（名字+类型+坐标）就地登记进跨天去重表（按 sort_no 升序）。
+
+    坐标同场收集（P1-B）：只带名字时，名称变体（"都厅展望室"→"都厅南展望室"）绕过
+    坐标通道；带坐标登记后变体落地即被近距离判重抓到。
+    """
+    fresh = _query_points(
+        select(ItineraryItem.poi_name, ItineraryItem.item_type, ItineraryItem.latitude, ItineraryItem.longitude)
+        .where(ItineraryItem.day_id == day_id)
+        .order_by(ItineraryItem.sort_no)
+    )
+    used_names.extend(point[0] for point in fresh)
+    if used_points is not None:
+        used_points.extend(fresh)
 
 
 def existing_hotel(day_id: int) -> str | None:
@@ -177,22 +190,6 @@ def existing_hotel(day_id: int) -> str | None:
             .scalars()
             .first()
         )
-
-
-def other_completed_names(itinerary_id: int, day_no: int) -> list[str]:
-    """修复早期一天时，也避开后面保留下来的成功日；失败草稿不占去重名额。"""
-    with session_scope() as session:
-        names = session.scalars(
-            select(ItineraryItem.poi_name)
-            .join(ItineraryDay, ItineraryDay.id == ItineraryItem.day_id)
-            .where(
-                ItineraryItem.itinerary_id == itinerary_id,
-                ItineraryDay.day_no != day_no,
-                ItineraryDay.generation_status == "SUCCEEDED",
-            )
-            .order_by(ItineraryDay.day_no, ItineraryItem.sort_no)
-        ).all()
-    return [name for name in names if name and name.strip()]
 
 
 def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:

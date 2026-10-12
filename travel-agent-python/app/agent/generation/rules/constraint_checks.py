@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import itertools
 
+from app.agent.generation.rules.category_evidence import category_membership, item_category_evidence
 from app.agent.generation.rules.day_policy import DayPolicy
 from app.agent.generation.rules.transfer_time import item_end, item_start
 from app.schemas.constraints import ConstraintCheck, ConstraintReport
@@ -73,7 +74,8 @@ def _check_excluded(requirements: TripRequirements | None, day_no: int, items: l
     checks: list[ConstraintCheck] = []
     if requirements is None:
         return checks
-    names = _item_names(items)
+    pairs = item_category_evidence(items)
+    names = [name for name, _tags in pairs]
     for excluded in requirements.excluded_places:
         hit = [name for name in names if _norm(name) == _norm(excluded)]
         checks.append(
@@ -101,20 +103,23 @@ def _check_excluded(requirements: TripRequirements | None, day_no: int, items: l
                 )
             )
             continue
-        # 类别判据受限于条目 item_type 语义（museum 类别 ≠ item_type 枚举）：
-        # 按名称包含类别展示名做保守判定，命中才违例，未命中不冒充 pass 依据充分
-        label_hit = [
-            name for name in names if any(token in name.casefold() for token in EXCLUDED_CATEGORY_TOKENS[category])
-        ]
+        # 未知不等于非目标类别；每一项独立检查，同名项不能借另一项的证据放行。
+        evidence_used = any(tags for _name, tags in pairs)
+        violations: list[str] = []
+        for name, tags in pairs:
+            membership = category_membership(category, tags)
+            name_hit = any(token in name.casefold() for token in EXCLUDED_CATEGORY_TOKENS[category])
+            if (membership is True or (membership is None and name_hit)) and name not in violations:
+                violations.append(name)
         checks.append(
             ConstraintCheck(
                 constraint_id=f"excluded-category:{_norm(category)}",
                 kind="excluded_category",
-                status="violation" if label_hit else "pass",
+                status="violation" if violations else "pass",
                 day_no=day_no,
-                item_refs=label_hit,
-                reason=f"用户明确不去类别「{category}」" if label_hit else "",
-                evidence_refs=["name-substring"],
+                item_refs=violations,
+                reason=f"用户明确不去类别「{category}」" if violations else "",
+                evidence_refs=["osm-category"] if evidence_used else ["name-substring"],
                 blocking=True,
             )
         )

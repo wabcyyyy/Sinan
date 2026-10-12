@@ -19,6 +19,7 @@ DNS 走 fake-IP 代理，须 DoH（`https://dns.google/resolve?name=<host>&type=
 |---|---|---|---|---|---|---|
 | open-meteo | 城市级天气预报 | `https://api.open-meteo.com/v1/forecast` | 无 key 免费（非商用） | `ok`（200） | 2026-09-25 | 探针 |
 | nominatim | 点名→坐标兜底（地理编码） | `https://nominatim.openstreetmap.org/search` | 无 key；政策 1 rps + 可联系 UA | `ok`（200） | 2026-09-25 | 探针报 unreachable（代理 SSL 断连）→ DoH 直连复核 200，不判死 |
+| overpass | 按 OSM 标签检索（diet:vegetarian/vegan 餐饮池，饮食证据检索面） | `https://overpass-api.de/api/interpreter` | 无 key 免费；自约束 1.1s 间隔 + 单次 25s timeout | `ok`（200） | 2026-10-11 | 隔离验收实测：新宿 bbox diet 检索 6 行（curl POST form） |
 | opentripmap | 景点坐标/分类/图片 | `https://api.opentripmap.com/0.1/en`（`/places/geoname`、`/places/radius`、`/places/xid/{id}`） | 免费 key；限速 <5 rps（我们 geo/radius 0.35s、detail 1.0s 间隔） | `auth-required`（401=活着，缺 apikey） | 2026-09-25 | 探针 |
 | travelpayouts | 机票缓存价（Aviasales v3） | `https://api.travelpayouts.com/aviasales/v3/prices_for_dates` | token 免费（affiliate 注册）；官方限速 600 req/min | `auth-required`（401=活着，缺 token） | 2026-09-25 | 探针 |
 | serpapi | 按需实时报价（`engine=google_flights` 航班 + `engine=google_hotels` 酒店，LA2 起两引擎共用同一 key 与月配额） | `https://serpapi.com/search.json` | 免费 250 次/月（硬顶，只够按需按钮，不进主链路） | `auth-required`（401=活着，缺 key） | 2026-09-25 | 探针 |
@@ -27,10 +28,12 @@ DNS 走 fake-IP 代理，须 DoH（`https://dns.google/resolve?name=<host>&type=
 ## 深链出口（浏览器侧可用性，非数据 API）
 
 饮食字段证据的实体来源链接使用 `https://www.openstreetmap.org/` 下的 `node/{id}`、
-`way/{id}` 或 `relation/{id}` 页面。它们是 Nominatim 结果对应的 OSM 实体页，
+`way/{id}` 或 `relation/{id}` 页面。它们是 Nominatim/Overpass 结果对应的 OSM 实体页，
 不是新增抓取 API，也不代表餐厅当前菜单。点名解析携带 `extratags=1`，仅把
 `diet:vegetarian` / `diet:vegan` 的 `yes` 或 `only` 记为饮食依据；`limited`、缺失
-不算已证实，菜单仍须出发前复核。实体页未另做可用性探针，不能据此宣称实时菜单可达。
+不算已证实，菜单仍须出发前复核。同一批 extratags 里的类别标签（amenity/religion/
+tourism/leisure/historic）与 jsonv2 主分类同样只做**原样搬运**成字段证据，是否
+构成排除类别违例由确定性检查器判定。实体页未另做可用性探针，不能据此宣称实时菜单可达。
 参数与标签口径见 [Nominatim Search](https://nominatim.org/release-docs/latest/api/Search/)
 和 [OSM diet 标签](https://wiki.openstreetmap.org/wiki/Key%3Adiet%3A%2A)。
 

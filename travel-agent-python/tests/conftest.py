@@ -106,6 +106,7 @@ def _disable_live_geocoding(monkeypatch):
     monkeypatch.setattr(settings, "otm_api_key", "")
     monkeypatch.setattr(settings, "amap_web_key", "")
     monkeypatch.setattr(settings, "google_places_api_key", "")
+    monkeypatch.setattr(settings, "overpass_enabled", False)
     # 真实报价数据面（L12 新增，L15 补钉）：token 留空即「零外呼」，但本机 .env
     # 里填过 token 的开发机上，任何走到取价的用例都会真打公网——离线纪律不能
     # 依赖"开发机恰好没配"。这里与上面几个收费源 key 同待遇钉死。
@@ -129,7 +130,7 @@ def _clear_external_client_caches():
     打了桩却拿到缓存的 None，表现为"桩没生效"。这里在用例前后各清一次，
     让每个用例从干净缓存出发（正/负 TTL 的语义由 test_external_client 专门覆盖）。
     """
-    from app.agent.data import flight_prices, live_quotes, places, pricing, weather, web_search
+    from app.agent.data import flight_prices, live_quotes, overpass, places, pricing, weather, web_search
     from app.agent.tools import impl as tools
 
     clients = (
@@ -139,6 +140,7 @@ def _clear_external_client_caches():
         places._otm_radius_client,
         places._otm_detail_client,
         places._nominatim_client,
+        overpass._client,
         pricing._price_client,
         web_search._search_client,
         weather._weather_client,

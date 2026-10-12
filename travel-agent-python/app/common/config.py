@@ -260,6 +260,7 @@ class Settings(BaseSettings):
     places_timeout_seconds: float = 8.0
     # Nominatim（OSM 官方地理编码）兜底：OTM 无法按"点名"解析，缺坐标点位经它补真实坐标；政策 1 rps。
     nominatim_enabled: bool = True
+    overpass_enabled: bool = True  # Overpass（OSM diet 标签检索）：饮食证据餐饮池；免费无 key，失败静默降级
     # Open-Meteo 免 key 天气（C3.1）：研究证据与行程页逐日预报；失败静默，关掉即整体停用。
     weather_enabled: bool = True
     # UA 联系方式（R3-F7 拍板 2026-10-05）：免费源政策要求可联系的 User-Agent；真实值部署时填 .env 不入仓。

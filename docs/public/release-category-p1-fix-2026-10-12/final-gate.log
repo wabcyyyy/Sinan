@@ -1,0 +1,170 @@
+==> ruff check
+All checks passed!
+==> ruff format --check
+477 files already formatted
+==> typecheck (pyright baseline ratchet)
+pyright: 0 errors (baseline 0)
+==> import boundaries (import-linter, G-1.2)
+
+╔══╗─────────▶╔╗ ╔╗      ╔╗◀───┐
+╚╣╠╝◀─────┐  ╔╝╚╗║║────▶╔╝╚╗   │
+ ║║   ╔══╦══╦╩╗╔╝║║  ╔╦═╩╗╔╝╔═╦══╗
+ ║║╔══╣╔╗║╔╗║╔╣║ ║║ ╔╬╣╔╗║║ ║│║╔═╝
+╔╣╠╣║║║╚╝║╚╝║║║╚╗║╚═╝║║║║║╚╗║═╣║
+╚══╩╩╩╣╔═╩══╩╝╚═╝╚═══╩╩╝╚╩═╩╩═╩╝
+  └──▶║║                    ▲ 
+      ╚╝────────────────────┘
+
+
+---------
+Contracts
+---------
+
+Analyzed 243 files, 934 dependencies.
+-------------------------------------
+
+Layering: api -> services -> agent KEPT
+Agent domain ladder: core -> runtime -> data -> grounding -> tools -> research 
+-> generation -> editing KEPT (4 ignored imports)
+Generation sublayers: rules -> content -> output -> orchestration KEPT
+Agent facade: api/services import app.agent only, never agent internals KEPT
+
+Contracts: 4 kept, 0 broken.
+==> code metrics (long functions / huge files ratchet)
+== long functions (>=70 lines) ==
+   249  app/agent/editing/chat_draft/decide.py::_chat_turn_response
+   194  app/agent/generation/orchestration/day_stream.py::generate_day_once
+   192  app/agent/editing/chat_draft/hotel.py::_hotel_options
+   182  app/agent/generation/orchestration/open_plans.py::_generate_drafts
+   179  app/agent/generation/orchestration/stream_branch.py::stream_generate
+   171  app/agent/editing/chat_draft/plan_edit.py::_apply_decision_patches
+   156  app/agent/generation/content/reflect.py::validate_plans
+   152  app/services/itinerary_generation.py::_plan_whole_trip
+   150  app/agent/generation/output/schedule_optimizer.py::optimize_daily_plan
+   150  app/services/itinerary_query.py::build_detail
+   149  app/agent/generation/content/suggestions.py::build_suggestions
+   143  app/common/llm_client.py::stream_chat_deltas
+   139  app/services/itinerary_generation.py::plan_days
+   137  app/common/llm_client.py::chat_response
+   131  app/prompts/open_generation.py::open_day_system_prompt
+   126  app/agent/editing/local_replan.py::run_local_replan
+   124  app/services/generation_recovery.py::recover_one
+   116  app/agent/generation/content/narrative.py::sanitize_narrative
+   116  app/agent/generation/orchestration/day_stream.py::llm_open_day
+   110  app/agent/generation/output/assembly.py::format_output
+   107  app/services/atlas_service.py::build_atlas
+   104  app/agent/generation/content/butler.py::run_poi_intros
+   102  app/agent/generation/output/quality.py::judge_output
+    94  app/agent/generation/content/suggestions.py::floor_suggestions
+    89  app/agent/generation/orchestration/open_plans.py::generate_open_plans
+    85  app/services/itinerary_nl_edit.py::_apply_edit_op
+    82  app/agent/runtime/observability.py::record
+    80  app/services/itinerary_generation.py::generate
+    78  app/api/mcp.py::_register_itinerary_tools
+    76  app/services/itinerary_version.py::restore
+    73  app/services/itinerary_chat.py::chat_edit_stream
+    72  app/services/budget_engine.py::recalculate
+    70  app/services/itinerary_command.py::optimize_day
+count: 33 (limit 33)
+
+== huge files (>400 lines, exempts: app/schemas/trip.py) ==
+  1292  app/services/itinerary_generation.py
+   916  app/services/itinerary_chat.py
+   791  app/common/llm_client.py
+   722  app/services/itinerary_query.py
+   567  app/api/agent.py
+   509  app/api/business/itinerary.py
+   489  app/services/itinerary_command.py
+   484  app/agent/tools/registry/catalog.py
+   482  app/agent/editing/chat_draft/hotel.py
+   457  app/agent/editing/chat_draft/decide.py
+   445  app/db/models.py
+count: 11 (limit 11)
+
+OK: 规模门禁未回退
+==> secret scan
+OK: no suspicious secrets in scannable project sources.
+==> offline tests (+ coverage)
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 11%]
+........................................................................ [ 15%]
+........................................................................ [ 19%]
+........................................................................ [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 42%]
+........................................................................ [ 46%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 58%]
+........................................................................ [ 62%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+.............................s.......................................... [ 81%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+................................................                         [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _fake_clock
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _optimize_support
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Coverage XML written to file coverage.xml
+1847 passed, 1 skipped, 3 warnings in 809.97s (0:13:29)
+==> coverage gate on changed lines (diff-cover, G-3.4)
+-------------
+Diff Coverage
+Diff: origin/master...HEAD, staged and unstaged changes
+-------------
+travel-agent-python/app/agent/data/places.py (100%)
+travel-agent-python/app/agent/generation/content/landing.py (100%)
+travel-agent-python/app/agent/generation/content/reference_pool.py (100%)
+travel-agent-python/app/agent/generation/content/requirement_directives.py (100%)
+travel-agent-python/app/agent/generation/orchestration/day_stream.py (100%)
+travel-agent-python/app/agent/generation/orchestration/trip_graph.py (100%)
+travel-agent-python/app/agent/generation/output/facts.py (100%)
+travel-agent-python/app/agent/generation/rules/constraint_checks.py (100%)
+travel-agent-python/app/agent/grounding/existence.py (100%)
+travel-agent-python/app/agent/grounding/grounding_evidence.py (100%)
+travel-agent-python/app/agent/grounding/grounding_labels.py (100%)
+travel-agent-python/app/agent/research/domains.py (100%)
+travel-agent-python/app/agent/research/evidence.py (100%)
+travel-agent-python/app/agent/tools/impl.py (100%)
+travel-agent-python/app/agent/tools/registry/catalog.py (100%)
+travel-agent-python/app/common/config.py (100%)
+travel-agent-python/app/services/day_persistence.py (100%)
+travel-agent-python/app/services/itinerary_generation.py (100%)
+-------------
+Total:   102 lines
+Missing: 0 lines
+Coverage: 100%
+-------------
+
+==> contract export drift
+exported D:\wcy\project\Sinan\contracts\stream_events.schema.json
+exported D:\wcy\project\Sinan\contracts\agent_api.schema.json
+exported D:\wcy\project\Sinan\contracts\business_api.schema.json
+exported D:\wcy\project\Sinan\contracts\openapi.json
+exported D:\wcy\project\Sinan\travel-frontend-react\src\types\generated\contracts.ts
+OK: contracts match app/schemas/** byte-for-byte and every artifact is tracked
+
+ALL GREEN

@@ -77,6 +77,12 @@ def _preference_lines(req_struct: TripRequirements) -> list[str]:
     if req_struct.dietary_requirement:
         diet = "纯素（不含蛋奶）" if req_struct.dietary_requirement == "vegan" else "素食（可含蛋奶）"
         lines.append(f"饮食要求：每一餐均需适合{diet}；店名、坐标、模型知识不能证明菜单适用")
+        lines.append(
+            "参考资料中标注「外部饮食标签已证实」的餐厅应优先安排为正餐；"
+            "没有这类条目时选择你确知提供"
+            + ("纯素" if req_struct.dietary_requirement == "vegan" else "素食")
+            + "的真实餐厅，不确定就如实输出，不得虚构分店或宣称已核实"
+        )
         if req_struct.dining_evidence_policy == "review_candidates":
             lines.append("用户接受待核实餐饮候选：证据不足的餐厅不可声称已满足饮食要求，不可虚构分店")
         else:

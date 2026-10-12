@@ -33,9 +33,10 @@ from app.schemas.trip import SourceRecord
 # （verification_status=partially_verified / value_kind=observed）。
 # /v1/generate-day 的 context 由 HTTP 调用方传入，属于不可信输入；若不做
 # 值域校验，调用方可伪造 "opentripmap" 让幻觉事实获得外部背书。
-# POI 库退役后，外部来源即 OpenTripMap / Nominatim（真实坐标与分类）与
-# 联网搜索（真实店名）。"llm" 不在值域内（D5：LLM 不得作为权威入口）。
-AUTHORITATIVE_SOURCE_PREFIXES = ("opentripmap", "nominatim", "web.search")
+# POI 库退役后，外部来源即 OpenTripMap / Nominatim（真实坐标与分类）、
+# Overpass（OSM 标签检索，饮食证据面）与联网搜索（真实店名）。
+# "llm" 不在值域内（D5：LLM 不得作为权威入口）。
+AUTHORITATIVE_SOURCE_PREFIXES = ("opentripmap", "nominatim", "overpass", "web.search")
 # 来源不在值域内（多为调用方传入的伪造值）时统一改写为该标记并降级。
 UNTRUSTED_SOURCE = "client-context"
 # 池内行丢了 source：既不背书，也不谎称是客户端传入。

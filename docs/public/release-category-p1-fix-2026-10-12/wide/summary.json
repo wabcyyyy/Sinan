@@ -1,0 +1,73 @@
+[
+  {
+    "sample": 0,
+    "variant": "current_high",
+    "thinking": true,
+    "requestedEffort": "high",
+    "promptSha256": "1a57272391faa68a7f1e369d281e0e368c0d4eb7e91463e46a58ccafebebbd7b",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 1,
+        "blockers": [
+          "第 1 天待确认（dietary_requirement）：「菜食健美」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+        ]
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      }
+    ],
+    "issues": [
+      "第 1 天需求检查（dietary_requirement）：「菜食健美」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
+      "第 1 天路线时间不足：新宿御苑 → AFURI 仅留 15 分钟，按坐标估算需约 34 分钟（含 10 分钟固定缓冲和 25% 容错）"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": true,
+    "seconds": 76.17,
+    "reasoningTokens": 11913
+  },
+  {
+    "sample": 1,
+    "variant": "compact_high",
+    "thinking": true,
+    "requestedEffort": "high",
+    "promptSha256": "501e65a2161b2331c3b392090d436130f2feabda374070be898c50832c014086",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 1,
+        "evidencedMeals": 1,
+        "blockers": [
+          "第 2 天安排过稀（有效活动约 225 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+        ]
+      }
+    ],
+    "issues": [
+      "第 1 天路线时间不足：Saishoku kenbi → Shinjuku Central Park 仅留 30 分钟，按坐标估算需约 47 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 2 天路线时间不足：新宿御苑 → 東京都議會議事堂 仅留 30 分钟，按坐标估算需约 45 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 2 天安排过稀（有效活动约 225 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": false,
+    "seconds": 63.02,
+    "reasoningTokens": 9165
+  }
+]

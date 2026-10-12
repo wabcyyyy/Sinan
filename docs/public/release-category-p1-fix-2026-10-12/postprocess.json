@@ -1,0 +1,476 @@
+[
+  {
+    "dataset": "v2",
+    "sample": 0,
+    "variant": "current_off",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "くら寿司 新宿店",
+          "Délifrance 新宿店"
+        ],
+        "keptMeals": [
+          "くら寿司 新宿店",
+          "Délifrance 新宿店"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Kyubei Sushi at Keio Plaza Hotel",
+          "Délifrance 新宿店"
+        ],
+        "keptMeals": []
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "Délifrance 新宿店",
+        "type": "food",
+        "poiId": null,
+        "nearest": {
+          "name": "くら寿司 新宿店",
+          "poiId": null,
+          "meters": Infinity
+        }
+      }
+    ],
+    "retyped": [
+      {
+        "day": 2,
+        "name": "Kyubei Sushi at Keio Plaza Hotel",
+        "from": "food",
+        "to": "attraction"
+      }
+    ]
+  },
+  {
+    "dataset": "v2",
+    "sample": 2,
+    "variant": "compact_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "Délifrance",
+          "くら寿司"
+        ],
+        "keptMeals": [
+          "Délifrance",
+          "くら寿司"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Ain Soph. Journey",
+          "Natraj"
+        ],
+        "keptMeals": [
+          "Ain Soph. Journey",
+          "Natraj"
+        ]
+      }
+    ],
+    "drops": [],
+    "retyped": []
+  },
+  {
+    "dataset": "v2",
+    "sample": 3,
+    "variant": "current_off",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "くら寿司",
+          "Délifrance"
+        ],
+        "keptMeals": [
+          "くら寿司",
+          "Délifrance"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Kyubei Sushi at Keio Plaza Hotel",
+          "Délifrance"
+        ],
+        "keptMeals": []
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "Délifrance",
+        "type": "food",
+        "poiId": "osm:node:1511441588",
+        "nearest": {
+          "name": "Délifrance",
+          "poiId": "osm:node:1511441588",
+          "meters": 0.0
+        }
+      }
+    ],
+    "retyped": [
+      {
+        "day": 2,
+        "name": "Kyubei Sushi at Keio Plaza Hotel",
+        "from": "food",
+        "to": "attraction"
+      }
+    ]
+  },
+  {
+    "dataset": "v2",
+    "sample": 5,
+    "variant": "compact_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "Délifrance",
+          "くら寿司"
+        ],
+        "keptMeals": [
+          "Délifrance",
+          "くら寿司"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Délifrance",
+          "くら寿司"
+        ],
+        "keptMeals": []
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "Délifrance",
+        "type": "food",
+        "poiId": "osm:node:1511441588",
+        "nearest": {
+          "name": "Délifrance",
+          "poiId": "osm:node:1511441588",
+          "meters": 0.0
+        }
+      },
+      {
+        "day": 2,
+        "name": "くら寿司",
+        "type": "food",
+        "poiId": "osm:node:1174641596",
+        "nearest": {
+          "name": "くら寿司",
+          "poiId": "osm:node:1174641596",
+          "meters": 0.0
+        }
+      }
+    ],
+    "retyped": []
+  },
+  {
+    "dataset": "adequate",
+    "sample": 0,
+    "variant": "current_off",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "Shogun Burger",
+          "AFURI"
+        ],
+        "keptMeals": [
+          "Shogun Burger",
+          "AFURI"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Kyubei Sushi at Keio Plaza Hotel",
+          "PLANT BASED"
+        ],
+        "keptMeals": [
+          "PLANT BASED"
+        ]
+      }
+    ],
+    "drops": [],
+    "retyped": [
+      {
+        "day": 2,
+        "name": "Kyubei Sushi at Keio Plaza Hotel",
+        "from": "food",
+        "to": "attraction"
+      }
+    ]
+  },
+  {
+    "dataset": "adequate",
+    "sample": 1,
+    "variant": "current_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "PLANT BASED",
+          "AFURI"
+        ],
+        "keptMeals": [
+          "PLANT BASED",
+          "AFURI"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "FOOD HALL BLAST",
+          "Saishoku kenbi"
+        ],
+        "keptMeals": [
+          "Saishoku kenbi"
+        ]
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "FOOD HALL BLAST",
+        "type": "food",
+        "poiId": "osm:way:232497186",
+        "nearest": {
+          "name": "PLANT BASED",
+          "poiId": "osm:node:12060629549",
+          "meters": 5.09
+        }
+      }
+    ],
+    "retyped": []
+  },
+  {
+    "dataset": "adequate",
+    "sample": 2,
+    "variant": "compact_off",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "AFURI",
+          "PLANT BASED"
+        ],
+        "keptMeals": [
+          "AFURI",
+          "PLANT BASED"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Shogun Burger",
+          "FOOD HALL BLAST"
+        ],
+        "keptMeals": [
+          "Shogun Burger"
+        ]
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "新宿御苑",
+        "type": "attraction",
+        "poiId": "osm:way:15772074",
+        "nearest": {
+          "name": "新宿御苑",
+          "poiId": "osm:way:15772074",
+          "meters": 0.0
+        }
+      },
+      {
+        "day": 2,
+        "name": "FOOD HALL BLAST",
+        "type": "food",
+        "poiId": "osm:way:232497186",
+        "nearest": {
+          "name": "PLANT BASED",
+          "poiId": "osm:node:12060629549",
+          "meters": 5.09
+        }
+      }
+    ],
+    "retyped": []
+  },
+  {
+    "dataset": "adequate",
+    "sample": 3,
+    "variant": "compact_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "Saishoku kenbi",
+          "AFURI"
+        ],
+        "keptMeals": [
+          "Saishoku kenbi",
+          "AFURI"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "PLANT BASED",
+          "FOOD HALL BLAST"
+        ],
+        "keptMeals": [
+          "PLANT BASED"
+        ]
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "FOOD HALL BLAST",
+        "type": "food",
+        "poiId": "osm:way:232497186",
+        "nearest": {
+          "name": "PLANT BASED",
+          "poiId": "osm:node:12060629549",
+          "meters": 5.09
+        }
+      }
+    ],
+    "retyped": []
+  },
+  {
+    "dataset": "wide",
+    "sample": 0,
+    "variant": "current_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "AFURI 新宿",
+          "菜食健美"
+        ],
+        "keptMeals": [
+          "AFURI",
+          "菜食健美"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "ミルクランド",
+          "Shogun Burger"
+        ],
+        "keptMeals": [
+          "ミルクランド",
+          "Shogun Burger"
+        ]
+      }
+    ],
+    "drops": [],
+    "retyped": []
+  },
+  {
+    "dataset": "wide",
+    "sample": 1,
+    "variant": "compact_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "Saishoku kenbi",
+          "Shogun Burger"
+        ],
+        "keptMeals": [
+          "Saishoku kenbi",
+          "Shogun Burger"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "PLANT BASED",
+          "FOOD HALL BLAST"
+        ],
+        "keptMeals": [
+          "PLANT BASED"
+        ]
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "FOOD HALL BLAST",
+        "type": "food",
+        "poiId": "osm:way:232497186",
+        "nearest": {
+          "name": "PLANT BASED",
+          "poiId": "osm:node:12060629549",
+          "meters": 5.09
+        }
+      }
+    ],
+    "retyped": []
+  },
+  {
+    "dataset": "wide-scarce",
+    "sample": 0,
+    "variant": "current_high",
+    "days": [
+      {
+        "day": 1,
+        "rawMeals": [
+          "くら寿司",
+          "Délifrance"
+        ],
+        "keptMeals": [
+          "くら寿司",
+          "Délifrance"
+        ]
+      },
+      {
+        "day": 2,
+        "rawMeals": [
+          "Délifrance",
+          "くら寿司"
+        ],
+        "keptMeals": []
+      }
+    ],
+    "drops": [
+      {
+        "day": 2,
+        "name": "Délifrance",
+        "type": "food",
+        "poiId": "osm:node:1511441588",
+        "nearest": {
+          "name": "Délifrance",
+          "poiId": "osm:node:1511441588",
+          "meters": 0.0
+        }
+      },
+      {
+        "day": 2,
+        "name": "くら寿司",
+        "type": "food",
+        "poiId": "osm:node:1174641596",
+        "nearest": {
+          "name": "くら寿司",
+          "poiId": "osm:node:1174641596",
+          "meters": 0.0
+        }
+      }
+    ],
+    "retyped": []
+  }
+]

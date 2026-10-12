@@ -89,7 +89,7 @@ def _search_attractions_handler(**params: Any) -> list[dict]:
 def _search_foods_handler(**params: Any) -> list[dict]:
     from app.agent.tools import impl as tools
 
-    return tools.search_foods(params["city"], params.get("limit", 10))
+    return tools.search_foods(params["city"], params.get("limit", 10), dietary=params.get("dietary"))
 
 
 def _search_hotels_handler(**params: Any) -> list[dict]:
@@ -302,7 +302,11 @@ registry.register(
         description="检索目的地餐饮候选",
         parameters={
             "type": "object",
-            "properties": {"city": {"type": "string"}, "limit": {"type": "integer"}},
+            "properties": {
+                "city": {"type": "string"},
+                "limit": {"type": "integer"},
+                "dietary": {"type": "string", "enum": ["vegetarian", "vegan"]},
+            },
             "required": ["city"],
             "additionalProperties": False,
         },
