@@ -28,6 +28,7 @@ from app.agent.data.weather import day_clause as weather_day_clause
 from app.agent.generation.content.day_prompts import (
     DAY_ATTRACTION_CONTEXT_LIMIT,
     DAY_FOOD_CONTEXT_LIMIT,
+    DAY_MAX_TOKENS,
     GENERATION_TEMPERATURE,
     destination_line,
     has_structured_requirements,
@@ -165,15 +166,11 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         user,
         system_prompt=system,
         temperature=GENERATION_TEMPERATURE,
-        # 输出要求是"一天 items + 叙事字段 + 24-40 条 suggestions"，体量大，
-        # 截断即 JSON 解析失败 → 整日草案；叙事字段约占输出增量 30-50%，
-        # 给足输出预算。3200 实测装不下（2026-09-18 量测 6/6 城截断，
-        # 见 docs/量测-存在性接地-2026-09-18.md §5），8000 后 6/6 城解析成功。
-        max_tokens=8000,
+        # 截断即 JSON 解析失败 → 整日草案；预算口径（正文 + 思考占用）见 DAY_MAX_TOKENS
+        max_tokens=DAY_MAX_TOKENS,
         model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
-        enable_thinking=False,
     )
     # 三层：严格解析 → 单次修复重试（decide 模式推广）→ 抛 LlmJsonError 交
     # open_plans 兜底；叙事字段轻量清洗（超限截断/类型降级），骨架照常交付。
@@ -184,7 +181,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
             raw,
             client,
             model=model_for("fast"),
-            repair_max_tokens=8000,
+            repair_max_tokens=DAY_MAX_TOKENS,
             response_format=response_format,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             validate=validate_day_output,
@@ -287,7 +284,9 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     # 再进装配：留在行程里把一个名字指到别的城市，比少一个点更糟（G5）。
     before_filter = [item["poi_name"] for item in drafts]
     drafts = drop_refuted_items(drafts, city=req.city)
-    drafts = drop_used_items(drafts, req.used_names, day_no=req.day_no, used_points=ctx.get("used_points"))
+    drafts = drop_used_items(
+        drafts, req.used_names, day_no=req.day_no, used_points=ctx.get("used_points"), ref_pool=ref_pool
+    )
     policy = day_policy_for(req.requirements_struct, req.day_no)
     require_playable_items(before_filter, drafts, day_no=req.day_no, playable=policy.playable)
 

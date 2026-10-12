@@ -1,0 +1,162 @@
+[
+  {
+    "sample": 0,
+    "variant": "A_v1.5",
+    "outcome": "ok",
+    "seconds": 55.89,
+    "calls": [
+      {
+        "entry": "A_v1.5",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 55.89,
+        "finish_reason": "stop",
+        "prompt_tokens": 1936,
+        "completion_tokens": 10889,
+        "reasoning_tokens": 8902,
+        "content_chars": 5102,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 1,
+    "variant": "B_candidate",
+    "outcome": "ok",
+    "seconds": 61.38,
+    "calls": [
+      {
+        "entry": "B_candidate",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 61.38,
+        "finish_reason": "stop",
+        "prompt_tokens": 1694,
+        "completion_tokens": 9532,
+        "reasoning_tokens": 6871,
+        "content_chars": 6131,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 2,
+    "variant": "A_v1.5",
+    "outcome": "ok",
+    "seconds": 49.11,
+    "calls": [
+      {
+        "entry": "A_v1.5",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 49.11,
+        "finish_reason": "stop",
+        "prompt_tokens": 1936,
+        "completion_tokens": 8670,
+        "reasoning_tokens": 6786,
+        "content_chars": 4968,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 3,
+    "variant": "B_candidate",
+    "outcome": "ok",
+    "seconds": 46.72,
+    "calls": [
+      {
+        "entry": "B_candidate",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 46.72,
+        "finish_reason": "stop",
+        "prompt_tokens": 1694,
+        "completion_tokens": 7612,
+        "reasoning_tokens": 5954,
+        "content_chars": 3395,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 4,
+    "variant": "A_v1.5",
+    "outcome": "ok",
+    "seconds": 46.16,
+    "calls": [
+      {
+        "entry": "A_v1.5",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 46.14,
+        "finish_reason": "stop",
+        "prompt_tokens": 1936,
+        "completion_tokens": 8146,
+        "reasoning_tokens": 6246,
+        "content_chars": 5160,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 5,
+    "variant": "B_candidate",
+    "outcome": "ok",
+    "seconds": 48.14,
+    "calls": [
+      {
+        "entry": "B_candidate",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 48.14,
+        "finish_reason": "stop",
+        "prompt_tokens": 1694,
+        "completion_tokens": 7787,
+        "reasoning_tokens": 5650,
+        "content_chars": 5375,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 6,
+    "variant": "A_v1.5",
+    "outcome": "ok",
+    "seconds": 53.39,
+    "calls": [
+      {
+        "entry": "A_v1.5",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 53.39,
+        "finish_reason": "stop",
+        "prompt_tokens": 1936,
+        "completion_tokens": 8914,
+        "reasoning_tokens": 7477,
+        "content_chars": 3069,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "sample": 7,
+    "variant": "B_candidate",
+    "outcome": "ok",
+    "seconds": 42.69,
+    "calls": [
+      {
+        "entry": "B_candidate",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 42.69,
+        "finish_reason": "stop",
+        "prompt_tokens": 1694,
+        "completion_tokens": 7515,
+        "reasoning_tokens": 5614,
+        "content_chars": 4998,
+        "json_complete": true
+      }
+    ]
+  }
+]

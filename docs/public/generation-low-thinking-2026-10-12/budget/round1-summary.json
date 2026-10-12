@@ -1,0 +1,205 @@
+[
+  {
+    "entry": "trip",
+    "outcome": "ok",
+    "seconds": 55.5,
+    "calls": [
+      {
+        "entry": "trip",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 55.5,
+        "finish_reason": "stop",
+        "prompt_tokens": 1942,
+        "completion_tokens": 9118,
+        "reasoning_tokens": 7629,
+        "content_chars": 3120,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "trip_stream",
+    "outcome": "ok",
+    "seconds": 47.53,
+    "calls": [
+      {
+        "entry": "trip_stream",
+        "mode": "stream",
+        "max_tokens": 16000,
+        "first_content_s": 30.39,
+        "finish_reason": "stop",
+        "prompt_tokens": 1942,
+        "completion_tokens": 7317,
+        "reasoning_tokens": 4618,
+        "seconds": 47.53,
+        "content_chars": 6331,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "day",
+    "outcome": "ok",
+    "seconds": 47.48,
+    "calls": [
+      {
+        "entry": "day",
+        "mode": "blocking",
+        "max_tokens": 8000,
+        "seconds": 47.48,
+        "finish_reason": "stop",
+        "prompt_tokens": 2309,
+        "completion_tokens": 7876,
+        "reasoning_tokens": 6236,
+        "content_chars": 3872,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "repair",
+    "outcome": "ok",
+    "seconds": 39.59,
+    "calls": [
+      {
+        "entry": "repair",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 39.59,
+        "finish_reason": "stop",
+        "prompt_tokens": 2028,
+        "completion_tokens": 6582,
+        "reasoning_tokens": 4423,
+        "content_chars": 5348,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "clarify",
+    "outcome": "ok",
+    "seconds": 2.86,
+    "calls": [
+      {
+        "entry": "clarify",
+        "mode": "blocking",
+        "max_tokens": 2048,
+        "seconds": 2.78,
+        "finish_reason": "stop",
+        "prompt_tokens": 1059,
+        "completion_tokens": 420,
+        "reasoning_tokens": 193,
+        "content_chars": 652,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "trip",
+    "outcome": "ok",
+    "seconds": 63.75,
+    "calls": [
+      {
+        "entry": "trip",
+        "mode": "blocking",
+        "max_tokens": 16000,
+        "seconds": 63.75,
+        "finish_reason": "stop",
+        "prompt_tokens": 1942,
+        "completion_tokens": 10295,
+        "reasoning_tokens": 7977,
+        "content_chars": 5520,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "day",
+    "outcome": "ok",
+    "seconds": 83.69,
+    "calls": [
+      {
+        "entry": "day",
+        "mode": "blocking",
+        "max_tokens": 8000,
+        "seconds": 46.86,
+        "finish_reason": "length",
+        "prompt_tokens": 2309,
+        "completion_tokens": 7998,
+        "reasoning_tokens": 7029,
+        "content_chars": 2171,
+        "json_complete": false
+      },
+      {
+        "entry": "day",
+        "mode": "blocking",
+        "max_tokens": 8000,
+        "seconds": 36.83,
+        "finish_reason": "stop",
+        "prompt_tokens": 3318,
+        "completion_tokens": 6867,
+        "reasoning_tokens": 5034,
+        "content_chars": 4604,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "clarify",
+    "outcome": "ok",
+    "seconds": 11.36,
+    "calls": [
+      {
+        "entry": "clarify",
+        "mode": "blocking",
+        "max_tokens": 2048,
+        "seconds": 11.36,
+        "finish_reason": "stop",
+        "prompt_tokens": 1059,
+        "completion_tokens": 1856,
+        "reasoning_tokens": 1617,
+        "content_chars": 672,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "clarify",
+    "outcome": "ok",
+    "seconds": 2.42,
+    "calls": [
+      {
+        "entry": "clarify",
+        "mode": "blocking",
+        "max_tokens": 2048,
+        "seconds": 2.42,
+        "finish_reason": "stop",
+        "prompt_tokens": 1059,
+        "completion_tokens": 416,
+        "reasoning_tokens": 185,
+        "content_chars": 652,
+        "json_complete": true
+      }
+    ]
+  },
+  {
+    "entry": "clarify",
+    "outcome": "ok",
+    "seconds": 2.77,
+    "calls": [
+      {
+        "entry": "clarify",
+        "mode": "blocking",
+        "max_tokens": 2048,
+        "seconds": 2.77,
+        "finish_reason": "stop",
+        "prompt_tokens": 1059,
+        "completion_tokens": 437,
+        "reasoning_tokens": 199,
+        "content_chars": 663,
+        "json_complete": true
+      }
+    ]
+  }
+]

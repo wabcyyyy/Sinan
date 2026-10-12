@@ -41,7 +41,9 @@ EXPECTED_PROMPT_VERSION = "workflow-v2-authority-route-20260828"
 # 2026-10-09（M5b，spec §11）：整趟主输出去 suggestions 长备选（备选池改由研究
 # 候选池确定性构建），open_trip bump v1.4→v1.5；open_day（逐日兜底链）口径不变。
 EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
-EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.5.localized"
+# 2026-10-12（生成改走全局 low 思考后同输入 A/B）：open_trip v1.5→v1.6——参考资料餐厅
+# 照抄店名、删与结构化上限冲突的密度示例、每天午晚餐各一、合并重复条款；open_day 不变。
+EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.6.localized"
 
 # 一致性基线（2026-09-23 重新认账）：流式路径真实小样本（qwen-plus，`llm_eval.py
 # --path stream --limit 3`，与 nightly 门禁同题同口径）实测两遍一致率 **0.0**

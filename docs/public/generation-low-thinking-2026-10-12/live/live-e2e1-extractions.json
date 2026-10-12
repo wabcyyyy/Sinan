@@ -1,0 +1,66 @@
+[
+  {
+    "seconds": 9.91,
+    "data": {
+      "state": {
+        "schemaVersion": 1,
+        "city": "东京",
+        "days": 2,
+        "persons": 2,
+        "budget": 3000.0,
+        "startDate": null,
+        "stayNights": null,
+        "preferences": [
+          "慢节奏",
+          "素食"
+        ],
+        "hotelTier": null,
+        "originCity": null,
+        "requirements": {
+          "schemaVersion": 1,
+          "dayWindows": [],
+          "requiredPlaces": [],
+          "excludedPlaces": [],
+          "excludedCategories": [
+            "temple"
+          ],
+          "pace": "relaxed",
+          "maxAttractionsPerDay": 2,
+          "dietaryRequirement": "vegetarian",
+          "diningEvidencePolicy": null,
+          "transportPreference": null,
+          "maxWalkMinutesPerLeg": null,
+          "budgetPolicy": null,
+          "lodging": null,
+          "unresolvedRequests": []
+        },
+        "optionalAsked": [],
+        "optionalPending": [],
+        "negotiations": {},
+        "acceptances": {}
+      },
+      "slots": {
+        "city": "东京",
+        "days": 2,
+        "persons": 2,
+        "budget": 3000,
+        "preferences": [
+          "慢节奏",
+          "素食"
+        ]
+      },
+      "missing": [],
+      "question": "餐厅的饮食资料可能不齐全。你希望只安排有素食依据的餐厅，还是先看候选、再自行核实？",
+      "ready": false,
+      "options": [
+        "只安排有饮食依据的餐厅",
+        "先给餐饮候选，我会自行核实"
+      ],
+      "blocked": true,
+      "degraded": false,
+      "reply": null,
+      "replyFor": null,
+      "next": "dining_evidence_policy"
+    }
+  }
+]

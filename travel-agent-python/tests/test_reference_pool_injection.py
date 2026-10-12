@@ -111,3 +111,16 @@ def test_collect_cleans_on_copies_without_mutating_caller_context():
     # 清洗发生在池内副本上，调用方的 context 行保持原样（单一真源不被改写）
     assert context["candidates"][0]["name"] == "原名\n"
     assert context["candidates"][0]["address"] == "地址\x01"
+
+
+def test_row_without_category_falls_back_to_its_retrieval_domain():
+    """Overpass 饮食行只带 amenity 标签：曾被渲染成「attraction」，模型看到的素食餐厅全成了景点。"""
+    food = _trusted_row(id="osm:node:1", name="PLANT BASED", category=None, source="overpass")
+    hotel = _trusted_row(id="h1", name="Shinjuku Washington Hotel", category=None)
+    pool = ReferencePool({"foods": [food], "hotels": [hotel]})
+    block = pool.block()
+    assert '[R1] """PLANT BASED｜food' in block
+    assert '[R2] """Shinjuku Washington Hotel｜hotel' in block
+    item = {"poi_name": "PLANT BASED", "item_type": "attraction"}
+    assert pool.ground(item) is True
+    assert item["item_type"] == "food", "落地类型随检索域，饮食检查不被绕开"

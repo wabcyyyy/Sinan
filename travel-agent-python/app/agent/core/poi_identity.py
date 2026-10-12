@@ -83,14 +83,20 @@ class PoiSeenRegistry:
     （引用背书/高德/Google）补上真实坐标后，同类型点位相距 <80m 即视为
     同一地点。坐标缺失时退化为纯名称判定。
     酒店不参与判重：全程同一家酒店跨天重复是摊铺语义（N-1 晚口径）。
+
+    `entity`（2026-10-12）：餐饮项命中参考池行时传该行的池内身份。坐标通道是给
+    「名称变体指向同一地点」兜底的；两条餐饮分别命中池内**不同**实体行时，身份已由
+    同一次检索确定为两家（东京实测：食堂街 way 与其中一家 node 相距 5 米，晚餐被当
+    重复删掉、餐次不补），不再按距离合并。只放餐饮：景点同楼多行（都厅两塔）合并是
+    预期语义；任一侧无池内身份仍走原距离判据。
     """
 
     def __init__(self, max_proximity_m: float = 80.0) -> None:
         self.max_proximity_m = max_proximity_m
         self._keys: set[str] = set()
-        self._coords: list[tuple[str, float, float]] = []
+        self._coords: list[tuple[str, float, float, str | None]] = []
 
-    def is_duplicate(self, name, item_type, latitude=None, longitude=None) -> bool:
+    def is_duplicate(self, name, item_type, latitude=None, longitude=None, entity: str | None = None) -> bool:
         if str(item_type or "") == "hotel":
             # 酒店全程同一家是摊铺语义：跨天同名合法，不参与判重
             return False
@@ -103,13 +109,22 @@ class PoiSeenRegistry:
             return False
         want = str(item_type or "")
         dist = min(
-            (haversine_m(latitude, longitude, la, ln) for t, la, ln in self._coords if t == want),
+            (
+                haversine_m(latitude, longitude, la, ln)
+                for t, la, ln, other in self._coords
+                if t == want and not (want == "food" and entity and other and other != entity)
+            ),
             default=float("inf"),
         )
         return dist < self.max_proximity_m
 
     def register(
-        self, name: str, item_type: str | None, latitude: float | None = None, longitude: float | None = None
+        self,
+        name: str,
+        item_type: str | None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        entity: str | None = None,
     ) -> None:
         if str(item_type or "") == "hotel":
             return
@@ -123,7 +138,7 @@ class PoiSeenRegistry:
         except (TypeError, ValueError):
             return
         if abs(lat) > 1e-6 and abs(lng) > 1e-6:
-            self._coords.append((str(item_type or ""), lat, lng))
+            self._coords.append((str(item_type or ""), lat, lng, entity))
 
 
 _MIN_SHARED_CHARS = 4

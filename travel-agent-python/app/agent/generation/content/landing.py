@@ -36,6 +36,7 @@ def drop_used_items(
     *,
     day_no: int,
     used_points: list[tuple[str, str, float | None, float | None]] | None = None,
+    ref_pool: ReferencePool | None = None,
 ) -> list[dict]:
     """单日接地后也走生成期判重；已安排名称和同日坐标共用 PoiSeenRegistry。
 
@@ -43,6 +44,7 @@ def drop_used_items(
     只登记名字时，重生成日换个名称变体（"都厅展望室"→"都厅南展望室"）就绕过
     了坐标通道；带类型+坐标登记后，变体只要落地出真实坐标就会被同类型近距离
     判重抓到。酒店豁免由登记表统一定义；去重清空日程时，交图的失败/修复边界处理。
+    `ref_pool`：给出时按池内实体身份区分同楼的不同餐厅（与整段链路同一判据）。
     """
     seen = PoiSeenRegistry()
     for name in used_names:
@@ -54,10 +56,11 @@ def drop_used_items(
     for item in items:
         name, kind = item["poi_name"], item["item_type"]
         latitude, longitude = item.get("latitude"), item.get("longitude")
-        if seen.is_duplicate(name, kind, latitude, longitude):
+        entity = ref_pool.entity_of(item) if ref_pool is not None else None
+        if seen.is_duplicate(name, kind, latitude, longitude, entity):
             record_event("decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name})
             continue
-        seen.register(name, kind, latitude, longitude)
+        seen.register(name, kind, latitude, longitude, entity)
         kept.append(item)
     return kept
 

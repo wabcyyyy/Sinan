@@ -50,7 +50,8 @@ def test_recovery_retains_original_request_and_rejects_empty_shape(monkeypatch, 
     ]
     assert all(value in messages[0]["content"] for value in ("熊猫", "美食", "青旅", "不要爬山"))
     assert "成都" in messages[1]["content"]
-    assert first_kwargs["enable_thinking"] is repair_kwargs["enable_thinking"] is False
+    # 思考档位单一真源：生成与修复都不按次覆盖，走 settings（2026-10-12 拍板 low）
+    assert "enable_thinking" not in first_kwargs and "enable_thinking" not in repair_kwargs
 
 
 @pytest.mark.parametrize("repaired", [{}, {"items": []}, {"items": [{"poi_name": "酒店", "item_type": "hotel"}]}])

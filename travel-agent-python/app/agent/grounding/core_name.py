@@ -53,7 +53,9 @@ def _extract(name: str, city: str) -> str:
             f"目的地：{city}\n地点文字：{name}",
             system_prompt=_SYSTEM,
             temperature=0.0,
-            max_tokens=60,
+            # 思考（全局 low）计入 completion：原 60 档实测 4/4 被思考吃满、正文为空
+            # （finish_reason=length）。2026-10-12 六个真实名字实测 completion 75-558。
+            max_tokens=1024,
             model=model_for("fast"),
             json_mode=True,
         )

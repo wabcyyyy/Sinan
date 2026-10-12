@@ -11,8 +11,10 @@ class _FakeClient:
 
     def __init__(self, raw: str | Exception) -> None:
         self._raw = raw
+        self.max_tokens: int | None = None
 
-    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0) -> str:
+    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
+        self.max_tokens = max_tokens
         if isinstance(self._raw, Exception):
             raise self._raw
         return self._raw
@@ -23,6 +25,14 @@ def _run(
 ) -> ClarifyResponse:
     monkeypatch.setattr(clarify_mod, "get_llm_client", lambda: _FakeClient(raw))
     return clarify_mod.run_clarify(ClarifyRequest(message="想去玩", slots=slots or {}, state=state))
+
+
+def test_extraction_budget_leaves_room_for_global_thinking(monkeypatch) -> None:
+    """思考 token 计入 completion：旧默认 2048 实测最高用到 91%（2026-10-12），抽取须显式给足。"""
+    client = _FakeClient('{"city":"成都"}')
+    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda: client)
+    clarify_mod.run_clarify(ClarifyRequest(message="想去成都"))
+    assert client.max_tokens == 4096
 
 
 def test_merges_slots_and_reports_ready(monkeypatch) -> None:

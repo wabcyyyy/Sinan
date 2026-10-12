@@ -200,14 +200,15 @@ def _generate_drafts(
             ground_item(item, city=req.city, ref_pool=ref_pool)
             if name and item.get("poi_name") != name:
                 name_aliases[name] = item["poi_name"]
-            if name and seen.is_duplicate(name, item_type, item.get("latitude"), item.get("longitude")):
+            entity = ref_pool.entity_of(item)
+            if name and seen.is_duplicate(name, item_type, item.get("latitude"), item.get("longitude"), entity):
                 # 落地后坐标通道判重命中（名称变体指向同一地点）
                 record_event(
                     "decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name, "via": "coord"}
                 )
                 continue
             if name:
-                seen.register(name, item_type, item.get("latitude"), item.get("longitude"))
+                seen.register(name, item_type, item.get("latitude"), item.get("longitude"), entity)
             kept_items.append(item)
         normalize_name_mentions(plan, name_aliases)
         # 与本次行程矛盾的点位（解析到别处 / 权威源否证）在这里出局，剩下

@@ -77,7 +77,6 @@ def parse_llm_json_with_repair(
         model=model or model_for("fast"),
         json_mode=response_format is None,
         response_format=response_format,
-        enable_thinking=False,
     )
     data = parse_llm_json(repaired)
     if validate:

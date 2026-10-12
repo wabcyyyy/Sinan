@@ -14,7 +14,7 @@ class _FakeClient:
     def __init__(self, raw: str) -> None:
         self._raw = raw
 
-    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0) -> str:
+    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
         return self._raw
 
 

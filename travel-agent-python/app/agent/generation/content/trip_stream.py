@@ -55,8 +55,8 @@ def llm_open_trip_stream(
     """开放模式多日流式生成（M5a，spec §10.1）：阻塞 complete 换 stream_chat_deltas。
 
     与 llm_open_trip 同参同源（open_trip_prompt / open_trip_output_schema /
-    json_response_format / max_tokens 公式 / model_for("fast") / 联网开关 /
-    enable_thinking=False），只把交付形态改为「边流边解析」。
+    json_response_format / max_tokens 公式 / model_for("fast") / 联网开关；
+    思考档位同走全局配置），只把交付形态改为「边流边解析」。
 
     cancel：客户端断开信号，透传 stream_chat_deltas（取消以 StreamCancelled
     终止，不产出 final）。不挂 @traced：生成器函数被装饰会改变惰性语义，
@@ -81,7 +81,6 @@ def llm_open_trip_stream(
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
         cancel=cancel,
-        enable_thinking=False,
     )
     for delta in deltas:
         parts.append(delta)

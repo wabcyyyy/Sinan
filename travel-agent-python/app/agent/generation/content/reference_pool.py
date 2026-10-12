@@ -103,10 +103,13 @@ class ReferencePool:
         collected: list[dict] = []
         deferred: list[dict] = []
         seen: set[str] = set()
-        for key, limit in (
-            ("candidates", REFERENCE_ATTRACTION_LIMIT),
-            ("foods", REFERENCE_FOOD_LIMIT),
-            ("hotels", REFERENCE_HOTEL_LIMIT),
+        # 行自身无 category 时按所在检索域兜底（2026-10-12）：Overpass 饮食行只带
+        # amenity 标签不带 category，此前 block() 一律渲染成「attraction」，
+        # 模型看到的已证实素食餐厅全被标成景点。
+        for key, limit, domain in (
+            ("candidates", REFERENCE_ATTRACTION_LIMIT, "attraction"),
+            ("foods", REFERENCE_FOOD_LIMIT, "food"),
+            ("hotels", REFERENCE_HOTEL_LIMIT, "hotel"),
         ):
             rows = ctx.get(key)
             if not isinstance(rows, list):
@@ -124,7 +127,7 @@ class ReferencePool:
                 cleaned = {
                     **poi,
                     "name": name,
-                    "category": _clean_pool_text(poi.get("category"), _CATEGORY_LIMIT) or None,
+                    "category": _clean_pool_text(poi.get("category"), _CATEGORY_LIMIT) or domain,
                     "open_time": _clean_pool_text(poi.get("open_time"), _OPEN_TIME_LIMIT) or None,
                     "address": _clean_pool_text(poi.get("address"), _ADDRESS_LIMIT) or None,
                 }
@@ -213,6 +216,16 @@ class ReferencePool:
             self.stats["refs_cited"] += 1
             if valid_ints:
                 self.stats["refs_valid"] += 1
+
+    def entity_of(self, item: dict) -> str | None:
+        """落地后条目对应的池内实体身份（poi_id 等于某条池行 id）；未命中池返回 None。
+
+        供判重区分「同一检索里的两家不同餐厅」（PoiSeenRegistry 的 entity 参数）。
+        """
+        poi_id = str(item.get("poi_id") or "").strip()
+        if poi_id and any(str(ref.get("id") or "") == poi_id for ref in self.references):
+            return poi_id
+        return None
 
     def ground(self, item: dict) -> bool:
         """把命中参考资料的行程项落地为权威字段；返回是否命中。

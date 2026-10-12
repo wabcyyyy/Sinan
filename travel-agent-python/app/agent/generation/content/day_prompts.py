@@ -51,6 +51,13 @@ DAY_FOOD_CONTEXT_LIMIT = 6
 # llm_eval.py）头部引用本常量，保证"报告固定的 temperature"与真实调用同源。
 GENERATION_TEMPERATURE = 0.4
 
+# 单日生成（llm_open_day 主调与修复同额）的输出预算。输出是「一天 items + 叙事字段 +
+# suggestions」，截断即整日草案：关思考时 3200 实测装不下、8000 后 6/6 城解析成功
+# （docs/量测-存在性接地-2026-09-18.md §5）。思考 token 计入 max_tokens：2026-10-12
+# 生成改走全局 low 后东京实测单日 completion 6867-10404（reasoning 5034-8364），8000 档
+# 已截断（finish_reason=length）。16000 = 实测上沿约 1.5 倍，不是统一抬到接口上限。
+DAY_MAX_TOKENS = 16000
+
 
 # 生成阶段的质量约束：从源头让模型避开低质点位，而不是事后强制屏蔽
 QUALITY_CLAUSE = (
@@ -140,7 +147,7 @@ def _distill_cached(intent: str) -> str:
     """distill_intent 的模块级缓存：同一 intent 全文只提炼一次。
 
     lru_cache 持有 LLM 结果的可接受性：提炼是确定性短输出（temperature=0.2、
-    max_tokens=300）、输入为 ≤4000 字短文本、容量 64 条上限可控内存；
+    正文 ~120 字）、输入为 ≤4000 字短文本、容量 64 条上限可控内存；
     Java 逐日编排下同一行程多日生成共享同一 intent，缓存避免逐日重复调用。
     返回序列化摘要串，提炼失败/无价值返回 ""（与"不注入摘要"同口径）。
     """
@@ -377,7 +384,6 @@ def llm_open_trip(req: GenerateDayRequest) -> tuple[list[dict], list[dict]]:
         model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
-        enable_thinking=False,
     )
     data = parse_llm_json_with_repair(
         raw,

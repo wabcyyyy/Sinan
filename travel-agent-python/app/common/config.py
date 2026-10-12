@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     agent_reload: bool = False
     agent_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     agent_internal_token: str = ""
-    agent_deadline_seconds: float = 90
+    agent_deadline_seconds: float = 240
     trusted_proxies: str = "127.0.0.1,0:0:0:0:0:0:0:1,::1"
 
     # ---- LLM ----
