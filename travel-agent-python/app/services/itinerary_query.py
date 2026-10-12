@@ -28,6 +28,8 @@ from typing import Any
 from sqlalchemy import func, or_, select
 
 from app.agent import (
+    check_constraints,
+    day_policy_for,
     is_authoritative_source,
     live_quote_quota_exhausted,
     search_live_flight_quotes,
@@ -39,6 +41,7 @@ from app.common.envelope import ApiError
 from app.common.vo_json import iso_date, iso_datetime, iso_time, number
 from app.db.models import BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain, ItineraryMember
 from app.db.session import session_scope
+from app.schemas.trip_requirements import TripRequirements
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +341,20 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
     )
     quality_status = _quality_status(main.status, items, days, pending_facts, narrative_mismatches, budget_warning)
     issues = _quality_issues(quality_status, days, items, pending_facts, narrative_mismatches, budget_warning)
+    requirements = TripRequirements.model_validate(main.requirements_json or {})
+    for day in day_list:
+        plan = {
+            "items": [
+                {"poi_name": item["poiName"], "item_type": item["itemType"], "fact_evidence": item.get("factEvidence")}
+                for item in day["items"]
+            ]
+        }
+        report = check_constraints(plan, requirements, day["dayNo"], day_policy_for(requirements, day["dayNo"]))
+        for check in report.checks:
+            if check.kind == "dietary_requirement":
+                issues.append({"code": "DIETARY_EVIDENCE_REVIEW", "message": f"第 {day['dayNo']} 天：{check.reason}"})
+    if quality_status == "READY" and any(issue["code"] == "DIETARY_EVIDENCE_REVIEW" for issue in issues):
+        quality_status = "READY_WITH_WARNINGS"
 
     return {
         "schemaVersion": SCHEMA_VERSION,

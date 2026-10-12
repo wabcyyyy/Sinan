@@ -95,6 +95,19 @@ def test_time_update_recalculates_end_time():
     assert item["end_time"] == "16:30"
 
 
+@pytest.mark.parametrize("new_note", [None, "下午轻松逛公园"])
+def test_content_patch_does_not_reuse_outdated_daily_narrative(new_note):
+    request = _request("去掉苏堤春晓")
+    request.plans[0]["note"] = "08:30–10:00 苏堤春晓，晚上入住酒店"
+    patches = [{"op": "delete", "item_id": 1}]
+    if new_note is not None:
+        patches.append({"op": "set_day_note", "day_no": 1, "note": new_note})
+    plans = _apply_decision_patches({"patches": patches}, request)
+    assert plans is not None
+    assert plans[0]["note"] == (new_note or "行程已调整，请以当天安排为准。")
+    assert plans[1]["note"] == "第二天"
+
+
 def test_unrequested_delete_is_ignored_when_extending_trip():
     request = _request("改成3天")
     plans = _apply_decision_patches(

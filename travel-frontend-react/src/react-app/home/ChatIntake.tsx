@@ -88,6 +88,7 @@ export function ChatIntake({
   }
 
   const [sessions, setSessions] = useState<IntakeSessionRecord[]>(() => listIntakeSessions())
+  useEffect(() => { setSessions(listIntakeSessions()) }, [chat.messages])
   const [showSessionsModal, setShowSessionsModal] = useState(false)
   const refreshSessions = () => setSessions(listIntakeSessions())
 

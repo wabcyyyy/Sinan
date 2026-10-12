@@ -12,6 +12,7 @@ import type { IntakeChat } from './useIntakeChat'
 import { GREETING, saveIntake } from './intakeSlots'
 import { ChatIntake } from './ChatIntake'
 import { HomeStudio } from './HomeStudio'
+import { clearAllIntakeSessions, listIntakeSessions } from './intakeHistory'
 import { TripBoard } from './TripBoard'
 import { TripPanel } from './TripPanel'
 
@@ -172,7 +173,7 @@ describe('TripPanel（active 右栏容器）', () => {
     const html = panel({ status: 'error', message: '生成失败' }, { ready: true })
     expect(html).toContain('planning-retry-hint')
     expect(html).toContain('开始规划')
-    expect(html).not.toContain('trip-confirm')
+    expect(html).toContain('intake-confirm')
   })
   it('login 兜底：给「登录并继续」入口', () => {
     const html = panel({ status: 'login', message: '登录后即可开始规划，你填写的想法会保留。' }, { ready: true })
@@ -285,6 +286,9 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
       excludedPlaces: [],
       excludedCategories: [],
       pace: null,
+      maxAttractionsPerDay: null,
+      dietaryRequirement: null,
+      diningEvidencePolicy: null,
       transportPreference: null,
       maxWalkMinutesPerLeg: null,
       budgetPolicy: null,
@@ -365,6 +369,7 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
     sessionStorage.clear()
+    clearAllIntakeSessions()
     // happy-dom 的 WAAPI：useFlip 取消上一段动画会以未处理 AbortError 冒出（真浏览器
     // 不 await finished 就无此问题）。相位锁断言只看 class/结构，动画桩掉即可。
     vi.spyOn(Element.prototype, 'animate').mockReturnValue({ cancel: () => {} } as unknown as Animation)
@@ -389,7 +394,54 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
       container.remove()
     }
     sessionStorage.clear()
+    clearAllIntakeSessions()
     vi.clearAllMocks()
+  })
+
+  it('草稿退出后立即可恢复，继续对话携带完整累计约束', async () => {
+    const state = intakeState({ city: '成都', days: 4, persons: 2 })
+    state.requirements.excludedCategories = ['museum']
+    clarifyMock.mockResolvedValue({ ...clarifyReady, state })
+    const { container } = await mountStudio()
+    await say(container, '成都四天两个人，不去博物馆')
+    await act(async () => { (container.querySelector('.intake-reset-btn') as HTMLButtonElement).click() })
+    expect(listIntakeSessions()[0].serverState).toEqual(state)
+    const resume = container.querySelector('.resume-bar-cta') as HTMLButtonElement
+    expect(resume).not.toBeNull()
+    await act(async () => { resume.click() })
+    await say(container, '日期待定')
+    expect(clarifyMock.mock.calls.at(-1)?.[2]).toEqual(state)
+  })
+
+  it('恢复已生成的历史会话立即加载原行程，不再提交生成', async () => {
+    const { container } = await mountStudio()
+    await say(container, '成都四天两个人')
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    await act(async () => { (container.querySelector('.trip-board-reset') as HTMLButtonElement).click() })
+    await act(async () => { (container.querySelector('.resume-bar-cta') as HTMLButtonElement).click() })
+    await flush()
+    expect(container.querySelector('.trip-board')).not.toBeNull()
+    expect(getDetailMock).toHaveBeenCalledWith(7)
+    expect(generateMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('生成终态失败保留确认卡，用户可以实际重新提交', async () => {
+    waitForMock.mockImplementationOnce(async (_id, options) => {
+      options?.onUpdate?.({ id: 7, status: 3, days: 1, dayList: [] } as unknown as ItineraryDetail)
+      throw new ReactApiError('生成失败')
+    })
+    const { container } = await mountStudio()
+    await say(container, '成都四天两个人')
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(container.querySelector('.intake-confirm')).not.toBeNull()
+    expect(sessionStorage.getItem('sinan-intake-generation')).toBeNull()
+    expect(sessionStorage.getItem('sinan-intake-attempt')).toBeNull()
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(generateMock).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('.trip-board')).not.toBeNull()
   })
 
   it('done 态点「重新说」：对话与生成态一并归零、generationId 清空，停回 idle 居中；再开聊才解锁', async () => {

@@ -25,7 +25,7 @@ import { safeAppLink } from '../../shared/map-link'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
-import { DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
+import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
 import { feedbackIndex } from './itemFeedback'
@@ -72,7 +72,7 @@ function getExperienceTag(item: DayPlan['items'][0]): string | null {
 /** 价格只说有数据的事：没有 cost 时不再补「特色美食/精选打卡」这类无出处的装饰词。 */
 function getItemPriceTag(item: DayPlan['items'][0]): string | null {
   if (item.cost === 0) return '免费开放'
-  if (item.cost && item.cost > 0) return `￥${item.cost}/人`
+  if (item.cost && item.cost > 0) return `￥${item.cost}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
   return null
 }
 
@@ -346,6 +346,7 @@ export function TripDetailPage({ path }: { path: string }) {
         {trip.destinationStatus === 'draft_only'
           ? <DraftOnlyBanner status={trip.destinationStatus} pending={trip.pendingFactCount || 0} />
           : <QualityNotice status={trip.qualityStatus} pending={trip.pendingFactCount || 0} />}
+        <DietaryEvidenceNotice trip={trip} />
         <TripMetrics
           trip={trip}
           dateText={trip.startDate ? displayDate(trip.startDate) : null}

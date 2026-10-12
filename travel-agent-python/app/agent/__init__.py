@@ -24,7 +24,7 @@ from app.agent.editing.local_replan import run_local_replan
 from app.agent.editing.nl_edit import run_edit_ops
 from app.agent.generation.content.butler import run_butler_note, run_poi_intros
 from app.agent.generation.content.narrative import sync_schedule_summary
-from app.agent.generation.content.reflect import BUDGET_OVERAGE_MARK, validate_plans
+from app.agent.generation.content.reflect import BUDGET_OVERAGE_MARK, hard_day_issues, validate_plans
 from app.agent.generation.orchestration.day_stream import run_generate_day
 from app.agent.generation.orchestration.plan_context import run_plan_context
 from app.agent.generation.orchestration.stream_branch import run_generate_trip_stream
@@ -57,6 +57,7 @@ __all__ = [
     "find_nearby_pois",
     "get_poi_detail",
     "get_weather_forecast",
+    "hard_day_issues",
     "is_authoritative_source",
     "live_quote_quota_exhausted",
     "metrics",

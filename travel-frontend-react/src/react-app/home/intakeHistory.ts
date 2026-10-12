@@ -1,4 +1,5 @@
 import type { IntakeMessage, IntakeSlots } from './intakeSlots'
+import type { IntakeState } from '../../types/generated/contracts'
 
 export const INTAKE_SESSIONS_STORAGE_KEY = 'sinan-intake-sessions-v1'
 
@@ -10,6 +11,7 @@ export interface IntakeSessionRecord {
   messages: IntakeMessage[]
   firstMessage: string
   generationId?: string | null
+  serverState?: IntakeState
 }
 
 export function deriveSessionTitle(slots: IntakeSlots, firstMessage: string): string {
@@ -46,6 +48,7 @@ export function saveIntakeSession(data: {
   messages: IntakeMessage[]
   firstMessage: string
   generationId?: string | null
+  serverState?: IntakeState
 }): IntakeSessionRecord | null {
   const hasUserMessage = data.messages.some((m) => m.role === 'user')
   if (!hasUserMessage && !data.slots.city && !data.firstMessage) {
@@ -63,6 +66,7 @@ export function saveIntakeSession(data: {
     messages: [...data.messages],
     firstMessage: data.firstMessage,
     generationId: data.generationId ?? null,
+    serverState: data.serverState,
   }
 
   const existingIndex = sessions.findIndex((s) => s.id === id)

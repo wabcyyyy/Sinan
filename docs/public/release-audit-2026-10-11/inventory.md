@@ -1,0 +1,10 @@
+# First-pass inventory (before product fixes)
+P1 R1: LLM401 -> generated shell FAILED -> monitor catches exception as pending; panel has no retry/confirmation or detail link. Actual production UI fault origin5175 shows generic ValueError and incomplete day skeleton; continuing to send "直接开始规划" leaves it unchanged.
+P1 R2: saved history excludes serverState; after second-turn "不去博物馆/轻松" -> return home -> reload -> restore -> date pending, optional questions repeat, structured exclusions/pace absent from saved record by actual code path. Add behavioral reproduction asserting outgoing server state after restore, then fix.
+P1 R3: saved generated session writes generationId into storage but planning.resumePending runs only on mount; restore same component cannot show saved delivery until refresh. Add behavioral reproduction and fix.
+P2 R4: business clarify projection excludes reply/replyFor/next. Actual multi-2/3/4 HTTP200 ready=true question=null options=[] and no reply. Frontend cannot render assistant answer despite successful state update.
+P2 R5: reset saves history but ChatIntake sessions state stays stale until refresh. Actual browser exit -> no history recovery button; reload -> button appears.
+P2 R6: repeated constraints input Tokyo5d/no temples/max2 returns degraded; guidance says fill right panel, but panel only checklist with no editable fields. First rerun repeats degraded. Diagnose actual raw response, keep model quality separate.
+AI finding A1: actual Tokyo2d/elderly/vegetarian budget3000 failed second-day dinner check then empty after refutation. Cost12940 (restaurant values1200/2500) reported as CNY; apparent foreign-currency confusion is inference, currency evidence insufficient to convert automatically. Retry43.9sec -> status2/PARTIAL, evaluate day status and completeness before claiming recovery.
+P3: 1-day detail suggests "第二天加博物馆"; existing map chunk1063KB warning.
+No confirmed P0 or exposed real credentials. First gates1738pass/1skip; frontend293+5pass. Simulations are labeled.

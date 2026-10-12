@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ItineraryDetail, TripItem } from '../../types/itinerary'
-import { budgetCaption, DraftOnlyBanner, DRAFT_ONLY_TEXT, ItemEvidence, itemEvidenceText, TripMetrics } from './TripBadges'
+import { budgetCaption, DietaryEvidenceNotice, DraftOnlyBanner, DRAFT_ONLY_TEXT, ItemEvidence, itemEvidenceText, TripMetrics } from './TripBadges'
 
 /**
  * React 树的第一批测试（审查 P1-10：React 零测试）。
@@ -15,6 +15,19 @@ const item = (fields: Partial<TripItem> = {}): TripItem =>
   ({ itemType: 'attraction', poiName: '西湖', ...fields }) as TripItem
 
 describe('React 详情页文案与徽章', () => {
+  it('素食未验证时具体列出餐饮候选，不被一般核实横幅掩盖', () => {
+    const message = '第 1 天：「餐厅」尚无素食可用性依据，不能确认满足饮食要求'
+    const trip = { qualityReport: { warnings: [{ code: 'DIETARY_EVIDENCE_REVIEW', message }] } } as unknown as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(DietaryEvidenceNotice, { trip }))
+    expect(html).toContain(message)
+    expect(html).toContain('aria-label="饮食要求核实"')
+    expect(renderToStaticMarkup(createElement(DietaryEvidenceNotice, { trip: {} as ItineraryDetail }))).toBe('')
+    const blocked = { qualityStatus: 'BLOCKED', qualityReport: { blockingIssues: [
+      { code: 'DIETARY_EVIDENCE_REVIEW', message },
+    ] } } as unknown as ItineraryDetail
+    expect(renderToStaticMarkup(createElement(DietaryEvidenceNotice, { trip: blocked })))
+      .toContain('行程未完成，请核实餐饮与饮食要求')
+  })
   it('预算告警消费后端的金额与口径，生成中也可见', () => {
     const message = '当前估算总额 ￥640.00 超出预算 ￥500.00，超出 ￥140.00；请调整行程或预算'
     const trip = { totalAmount: 640, budget: 500, qualityReport: {

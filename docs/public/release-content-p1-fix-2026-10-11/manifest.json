@@ -1,0 +1,29 @@
+{
+  "baseline": "1a93703a271620c904af39beb98567c05f42ce72",
+  "model": "deepseek-flash",
+  "scope": "Synthetic QA data; live, injected-fault and offline evidence are distinguished in the report.",
+  "files": {
+    "release-content-p1-fix-2026-10-11.md": "49f7d5a9e8bddc3efdc1f220409ba66c9f758e3e6f22482a4dd031af511a4c55",
+    "checks.txt": "1d393b7bbce1025b641843c731083602d36f8420bc7cfd2ffa590128efb88cf5",
+    "confirm-requirements.png": "ab7799f1e8286683d54f98b6f15af31f015235466e70eedce4bb3a4b7946f70c",
+    "confirm-ui.json": "266091ade83ea2ed03333e7705969c1fed41ae275ab81c1447f55ab308a9a811",
+    "content-browser-trip.json": "e585e9d2366354d30af3e9066960055467db8514805f54e1e12fe25af706e35f",
+    "content-final-live-candidate-0.json": "60d223eee41118ce18c6fd74f39a66b0b216c44b64a1e3cb4b3243ee50122cfb",
+    "content-final-live-clarify.json": "6a84268cddd933416ae0a37f57d2b25949ae57b374e329de4231ff2f4dd03086",
+    "content-final-live-strict-0.json": "80d8af208dc27490f51bfa3cfec790e422a690e2db86be6a700faa187b199fc3",
+    "content-final-retry.json": "944f4144269f8e562843b81920d20cd95817bab6abf8ee2f61bfed64f7009bdc",
+    "content-live-candidate-0.json": "1971099372fa9b09af4e83fc7ab8c625308eacca035f2781d53f065aaf760825",
+    "content-live-candidate-1.json": "6fd575e5d768189dc64d17e5e35afecfba881b93deb5d1af60130a21a0afda22",
+    "content-live-clarify.json": "3d578d76fc0928b054561635fe92ba51376064a48401d64783f9213e26695960",
+    "content-live-strict-0.json": "1f99c584f2d9d918c8c58cd0cbd26dd8cf474bfdf05920bc354d0413fa4e7c45",
+    "content-policy-switch.json": "6bb6a0edba2635ae64bb9ce9efd2ceda764fa2ed5da625f455370df41a4eac2a",
+    "content-production-health.json": "f326372926d1e22ea19ff14456a7b9ced03b269de3449d8452e95610ad0c36e2",
+    "content-snapshot-review.json": "e574f472333d494079e40f4bc9a339340888bd496b7bacbb19e7e79a0049a2b8",
+    "detail-dietary-warning.png": "d85d1ca1d6720d401243837aaa775e5e81c871d859e45fecd40129045a428d49",
+    "detail-ui.json": "77e9ddacd212c00277c7114d800746487e8d1cb373b6df2f9d1ef81137956108",
+    "mobile-dietary-warning.png": "a8e92edfef66b7cd3575a2dc1d6bc21330a59fe2b23eb7fe05bdab486dba1e92",
+    "mobile-ui.json": "a30e028ba626453500e6001fe08a5c0a770c53395386b8673a340f598ed0bb16",
+    "strict-blocked.png": "4d14bdc6487237507395247a059c41428ca761165ebf3159ff45194b4cd4c491",
+    "strict-ui.json": "3c8550ae0c83c72424d9f105bb0517380517de2eb921acc2d4ec6647dc94e82a"
+  }
+}

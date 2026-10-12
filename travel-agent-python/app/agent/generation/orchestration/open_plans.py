@@ -38,6 +38,7 @@ from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import activity_floor, floor_suggestions
 from app.agent.generation.content.trip_stream import open_trip_streamed
 from app.agent.generation.orchestration.day_stream import llm_open_day
+from app.agent.generation.output.facts import field_fact_evidence
 from app.agent.generation.rules.generation_core import (
     draft_day_plans,
     fill_zero_costs,
@@ -224,6 +225,9 @@ def _generate_drafts(
         for item in plan["items"]:
             if not str(item.get("verification_status") or "").strip():
                 apply_label(item, label_for_landed_item(item, req.city))
+            item["fact_evidence"] = field_fact_evidence(
+                item, label_for_landed_item(item, req.city), cost_observed=False, open_time_observed=False
+            )
         for item in plan["items"]:
             if item.get("poi_name"):
                 used.add(str(item["poi_name"]))

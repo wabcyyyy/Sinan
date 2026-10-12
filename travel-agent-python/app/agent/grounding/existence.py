@@ -57,6 +57,8 @@ class ResolveResult:
     reason: str = ""
     out_of_area: bool = False
     authoritative_negative: bool = False
+    dietary_options: tuple[str, ...] = ()
+    source_url: str | None = None
 
     @property
     def grounded(self) -> bool:
@@ -214,6 +216,8 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
             latitude=south_east[0],
             longitude=south_east[1],
             address=str(row.get("display_name") or row.get("address") or "") or None,
+            dietary_options=tuple(row.get("dietary_options") or ()),
+            source_url=row.get("source_url") or None,
         )
         if _in_destination_area(south_east[0], south_east[1], city) is False:
             first_mismatch = first_mismatch or replace(
@@ -278,6 +282,9 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
                 "external_id": result.external_id or "",
                 "latitude": result.latitude,
                 "longitude": result.longitude,
+                "dietary_options": result.dietary_options,
+                "source_url": result.source_url,
+                "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
             }
         )
     if result.state != UNKNOWN:

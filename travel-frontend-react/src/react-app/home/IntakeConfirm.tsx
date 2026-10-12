@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
+import type { TripRequirements } from '../../types/generated/contracts'
 import { fallbackCities } from '../data'
 import { Icon } from '../shared/Icon'
 import { INTAKE_PREFERENCES } from './intakeSlots'
@@ -14,6 +15,7 @@ import type { IntakeSlots } from './intakeSlots'
  * 触发 onStart；重验未过保持禁用，任何前端路径都不在 !ready 时触发生成。 */
 export function IntakeConfirm({
   slots,
+  requirements,
   busy,
   ready,
   needsReconfirm,
@@ -23,6 +25,7 @@ export function IntakeConfirm({
   onStart,
 }: {
   slots: IntakeSlots
+  requirements?: TripRequirements | null
   busy: boolean
   ready: boolean
   needsReconfirm: boolean
@@ -139,6 +142,15 @@ export function IntakeConfirm({
           </div>
         </div>
       </div>
+
+      {requirements && <div className="plan-brief-pills" aria-label="明确要求">
+        {requirements.maxAttractionsPerDay != null && <span className="plan-brief-pill">每天最多 {requirements.maxAttractionsPerDay} 个景点</span>}
+        {requirements.excludedCategories?.includes('temple') && <span className="plan-brief-pill">不去寺庙/神社</span>}
+        {requirements.dietaryRequirement && <span className="plan-brief-pill">
+          {requirements.dietaryRequirement === 'vegan' ? '纯素（不含蛋奶）' : '素食（可含蛋奶）'} ·
+          {requirements.diningEvidencePolicy === 'review_candidates' ? '餐饮候选需自行核实' : '只安排有饮食依据的餐厅'}
+        </span>}
+      </div>}
 
       {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
       <button

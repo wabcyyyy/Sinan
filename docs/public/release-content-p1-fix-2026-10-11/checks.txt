@@ -1,0 +1,496 @@
+
+## content-last-regression.log
+...............................                                          [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+31 passed, 1 warning in 2.55s
+
+## content-identity-final.log
+........................................................................ [ 73%]
+..........................                                               [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+98 passed, 1 warning in 10.17s
+
+## content-final-regression-v2.log
+.....................................................                    [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+53 passed, 1 warning in 12.14s
+
+## content-full-gate-complete.log
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 73%]
+........................................................................ [ 77%]
+......................................................s................. [ 81%]
+........................................................................ [ 85%]
+......................................................F................. [ 89%]
+......................................................F................. [ 93%]
+........................................................................ [ 97%]
+........................................                                 [100%]
+================================== FAILURES ===================================
+___________________ test_every_data_endpoint_is_documented ____________________
+
+    def test_every_data_endpoint_is_documented():
+        sources = SOURCES_MD.read_text(encoding="utf-8")
+        prefixes = _code_endpoint_prefixes()
+        missing = sorted(p for p in prefixes if p not in sources)
+>       assert not missing, f"以下端点常量未登记进 SOURCES.md（方向：代码⊆文档）：{missing}"
+E       AssertionError: 以下端点常量未登记进 SOURCES.md（方向：代码⊆文档）：['https://www.openstreetmap.org/']
+E       assert not ['https://www.openstreetmap.org/']
+
+tests\test_sources_manifest.py:48: AssertionError
+_______________ test_trip_stream_event_sequence_matches_golden ________________
+
+    def test_trip_stream_event_sequence_matches_golden():
+        """整段流式链路：完整 NDJSON 事件序列逐字节一致（含 day_patch 粒度）。"""
+        events = _trip_stream_events()
+        types = [event["type"] for event in events]
+        # 快照必须覆盖 day_patch：酒店摊铺给漏排的晚次补酒店（本 fixture 第 2/3 天触发）
+        assert "day_patch" in types, "fixture 未触发 day_patch，快照失去该粒度覆盖"
+        assert types[-1] == "done"
+>       _compare(events, TRIP_GOLDEN)
+
+tests\test_stream_snapshot.py:222: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+actual = [{'plan': {'backupPlan': [], 'dayNo': 1, 'dayOptions': [], 'items': [{'address': '巴塞罗那示例区1', 'cost': 25.0, 'durationMi...}, ...], 'type': 'suggestions'}, {'complete': True, 'daysEmitted': [1, 2, 3], 'daysExpected': 3, 'message': None, ...}]
+golden_path = WindowsPath('D:/wcy/project/Sinan/travel-agent-python/tests/golden/stream_trip_events.json')
+
+    def _compare(actual: object, golden_path: pathlib.Path) -> None:
+        rendered = json.dumps(actual, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
+        if _REGENERATE:
+            golden_path.parent.mkdir(parents=True, exist_ok=True)
+            golden_path.write_text(rendered, encoding="utf-8")
+            return
+        assert golden_path.exists(), f"缺少基线 {golden_path.name}；先跑 GOLDEN_REGENERATE=1 生成并人工复核"
+        expected = golden_path.read_text(encoding="utf-8")
+>       assert rendered == expected, (
+            f"{golden_path.name} 与当前事件序列不一致。若为有意改口径，"
+            f"跑 GOLDEN_REGENERATE=1 重生成并人工复核 diff；否则这是行为回归。"
+        )
+E       AssertionError: stream_trip_events.json 与当前事件序列不一致。若为有意改口径，跑 GOLDEN_REGENERATE=1 重生成并人工复核 diff；否则这是行为回归。
+E       assert '[\n  {\n    ...ull\n  }\n]\n' == '[\n  {\n    ...ull\n  }\n]\n'
+E         
+E         Skipping 917 identical leading characters in diff, use -v to show
+E         - idence": {}
+E         ?           -
+E         + idence": {
+E         +             "identity": {
+E         +               "sourceRef": "opentripmap",...
+E         
+E         ...Full output truncated (967 lines hidden), use '-vv' to show
+
+tests\test_stream_snapshot.py:209: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _fake_clock
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _optimize_support
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Coverage XML written to file coverage.xml
+=========================== short test summary info ===========================
+FAILED tests/test_sources_manifest.py::test_every_data_endpoint_is_documented
+FAILED tests/test_stream_snapshot.py::test_trip_stream_event_sequence_matches_golden
+2 failed, 1765 passed, 1 skipped, 3 warnings in 614.27s (0:10:14)
+
+## content-gate-passed.log
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 12%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+........................................................................ [ 28%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 73%]
+........................................................................ [ 77%]
+.......................................................s................ [ 81%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+.........................................                                [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _fake_clock
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\_pytest\config\__init__.py:838
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\_pytest\config\__init__.py:838: PytestAssertRewriteWarning: Module already imported so cannot be rewritten: _optimize_support
+    self.import_plugin(import_spec)
+
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Coverage XML written to file coverage.xml
+1768 passed, 1 skipped, 3 warnings in 884.24s (0:14:44)
+==> coverage gate on changed lines (diff-cover, G-3.4)
+-------------
+Diff Coverage
+Diff: origin/master...HEAD, staged and unstaged changes
+-------------
+travel-agent-python/app/agent/__init__.py (100%)
+travel-agent-python/app/agent/core/poi_identity.py (100%)
+travel-agent-python/app/agent/data/places.py (100%)
+travel-agent-python/app/agent/editing/chat_draft/plan_edit.py (100%)
+travel-agent-python/app/agent/editing/clarify.py (100%)
+travel-agent-python/app/agent/editing/clarify_policy.py (100%)
+travel-agent-python/app/agent/generation/content/landing.py (100%)
+travel-agent-python/app/agent/generation/content/reflect.py (100%)
+travel-agent-python/app/agent/generation/content/requirement_directives.py (100%)
+travel-agent-python/app/agent/generation/orchestration/day_stream.py (100%)
+travel-agent-python/app/agent/generation/orchestration/open_plans.py (100%)
+travel-agent-python/app/agent/generation/orchestration/trip_graph.py (100%)
+travel-agent-python/app/agent/generation/output/facts.py (100%)
+travel-agent-python/app/agent/generation/output/quality.py (100%)
+travel-agent-python/app/agent/generation/rules/constraint_checks.py (100%)
+travel-agent-python/app/agent/generation/rules/day_policy.py (100%)
+travel-agent-python/app/agent/grounding/existence.py (100%)
+travel-agent-python/app/agent/grounding/facts.py (100%)
+travel-agent-python/app/agent/grounding/grounding_evidence.py (100%)
+travel-agent-python/app/schemas/requirement_patches.py (100%)
+travel-agent-python/app/schemas/trip_requirements.py (100%)
+travel-agent-python/app/services/day_delivery_gate.py (100%)
+travel-agent-python/app/services/day_persistence.py (100%)
+travel-agent-python/app/services/itinerary_city.py (100%)
+travel-agent-python/app/services/itinerary_generation.py (100%)
+travel-agent-python/app/services/itinerary_query.py (100%)
+-------------
+Total:   163 lines
+Missing: 0 lines
+Coverage: 100%
+-------------
+
+==> contract export drift
+exported D:\wcy\project\Sinan\contracts\stream_events.schema.json
+exported D:\wcy\project\Sinan\contracts\agent_api.schema.json
+exported D:\wcy\project\Sinan\contracts\business_api.schema.json
+exported D:\wcy\project\Sinan\contracts\openapi.json
+exported D:\wcy\project\Sinan\travel-frontend-react\src\types\generated\contracts.ts
+OK: contracts match app/schemas/** byte-for-byte and every artifact is tracked
+
+ALL GREEN
+
+## content-fe-build-complete.log
+
+> travel-frontend-react@0.1.0 build
+> npm run typecheck && vite build
+
+
+> travel-frontend-react@0.1.0 typecheck
+> tsc --noEmit
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 111 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 1.78 kB │ gzip:   1.03 kB
+dist/assets/cover-dali-OLtEbjKG.webp           77.78 kB
+dist/assets/cover-paris-Dnee6tt6.webp          80.23 kB
+dist/assets/cover-hangzhou-B8RBw38R.webp       81.14 kB
+dist/assets/cover-shanghai-C_Qe-LK_.webp       81.28 kB
+dist/assets/cover-xiamen-fosTvEqL.webp         87.22 kB
+dist/assets/cover-osaka-CRYruiq8.webp         112.35 kB
+dist/assets/cover-chengdu-CyfkEett.webp       130.92 kB
+dist/assets/cover-seoul-d0vz3bOc.webp         132.67 kB
+dist/assets/cover-beijing-D3MdN9WK.webp       132.72 kB
+dist/assets/cover-tokyo-BBV9TLck.webp         135.41 kB
+dist/assets/cover-singapore-0-bdstr0.webp     137.41 kB
+dist/assets/cover-chongqing-DTXhPzrs.webp     145.25 kB
+dist/assets/cover-xian-CPJqfgO7.webp          146.44 kB
+dist/assets/cover-kyoto-DlxPlWLs.webp         147.94 kB
+dist/assets/cover-bangkok-Cii4t6uE.webp       148.14 kB
+dist/assets/cover-bali-CCnV8FE3.webp          149.67 kB
+dist/assets/maplibre-gl-worker-Ceb832pW.js    507.81 kB
+dist/assets/DemoPage-Bhxi6Uot.css               1.00 kB │ gzip:   0.48 kB
+dist/assets/TripMapPanel-DFvSk16B.css          83.13 kB │ gzip:  10.53 kB
+dist/assets/index-COaehzZB.css                136.33 kB │ gzip:  23.05 kB
+dist/assets/DemoPage-uH0XkUum.js                6.28 kB │ gzip:   3.19 kB
+dist/assets/react-X-tRH5j4.js                  11.21 kB │ gzip:   4.03 kB
+dist/assets/TripDetailPage-wI1RJEnb.js         18.66 kB │ gzip:   6.78 kB
+dist/assets/index-Bv9vbYpi.js                 317.09 kB │ gzip: 101.55 kB
+dist/assets/TripMapPanel-KECDM1pH.js        1,063.09 kB │ gzip: 293.70 kB
+✓ built in 2.63s
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+## content-fe-tests-complete.log
+ Test Files  31 passed (31)
+      Tests  306 passed (306)
+   Duration  4.16s (transform 4.79s, setup 0ms, collect 10.45s, tests 3.36s, environment 22.00s, prepare 5.71s)
+
+✔ 完整交付且事实需核实仍可通过 (1.2968ms)
+✔ 行程 189：页面完成但第二天 PENDING 为空必须失败 (1.4743ms)
+✔ 住宿缺失、重复、退房日入住均失败 (1.1657ms)
+✔ 空日、缺日、重复日均失败 (0.7277ms)
+✔ 预算超支必须已有后端告警，零金额不算重算完成 (0.3235ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 200.0252
+
+## content-fe-theme-complete.log
+
+> travel-frontend-react@0.1.0 theme:lint
+> node scripts/theme-lint.mjs
+
+[theme-lint] 违规 0 处（无）；豁免文件 0 个
+[theme-lint] OK
+
+## content-fe-ep-complete.log
+
+> travel-frontend-react@0.1.0 ep:lint
+> node scripts/ep-allowlist.mjs
+
+[ep-allowlist] EP 使用 0 处，涉及 0 个文件（允许清单 0 个）
+[ep-allowlist] OK
+
+## content-eval-agent.log
+flight quotes absent: no_origin (city=北京)
+flight quotes absent: no_origin (city=上海)
+flight quotes absent: no_origin (city=杭州)
+flight quotes absent: no_origin (city=成都)
+flight quotes absent: no_origin (city=西安)
+flight quotes absent: no_origin (city=三亚)
+flight quotes absent: no_origin (city=广州)
+flight quotes absent: no_origin (city=厦门)
+flight quotes absent: no_origin (city=Barcelona)
+flight quotes absent: no_origin (city=Tokyo)
+flight quotes absent: no_origin (city=Bali)
+flight quotes absent: no_origin (city=昆明)
+flight quotes absent: no_origin (city=Paris)
+{
+  "poi_authority_rate": 1.0,
+  "poi_grounded_rate": 0.7124,
+  "poi_refuted_count": 0,
+  "field_reference_rate": 1.0,
+  "time_conflict_rate": 0.0,
+  "route_violation_rate": 0.0,
+  "attraction_duplicate_rate": 0.0,
+  "budget_deviation_rate": 0.0,
+  "terminal_reset_day_rate": 0.0154,
+  "success_status_rate": 0.0,
+  "degraded_status_rate": 1.0,
+  "failed_status_rate": 0.0,
+  "fallback_success_rate": 1.0,
+  "trace_complete_rate": 1.0,
+  "research_rounds_avg": 3.0,
+  "research_pack_avg": 18.0,
+  "coord_valid_rate": 0.7124,
+  "deeplink_resolvable_rate": 1.0,
+  "category_reasonable_rate": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline
+
+## content-eval-research.log
+flight quotes absent: no_origin (city=杭州)
+{
+  "avg_rounds": 1.0,
+  "pack_total": 18,
+  "degraded_rate": 0.0,
+  "refill_effectiveness": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline
+
+## content-eval-editing.log
+{
+  "edit_ops_valid_rate": 1.0,
+  "edit_target_hit_rate": 1.0,
+  "clarify_slot_fill_rate": 1.0,
+  "clarify_question_valid_rate": 1.0,
+  "guide_kind_valid_rate": 1.0,
+  "guide_suggestion_shape_rate": 1.0,
+  "replan_lock_respected_rate": 1.0,
+  "replan_replaced_rate": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline\editing_report.json
+
+## content-eval-experience.log
+day 1.3 kept PENDING (hard blockers): ['第 3 天待确认（day_window）：窗口只有单边，无法完整验收']
+{
+  "hard_constraint_fulfillment": {
+    "applicable": 9.0,
+    "pass": 8.0,
+    "violation": 0.0,
+    "unknown": 1.0,
+    "rate": 0.8889
+  },
+  "first_pass_delivery": {
+    "generation_cases": 1.0,
+    "first_pass": 1.0,
+    "timeout_failures": 0.0,
+    "generation_failures": 0.0,
+    "rate": 1.0
+  },
+  "edit_scope_preservation": {
+    "scoped_cases": 1.0,
+    "preserved": 1.0,
+    "rate": 1.0
+  },
+  "duplicate_executions": 0.0,
+  "fact_conflicts": 2.0
+}
+{"cases": {"pass": 14, "skip": 0, "fail": 0}, "checks": {"pass": 20, "skip": 0, "fail": 0}, "checks_total": 20}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\experience\experience_report.json
+
+## content-eval-ratchet.log
+eval ratchet OK: 31 个指标在基线内（基线只跟不松）
+
+## content-production-build-final.log
+#25 10.56 dist/assets/index-Bv9vbYpi.js                 317.09 kB │ gzip: 101.55 kB
+#25 10.56 dist/assets/TripMapPanel-KECDM1pH.js        1,063.09 kB │ gzip: 293.70 kB
+#25 10.56 
+#25 10.56 (!) Some chunks are larger than 500 kB after minification. Consider:
+#25 10.56 - Using dynamic import() to code-split the application
+#25 10.56 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#25 10.56 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#25 10.56 ✓ built in 3.92s
+#25 DONE 10.9s
+
+#24 [agent-python internal] load build context
+#24 ...
+
+#14 [frontend-react web 1/5] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#14 CACHED
+
+#26 [frontend-react web 2/5] COPY --from=build /app/dist /usr/share/nginx/html
+#26 DONE 0.0s
+
+#27 [frontend-react web 3/5] COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /usr/share/nginx/html/licenses/
+#27 DONE 0.0s
+
+#24 [agent-python internal] load build context
+#24 ...
+
+#28 [frontend-react web 4/5] COPY --from=build /app/src/assets/img/CREDITS.md /usr/share/nginx/html/licenses/photo-credits.md
+#28 DONE 0.0s
+
+#29 [frontend-react web 5/5] COPY nginx.conf /etc/nginx/conf.d/default.conf
+#29 DONE 0.0s
+
+#24 [agent-python internal] load build context
+#24 ...
+
+#30 [frontend-react] exporting to image
+#30 exporting layers 0.0s done
+#30 writing image sha256:df862946272bc27dcdb3294feccf3ea285f437a2c56a93c1d861208984a03ff8 done
+#30 naming to docker.io/library/travel-assistant-frontend-react done
+#30 DONE 0.1s
+
+#31 [frontend-react] resolving provenance for metadata file
+#31 DONE 0.0s
+
+#24 [agent-python internal] load build context
+#24 transferring context: 129.38MB 15.1s
+#24 transferring context: 186.37MB 20.2s
+#24 transferring context: 225.17MB 23.9s done
+#24 DONE 23.9s
+
+#32 [agent-python deps 3/6] WORKDIR /app
+#32 CACHED
+
+#33 [agent-python deps 4/6] RUN apt-get update && apt-get install -y --no-install-recommends build-essential     && rm -rf /var/lib/apt/lists/*
+#33 CACHED
+
+#34 [agent-python deps 5/6] COPY pyproject.toml uv.lock ./
+#34 CACHED
+
+#35 [agent-python deps 6/6] RUN uv sync --frozen --no-dev
+#35 CACHED
+
+#36 [agent-python stage-1 2/6] WORKDIR /app
+#36 CACHED
+
+#37 [agent-python deps 2/6] COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv
+#37 CACHED
+
+#38 [agent-python stage-1 3/6] COPY --from=deps /app/.venv /app/.venv
+#38 CACHED
+
+#39 [agent-python stage-1 4/6] COPY . .
+#39 DONE 6.1s
+
+#40 [agent-python stage-1 5/6] COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /app/
+#40 DONE 0.1s
+
+#41 [agent-python stage-1 6/6] RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+#41 DONE 48.4s
+
+#42 [agent-python] exporting to image
+#42 exporting layers
+#42 exporting layers 1.6s done
+#42 writing image sha256:57c4501c26322642794e19d3359d2d9f4f22e7520e7f04665952b8e318a13fc4 done
+#42 naming to docker.io/library/travel-assistant-agent-python 0.0s done
+#42 DONE 1.7s
+
+#43 [agent-python] resolving provenance for metadata file
+#43 DONE 0.0s
+ Image travel-assistant-frontend-react Built 
+ Image travel-assistant-agent-python Built 
+
+## content-production-start-final.log
+ Container ta-mysql Running 
+ Container ta-redis Running 
+ Container ta-release-agent Recreate 
+ Container ta-release-agent Recreated 
+ Container ta-release-frontend Recreate 
+ Container ta-release-frontend Recreated 
+ Container ta-redis Waiting 
+ Container ta-mysql Waiting 
+ Container ta-mysql Healthy 
+ Container ta-redis Healthy 
+ Container ta-release-agent Starting 
+ Container ta-release-agent Started 
+ Container ta-release-frontend Starting 
+ Container ta-release-frontend Started 

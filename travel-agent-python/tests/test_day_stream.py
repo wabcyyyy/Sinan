@@ -3,6 +3,7 @@ from pydantic import ValidationError
 from app.agent.generation.orchestration import day_stream
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.schemas.trip import BackupRule, GenerateDayRequest, GenerateRequest, PhotoSpot
+from app.schemas.trip_requirements import TripRequirements
 
 
 def test_generate_request_rejects_more_than_one_week():
@@ -219,6 +220,7 @@ def test_degraded_gateway_gets_compact_prompt(monkeypatch):
     产物），调用点不做任何 URL 嗅探（R2-F1 唯一换算点原则）。
     """
     captured = {}
+    calls = {}
 
     def _spy_prompt(**kwargs):
         captured.update(kwargs)
@@ -226,17 +228,96 @@ def test_degraded_gateway_gets_compact_prompt(monkeypatch):
 
     class _Client:
         def complete(self, *a, **k):
+            calls.update(k)
             return '{"theme":"t","note":"n","items":[{"poi_name":"西湖","item_type":"attraction"}]}'
 
     monkeypatch.setattr(day_stream, "open_day_system_prompt", _spy_prompt)
     monkeypatch.setattr(day_stream, "json_response_format", lambda *a, **k: {"type": "json_object"})
     monkeypatch.setattr(day_stream, "get_llm_client", lambda: _Client())
 
-    day_stream.llm_open_day(GenerateDayRequest(city="杭州", day_no=2, days=2, context={}), used=set())
+    day_stream.llm_open_day(
+        GenerateDayRequest(city="杭州", day_no=2, days=2, budget=3000, persons=2, context={}), used=set()
+    )
     assert captured["compact_output"] is True
+    assert "人民币 CNY/RMB" in calls["system_prompt"] and "每间每晚" in calls["system_prompt"]
 
     monkeypatch.setattr(
         day_stream, "json_response_format", lambda *a, **k: {"type": "json_schema", "json_schema": {"name": "x"}}
     )
     day_stream.llm_open_day(GenerateDayRequest(city="杭州", day_no=2, days=2, context={}), used=set())
     assert captured["compact_output"] is False
+
+
+def test_day_repair_replaces_filtered_cross_day_points(monkeypatch):
+    """完整单日图消费真实落地/去重结果，而非给图返回预造的合格计划。"""
+    monkeypatch.setattr(day_stream.settings, "llm_api_key", "configured")
+    monkeypatch.setattr(day_stream, "local_ground", lambda *args: None)
+    monkeypatch.setattr(day_stream, "drop_refuted_items", lambda rows, **kwargs: rows)
+    monkeypatch.setattr(day_stream, "build_suggestions", lambda *args, **kwargs: [])
+    monkeypatch.setattr(day_stream, "fill_suggestion_gaps", lambda rows, *args, **kwargs: rows)
+    calls = []
+
+    def generate(req, used):
+        calls.append(req.feedback)
+        if "东京都厅展望室" not in req.feedback:
+            return {
+                "items": [
+                    {
+                        "item_type": "attraction",
+                        "poi_name": "东京都厅展望室",
+                        "start_time": "09:00",
+                        "end_time": "12:00",
+                    },
+                    {
+                        "item_type": "food",
+                        "poi_name": "Tully's Coffee",
+                        "cost": 45,
+                        "start_time": "12:30",
+                        "end_time": "13:30",
+                    },
+                ]
+            }
+        return {
+            "items": [
+                {
+                    "item_type": "attraction",
+                    "poi_name": "上野公园",
+                    "start_time": "09:00",
+                    "end_time": "12:00",
+                    "cost": 0,
+                },
+                {"item_type": "food", "poi_name": "新餐厅", "cost": 60, "start_time": "12:30", "end_time": "13:30"},
+            ]
+        }
+
+    monkeypatch.setattr(day_stream, "llm_open_day", generate)
+    plan = day_stream.run_generate_day(
+        GenerateDayRequest(
+            city="东京",
+            day_no=2,
+            days=2,
+            per_day_chain=True,
+            used_names=["东京都厅展望室"],
+            context={},
+        )
+    )
+    assert len(calls) == 2 and "已移除" in calls[1]
+    assert [item.poi_name for item in plan.items] == ["上野公园", "新餐厅"]
+
+
+def test_day_prompt_uses_confirmed_relaxed_policy(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(day_stream, "open_day_system_prompt", lambda **kwargs: captured.update(kwargs) or "SYS")
+    monkeypatch.setattr(
+        day_stream,
+        "get_llm_client",
+        lambda: type(
+            "Client",
+            (),
+            {"complete": lambda *args, **kwargs: '{"items":[{"poi_name":"上野公园","item_type":"attraction"}]}'},
+        )(),
+    )
+    day_stream.llm_open_day(
+        GenerateDayRequest(city="东京", requirements_struct=TripRequirements(pace="relaxed")), used=set()
+    )
+    assert captured["max_daily_attractions"] == 4

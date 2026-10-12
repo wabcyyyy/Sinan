@@ -43,6 +43,8 @@ def local_ground(item: dict[str, Any], city: str) -> bool:
         return False
     if result.localized_name:
         item["poi_name"] = result.localized_name
+    if result.external_id:
+        item["poi_id"] = result.external_id
     item["latitude"] = result.latitude
     item["longitude"] = result.longitude
     if result.address and not item.get("address"):

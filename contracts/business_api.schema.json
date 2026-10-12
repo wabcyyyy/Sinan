@@ -375,6 +375,52 @@
           "default": null,
           "title": "Pace"
         },
+        "maxAttractionsPerDay": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxattractionsperday"
+        },
+        "dietaryRequirement": {
+          "anyOf": [
+            {
+              "enum": [
+                "vegetarian",
+                "vegan"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dietaryrequirement"
+        },
+        "diningEvidencePolicy": {
+          "anyOf": [
+            {
+              "enum": [
+                "verified_only",
+                "review_candidates"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Diningevidencepolicy"
+        },
         "transportPreference": {
           "anyOf": [
             {
@@ -449,6 +495,9 @@
         "excludedPlaces",
         "excludedCategories",
         "pace",
+        "maxAttractionsPerDay",
+        "dietaryRequirement",
+        "diningEvidencePolicy",
         "transportPreference",
         "maxWalkMinutesPerLeg",
         "budgetPolicy",

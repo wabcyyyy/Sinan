@@ -13,6 +13,8 @@ from app.agent.data.route_service import is_estimated
 from app.agent.generation.content.reflect import validate_plans
 from app.agent.generation.content.route_matrix import route_matrix_for_plans
 from app.agent.generation.output.critic import critique_plans
+from app.agent.generation.rules.constraint_checks import check_constraints
+from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.research.agent_state import UnifiedAgentState
 from app.agent.runtime.trace import record_event
 from app.common.addons import addons
@@ -129,6 +131,13 @@ def judge_output(
     estimated_count = 0
     evidenced_count = 0
     for day_index, day in enumerate(daily_plans):
+        req = state.request.requirements_struct if state.request else None
+        report = check_constraints(day.model_dump(), req, day.day_no, day_policy_for(req, day.day_no))
+        quality_warnings.extend(
+            QualityIssue(code="DIETARY_EVIDENCE_REVIEW", message=f"第 {day.day_no} 天：{check.reason}")
+            for check in report.checks
+            if check.kind == "dietary_requirement"
+        )
         for item_index, item in enumerate(day.items):
             item_count += 1
             if item.verification_status != "verified":

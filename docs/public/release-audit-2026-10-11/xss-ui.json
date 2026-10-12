@@ -1,0 +1,10 @@
+{
+  "input": "<img src=x onerror=alert(\"release-qa\")> [QA](javascript:alert(\"release-qa\"))",
+  "dom": {
+    "dangerousLinks": 0,
+    "injectedImages": 0,
+    "payloadVisible": true
+  },
+  "dialog": null,
+  "consoleErrors": []
+}

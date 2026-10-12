@@ -1,0 +1,229 @@
+
+## p1-regression-before.log
+        result = unified_agent_graph.invoke(empty_day_state(req), config)
+        if result.get("plan") is None or not result["plan"].items:
+>           raise ValueError(result.get("error") or "�����г�����ʧ��")
+E           ValueError: ȥ�غ�û�п����澰�㣺��������չ�������������찲�ţ���ѡ��ͬ�ص�
+
+app\agent\generation\orchestration\trip_graph.py:338: ValueError
+____________ test_day_graph_rejects_coffee_only_after_all_attempts ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000025C404D38F0>
+
+    def test_day_graph_rejects_coffee_only_after_all_attempts(monkeypatch):
+        import pytest
+    
+        monkeypatch.setattr(
+            day_workflow,
+            "generate_day_once",
+            lambda req, **kwargs: (
+                DailyPlan(day_no=2, items=[TripItem(item_type="food", poi_name="Tully's Coffee", cost=45)]),
+                "open",
+            ),
+        )
+>       with pytest.raises(ValueError, match="δ�����κξ���"):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_day_workflow.py:176: Failed
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_day_workflow.py::test_last_day_attempt_keeps_filtered_poi_feedback
+FAILED tests/test_day_workflow.py::test_day_graph_rejects_coffee_only_after_all_attempts
+2 failed, 4 passed, 1 warning in 6.67s
+
+## p1-targeted-final.log
+...............................................................          [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+63 passed, 1 warning in 30.36s
+
+## p1-full-gate-final.log
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Coverage XML written to file coverage.xml
+1745 passed, 1 skipped, 3 warnings in 852.34s (0:14:12)
+==> coverage gate on changed lines (diff-cover, G-3.4)
+-------------
+Diff Coverage
+Diff: origin/master...HEAD, staged and unstaged changes
+-------------
+travel-agent-python/app/agent/__init__.py (100%)
+travel-agent-python/app/agent/editing/chat_draft/plan_edit.py (100%)
+travel-agent-python/app/agent/generation/content/landing.py (100%)
+travel-agent-python/app/agent/generation/content/reflect.py (100%)
+travel-agent-python/app/agent/generation/orchestration/day_stream.py (100%)
+travel-agent-python/app/agent/generation/orchestration/trip_graph.py (100%)
+travel-agent-python/app/services/day_delivery_gate.py (100%)
+travel-agent-python/app/services/day_persistence.py (100%)
+travel-agent-python/app/services/itinerary_city.py (100%)
+-------------
+Total:   43 lines
+Missing: 0 lines
+Coverage: 100%
+-------------
+
+==> contract export drift
+exported D:\wcy\project\Sinan\contracts\stream_events.schema.json
+exported D:\wcy\project\Sinan\contracts\agent_api.schema.json
+exported D:\wcy\project\Sinan\contracts\business_api.schema.json
+exported D:\wcy\project\Sinan\contracts\openapi.json
+exported D:\wcy\project\Sinan\travel-frontend-react\src\types\generated\contracts.ts
+OK: contracts match app/schemas/** byte-for-byte and every artifact is tracked
+
+ALL GREEN
+
+## p1-eval-agent-final.log
+flight quotes absent: no_origin (city=北京)
+flight quotes absent: no_origin (city=上海)
+flight quotes absent: no_origin (city=杭州)
+flight quotes absent: no_origin (city=成都)
+flight quotes absent: no_origin (city=西安)
+flight quotes absent: no_origin (city=三亚)
+flight quotes absent: no_origin (city=广州)
+flight quotes absent: no_origin (city=厦门)
+flight quotes absent: no_origin (city=Barcelona)
+flight quotes absent: no_origin (city=Tokyo)
+flight quotes absent: no_origin (city=Bali)
+flight quotes absent: no_origin (city=昆明)
+flight quotes absent: no_origin (city=Paris)
+{
+  "poi_authority_rate": 1.0,
+  "poi_grounded_rate": 0.7124,
+  "poi_refuted_count": 0,
+  "field_reference_rate": 1.0,
+  "time_conflict_rate": 0.0,
+  "route_violation_rate": 0.0,
+  "attraction_duplicate_rate": 0.0,
+  "budget_deviation_rate": 0.0,
+  "terminal_reset_day_rate": 0.0154,
+  "success_status_rate": 0.0,
+  "degraded_status_rate": 1.0,
+  "failed_status_rate": 0.0,
+  "fallback_success_rate": 1.0,
+  "trace_complete_rate": 1.0,
+  "research_rounds_avg": 3.0,
+  "research_pack_avg": 18.0,
+  "coord_valid_rate": 0.7124,
+  "deeplink_resolvable_rate": 1.0,
+  "category_reasonable_rate": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline
+
+## p1-eval-research-final.log
+flight quotes absent: no_origin (city=杭州)
+{
+  "avg_rounds": 1.0,
+  "pack_total": 18,
+  "degraded_rate": 0.0,
+  "refill_effectiveness": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline
+
+## p1-eval-editing-final.log
+{
+  "edit_ops_valid_rate": 1.0,
+  "edit_target_hit_rate": 1.0,
+  "clarify_slot_fill_rate": 1.0,
+  "clarify_question_valid_rate": 1.0,
+  "guide_kind_valid_rate": 1.0,
+  "guide_suggestion_shape_rate": 1.0,
+  "replan_lock_respected_rate": 1.0,
+  "replan_replaced_rate": 1.0
+}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\offline\editing_report.json
+
+## p1-eval-experience-final.log
+day 1.3 kept PENDING (hard blockers): ['第 3 天待确认（day_window）：窗口只有单边，无法完整验收']
+{
+  "hard_constraint_fulfillment": {
+    "applicable": 9.0,
+    "pass": 8.0,
+    "violation": 0.0,
+    "unknown": 1.0,
+    "rate": 0.8889
+  },
+  "first_pass_delivery": {
+    "generation_cases": 1.0,
+    "first_pass": 1.0,
+    "timeout_failures": 0.0,
+    "generation_failures": 0.0,
+    "rate": 1.0
+  },
+  "edit_scope_preservation": {
+    "scoped_cases": 1.0,
+    "preserved": 1.0,
+    "rate": 1.0
+  },
+  "duplicate_executions": 0.0,
+  "fact_conflicts": 2.0
+}
+{"cases": {"pass": 14, "skip": 0, "fail": 0}, "checks": {"pass": 20, "skip": 0, "fail": 0}, "checks_total": 20}
+报告已生成：D:\wcy\project\Sinan\travel-agent-python\tests\agent_eval\report\experience\experience_report.json
+
+## p1-eval-ratchet-final.log
+eval ratchet OK: 31 个指标在基线内（基线只跟不松）
+
+## p1-container-build.log
+
+#14 [deps 6/6] RUN uv sync --frozen --no-dev
+#14 CACHED
+
+#15 [stage-1 2/6] WORKDIR /app
+#15 CACHED
+
+#16 [deps 4/6] RUN apt-get update && apt-get install -y --no-install-recommends build-essential     && rm -rf /var/lib/apt/lists/*
+#16 CACHED
+
+#17 [deps 5/6] COPY pyproject.toml uv.lock ./
+#17 CACHED
+
+#18 [stage-1 3/6] COPY --from=deps /app/.venv /app/.venv
+#18 CACHED
+
+#19 [stage-1 4/6] COPY . .
+#19 DONE 11.3s
+
+#20 [stage-1 5/6] COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /app/
+#20 DONE 0.1s
+
+#21 [stage-1 6/6] RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+#21 DONE 58.8s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 5.5s done
+#22 writing image sha256:99b5633e61f85b13ec1bda835a5ce3643ce112d9f519602eb5871892b092cf29 done
+#22 naming to docker.io/library/travel-assistant-agent-python 0.0s done
+#22 DONE 5.6s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.3s
+ Image travel-assistant-agent-python Built 
+
+## p1-container-start.log
+ Container ta-mysql Running 
+ Container ta-redis Running 
+ Container ta-release-agent Recreate 
+ Container ta-release-agent Recreated 
+ Container ta-redis Waiting 
+ Container ta-mysql Waiting 
+ Container ta-redis Healthy 
+ Container ta-mysql Healthy 
+ Container ta-release-agent Starting 
+ Container ta-release-agent Started 
+
+## p1-container-health.log
+/ta-release-agent running healthy
+/ta-mysql running healthy
+/ta-redis running healthy

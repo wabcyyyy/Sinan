@@ -96,7 +96,7 @@ export function ChatPanel({
             <span>还没有对话。对行程说一句话，立即智能微调：</span>
           </div>
           <div className="chat-suggest">
-            {['第二天加个博物馆', '换个舒服点的酒店', '把第二天安排松一点'].map((hint) => (
+            {[`第 ${currentDayNo} 天加个博物馆`, '换个舒服点的酒店', `把第 ${currentDayNo} 天安排松一点`].map((hint) => (
               <button key={hint} type="button" onClick={() => handleQuickSend(hint)}>{hint}</button>
             ))}
           </div>
@@ -174,7 +174,7 @@ export function ChatPanel({
       value={draft}
       onChange={setDraft}
       onSend={submit}
-      placeholder="例如：第二天加个博物馆、顺路重排"
+      placeholder={`例如：第 ${currentDayNo} 天加个博物馆、顺路重排`}
       ariaLabel="对行程说话"
       maxLength={2000}
       disabled={chat.sending}

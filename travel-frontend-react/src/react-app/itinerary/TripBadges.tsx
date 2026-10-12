@@ -39,6 +39,16 @@ export function ItemEvidence({ item }: { item: TripItem }): ReactNode {
   return <span className={evidenceTone(item) === 'warning' ? 'fact-warning' : ''}>{itemEvidenceText(item)}</span>
 }
 
+export function DietaryEvidenceNotice({ trip }: { trip: ItineraryDetail }): ReactNode {
+  const issues = [...(trip.qualityReport?.warnings || []), ...(trip.qualityReport?.blockingIssues || [])]
+    .filter(issue => issue.code === 'DIETARY_EVIDENCE_REVIEW')
+  if (!issues.length) return null
+  return <div className="detail-draft-banner" role="status" aria-label="饮食要求核实">
+    <span>{trip.qualityStatus === 'BLOCKED' ? '行程未完成，请核实餐饮与饮食要求' : '餐饮与饮食要求'}</span>
+    {issues.map((issue, index) => <p key={index}>{issue.message}</p>)}
+  </div>
+}
+
 /** 详情页指标行（预算/日期/天数）——预算行的估算口径在此单点定义。
  * 没有出发日期时不单占一张「待定」卡，并进天数卡的说明行。 */
 export function TripMetrics({

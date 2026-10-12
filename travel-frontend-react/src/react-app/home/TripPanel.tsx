@@ -60,9 +60,10 @@ export function TripPanel({ planning, chat, onStart }: {
       ))}
     </ol>
     {state === 'collecting' && <SlotChecklist slots={chat.slots} onSelectPrompt={(text) => void chat.send(text)} />}
-    {state === 'confirm' && (
+    {(state === 'confirm' || state === 'error' && (chat.ready || chat.needsReconfirm)) && (
       <IntakeConfirm
         slots={chat.slots}
+        requirements={chat.serverState?.requirements}
         busy={chat.sending || planning.busy}
         ready={chat.ready}
         needsReconfirm={chat.needsReconfirm}
@@ -112,17 +113,17 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
     {draft && draft.days > 0 && <ol className="trip-preview-days">
       {Array.from({ length: draft.days }, (_, index) => index + 1).map((dayNo) => {
         const day = draft.dayList.find((item) => item.dayNo === dayNo)
-        const done = Boolean(day && day.items.length > 0)
+        const done = Boolean(day && day.items.length > 0 && (!day.generationStatus || day.generationStatus === 'SUCCEEDED'))
         const isRunning = day?.generationStatus === 'RUNNING'
         const firstUnfinished = draft.dayList.find((item) => !item.items.length)?.dayNo
-        const isCurrentGenerating = !done && (isRunning || dayNo === firstUnfinished)
+        const isCurrentGenerating = busy && !done && (isRunning || dayNo === firstUnfinished)
         // M5a：该天已发布的候选（快照落库后 reducer/prune 已整日让位，这里只兜
         // 「还没落库」的在途候选）
         const dayCandidates = candidatesForDay(previews, dayNo)
         return <li key={dayNo} className={done ? 'is-done' : `is-pending${isCurrentGenerating ? ' is-generating' : ' is-queued'}`}>
           <div className="trip-preview-dayhead">
             <span className="trip-preview-dayno">第 {dayNo} 天</span>
-            {!done && <span className={`trip-preview-status-pill${isCurrentGenerating ? ' is-active' : ''}`}>{isCurrentGenerating ? '正在规划中' : '排队中'}</span>}
+            {!done && <span className={`trip-preview-status-pill${isCurrentGenerating ? ' is-active' : ''}`}>{!busy ? '尚未完成' : isCurrentGenerating ? '正在规划中' : '排队中'}</span>}
           </div>
           {done && day
             ? <div className="trip-preview-daybody">
@@ -130,8 +131,8 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
                 <small>{day.items.slice(0, 4).map((item) => item.poiName).join(' · ')}</small>
               </div>
             : <div className="trip-preview-daybody">
-                <strong>安排中…</strong>
-                <small>{isCurrentGenerating ? '司南正在排这一天的路线' : '排在队列里，马上就好'}</small>
+                <strong>{busy ? '安排中…' : '当天内容尚未完成'}</strong>
+                <small>{!busy ? '可在详情页查看已有内容并重试' : isCurrentGenerating ? '司南正在排这一天的路线' : '排在队列里，马上就好'}</small>
                 {dayCandidates.length > 0
                   ? <ul className="trip-preview-candidates">
                       {dayCandidates.map((candidate) => <li key={candidate.previewId} className="trip-preview-candidate">
@@ -147,6 +148,7 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
         </li>
       })}
     </ol>}
-    {status === 'error' && <p className="planning-retry-hint">对话里的信息还在，回到左边再点一次「开始规划」即可。</p>}
+    {draft && (status === 'pending' || status === 'error') && <a className="button button-primary" href={`/trips/${draft.id}`}>查看当前行程<Icon name="arrow" size={16} /></a>}
+    {status === 'error' && <p className="planning-retry-hint">对话里的信息还在，可在确认卡里再次「开始规划」，或先继续对话调整条件。</p>}
   </aside>
 }

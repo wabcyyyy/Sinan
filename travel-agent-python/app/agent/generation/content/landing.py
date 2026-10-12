@@ -68,6 +68,16 @@ def ground_item(item: dict, *, city: str, ref_pool: ReferencePool) -> bool:
     return hit
 
 
+def require_playable_items(before_names: list[str], items: list[dict], *, day_no: int, playable: bool) -> None:
+    """把过滤导致的不可交付缺口连同被删名称反馈给下一次生成。"""
+    removed = sorted(set(before_names) - {item["poi_name"] for item in items})
+    if removed and playable and not any(item["item_type"] == "attraction" for item in items):
+        raise ValueError(
+            f"第 {day_no} 天去重或事实核验后没有可游玩景点；已移除：{'、'.join(removed)}。"
+            "这些地点不可再次用于本日；保留其他天安排，改选目的地其他片区的真实景点和餐厅，补齐本日。"
+        )
+
+
 def drop_refuted_items(items: list[dict], *, city: str, report: dict[str, Any] | None = None) -> list[dict]:
     """删掉"与本次行程矛盾"的点位（PLAN-A1 G5 + 09-19 复评的两条证据）。
 

@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import threading
@@ -936,6 +937,7 @@ def _item_rule_dict(row: ItineraryItem) -> dict[str, Any]:
     return {
         "item_type": row.item_type,
         "poi_name": row.poi_name,
+        "fact_evidence": json.loads(row.fact_evidence_json or "{}"),
         "start_time": _clock(row.start_time),
         "end_time": _clock(row.end_time),
         "duration_min": row.duration_min,

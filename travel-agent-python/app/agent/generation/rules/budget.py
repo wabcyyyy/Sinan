@@ -49,6 +49,9 @@ def budget_clause(budget: float | None, persons: int, days: int) -> str:
     if not label or budget is None:
         return ""
     return (
+        "费用单位统一为人民币 CNY/RMB，以下 ¥/￥ 均指人民币，禁止把日元 JPY 等本币金额直接写入 cost；"
+        "海外价格须先换算为合理人民币估算，不能凭符号相同照抄本币数值。"
+        "餐饮/门票 cost 为每人每次，酒店 cost 为每间每晚；总预算覆盖全部人数与天数，禁止重复乘人数。"
         f"预算要求（硬性）：总预算 ¥{float(budget):g}，{persons} 人 {days} 天，人均每天约 ¥{ppd:.0f}，"
         f"按「{label}」标准规划——{guidance}"
         "酒店与餐饮的选择必须与该预算档次匹配；"

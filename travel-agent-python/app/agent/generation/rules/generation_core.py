@@ -339,6 +339,9 @@ def filter_dirty_items(items: list[Any] | None) -> list[dict]:
 # 允许模型自填坐标/来源等于给编造的名字发一张真地图钉——落地链"已有坐标就不
 # 解析"的判据会被直接绕过，幻觉点位从此不再经过任何存在性检查。
 _MODEL_CLAIM_KEYS = (
+    "fact_evidence",
+    "factEvidence",
+    "dietary_options",
     "latitude",
     "longitude",
     "poi_id",

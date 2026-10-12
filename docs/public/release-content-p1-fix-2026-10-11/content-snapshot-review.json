@@ -1,0 +1,516 @@
+{
+  "events_and_values_unchanged_except_fact_evidence": true,
+  "changed_item_count": 14,
+  "changes": [
+    {
+      "path": "[0].plan.items[0].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[0].plan.items[1].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[0].plan.items[2].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[0].plan.items[3].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "web.search",
+          "sourceUrl": null,
+          "provider": "web.search",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[1].plan.items[0].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[1].plan.items[1].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[1].plan.items[2].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[2].plan.items[0].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[2].plan.items[1].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[2].plan.items[2].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[3].plan.items[0].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[3].plan.items[1].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[3].plan.items[2].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "opentripmap",
+          "sourceUrl": null,
+          "provider": "opentripmap",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "verified",
+          "valueKind": "observed",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "open_time": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    },
+    {
+      "path": "[3].plan.items[3].factEvidence",
+      "fields": {
+        "identity": {
+          "sourceRef": "web.search",
+          "sourceUrl": null,
+          "provider": "web.search",
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        },
+        "cost": {
+          "sourceRef": null,
+          "sourceUrl": null,
+          "provider": null,
+          "retrievedAt": null,
+          "expiresAt": null,
+          "verificationStatus": "unverified",
+          "valueKind": "generated",
+          "freshnessStatus": "unknown",
+          "reviewRequirement": "before_departure"
+        }
+      }
+    }
+  ]
+}

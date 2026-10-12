@@ -82,6 +82,8 @@ def day_policy_for(requirements: TripRequirements | None, day_no: int) -> DayPol
     kind, start, end, known = _window_of(requirements, day_no)
     relaxed = bool(requirements and requirements.pace == "relaxed")
     max_attractions = _RELAXED_MAX_ATTRACTIONS if relaxed else MAX_DAILY_ATTRACTIONS
+    if requirements and requirements.max_attractions_per_day is not None:
+        max_attractions = min(max_attractions, requirements.max_attractions_per_day)
     if kind == "full":
         return DayPolicy(
             day_no=day_no,

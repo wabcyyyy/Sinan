@@ -16,6 +16,7 @@ from datetime import date
 
 from app.agent.editing.clarify_policy import (
     BUDGET_WARN_SLOT,
+    DINING_CHOICES,
     MULTICITY_WARN_SLOT,
     REQUIRED_SLOTS,
     apply_acceptance,
@@ -39,9 +40,9 @@ _KNOWN = [
 ]
 _INT_SLOTS = ("days", "persons")
 # AILIVE-2：LLM 失败曾双层静默吞掉（_ask 返回空串 + _extract 等同没抽到），用户面对
-# 无提示的追问循环。降级轮的话术必须如实告知服务不稳并给出出路（右侧补填 / 稍后再试）。
+# 无提示的追问循环。降级轮的话术必须如实告知服务不稳并给出重试出路。
 _DEGRADED_NOTICE = (
-    "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～可以在右侧直接补齐出发信息，或稍后再说一次试试。"
+    "抱歉，规划服务这会儿有点不稳，你刚才那句没能分析出来～你的已有信息还在，可以换个简短说法，或稍后再说一次试试。"
 )
 # F10：追问文本与点选选项由系统按必填优先顺序自动生成（clarify_policy.respond），
 # LLM 的 question/options 只保留一个用途——天数超上限时的协商话术。
@@ -64,8 +65,12 @@ _EXTRACT_SPEC = (
     "patches 只在用户表达了基础槽位之外的需求时输出，目标只允许这些枚举："
     "required_place(必去地点：name=地点名，day_no=指定第几天或null=全程必去，"
     '"改成第N天去X"用 op=set 替换日约束)、excluded_place(不去的具体地点，value=地点名)、'
-    "excluded_category(不去的类别，当前仅支持 museum，如「不要博物馆」)、"
+    "excluded_category(不去的类别：museum=博物馆，temple=寺庙/神社，如「不要寺庙」)、"
     "pace(值 normal/relaxed)、transport_preference(值 walking/driving/mixed/unspecified)、"
+    "max_attractions_per_day(每天景点数硬上限，1~20整数；每天最多两个景点=2)、"
+    "dietary_requirement(vegetarian=素食，可含蛋奶；vegan=纯素，不含蛋奶；不再要求素食用 unset)、"
+    "dining_evidence_policy(verified_only=只安排有饮食依据的餐厅；review_candidates=用户明确接受"
+    "先给餐饮候选并自行核实。仅在用户明确选择后输出，不能因为说素食或直接开始就默认接受候选)、"
     "max_walk_minutes_per_leg(单段步行分钟上限，正整数)、"
     "budget_policy_mode(值 target/hard_cap，「预算不限制了」用 op=unset)、"
     "lodging_locked_hotel(锁定酒店名)。没提到的需求不要编 patch。"
@@ -232,9 +237,21 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
     # 顺序即语义（E02 回归钉住）：先回写基础槽位、再应用 patch——「预算不限制了」
     # 的 unset 必须赢过旧值经 slots 投影的回写，否则解除的预算被投影复活（M7 题集实测）。
     _sync_base_from_slots(state, slots)
+    # 饮食证据取舍由用户点选明确文案决定，模型不可替用户接受待核实候选。
+    if any(
+        patch.target == "dining_evidence_policy" and patch.value != state.requirements.dining_evidence_policy
+        for patch in patches
+    ):
+        state.requirements.dining_evidence_policy = None  # 改口径须重新明确选择，不能静默保留旧取舍
+    patches = [patch for patch in patches if patch.target != "dining_evidence_policy"]
     if patches:
         # 有类型 patch 确定性应用；被拒条目进 unresolved_requests（不丢弃）
         apply_intake_patches(state, patches)
+    if state.requirements.dietary_requirement and req.message.strip() in DINING_CHOICES:
+        apply_intake_patches(
+            state,
+            [RequirementPatch(op="set", target="dining_evidence_policy", value=DINING_CHOICES[req.message.strip()])],
+        )
     apply_acceptance(state, accepted)
     missing = [k for k in REQUIRED_SLOTS if k not in slots or slots[k] in (None, "")]
     response = respond(state, missing, question, options, llm_reply, reply_for)

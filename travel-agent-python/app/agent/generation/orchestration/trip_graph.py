@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from langgraph.graph import END, StateGraph
 
-from app.agent.generation.content.reflect import build_feedback, validate_plans
+from app.agent.generation.content.reflect import build_feedback, hard_day_issues, validate_plans
 from app.agent.generation.orchestration.stream_branch import stream_generate
 from app.agent.generation.rules.generation_core import MAX_DAY_ATTEMPTS
 from app.agent.research.agent_state import MODE_DAY, MODE_STREAM, MODE_TRIP, UnifiedAgentState
@@ -95,7 +95,7 @@ def day_reflect(state: UnifiedAgentState) -> dict:
     if plan is None:
         return {
             "validation_issues": [state.error or "单日行程生成失败"],
-            "validation_log": ["单日生成失败，准备重试或最后一次无反馈重试"],
+            "validation_log": ["单日生成失败，携失败原因继续有界重试"],
             "feedback": state.error or "单日行程生成失败，请重新生成",
         }
     raw = plan.model_dump()
@@ -109,12 +109,9 @@ def day_reflect(state: UnifiedAgentState) -> dict:
     # M3：结构化需求进单日校验（到达/返程日不凑 240、慢游上限、rooms 口径）
     requirements = getattr(request, "requirements_struct", None)
     issues, log = validate_plans([raw], persons=persons, requirements=requirements)
-    # 空天必须进 issues：validate_plans 对无 items 只记 log（落库时由
-    # day_delivery_gate 拦成 PENDING），但那样下面的 retry/fallback 环永远不触发
-    # ——json_object 降级档的间歇空天（P2）就是空 plan 一次过直达 PARTIAL。
-    # 补 issue 后重采样走既有机制：retry 带 feedback 再采样，耗尽后无反馈兜底一次。
-    if not plan.items:
-        issues = [*issues, f"第 {plan.day_no} 天没有生成任何条目，请重新生成本日完整行程（景点/餐饮与时间安排）"]
+    # 图内修复与落库交付门同源：空天、结构伤和明确需求违例都进入修复反馈，
+    # 最后一次采样也保留反馈；仍不可交付则 run_day 响亮失败。
+    issues = list(dict.fromkeys([*issues, *hard_day_issues(raw, requirements)]))
     record_event(
         "decision",
         "day.reflect_result",
@@ -156,7 +153,8 @@ def day_prepare_retry(state: UnifiedAgentState) -> dict:
 
 
 def day_prepare_fallback(state: UnifiedAgentState) -> dict:
-    return {"force_fallback": True, "feedback": ""}
+    # 最后一次仍需知道过滤/交付失败原因；清空会再次生成同一批已被删掉的地点。
+    return {"force_fallback": True}
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +334,9 @@ def run_day(req: GenerateDayRequest, *, thread_id: str | None = None) -> DailyPl
     result = unified_agent_graph.invoke(empty_day_state(req), config)
     if result.get("plan") is None or not result["plan"].items:
         raise ValueError(result.get("error") or "单日行程生成失败")
+    blockers = hard_day_issues(result["plan"].model_dump(), req.requirements_struct)
+    if blockers:
+        raise ValueError(build_feedback(blockers))
     return result["plan"]
 
 
@@ -368,4 +369,8 @@ def resume_day(thread_id: str) -> DayResume | None:
         return None
     day_request = result.get("day_request")
     context = day_request.context if day_request is not None else None
-    return DayResume(plan=result.get("plan"), context=context)
+    plan = result.get("plan")
+    requirements = day_request.requirements_struct if day_request is not None else None
+    if plan is not None and hard_day_issues(plan.model_dump(), requirements):
+        plan = None  # 不可交付的旧检查点交回补齐路径，不能当作已经续完。
+    return DayResume(plan=plan, context=context)

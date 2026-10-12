@@ -33,8 +33,8 @@ from app.services.itinerary_generation import GenerateCommand
 
 
 def test_supported_vocabulary_and_max_days():
-    """词表与上限常量的当前口径：首期排除类别只支持 museum，单次行程上限 7 天。"""
-    assert SUPPORTED_EXCLUDED_CATEGORIES == ("museum",)
+    """支持博物馆与寺庙/神社排除，单次行程上限 7 天。"""
+    assert SUPPORTED_EXCLUDED_CATEGORIES == ("museum", "temple")
     assert MAX_TRIP_DAYS == 7
 
 
@@ -81,7 +81,7 @@ def test_requirements_issues_duplicate_constraint_id():
 def test_requirements_issues_unsupported_category_rejected_museum_ok():
     """排除类别词表：bar 词表外报问题；museum 词表内合法。"""
     req = TripRequirements(excluded_categories=["bar"])
-    assert requirements_issues(req) == ["暂不支持排除类别「bar」，当前支持：museum"]
+    assert requirements_issues(req) == ["暂不支持排除类别「bar」，当前支持：museum、temple"]
     assert requirements_issues(TripRequirements(excluded_categories=["museum"])) == []
 
 
@@ -185,7 +185,7 @@ def test_unsupported_category_add_rejected_into_unresolved():
     """词表外类别不静默丢弃也不落地：拒绝原话进 unresolved_requests 留协商依据。"""
     state = IntakeState()
     rejected = apply_intake_patches(state, [RequirementPatch(op="add", target="excluded_category", name="bar")])
-    assert rejected == ["add excluded_category bar：暂不支持排除类别，当前支持：museum"]
+    assert rejected == ["add excluded_category bar：暂不支持排除类别，当前支持：museum、temple"]
     assert state.requirements.excluded_categories == []
     assert state.requirements.unresolved_requests == rejected
 

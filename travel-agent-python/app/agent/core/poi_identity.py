@@ -138,12 +138,21 @@ def same_entity(query: str, candidate: str) -> bool:
     不够，短名（"老街"vs"老城"）比率高却不是同一处。
     """
 
+    # 分店信息属于实体身份，不能像别名注记一样剥掉后让品牌总名背书。
+    branch_specific = bool(
+        _BRACKET_ANNOTATION_RE.search(query)
+        or re.search(r"分店|支店|总店|本店|(?<!酒)(?<!饭)(?<!書)(?<!书)店|\bbranch\b|\s+[A-Za-z]+$", query, re.I)
+    )
+
     def norm(value: str) -> str:
-        return "".join(ch for ch in strip_name_annotation(value).lower() if ch.isalnum())
+        text = value if branch_specific else strip_name_annotation(value)
+        return "".join(ch for ch in text.casefold() if ch.isalnum())
 
     q, c = norm(query), norm(candidate)
     if not q or not c:
         return False
+    if branch_specific:
+        return q == c or q in c
     if q == c or q in c or c in q:
         return True
     overlap = len(set(q) & set(c))

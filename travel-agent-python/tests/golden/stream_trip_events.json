@@ -27,7 +27,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "attraction",
@@ -51,7 +85,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "food",
@@ -75,7 +143,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "hotel",
@@ -99,7 +201,30 @@
           "valueKind": "estimated",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "web.search",
+              "sourceUrl": null,
+              "provider": "web.search",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         }
       ],
       "theme": "巴塞罗那景点1 → 巴塞罗那景点2",
@@ -140,7 +265,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "attraction",
@@ -164,7 +323,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "food",
@@ -188,7 +381,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         }
       ],
       "theme": "巴塞罗那景点3 → 巴塞罗那景点4",
@@ -229,7 +456,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "attraction",
@@ -253,7 +514,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "food",
@@ -277,7 +572,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         }
       ],
       "theme": "巴塞罗那景点5 → 巴塞罗那景点6",
@@ -318,7 +647,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "attraction",
@@ -342,7 +705,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "food",
@@ -366,7 +763,41 @@
           "valueKind": "observed",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "opentripmap",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "open_time": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         },
         {
           "itemType": "hotel",
@@ -390,7 +821,30 @@
           "valueKind": "estimated",
           "freshnessStatus": "unknown",
           "reviewRequirement": "before_departure",
-          "factEvidence": {}
+          "factEvidence": {
+            "identity": {
+              "sourceRef": "web.search",
+              "sourceUrl": null,
+              "provider": "web.search",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "cost": {
+              "sourceRef": null,
+              "sourceUrl": null,
+              "provider": null,
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "unverified",
+              "valueKind": "generated",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            }
+          }
         }
       ],
       "theme": "巴塞罗那景点3 → 巴塞罗那景点4",

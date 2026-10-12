@@ -18,6 +18,7 @@ from typing import Any, cast
 from app.agent.generation.rules.generation_core import PoiFactRow
 from app.agent.generation.rules.transfer_time import parse_time
 from app.agent.grounding.facts import has_coord
+from app.agent.grounding.grounding_evidence import lookup_ticket
 from app.agent.grounding.grounding_labels import (
     ItemLabel,
     apply_label,
@@ -73,6 +74,23 @@ def field_fact_evidence(
         )
 
     evidence: dict[str, FactEvidence] = {"identity": identity}
+    ticket = (
+        lookup_ticket(str(item.get("poi_name") or ""), external_id=str(item.get("poi_id") or ""))
+        if label.endorsed
+        else None
+    )
+    if ticket and ticket.source_url and ticket.provider == label.source:
+        identity.source_url = ticket.source_url
+        for diet in ticket.dietary_options:
+            evidence[f"diet:{diet}"] = FactEvidence(
+                source_ref=f"{ticket.external_id}:diet:{diet}",
+                source_url=ticket.source_url,
+                provider=ticket.provider,
+                verification_status="verified",
+                value_kind="observed",
+                freshness_status="unknown",
+                review_requirement="before_departure",
+            )
     if item.get("cost") is not None:
         evidence["cost"] = _ticket(cost_observed)
     if item.get("open_time"):

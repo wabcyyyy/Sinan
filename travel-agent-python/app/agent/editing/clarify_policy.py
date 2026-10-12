@@ -54,6 +54,7 @@ OPTIONAL_ASK: dict[str, tuple[str, list[str]]] = {
 # 规则回退话术（模型 reply 缺失/目标不符/超长时使用）
 CONFIRM_REPLY = "信息都齐了～右侧确认一下就能开始规划。"
 BUDGET_CAUTION_REPLY = "按这个预算我会尽量排得实惠些，具体花费出发前记得再核对～"
+DINING_CHOICES = {"只安排有饮食依据的餐厅": "verified_only", "先给餐饮候选，我会自行核实": "review_candidates"}
 
 
 def negotiation_summary(state: IntakeState) -> str:
@@ -228,6 +229,15 @@ def respond(
     negotiation, budget_caution = _negotiation_block(state, llm_reply, reply_for, build)
     if negotiation is not None:
         return negotiation
+    if state.requirements.dietary_requirement and state.requirements.dining_evidence_policy is None:
+        return build(
+            missing=[],
+            ready=False,
+            blocked=True,
+            next="dining_evidence_policy",
+            question="餐厅的饮食资料可能不齐全。你希望只安排有素食依据的餐厅，还是先看候选、再自行核实？",
+            options=list(DINING_CHOICES),
+        )
     # 就绪：最重要的未问可选问题（不阻断生成，选择交给确认卡）
     optional = next((s for s in _OPTIONAL_ORDER if s not in state.optional_asked and not _slot_filled(state, s)), None)
     if optional is not None:

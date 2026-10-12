@@ -25,6 +25,8 @@ ConstraintKind = Literal[
     "required_place",  # 指定日必去（含全程必去的单日投影）
     "excluded_place",  # 排除地点
     "excluded_category",  # 排除类别（受控词表内）
+    "attraction_limit",
+    "dietary_requirement",
     "day_window",  # 明确到离时间窗口
     "locked_item",  # 锁定条目（身份与明确时间）
     "budget_strict",  # strict（hard_cap）预算上限（无容差）

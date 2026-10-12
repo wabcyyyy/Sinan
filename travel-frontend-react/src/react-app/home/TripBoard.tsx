@@ -5,6 +5,7 @@ import { navigate } from '../router'
 import { destinations } from '../data'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
+import { DietaryEvidenceNotice } from '../itinerary/TripBadges'
 import { candidatesForDay } from './itemPreviews'
 import type { ItemPreviewCandidate } from './itemPreviews'
 
@@ -67,6 +68,7 @@ export function TripBoard({ draft, previews, onReset, onOpen, openDisabled }: {
         <span className="board-date"><Icon name="calendar" size={13} />{draft.startDate ? displayDate(draft.startDate) : '日期待定'}</span>
       </div>
     </header>
+    <DietaryEvidenceNotice trip={draft} />
     {dayList.length > 1 && <div className="board-days" role="group" aria-label="按天切换">
       {dayList.map((day) => (
         <button
