@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { evidenceLabel, evidenceTone, type EvidenceShape } from '../../shared/evidence'
 import type { ItineraryDetail, TripItem } from '../../types/itinerary'
+import { CountUp } from '../shared/motion'
 
 /**
  * React 详情页的可测展示片段（从 TripDetailPage 抽出）。
@@ -67,7 +68,7 @@ export function TripMetrics({
   return (
     <div className="detail-metrics">
       <span>
-        <strong>￥{trip.totalAmount || trip.budget || 0}</strong>
+        <strong><CountUp value={trip.totalAmount || trip.budget || 0} prefix="￥" /></strong>
         <small>{budgetCaption()}</small>
         {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>

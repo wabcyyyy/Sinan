@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { motion } from 'motion/react'
 import type { ItineraryDetail, TripItem } from '../../types/itinerary'
 import { navigate } from '../router'
 import { destinations } from '../data'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
+import { CountUp, SPRING_POP, SPRING_SNAPPY } from '../shared/motion'
 import { DietaryEvidenceNotice } from '../itinerary/TripBadges'
 import { candidatesForDay } from './itemPreviews'
 import type { ItemPreviewCandidate } from './itemPreviews'
@@ -59,12 +61,17 @@ export function TripBoard({ draft, previews, onReset, onOpen, openDisabled }: {
     ?? dayList.find((day) => day.items.length > 0)
     ?? dayList[0]
   const activeCandidates = activeDay ? candidatesForDay(previews ?? [], activeDay.dayNo) : []
+  // 选中滑块的 layoutId 按实例隔离：同页多块预览板（demo）不会互相抢滑块
+  const tabsId = useId()
+  const cover = draft.coverUrl || destinations.find((d) => d.city === draft.city)?.image
+  const itemCount = dayList.reduce((sum, day) => sum + day.items.length, 0)
   return <div className="trip-board" aria-label="行程预览">
-    <header className="board-head">
-      {draft.coverUrl && <figure className="board-cover"><SmartImg src={draft.coverUrl} alt={`${draft.city}行程封面`} ratio="4 / 1" /></figure>}
+    <header className={cover ? 'board-head has-cover' : 'board-head'}>
+      {cover && <figure className="board-cover"><SmartImg src={cover} alt={`${draft.city}行程封面`} ratio="4 / 1" /><span className="board-cover-scrim" aria-hidden="true" /></figure>}
+      <motion.span className="board-ready" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...SPRING_POP, delay: 0.15 }}><Icon name="check" size={12} strokeWidth={2.6} />行程已就绪</motion.span>
       <div className="board-headline">
         <span className="board-city">{draft.city}</span>
-        <span className="board-meta">{draft.days} 天 · {draft.persons} 人</span>
+        <span className="board-meta">{draft.days} 天 · {draft.persons} 人{itemCount > 0 ? ` · ${itemCount} 个安排` : ''}</span>
         <span className="board-date"><Icon name="calendar" size={13} />{draft.startDate ? displayDate(draft.startDate) : '日期待定'}</span>
       </div>
     </header>
@@ -78,6 +85,7 @@ export function TripBoard({ draft, previews, onReset, onOpen, openDisabled }: {
           aria-current={day.dayNo === activeDay?.dayNo ? 'true' : undefined}
           onClick={() => setPickedDay(day.dayNo)}
         >
+          {day.dayNo === activeDay?.dayNo && <motion.span className="board-day-chip-bg" layoutId={`board-day-${tabsId}`} transition={SPRING_SNAPPY} aria-hidden="true" />}
           <strong>DAY {String(day.dayNo).padStart(2, '0')}</strong>
           <small>{day.theme || (day.items.length ? `${day.items.length} 个安排` : '安排中…')}</small>
         </button>
@@ -98,7 +106,7 @@ export function TripBoard({ draft, previews, onReset, onOpen, openDisabled }: {
     <footer className="board-foot">
       {draft.budgetList.length > 0 && <div className="board-budget" aria-label="预算小计">
         <span className="board-budget-label">预算小计</span>
-        <strong className="board-budget-total">￥{draft.totalAmount || draft.budget || 0}</strong>
+        <strong className="board-budget-total"><CountUp value={draft.totalAmount || draft.budget || 0} prefix="￥" /></strong>
         {draft.budgetList.map((row) => <em key={row.category}>{row.category} ￥{row.amount}</em>)}
       </div>}
       <p className="board-map-hint"><Icon name="pin" size={13} />{onOpen ? '固定示例中的费用与位置均待核实' : '地图与逐点编辑在完整行程里'}</p>

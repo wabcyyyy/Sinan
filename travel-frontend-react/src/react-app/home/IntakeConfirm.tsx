@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { TripRequirements } from '../../types/generated/contracts'
-import { fallbackCities } from '../data'
+import { destinations, fallbackCities } from '../data'
 import { Icon } from '../shared/Icon'
+import { SmartImg } from '../shared/SmartImg'
 import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
 
@@ -74,6 +75,7 @@ export function IntakeConfirm({
   const persons = slots.persons || 2
   const hasDate = Boolean(slots.start_date)
   const hasPrefs = preferences.length > 0
+  const cover = slots.city ? destinations.find((d) => slots.city?.includes(d.city) || d.city.includes(slots.city || ''))?.image : undefined
 
   return (
     <div className="intake-confirm trip-confirm">
@@ -91,7 +93,8 @@ export function IntakeConfirm({
       </div>
 
       {/* 方案概览卡片（Plan Brief Card）：核心信息对话确认，免去手动按键 */}
-      <div className="plan-brief-card" aria-label="AI 为你整理的行程方案">
+      <div className={cover ? 'plan-brief-card has-cover' : 'plan-brief-card'} aria-label="AI 为你整理的行程方案">
+        {cover && <div className="plan-brief-cover" aria-hidden="true"><SmartImg src={cover} alt="" ratio="16 / 6" /><span className="plan-brief-cover-scrim" /></div>}
         <div className="plan-brief-hero">
           <div className="plan-brief-dest">
             <span className="plan-brief-city">{city}</span>
