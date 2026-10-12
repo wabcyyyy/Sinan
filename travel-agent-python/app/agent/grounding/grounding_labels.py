@@ -43,6 +43,9 @@ UNTRUSTED_SOURCE = "client-context"
 POOL_UNKNOWN_SOURCE = "pool-unknown"
 # 未命中任何证据的模型自选点位来源。
 OPEN_ITEM_SOURCE = "llm.open_day"
+# 就近校正撤销了落地的远处分店（landing.relocate_far_meals）：不背书，且按名回填
+# 候选快照时跳过（facts.pool_row_for）；后续重打标签会把它覆盖为生成态来源。
+FAR_BRANCH_SOURCE = "far-branch-detached"
 
 VerificationStatus = Literal["verified", "partially_verified", "unverified"]
 ValueKind = Literal["observed", "estimated", "generated"]

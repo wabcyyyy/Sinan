@@ -45,7 +45,7 @@ from app.agent.generation.content.narrative import normalize_name_mentions, sani
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
-from app.agent.generation.output.facts import field_fact_evidence
+from app.agent.generation.output.facts import field_fact_evidence, pool_row_for
 from app.agent.generation.rules.budget import budget_tier, clamp_meal_cost, pricing_clause
 from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import (
@@ -298,7 +298,8 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
 
     items: list[TripItem] = []
     for item in drafts:
-        poi = lookup.get(str(item.get("poi_name") or ""))
+        # 按名回填候选快照；就近校正换过/撤销过的远处分店不取同名行（见 pool_row_for）
+        poi = pool_row_for(lookup, item)
         cost_observed = False
         open_time_observed = False
         if poi and is_trusted_row(poi):

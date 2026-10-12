@@ -266,7 +266,7 @@ def test_budget_exhaustion_keeps_items(monkeypatch):
 def test_no_active_limits_means_no_cap(monkeypatch):
     """离线脚本/评测没有 run 边界：不额外设限，由 provider 侧 TTL 与车道节流兜底。"""
     assert existence.current_limits() is None
-    assert existence._budget_allows() is True
+    assert existence.budget_allows() is True
 
 
 @pytest.mark.parametrize("first_raises", [False, True])

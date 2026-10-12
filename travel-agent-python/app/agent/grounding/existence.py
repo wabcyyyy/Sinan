@@ -193,9 +193,9 @@ class NominatimProvider:
             if core and core != name and same_entity(core, name):
                 retry_rows = places.geocode_place_rows(core, city, namedetails=True)
                 if retry_rows:
-                    return pick_row(retry_rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+                    return pick_row(retry_rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
             return ResolveResult(state=NOT_FOUND, provider=self.name, reason="provider_empty")
-        result = pick_row(rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+        result = pick_row(rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
         if result.grounded or result.out_of_area:
             return result
         core = core_name_via_llm(name, city)
@@ -204,10 +204,10 @@ class NominatimProvider:
         retry_rows = places.geocode_place_rows(core, city, namedetails=True)
         if not retry_rows:
             return result
-        return pick_row(retry_rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+        return pick_row(retry_rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
 
 
-def _nominatim_spellings(row: dict[str, Any]) -> list[str]:
+def nominatim_spellings(row: dict[str, Any]) -> list[str]:
     text = str(row.get("name") or "").strip()
     aliases = [str(a) for a in row.get("aliases") or []]
     return [text, *aliases] if text else aliases
@@ -295,6 +295,24 @@ def providers_in_order() -> list[ExistenceProvider]:
     return out or [registry["otm"], registry["nominatim"]]
 
 
+def issue_resolve_ticket(result: ResolveResult, target: str, city: str) -> None:
+    """判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票。"""
+    issue_evidence(
+        {
+            "name": result.localized_name or result.name or target,
+            "city": city,
+            "source": result.provider,
+            "external_id": result.external_id or "",
+            "latitude": result.latitude,
+            "longitude": result.longitude,
+            "dietary_options": result.dietary_options,
+            "source_url": result.source_url,
+            "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
+            "category_tags": dict(result.category_tags),
+        }
+    )
+
+
 def resolve_poi(name: str, city: str) -> ResolveResult:
     """存在性判定唯一入口：按配置顺序问，命中即止；全未判定才算未判定。"""
     target = str(name or "").strip()
@@ -307,21 +325,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
 
     result = _run_providers(target, city)
     if result.grounded:
-        # 判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票
-        issue_evidence(
-            {
-                "name": result.localized_name or result.name or target,
-                "city": city,
-                "source": result.provider,
-                "external_id": result.external_id or "",
-                "latitude": result.latitude,
-                "longitude": result.longitude,
-                "dietary_options": result.dietary_options,
-                "source_url": result.source_url,
-                "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
-                "category_tags": dict(result.category_tags),
-            }
-        )
+        issue_resolve_ticket(result, target, city)
     if result.state != UNKNOWN:
         # 只记忆化**判定**（VERIFIED / NOT_FOUND）。UNKNOWN 绝大多数是"没问到"：
         # 额度耗尽、源不可用、超时。_memo 是进程级、跨 run 的，缓存它等于让一次
@@ -353,10 +357,10 @@ def _run_providers(target: str, city: str) -> ResolveResult:
             unknowns.append(f"{provider.name}:not_configured")
             continue
         if not charged:
-            if not _budget_allows():
+            if not budget_allows():
                 return ResolveResult.unknown("budget_exhausted")
             # 一次点位名解析扣一次；provider 失败与回退也属于这次解析。
-            _consume_budget()
+            consume_budget()
             charged = True
         try:
             result = provider.resolve(target, city)
@@ -378,12 +382,12 @@ def _run_providers(target: str, city: str) -> ResolveResult:
     return ResolveResult.unknown("; ".join(unknowns) or "no_provider")
 
 
-def _budget_allows() -> bool:
+def budget_allows() -> bool:
     limits = current_limits()
     return limits is None or limits.max_existence_checks <= 0 or limits.existence_checks < limits.max_existence_checks
 
 
-def _consume_budget() -> None:
+def consume_budget() -> None:
     limits = current_limits()
     if limits is None:
         return

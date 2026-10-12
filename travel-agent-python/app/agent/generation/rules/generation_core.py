@@ -222,6 +222,10 @@ def spread_hotels(plans: list[dict], nights: int | None = None, days: int | None
     return changed
 
 
+#: 晚餐时段收口（分钟）：meal_slot_of 的 dinner 上沿，也是 reflect.is_late_meal 的判据
+DINNER_SLOT_END_MIN = 21 * 60 + 30
+
+
 def meal_slot_of(start_time: str | None, end_time: str | None = None) -> str | None:
     """按开始时间粗分餐次：lunch(10:30-14:30) / dinner(17:00-21:30) / breakfast(05:00-10:30)。"""
     raw = str(start_time or "").strip()
@@ -236,7 +240,7 @@ def meal_slot_of(start_time: str | None, end_time: str | None = None) -> str | N
         return "breakfast"
     if 10 * 60 + 30 <= mins < 14 * 60 + 30:
         return "lunch"
-    if 17 * 60 <= mins <= 21 * 60 + 30:
+    if 17 * 60 <= mins <= DINNER_SLOT_END_MIN:
         return "dinner"
     return "other"
 
