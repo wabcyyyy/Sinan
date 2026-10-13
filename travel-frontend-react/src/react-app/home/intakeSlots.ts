@@ -1,3 +1,4 @@
+import { intakeSessionStorage } from './intakeStorage'
 /** 对话式创建的槽位模型与派生逻辑（纯函数，零依赖可单测）。
  *
  * 创建会话是短生命周期客户端状态：对话记录与槽位投影由前端持有（sessionStorage），
@@ -10,7 +11,7 @@ import type { GenerateInput } from '../../api/sinan'
 import type { IntakeState as ContractIntakeState, TripRequirements } from '../../types/generated/contracts'
 import { inspirationTemplates } from '../data'
 
-export const INTAKE_STORAGE_KEY = 'sinan-intake-v1'
+export const INTAKE_STORAGE_KEY = 'current'
 
 /** M2（spec §7.2）会话存储版本：saveIntake 写入带 v 标记的记录，loadIntake 校验——
  * 缺版本或版本不符的旧记录一律返回 null（=会话重开，重新走一次确认），
@@ -195,7 +196,7 @@ function addDays(isoDate: string, offset: number): string {
 
 export function loadIntake(): IntakeState | null {
   try {
-    const raw = sessionStorage.getItem(INTAKE_STORAGE_KEY)
+    const raw = intakeSessionStorage.getItem(INTAKE_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { v?: unknown } & Partial<IntakeState>
     // M2 版本校验：缺版本（旧格式）或版本不符 → 不恢复，调用方落回对话态重新确认
@@ -227,7 +228,7 @@ export function loadIntake(): IntakeState | null {
 
 export function saveIntake(state: IntakeState): void {
   try {
-    sessionStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify({ v: INTAKE_STORAGE_VERSION, ...state }))
+    intakeSessionStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify({ v: INTAKE_STORAGE_VERSION, ...state }))
   } catch {
     // 存储不可用（隐私模式等）：对话退化为页内存态，刷新重来可接受
   }
@@ -235,7 +236,7 @@ export function saveIntake(state: IntakeState): void {
 
 export function clearIntake(): void {
   try {
-    sessionStorage.removeItem(INTAKE_STORAGE_KEY)
+    intakeSessionStorage.removeItem(INTAKE_STORAGE_KEY)
   } catch {
     // ignore
   }

@@ -23,7 +23,7 @@ from app.agent.generation.output.facts import field_fact_evidence
 from app.agent.generation.rules.constraint_checks import check_constraints
 from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.grounding.existence import NominatimProvider, resolve_poi
-from app.agent.grounding.grounding_evidence import lookup_ticket
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import is_trusted_row, label_for_landed_item
 from app.agent.tools.impl import _as_candidate, search_foods
 from app.schemas.trip_requirements import TripRequirements
@@ -141,7 +141,7 @@ def test_osm_facts_extracts_category_tags():
 
 
 def test_ticket_carries_category_tags_and_field_evidence_emits_keys():
-    _as_candidate(
+    row = _as_candidate(
         {
             "name": "明治神宮外苑",
             "latitude": 35.677,
@@ -154,15 +154,20 @@ def test_ticket_carries_category_tags_and_field_evidence_emits_keys():
         },
         "东京",
     )
-    ticket = lookup_ticket("明治神宮外苑", external_id="osm:way:1")
+    ticket = evidence_row(row)
     assert ticket is not None
-    assert ("amenity", "park") in ticket.category_tags
+    assert ticket["category_tags"]["amenity"] == "park"
     item = _item("明治神宮外苑")
     item["poi_id"] = "osm:way:1"
     item["latitude"], item["longitude"] = 35.677, 139.717
     item["source"] = "nominatim"  # 生产口径：local_ground 判定成功时写入服务端来源
+    item["evidence_id"] = row["evidence_id"]
     evidence = field_fact_evidence(
-        item, label_for_landed_item(item, "东京"), cost_observed=False, open_time_observed=False
+        item,
+        label_for_landed_item(item, "东京"),
+        cost_observed=False,
+        open_time_observed=False,
+        evidence_id=item["evidence_id"],
     )
     assert evidence["category:amenity=park"].value_kind == "observed"
     assert (evidence["category:leisure=pitch"].source_url or "").endswith("/way/1")
@@ -204,11 +209,11 @@ def test_overpass_pool_rows_are_ticketed_on_pool_entry(monkeypatch):
     rows = search_foods("东京", limit=10, dietary="vegetarian")
     assert rows and is_trusted_row(rows[0]) is True
 
-    ticket = lookup_ticket("PLANT BASED", "东京", external_id="osm:node:9")
+    ticket = evidence_row(rows[0])
     assert ticket is not None
-    assert ticket.provider == "overpass"
-    assert ticket.dietary_options == ("vegan", "vegetarian")
-    assert (ticket.source_url or "").endswith("/node/9")
+    assert ticket["source"] == "overpass"
+    assert ticket["dietary_options"] == ["vegan", "vegetarian"]
+    assert (ticket["source_url"] or "").endswith("/node/9")
 
 
 def test_slow_diet_pool_does_not_drop_other_food_pools(monkeypatch):
@@ -310,11 +315,11 @@ def test_poi_detail_ticket_carries_resolved_diet_and_category(monkeypatch):
 
     row = tools.get_poi_detail("东京", "AFURI")
     assert row is not None
-    ticket = lookup_ticket("AFURI", "东京", external_id=str(row["id"]))
+    ticket = evidence_row(row)
     assert ticket is not None
-    assert ticket.dietary_options == ("vegetarian",)
-    assert ticket.category_tags == (("amenity", "restaurant"),)
-    assert (ticket.source_url or "").endswith("/node/42")
+    assert ticket["dietary_options"] == ["vegetarian"]
+    assert ticket["category_tags"] == {"amenity": "restaurant"}
+    assert (ticket["source_url"] or "").endswith("/node/42")
 
 
 def test_reference_pool_lands_prefixed_name_via_same_entity():
@@ -339,7 +344,11 @@ def test_reference_pool_lands_prefixed_name_via_same_entity():
     assert item["poi_id"] == "osm:node:5"
     assert item["latitude"] == 35.683
     evidence = field_fact_evidence(
-        item, label_for_landed_item(item, "东京"), cost_observed=False, open_time_observed=False
+        item,
+        label_for_landed_item(item, "东京"),
+        cost_observed=False,
+        open_time_observed=False,
+        evidence_id=item["evidence_id"],
     )
     assert evidence["diet:vegetarian"].value_kind == "observed"
 
@@ -404,8 +413,7 @@ def test_nominatim_retries_with_extracted_core_name(monkeypatch):
 
     monkeypatch.setattr(existence.places, "geocode_place_rows", _geocode)
     monkeypatch.setattr(core_name, "configured", lambda role: True)
-    monkeypatch.setattr(core_name, "get_role_client", lambda role: _FakeLLM("ソラノイロ"))
-    monkeypatch.setattr(core_name, "model_for", lambda role: "fake-model")
+    monkeypatch.setattr(core_name, "get_llm_client", lambda role: _FakeLLM("ソラノイロ"))
     monkeypatch.setattr(existence.settings, "nominatim_enabled", True)
 
     result = NominatimProvider().resolve("新宿御苑前 ソラノイロ", "东京")
@@ -441,8 +449,7 @@ def test_nominatim_name_gate_rejection_still_retries_core_name(monkeypatch):
 
     monkeypatch.setattr(existence.places, "geocode_place_rows", _geocode)
     monkeypatch.setattr(core_name, "configured", lambda role: True)
-    monkeypatch.setattr(core_name, "get_role_client", lambda role: _FakeLLM("ソラノイロ"))
-    monkeypatch.setattr(core_name, "model_for", lambda role: "fake-model")
+    monkeypatch.setattr(core_name, "get_llm_client", lambda role: _FakeLLM("ソラノイロ"))
     monkeypatch.setattr(existence.settings, "nominatim_enabled", True)
 
     result = NominatimProvider().resolve("新宿御苑前 ソラノイロ", "东京")
@@ -462,8 +469,7 @@ def test_nominatim_core_retry_without_usable_core_keeps_rejection(monkeypatch):
         lambda name, city, namedetails=False: calls.append(name) or [_other_row()],
     )
     monkeypatch.setattr(core_name, "configured", lambda role: True)
-    monkeypatch.setattr(core_name, "get_role_client", lambda role: _FakeLLM(""))
-    monkeypatch.setattr(core_name, "model_for", lambda role: "fake-model")
+    monkeypatch.setattr(core_name, "get_llm_client", lambda role: _FakeLLM(""))
     monkeypatch.setattr(existence.settings, "nominatim_enabled", True)
 
     result = NominatimProvider().resolve("新宿御苑前 ソラノイロ", "东京")
@@ -480,8 +486,7 @@ def test_nominatim_core_retry_empty_second_pass_keeps_rejection(monkeypatch):
 
     monkeypatch.setattr(existence.places, "geocode_place_rows", _geocode)
     monkeypatch.setattr(core_name, "configured", lambda role: True)
-    monkeypatch.setattr(core_name, "get_role_client", lambda role: _FakeLLM("ソラノイロ"))
-    monkeypatch.setattr(core_name, "model_for", lambda role: "fake-model")
+    monkeypatch.setattr(core_name, "get_llm_client", lambda role: _FakeLLM("ソラノイロ"))
     monkeypatch.setattr(existence.settings, "nominatim_enabled", True)
 
     result = NominatimProvider().resolve("新宿御苑前 ソラノイロ", "东京")
@@ -543,9 +548,9 @@ def test_resolve_poi_issues_ticket_with_category_tags(monkeypatch):
     result = resolve_poi("明治神宫外苑银杏并木", "东京")
     assert result.grounded
     assert result.category_tags == (("leisure", "sports_centre"),)
-    ticket = lookup_ticket("明治神宫外苑", external_id="osm:way:2")
+    ticket = evidence_row({"name": "明治神宫外苑", "source": result.provider, "evidence_id": result.evidence_id})
     assert ticket is not None
-    assert ("leisure", "sports_centre") in ticket.category_tags
+    assert ticket["category_tags"]["leisure"] == "sports_centre"
 
 
 # ---- P1-B：跨天坐标通道 -----------------------------------------------------

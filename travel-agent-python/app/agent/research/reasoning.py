@@ -20,7 +20,7 @@ import logging
 from app.agent.core.json_utils import parse_llm_json_or_none
 from app.agent.research.evidence import ResearchTask
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import configured, model_for
+from app.common.model_registry import configured
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +57,12 @@ def plan_research(task: ResearchTask) -> dict:
     if not configured("main"):
         return {}
     try:
-        raw = get_llm_client().complete(
+        raw = get_llm_client("fast").complete(
             f"研究任务：域={task.domain}，城市={task.city}，偏好={task.preferences}，"
             f"预算={task.budget}，酒店档位={task.hotel_tier}。请规划检索策略。",
             system_prompt=_PLAN_SYSTEM,
             temperature=0.2,
             max_tokens=300,
-            model=model_for("fast"),
             json_mode=True,
         )
         data = parse_llm_json_or_none(raw) or {}
@@ -110,7 +109,7 @@ def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> d
         return {"sufficient": True, "extra_keywords": []}
     names = [str(p.get("name") or "") for p in items[:12]]
     try:
-        raw = get_llm_client().complete(
+        raw = get_llm_client("fast").complete(
             f"研究域={task.domain}；城市={task.city}；任务要求：偏好={task.preferences}，"
             f"预算={task.budget}，酒店档位={task.hotel_tier}。\n"
             f"第 {round_no} 轮检索到 {len(items)} 条：{json.dumps(names, ensure_ascii=False)}。"
@@ -118,7 +117,6 @@ def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> d
             system_prompt=_EVAL_SYSTEM,
             temperature=0.1,
             max_tokens=240,
-            model=model_for("fast"),
             json_mode=True,
         )
         data = parse_llm_json_or_none(raw) or {}

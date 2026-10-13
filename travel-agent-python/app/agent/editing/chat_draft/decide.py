@@ -25,7 +25,6 @@ from datetime import date, timedelta
 from app.agent.runtime.memory import dialogue_messages
 from app.agent.tools import impl as tools
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import model_for
 from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
 from app.schemas.trip import (
     MAX_TRIP_DAYS,
@@ -102,7 +101,7 @@ def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str 
     if feedback:
         user_content += f"\n\n[上一轮校验反馈，必须修正] {feedback}"
     messages.append({"role": "user", "content": user_content})
-    client = get_llm_client()
+    client = get_llm_client("fast")
     # 输出预算必须容得下 plan_document 整份回显（六维复测 2026-10-06：5 天 29 项的
     # 行程 planDocument ≈ 7000 token，旧上限 1800 必截断 → 畸形 JSON → 修复重试同样
     # 截断 → 5/5 轮 no-op「本次没有需要修改的内容」）。8000 与 day_stream 主调
@@ -111,7 +110,6 @@ def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str 
         messages,
         temperature=0.1,
         max_tokens=8000,
-        model=model_for("fast"),
         json_mode=True,
     )
     try:
@@ -125,7 +123,6 @@ def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str 
             ],
             temperature=0,
             max_tokens=8000,
-            model=model_for("fast"),
             json_mode=True,
         )
         return _parse_decision_json(repaired)

@@ -35,7 +35,6 @@ from app.agent.generation.rules.generation_core import hotel_prompt_clause
 from app.agent.runtime.trace import traced
 from app.common.config import settings
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import json_response_format, model_for
 from app.prompts.open_generation import open_trip_system_prompt
 from app.schemas.trip import GenerateDayRequest
 
@@ -363,7 +362,7 @@ def llm_open_trip(req: GenerateDayRequest) -> tuple[list[dict], list[dict]]:
 
     返回 (每日行程列表, 行程级备选池 suggestions)。
     """
-    client = get_llm_client()
+    client = get_llm_client("fast")
     system, user = open_trip_prompt(req)
     days = req.days or 1
     output_schema = open_trip_output_schema()
@@ -375,21 +374,19 @@ def llm_open_trip(req: GenerateDayRequest) -> tuple[list[dict], list[dict]]:
     # PR-5 强约束档按网关能力分支：守约网关（DashScope 兼容层）仍发 strict schema；
     # DeepSeek 官方 2026-10-05 起拒 json_schema（R2-F1），降级 json_object，靠 prompt
     # 内嵌形状 + 修复重试兜住结构。主调与修复重试同档（修复产物也要过同一契约）。
-    response_format = json_response_format("fast", "trip_output", output_schema)
+    response_format = client.json_response_format("trip_output", output_schema)
     raw = client.complete(
         user,
         system_prompt=system,
         temperature=GENERATION_TEMPERATURE,
         # 多日 + 备选池体积大：给足预算，避免 JSON 截断（截断即整段开放研究失败）。
         max_tokens=repair_tokens,
-        model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
     )
     data = parse_llm_json_with_repair(
         raw,
         client,
-        model=model_for("fast"),
         repair_max_tokens=repair_tokens,
         response_format=response_format,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],

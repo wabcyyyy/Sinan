@@ -4,11 +4,12 @@ import json
 
 from app.agent.generation.content import butler
 from app.agent.tools.function_calling import FunctionCallingError
+from tests.llm_binding import FakeBinding
 
 LONG_INTRO = "西湖" * 100  # ≥180 字：达到 200~300 字契约下限，不触发扩写轮
 
 
-class FakeLlm:
+class FakeLlm(FakeBinding):
     """模拟带 tools 的 LLM：先 tool_calls，再最终 JSON content。"""
 
     def __init__(self, mode: str = "fc"):
@@ -60,7 +61,7 @@ class FakeLlm:
 
 def test_poi_intros_uses_function_calling_then_returns_intros(monkeypatch):
     fake = FakeLlm("fc_tool")
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     invoked = []
 
     def fake_invoke(name, arguments, **kwargs):
@@ -79,7 +80,7 @@ def test_poi_intros_uses_function_calling_then_returns_intros(monkeypatch):
 
 def test_poi_intros_falls_back_when_fc_fails(monkeypatch):
     fake = FakeLlm("fc_fail")
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     intros = butler.run_poi_intros("杭州", ["雷峰塔"])
     assert intros["雷峰塔"] == "单轮兜底介绍。"
     assert fake.complete_calls
@@ -88,7 +89,7 @@ def test_poi_intros_falls_back_when_fc_fails(monkeypatch):
 def test_poi_intros_rewrites_short_intro(monkeypatch):
     """介绍过短（<180 字）时触发扩写轮：单轮兜底先产出短介绍，扩写轮取更长版本。"""
     fake = FakeLlm("fc_fail")
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     calls = {"complete": 0}
 
     def complete(user_prompt, **kwargs):
@@ -110,7 +111,7 @@ def test_poi_intros_rewrites_short_intro(monkeypatch):
 def test_poi_intros_keeps_intro_when_rewrite_fails(monkeypatch):
     """扩写轮失败/未变长时保留原介绍，不因扩写破坏结果。"""
     fake = FakeLlm("fc_fail")
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     intros = butler.run_poi_intros("杭州", ["雷峰塔"])
     # FakeLlm.complete 恒返回同长版本 → 不被更短/相同内容覆盖
     assert intros["雷峰塔"] == "单轮兜底介绍。"

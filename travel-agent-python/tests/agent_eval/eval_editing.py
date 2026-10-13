@@ -31,6 +31,7 @@ from app.common.config import settings
 from app.schemas.trip import ClarifyRequest, EditOpRequest, LocalReplanRequest
 from tests.agent_eval import mock_llm
 from tests.agent_eval.cassette import cassette_sha256
+from tests.llm_binding import FakeBinding
 
 REPORT_DIR = Path(__file__).parent / "report" / "offline"
 CASSETTE_DIR = Path(__file__).parent / "cassettes"
@@ -38,7 +39,7 @@ CASSETTE_DIR = Path(__file__).parent / "cassettes"
 _ALLOWED_ACTIONS = {"delete", "add", "move_day", "update_time", "upgrade_hotel"}
 
 
-class _FakeClient:
+class _FakeClient(FakeBinding):
     """editing 流程的 LLM 出口替身：回固定 raw JSON（mock_llm 的编辑域 fixture）。"""
 
     def __init__(self, reply: str) -> None:
@@ -84,7 +85,7 @@ class _patch:
 
     def __enter__(self):
         self._original = self.module.get_llm_client
-        self.module.get_llm_client = lambda: _FakeClient(self.reply)
+        self.module.get_llm_client = lambda _role="main": _FakeClient(self.reply)
         return self
 
     def __exit__(self, *exc) -> None:

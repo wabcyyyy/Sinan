@@ -66,5 +66,5 @@ def resolve_poi_near(
         near_rows, target, city, provider=provider.name, spellings_of=existence.nominatim_spellings
     )
     if result.grounded:
-        existence.issue_resolve_ticket(result, target, city)
+        result = existence.issue_resolve_ticket(result, target, city)
     return result

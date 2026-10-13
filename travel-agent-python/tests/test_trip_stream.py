@@ -141,7 +141,8 @@ def stream_env(monkeypatch):
             item["latitude"], item["longitude"] = grounded
             item["source"] = "nominatim"
             # 与真实 local_ground 同形状：解析成功当场签票
-            issue_evidence({**item, "name": item["poi_name"], "city": city})
+            item["city"] = city
+            issue_evidence(item)
 
     monkeypatch.setattr(landing, "local_ground", _ground)
     monkeypatch.setattr(stream_branch, "fill_suggestion_gaps", lambda rows, city, **kw: rows)
@@ -222,7 +223,8 @@ class TestRunGenerateTripStream:
             if "古埃尔公园" in str(item.get("poi_name") or ""):
                 item["latitude"], item["longitude"] = 41.41449, 2.15269
                 item["source"] = "nominatim"
-                issue_evidence({**item, "name": item["poi_name"], "city": city})
+                item["city"] = city
+            issue_evidence(item)
 
         monkeypatch.setattr(landing, "local_ground", _ground)
         plans = [

@@ -22,7 +22,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.agent import sync_schedule_summary
+from app.agent import check_task_write, sync_schedule_summary
 from app.common.envelope import FAIL_TRIP_NOTE, ApiError
 from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
@@ -55,6 +55,7 @@ def persist(
     allow_overwrite: bool = False,
 ) -> None:
     """把一天的完整结果写库：清旧 item → 写新 item → 置 SUCCEEDED。"""
+    check_task_write()
     with session_scope() as session:
         day = _require_day(session, itinerary_id, day_no)
         generation_gate.verify_action(day, action_id, fingerprint)
@@ -73,7 +74,6 @@ def persist(
             day.note = plan.note
         day.metadata_json = _day_metadata_json(plan)
 
-        # 清掉上一次失败/续跑留下的半成品
         session.execute(
             update(ItineraryItem).where(ItineraryItem.day_id == day.id, ItineraryItem.deleted == 0).values(deleted=1)
         )
@@ -90,6 +90,7 @@ def persist(
             day.generation_status = "SUCCEEDED"
             day.generation_error = None
         itinerary_version.bump_planning_revision(session, itinerary_id)
+        check_task_write()
 
 
 def _build_item(itinerary_id: int, day_id: int, item: Any, sort_no: int) -> ItineraryItem:
@@ -238,6 +239,7 @@ def set_trip_theme(itinerary_id: int, theme: str | None) -> None:
     """整趟主题单列写回（幂等重写；禁止整行 update 以免覆盖并发编辑）。"""
     if not theme or not theme.strip():
         return
+    check_task_write()
     with session_scope() as session:
         session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(trip_theme=theme.strip()))
 
@@ -258,6 +260,7 @@ def save_flight_quotes(itinerary_id: int, quotes: list[dict[str, Any]] | None) -
     留着上一轮的旧价，详情页会显示一份本行程从未观测过的价格——那正是本计划要消灭的"冒充"。
     """
     payload = json.dumps(quotes, ensure_ascii=False) if quotes else None
+    check_task_write()
     with session_scope() as session:
         session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(flight_quotes=payload))
 
@@ -271,6 +274,7 @@ def save_origin_city(itinerary_id: int, origin_city: str | None) -> None:
     text = str(origin_city or "").strip()
     if not text:
         return
+    check_task_write()
     with session_scope() as session:
         session.execute(update(ItineraryMain).where(ItineraryMain.id == itinerary_id).values(origin_city=text[:64]))
 
@@ -291,9 +295,6 @@ def unfinished_day_nos(itinerary_id: int) -> list[int]:
             select(ItineraryDay.day_no, ItineraryDay.generation_status).where(ItineraryDay.itinerary_id == itinerary_id)
         ).all()
     return sorted(day_no for day_no, status in rows if status != "SUCCEEDED")
-
-
-# ---------- 内部工具 ----------
 
 
 def _require_day(session, itinerary_id: int, day_no: int) -> ItineraryDay:
@@ -387,7 +388,6 @@ def _parse_datetime_safe(value: str | None) -> datetime | None:
     if value is None or not (text := value.strip()):
         return None
     try:
-        # 带偏移的串：按原始偏移折算成 LocalDateTime，不做时区换算（同 OffsetDateTime.toLocalDateTime）
         return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
     except ValueError:
         pass

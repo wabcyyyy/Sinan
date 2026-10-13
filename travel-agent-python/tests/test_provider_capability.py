@@ -27,7 +27,7 @@ from app.common.llm_client import (
     channel_serves_model,
     channel_supports_search,
     get_judge_client,
-    get_role_client,
+    get_llm_client,
     require_model_served,
 )
 from app.common.llm_route import LLMRoute, use_route
@@ -49,6 +49,10 @@ class _ForbiddenClient:
     """哨兵：任何 LLM 调用都算用例失败（"判否就一次外呼都不发"的判据）。"""
 
     base_url = DEEPSEEK
+
+    @property
+    def model(self):
+        return model_registry.binding("vision").model
 
     def __getattr__(self, name: str):
         raise AssertionError(f"通道不支持该能力时不得发起 LLM 调用（触发了 {name}）")
@@ -200,7 +204,7 @@ def test_byok_route_overrides_every_role(monkeypatch):
         bound = model_registry.binding("fast")
         assert (bound.base_url, bound.model) == (BYOK, "user-model")
         assert model_registry.configured("fast") is True
-        assert get_role_client("fast").base_url == BYOK
+        assert get_llm_client("fast").base_url == BYOK
 
 
 # ---------- 3. 联网搜索 / 实时价：判否即降级，不发外呼 ----------
@@ -229,7 +233,7 @@ def test_web_search_entrypoints_degrade_without_calling_llm(monkeypatch):
     monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
     monkeypatch.setattr(settings, "web_search_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "configured")
-    monkeypatch.setattr(web_search, "get_role_client", lambda _role: _ForbiddenClient())
+    monkeypatch.setattr(web_search, "get_llm_client", lambda _role: _ForbiddenClient())
 
     assert web_search.web_search_text("成都有哪些酒店？") == ""
     assert web_search.web_search_json("成都有哪些酒店？", schema_hint="{}") is None
@@ -238,7 +242,7 @@ def test_web_search_entrypoints_degrade_without_calling_llm(monkeypatch):
 
 def test_live_price_degrades_without_calling_llm(monkeypatch):
     monkeypatch.setattr(pricing, "search_channel_ready", lambda: False)
-    monkeypatch.setattr(pricing, "get_role_client", lambda _role: _ForbiddenClient())
+    monkeypatch.setattr(pricing, "get_llm_client", lambda _role: _ForbiddenClient())
 
     assert pricing.query_live_price("成都", "某某酒店", None) is None
     assert pricing.query_live_food_price("成都", "某某餐厅") is None
@@ -251,7 +255,7 @@ def test_image_intent_rejects_model_channel_mismatch(monkeypatch):
     """视角角色没配 = 复用 main（DeepSeek），而 DeepSeek 不提供 qwen-vl-plus。"""
     monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
     monkeypatch.setattr(settings, "llm_role_vision", "qwen-vl-plus")  # 裸名 → default provider
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: _ForbiddenClient())
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: _ForbiddenClient())
 
     with pytest.raises(ValueError, match="不提供模型 qwen-vl-plus"):
         image_intent_agent.run_image_intent("data:image/jpeg;base64,aGVsbG8=")
@@ -307,15 +311,15 @@ def test_json_schema_capability_degrades_deepseek_official(monkeypatch):
 def test_generation_exit_response_format_follows_capability(monkeypatch):
     """消费方分支实证（能力位不许是死数据，R1-F1 口径）：DeepSeek → json_object；
     守约网关 → strict json_schema。"""
-    from app.common.model_registry import json_response_format
+    from app.common.llm_client import get_llm_client
 
     monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
     for role in ("main", "fast", "vision", "judge", "search", "stt"):
         monkeypatch.setattr(settings, f"llm_role_{role}", "")
-    assert json_response_format("fast", "day_output", {"type": "object"}) == {"type": "json_object"}
+    assert get_llm_client("fast").json_response_format("day_output", {"type": "object"}) == {"type": "json_object"}
 
     monkeypatch.setattr(settings, "llm_provider_dashscope_base_url", DASHSCOPE)
     monkeypatch.setattr(settings, "llm_provider_dashscope_api_key", "dash-key")
     monkeypatch.setattr(settings, "llm_role_fast", "dashscope:qwen-plus")
-    fmt = json_response_format("fast", "day_output", {"type": "object"})
+    fmt = get_llm_client("fast").json_response_format("day_output", {"type": "object"})
     assert fmt["type"] == "json_schema" and fmt["json_schema"]["strict"] is True

@@ -31,6 +31,7 @@ from app.agent.editing.chat_draft.validate import (
     _substantive_plan_signature,
 )
 from app.schemas.trip import ChatTurnRequest
+from tests.llm_binding import FakeBinding
 
 
 def _request(message: str) -> ChatTurnRequest:
@@ -608,13 +609,13 @@ def test_baseline_conflict_surfaced_in_decide_prompt(monkeypatch):
     """预检提示：基线带重叠时把冲突点写进 decide 输入，模型有机会顺手修复。"""
     request = _conflicted_request("随便调整一下")
 
-    class _CapturingClient:
+    class _CapturingClient(FakeBinding):
         def chat(self, messages, **kwargs):
             self.user_content = messages[-1]["content"]
             return json.dumps({"mode": "no_change", "reply": "无需修改", "operations": []})
 
     client = _CapturingClient()
-    monkeypatch.setattr(decide, "get_llm_client", lambda: client)
+    monkeypatch.setattr(decide, "get_llm_client", lambda _role="main": client)
     monkeypatch.setattr(decide.tools, "search_hotels", lambda *args, **kwargs: [])
     decide._chat_turn_response(request)
     assert "已知遗留问题" in client.user_content

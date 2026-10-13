@@ -18,13 +18,13 @@ from typing import Any, TypeVar, cast
 
 from app.agent.generation.rules.generation_core import PoiFactRow
 from app.agent.generation.rules.transfer_time import parse_time
-from app.agent.grounding.facts import has_coord
-from app.agent.grounding.grounding_evidence import EvidenceTicket, lookup_ticket
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     FAR_BRANCH_SOURCE,
     ItemLabel,
     apply_label,
     has_valid_coords,
+    is_authoritative_source,
     is_trusted_row,
     label_for_evidence_row,
     label_for_landed_item,
@@ -39,6 +39,7 @@ def field_fact_evidence(
     *,
     cost_observed: bool,
     open_time_observed: bool,
+    evidence_id: str | None = None,
 ) -> dict[str, FactEvidence]:
     """字段级证据票（GROUND-2）：identity/cost/open_time 各自独立记票。
 
@@ -47,20 +48,28 @@ def field_fact_evidence(
     「有据」。现在 cost/open_time 只有真正从权威候选行回填才是 observed；模型
     直写一律 unverified/generated + 出发前复核。字段没有值就不发票。
     """
+    snapshot = (
+        evidence_row({"name": str(item.get("poi_name") or ""), "source": label.source, "evidence_id": evidence_id})
+        if is_authoritative_source(label.source)
+        else None
+    )
+    # 引用本次取回的字段快照，不能只凭同名或 provider 字符串认领证据。
+    source_ref = str(snapshot["evidence_id"]) if snapshot else None
+    identity_verified = snapshot is not None and is_authoritative_source(label.source)
     identity = FactEvidence(
-        source_ref=label.source,
+        source_ref=source_ref,
         provider=label.source,
         retrieved_at=label.source_updated_at,
-        verification_status="verified" if (label.endorsed and item.get("poi_id")) else "unverified",
-        value_kind="observed" if label.endorsed else "generated",
+        verification_status="verified" if identity_verified else "unverified",
+        value_kind="observed" if identity_verified else "generated",
         freshness_status=label.freshness_status,
         review_requirement=label.review_requirement,
     )
 
     def _ticket(observed: bool) -> FactEvidence:
-        if observed:
+        if observed and snapshot:
             return FactEvidence(
-                source_ref=label.source,
+                source_ref=source_ref,
                 provider=label.source,
                 retrieved_at=label.source_updated_at,
                 verification_status="verified",
@@ -76,22 +85,28 @@ def field_fact_evidence(
         )
 
     evidence: dict[str, FactEvidence] = {"identity": identity}
-    ticket = (
-        lookup_ticket(str(item.get("poi_name") or ""), external_id=str(item.get("poi_id") or ""))
-        if label.endorsed
-        else None
-    )
-    if ticket and ticket.source_url and ticket.provider == label.source:
-        identity.source_url = ticket.source_url
-        evidence.update(_external_tag_evidence(ticket))
+    if snapshot:
+        identity.source_url = snapshot.get("source_url")
+        evidence.update(_external_tag_evidence(snapshot))
+    if has_valid_coords(item):
+        evidence["coordinates"] = _ticket(
+            label.endorsed
+            and snapshot is not None
+            and item.get("latitude") == snapshot.get("latitude")
+            and item.get("longitude") == snapshot.get("longitude")
+        )
     if item.get("cost") is not None:
-        evidence["cost"] = _ticket(cost_observed)
+        evidence["cost"] = _ticket(
+            cost_observed and snapshot is not None and item.get("cost") == snapshot.get("ticket_price")
+        )
     if item.get("open_time"):
-        evidence["open_time"] = _ticket(open_time_observed)
+        evidence["open_time"] = _ticket(
+            open_time_observed and snapshot is not None and item.get("open_time") == snapshot.get("open_time")
+        )
     return evidence
 
 
-def _external_tag_evidence(ticket: EvidenceTicket) -> dict[str, FactEvidence]:
+def _external_tag_evidence(snapshot: Mapping[str, Any]) -> dict[str, FactEvidence]:
     """证据票的 diet/category 标签 → 独立字段票（observed）。
 
     只把外部实际取回的标签原样透传，键形如 "diet:vegetarian" /
@@ -99,23 +114,22 @@ def _external_tag_evidence(ticket: EvidenceTicket) -> dict[str, FactEvidence]:
     这里不做语义结论。
     """
 
-    def _tagged(source_ref: str) -> FactEvidence:
+    def _tagged() -> FactEvidence:
         return FactEvidence(
-            source_ref=source_ref,
-            source_url=ticket.source_url,
-            provider=ticket.provider,
+            source_ref=str(snapshot["evidence_id"]),
+            source_url=snapshot.get("source_url"),
+            provider=snapshot.get("source"),
             verification_status="verified",
             value_kind="observed",
             freshness_status="unknown",
             review_requirement="before_departure",
         )
 
-    evidence = {f"diet:{diet}": _tagged(f"{ticket.external_id}:diet:{diet}") for diet in ticket.dietary_options}
+    evidence = {
+        f"diet:{diet}": _tagged() for diet in (snapshot.get("dietary_options") or ()) if diet in ("vegetarian", "vegan")
+    }
     evidence.update(
-        {
-            f"category:{key}={value}": _tagged(f"{ticket.external_id}:category:{key}:{value}")
-            for key, value in ticket.category_tags
-        }
+        {f"category:{key}={value}": _tagged() for key, value in (snapshot.get("category_tags") or {}).items()}
     )
     return evidence
 
@@ -165,6 +179,8 @@ def apply_item_facts(
     city: str = "",
 ) -> None:
     """按候选快照回填权威字段，并就地质标溯源与质量状态。"""
+    if poi and is_trusted_row(poi):
+        poi = cast(PoiFactRow, evidence_row(poi))
     label = label_for_evidence_row(poi) if poi else label_for_landed_item(item, city)
     # 来源不可信的行一个字段都不采纳：伪 source 不只让徽章失真，还能把真实景点
     # 指到调用方自选的坐标与 poi_id 上（P6）。
@@ -175,12 +191,7 @@ def apply_item_facts(
         # 不能作为权威坐标回填，否则幻觉坐标获得权威背书。
         poi_lat = poi.get("latitude")
         poi_lng = poi.get("longitude")
-        if (
-            not has_coord(item.get("latitude"))
-            and has_valid_coords(poi)
-            and poi_lat is not None
-            and poi_lng is not None
-        ):
+        if has_valid_coords(poi) and poi_lat is not None and poi_lng is not None:
             item["latitude"] = float(poi_lat)
             item["longitude"] = float(poi_lng)
         if not item.get("poi_id"):
@@ -196,7 +207,11 @@ def apply_item_facts(
     # GROUND-2：字段级证据票就地构建（identity/cost/open_time 独立记票），
     # 模型直写的票价/时间不再随行级标签获得「有据」背书
     item["fact_evidence"] = field_fact_evidence(
-        item, label, cost_observed=cost_observed, open_time_observed=open_time_observed
+        item,
+        label,
+        cost_observed=cost_observed,
+        open_time_observed=open_time_observed,
+        evidence_id=str((poi or item).get("evidence_id") or "") or None,
     )
     source_records.setdefault(label.source, source_record_for(label, poi))
 

@@ -29,8 +29,7 @@ def test_core_name_budget_leaves_room_for_thinking(monkeypatch):
     spy = _SpyLLM()
     core_name.reset_core_name_cache()
     monkeypatch.setattr(core_name, "configured", lambda role: True)
-    monkeypatch.setattr(core_name, "get_role_client", lambda role: spy)
-    monkeypatch.setattr(core_name, "model_for", lambda role: "fake-model")
+    monkeypatch.setattr(core_name, "get_llm_client", lambda role: spy)
     assert core_name.core_name_via_llm("新宿御苑前 ソラノイロ", "东京") == "ソラノイロ"
     assert spy.kwargs["max_tokens"] >= 1024
     core_name.reset_core_name_cache()
@@ -93,6 +92,6 @@ def test_intent_distill_budget_leaves_room_for_thinking(monkeypatch):
     from app.agent.core import intent as intent_mod
 
     spy = _SpyLLM()
-    monkeypatch.setattr(intent_mod, "get_llm_client", lambda: spy)
+    monkeypatch.setattr(intent_mod, "get_llm_client", lambda role: spy)
     intent_mod.distill_intent("东京两天慢节奏，不去寺庙")
     assert spy.kwargs["max_tokens"] >= 2048

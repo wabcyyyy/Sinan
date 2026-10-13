@@ -9,13 +9,14 @@ from app.agent.generation.content import day_prompts
 from app.agent.generation.content.json_output import validate_trip_output
 from app.agent.generation.orchestration import day_stream, day_workflow
 from app.schemas.trip import DailyPlan, GenerateDayRequest
+from tests.llm_binding import FakeBinding
 
 
 def _day(day_no=1):
     return {"day_no": day_no, "items": [{"poi_name": "文殊院", "item_type": "attraction"}]}
 
 
-class Client:
+class Client(FakeBinding):
     def __init__(self, raw, repaired):
         self.raw, self.repaired = raw, json.dumps(repaired, ensure_ascii=False)
         self.first, self.repairs = [], []
@@ -34,8 +35,8 @@ class Client:
 def test_recovery_retains_original_request_and_rejects_empty_shape(monkeypatch, raw, entry):
     reply = _day() if entry == "day" else {"daily_plans": [_day(), _day(2)]}
     client = Client(raw, reply)
-    monkeypatch.setattr(day_stream, "get_llm_client", lambda: client)
-    monkeypatch.setattr(day_prompts, "get_llm_client", lambda: client)
+    monkeypatch.setattr(day_stream, "get_llm_client", lambda _role="main": client)
+    monkeypatch.setattr(day_prompts, "get_llm_client", lambda _role="main": client)
     req = GenerateDayRequest(
         city="成都", days=2, preferences=["熊猫", "美食"], hotel_tier="青旅", requirements="不要爬山"
     )
@@ -57,7 +58,7 @@ def test_recovery_retains_original_request_and_rejects_empty_shape(monkeypatch, 
 @pytest.mark.parametrize("repaired", [{}, {"items": []}, {"items": [{"poi_name": "酒店", "item_type": "hotel"}]}])
 def test_second_unusable_output_fails_without_more_repairs(monkeypatch, repaired):
     client = Client("", repaired)
-    monkeypatch.setattr(day_stream, "get_llm_client", lambda: client)
+    monkeypatch.setattr(day_stream, "get_llm_client", lambda _role="main": client)
     with pytest.raises(LlmJsonError):
         day_stream.llm_open_day(GenerateDayRequest(city="成都"), set())
     assert len(client.repairs) == 1

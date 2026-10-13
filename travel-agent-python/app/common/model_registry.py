@@ -182,22 +182,6 @@ def model_for(role: str) -> str:
     return binding(role).model
 
 
-def json_response_format(role: str, name: str, schema: dict) -> dict:
-    """该角色的结构化输出档（夜审 R2-F1）：能力位→请求档位的唯一换算点。
-
-    - 有 `json_schema` 位：PR-5 强约束档（网关保证输出符合 schema，spike 2026-09-24
-      在 DashScope 兼容层实证执行）；
-    - 无该位（DeepSeek 官方 2026-10-05 实测对 json_schema 400，同 key json_object
-      200）：降级 json_object——结构约束退到 system prompt 内嵌的完整 JSON 形状
-      （open_*_system_prompt 一直内嵌）+ 坏 JSON 单次修复重试，不再整链 100% 失败。
-
-    生成三出口与 judge 共用；调用点不得自行嗅探 URL。
-    """
-    if "json_schema" in binding(role).capabilities():
-        return {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}}
-    return {"type": "json_object"}
-
-
 def configured(role: str = "main") -> bool:
     """该角色有没有可用的凭据（api_key 非空）——替掉散落的 `settings.llm_api_key` 哨兵。"""
     return bool(binding(role).provider.api_key.strip())

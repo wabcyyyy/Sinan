@@ -186,15 +186,17 @@ def run_case(case: dict, path: str = "stream") -> dict:
             recorder = stack.enter_context(trace_run(run_id))
             response = workflow.run_generate(build_generate_request(case))
             trace = recorder.to_dict()
+        # 票据和指标必须共用本次离线缓存；退出 mock 后可能切回真实 Redis。
+        result = evaluate_response(response, case, fixture, trace)
+        result.update(evaluate_depth(response, case))
     if leaks:
         raise LlmLeak(f"{case['city']} {case['days']} 天：评测链路发起了 {len(leaks)} 次真实 LLM 调用（有入口漏 mock）")
-    result = evaluate_response(response, case, fixture, trace)
-    result.update(evaluate_depth(response, case))
     return result
 
 
-def _average(results: list[dict], key: str) -> float:
-    return round(sum(result[key] for result in results) / max(len(results), 1), 4)
+def _average(results: list[dict], key: str) -> float | None:
+    values = [result[key] for result in results if result[key] is not None]
+    return round(sum(values) / len(values), 4) if values else None
 
 
 #: trace_complete 的节点口径按路径分：产品路径的生成腿是 stream 分支（研究段在生产里
@@ -284,9 +286,11 @@ def write_report(report: dict) -> None:
     ]
     for result in report["details"]:
         case = result["case"]
+        field_reference = result["field_reference_rate"]
+        field_text = f"{field_reference:.2%}" if field_reference is not None else "-"
         lines.append(
             f"| {case['city']} | {case['days']} | {result['poi_authority_rate']:.2%} | "
-            f"{result['field_reference_rate']:.2%} | {result['time_conflict_rate']:.2%} | "
+            f"{field_text} | {result['time_conflict_rate']:.2%} | "
             f"{result['route_violation_rate']:.2%} | "
             f"{result['attraction_duplicate_rate']:.2%} | {result['budget_deviation_rate']:.2%} | "
             f"{result['trace']['tool_count']} |"

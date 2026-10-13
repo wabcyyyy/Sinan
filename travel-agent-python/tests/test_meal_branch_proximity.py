@@ -18,7 +18,7 @@ from app.agent.generation.content.reflect import LATE_MEAL_MARK, hard_day_issues
 from app.agent.generation.output.facts import build_lookup, field_fact_evidence, pool_row_for
 from app.agent.grounding import existence, nearby_branch
 from app.agent.grounding.existence import ResolveResult
-from app.agent.grounding.grounding_evidence import issue_evidence, lookup_ticket
+from app.agent.grounding.grounding_evidence import evidence_row, issue_evidence
 from app.agent.grounding.grounding_labels import FAR_BRANCH_SOURCE, label_for_generated_item, label_for_landed_item
 from app.agent.grounding.nearby_branch import resolve_poi_near
 
@@ -91,6 +91,7 @@ def test_far_chain_branch_is_relocated_to_nearby_branch(monkeypatch):
         longitude=SHINJUKU_KURA[1],
         address="新宿区",
     )
+    near = existence.issue_resolve_ticket(near, "くら寿司", "东京")
     calls: list[tuple[str, list]] = []
 
     def _near(name, city, anchors, max_distance_m):
@@ -99,10 +100,6 @@ def test_far_chain_branch_is_relocated_to_nearby_branch(monkeypatch):
         return near
 
     monkeypatch.setattr(nearby_branch, "resolve_poi_near", _near)
-    # resolve_poi_near 命中即签票（见 nearby_branch）；桩替身不签，这里补上
-    issue_evidence(
-        {"name": "藏寿司", "city": "东京", "source": "nominatim", "external_id": "osm:node:42", "aliases": ["くら寿司"]}
-    )
     items = _day(_far_kura())
     relocate_far_meals(items, city="东京")
 
@@ -118,33 +115,34 @@ def test_far_chain_branch_is_relocated_to_nearby_branch(monkeypatch):
 
 def test_nearby_lookup_falls_back_to_the_name_the_model_wrote(monkeypatch):
     """local_ground 已把条目改成 OSM 中文名；日本店的 OSM 名是日文，要用票里记下的原写名重查。"""
-    issue_evidence(
-        {
-            "name": "藏寿司",
-            "city": "东京",
-            "source": "nominatim",
-            "external_id": "osm:node:1174641596",
-            "latitude": MACHIDA_KURA[0],
-            "longitude": MACHIDA_KURA[1],
-            "aliases": ["くら寿司"],
-        }
-    )
+    far_row = {
+        "name": "藏寿司",
+        "city": "东京",
+        "source": "nominatim",
+        "external_id": "osm:node:1174641596",
+        "latitude": MACHIDA_KURA[0],
+        "longitude": MACHIDA_KURA[1],
+        "aliases": ["くら寿司"],
+    }
+    issue_evidence(far_row)
     queries: list[str] = []
 
     def _near(name, city, anchors, max_distance_m):
         queries.append(name)
         if name != "くら寿司":
             return ResolveResult.unknown("no_branch_near_day")
-        return ResolveResult(
+        near = ResolveResult(
             state=existence.VERIFIED,
             provider="nominatim",
+            name="藏寿司",
             external_id="osm:node:42",
             latitude=SHINJUKU_KURA[0],
             longitude=SHINJUKU_KURA[1],
         )
+        return existence.issue_resolve_ticket(near, name, city)
 
     monkeypatch.setattr(nearby_branch, "resolve_poi_near", _near)
-    items = _day({**_far_kura(), "poi_name": "藏寿司"})
+    items = _day({**_far_kura(), "poi_name": "藏寿司", "evidence_id": far_row["evidence_id"]})
     relocate_far_meals(items, city="东京")
     assert queries == ["藏寿司", "くら寿司"]
     assert items[1]["poi_id"] == "osm:node:42"
@@ -204,23 +202,15 @@ def test_far_pool_hit_is_corrected_too(monkeypatch):
 
 
 def test_relocated_pool_hit_is_relabelled_from_the_nearby_branch_ticket(monkeypatch):
-    issue_evidence(
-        {
-            "name": "くら寿司",
-            "city": "东京",
-            "source": "nominatim",
-            "external_id": "osm:node:42",
-            "latitude": SHINJUKU_KURA[0],
-            "longitude": SHINJUKU_KURA[1],
-        }
-    )
     near = ResolveResult(
         state=existence.VERIFIED,
         provider="nominatim",
+        name="くら寿司",
         external_id="osm:node:42",
         latitude=SHINJUKU_KURA[0],
         longitude=SHINJUKU_KURA[1],
     )
+    near = existence.issue_resolve_ticket(near, "くら寿司", "东京")
     monkeypatch.setattr(nearby_branch, "resolve_poi_near", lambda *a, **k: near)
     items = _day(_pool_hit_far_kura())
     relocate_far_meals(items, city="东京")
@@ -311,8 +301,8 @@ def test_resolve_poi_near_picks_nearest_branch_inside_box_and_issues_ticket(monk
     south, west, north, east = seen["viewbox"]
     assert south < SHINJUKU_GYOEN[0] < north and west < SHINJUKU_HOTEL[1] < east
     assert north - south < 0.2, "框按锚点外扩 5 km，不是整城"
-    ticket = lookup_ticket("くら寿司", external_id="osm:node:42")
-    assert ticket is not None and ticket.dietary_options == ()
+    ticket = evidence_row({"name": "くら寿司", "source": result.provider, "evidence_id": result.evidence_id})
+    assert ticket is not None and ticket["dietary_options"] == []
 
 
 def test_resolve_poi_near_without_branch_in_range_is_unknown(monkeypatch):

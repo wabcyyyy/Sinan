@@ -1,3 +1,5 @@
+import { hasIntakeUser, intakeEpoch, intakeOwnerIsCurrent } from './intakeStorage'
+import { intakeSessionStorage } from './intakeStorage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { clarifyItinerary, isOfflineError, isUnauthorized } from '../../api/sinan'
 import type { IntakeState as ContractIntakeState } from '../../types/generated/contracts'
@@ -19,12 +21,11 @@ function nextMessageId() {
 /** F5 登录续发（PLAN 2026-10-03 §2.3）：未登录撞 clarify 401 时，把那句没送出去的
  * 话暂存 sessionStorage；登录回跳本 hook 重新挂载时若已登录 → 先清键再自动补发一次，
  * 未登录保留键等下次。键的读写各自兜 try/catch（同 intakeSlots 的存储纪律）。 */
-const INTAKE_PENDING_KEY = 'sinan-intake-pending'
-const LOGIN_STORAGE_KEY = 'sinan-username'
+const INTAKE_PENDING_KEY = 'pending'
 
 function savePendingMessage(text: string): void {
   try {
-    sessionStorage.setItem(INTAKE_PENDING_KEY, text)
+    intakeSessionStorage.setItem(INTAKE_PENDING_KEY, text)
   } catch {
     // 存储不可用（隐私模式等）：丢的只是「自动补发」一步，对话本身照常
   }
@@ -32,7 +33,7 @@ function savePendingMessage(text: string): void {
 
 function readPendingMessage(): string | null {
   try {
-    return sessionStorage.getItem(INTAKE_PENDING_KEY)
+    return intakeSessionStorage.getItem(INTAKE_PENDING_KEY)
   } catch {
     return null
   }
@@ -40,7 +41,7 @@ function readPendingMessage(): string | null {
 
 function clearPendingMessage(): void {
   try {
-    sessionStorage.removeItem(INTAKE_PENDING_KEY)
+    intakeSessionStorage.removeItem(INTAKE_PENDING_KEY)
   } catch {
     // ignore
   }
@@ -54,6 +55,7 @@ const RECONFIRM_MESSAGE = '我更新了行程信息，请重新确认'
  * M2 起就绪状态是后端权威：ready 只在本轮响应 ready && !blocked 时落位；
  * 初始化/恢复会话/表单修改一律不落 ready，也不再用 slotsReady 本地推导。 */
 export function useIntakeChat() {
+  const ownerEpoch = useRef(intakeEpoch()).current
   const [restored] = useState<IntakeState | null>(() => loadIntake())
   const [messages, setMessages] = useState<IntakeMessage[]>(() => restored?.messages ?? [GREETING])
   const [slots, setSlots] = useState<IntakeSlots>(() => restored?.slots ?? {})
@@ -108,7 +110,7 @@ export function useIntakeChat() {
     try {
       const res = await clarifyItinerary(trimmed, { ...slotsRef.current }, serverState.current, askController.signal)
       // 迟到响应：期间用户又发过消息或改过表单 → 整体丢弃（消息流也不追加）
-      if (seq.current !== mySeq) return false
+      if (seq.current !== mySeq || !intakeOwnerIsCurrent(ownerEpoch) || askController.signal.aborted) return false
       serverState.current = res.state
       const merged = mergeSlots(slotsRef.current, res.slots)
       slotsRef.current = merged
@@ -130,7 +132,7 @@ export function useIntakeChat() {
       }
       return nowReady
     } catch (err) {
-      if (askController.signal.aborted) return false
+      if (askController.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return false
       if (isUnauthorized(err)) {
         setNeedsLogin(true)
         setError('登录后继续规划，你已填的想法会保留。')
@@ -165,9 +167,9 @@ export function useIntakeChat() {
   useEffect(() => {
     const pending = readPendingMessage()
     if (!pending) return
-    if (!localStorage.getItem(LOGIN_STORAGE_KEY)) return
+    if (!hasIntakeUser()) return
     clearPendingMessage()
-    window.setTimeout(() => void send(pending), 0)
+    window.setTimeout(() => { if (intakeOwnerIsCurrent(ownerEpoch)) void send(pending) }, 0)
   }, [send])
 
   /** 确认卡表单编辑（M2）：内容一改，后端就绪作废——ready 落 false、标记待重验；
@@ -232,7 +234,7 @@ export function useIntakeChat() {
     })
     if (record.generationId) {
       try {
-        sessionStorage.setItem('sinan-intake-generation', record.generationId)
+        intakeSessionStorage.setItem('generation', record.generationId)
       } catch {
         // ignore
       }

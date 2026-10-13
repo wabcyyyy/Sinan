@@ -30,7 +30,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-1",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-1",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -89,7 +100,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-2",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-2",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -148,7 +170,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-3",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-3",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -207,13 +240,13 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "web.search",
+              "sourceRef": "evidence-4",
               "sourceUrl": null,
               "provider": "web.search",
               "retrievedAt": null,
               "expiresAt": null,
-              "verificationStatus": "unverified",
-              "valueKind": "generated",
+              "verificationStatus": "verified",
+              "valueKind": "observed",
               "freshnessStatus": "unknown",
               "reviewRequirement": "before_departure"
             },
@@ -272,7 +305,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-5",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-5",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -331,7 +375,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-6",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-6",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -390,7 +445,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-7",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-7",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -466,7 +532,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-8",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-8",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -525,7 +602,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-9",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-9",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -584,7 +672,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-10",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-10",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -660,7 +759,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-5",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-5",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -719,7 +829,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-6",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-6",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -778,7 +899,18 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "opentripmap",
+              "sourceRef": "evidence-7",
+              "sourceUrl": null,
+              "provider": "opentripmap",
+              "retrievedAt": null,
+              "expiresAt": null,
+              "verificationStatus": "verified",
+              "valueKind": "observed",
+              "freshnessStatus": "unknown",
+              "reviewRequirement": "before_departure"
+            },
+            "coordinates": {
+              "sourceRef": "evidence-7",
               "sourceUrl": null,
               "provider": "opentripmap",
               "retrievedAt": null,
@@ -837,13 +969,13 @@
           "reviewRequirement": "before_departure",
           "factEvidence": {
             "identity": {
-              "sourceRef": "web.search",
+              "sourceRef": "evidence-4",
               "sourceUrl": null,
               "provider": "web.search",
               "retrievedAt": null,
               "expiresAt": null,
-              "verificationStatus": "unverified",
-              "valueKind": "generated",
+              "verificationStatus": "verified",
+              "valueKind": "observed",
               "freshnessStatus": "unknown",
               "reviewRequirement": "before_departure"
             },

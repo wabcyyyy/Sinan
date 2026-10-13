@@ -21,7 +21,7 @@ from app.agent.core.poi_identity import PoiSeenRegistry, haversine_m
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.rules.generation_core import filter_dirty_items
 from app.agent.grounding.facts import has_coord, local_ground
-from app.agent.grounding.grounding_evidence import lookup_ticket
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     FAR_BRANCH_SOURCE,
     apply_label,
@@ -192,6 +192,7 @@ def relocate_far_meals(items: list[dict], *, city: str) -> None:
             item["latitude"], item["longitude"] = near.latitude, near.longitude
             item["address"] = near.address
             item["source"] = near.provider
+            item["evidence_id"] = near.evidence_id
             apply_label(item, label_for_landed_item(item, city))
             record_event("decision", "meal_branch_relocated", metadata=metadata)
             continue
@@ -209,8 +210,8 @@ def _branch_queries(item: dict) -> list[str]:
     中文名限框重查容易落空。解析时签的票把模型原写的查询名记在 aliases 里。
     """
     name = str(item.get("poi_name") or "").strip()
-    ticket = lookup_ticket(name, external_id=str(item.get("poi_id") or ""))
-    queries = [name, *(ticket.aliases if ticket else ())]
+    snapshot = evidence_row({"name": name, "source": item.get("source"), "evidence_id": item.get("evidence_id")})
+    queries = [name, *((snapshot or {}).get("aliases") or ())]
     return list(dict.fromkeys(query for query in queries if query))[:2]
 
 

@@ -50,4 +50,5 @@ def local_ground(item: dict[str, Any], city: str) -> bool:
     if result.address and not item.get("address"):
         item["address"] = result.address
     item["source"] = result.provider
+    item["evidence_id"] = result.evidence_id
     return True

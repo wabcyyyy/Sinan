@@ -48,12 +48,15 @@ class _FakeStreamResponse:
     def raise_for_status(self):
         pass
 
-    def iter_lines(self):
+    def close(self):
+        self.closed = True
+
+    def iter_bytes(self):
         for index, line in enumerate(self._lines):
             if self._cancel_at is not None and index >= self._cancel_at:
                 self._cancel.set()
             self.consumed += 1
-            yield line
+            yield (line + "\n").encode()
 
 
 class _FakeHttpClient:
@@ -89,12 +92,9 @@ class TestStreamChatDeltasCancel:
         response = _FakeStreamResponse(_llm_lines(5), cancel, cancel_at=2)
         monkeypatch.setattr(llm_client, "_get_http_client", lambda: _FakeHttpClient(response))
         received: list[str] = []
-        with observe_run("cancel-llm-run"):
-            with pytest.raises(StreamCancelled):
-                for delta in llm_client.LLMClient().stream_chat_deltas(
-                    [{"role": "user", "content": "hi"}], cancel=cancel
-                ):
-                    received.append(delta)
+        with observe_run("cancel-llm-run"), pytest.raises(StreamCancelled):
+            for delta in llm_client.LLMClient().stream_chat_deltas([{"role": "user", "content": "hi"}], cancel=cancel):
+                received.append(delta)
         assert received == ["chunk-0", "chunk-1"]  # 第 3 行到达时取消，未继续消费
         assert response.consumed == 3
         assert response.closed, "退出 with 块应在途 HTTP 流被断开"

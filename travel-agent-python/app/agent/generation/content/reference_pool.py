@@ -20,6 +20,7 @@
 import re
 
 from app.agent.core.poi_identity import same_entity
+from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     UNTRUSTED_SOURCE,
     apply_label,
@@ -93,8 +94,8 @@ class ReferencePool:
         注意：过滤会改变 refs 编号，Prompt 渲染（block）与落地（ground）
         必须使用同一 exclude_names 构造的同一个池，编号才对齐。
 
-        清洗与分区（§3.4.4）：name/category/open_time/address 进池前过
-        `_clean_pool_text`（行副本上改写，不动调用方的 context）；来源在
+        清洗与分区（§3.4.4）：name/category/open_time/address 在 block() 渲染时过
+        `_clean_pool_text`（不改签发快照或调用方 context）；来源在
         权威值域内的行排在前、其余（调用方传入或来源缺失）稳定排在池尾，
         block() 据此分区渲染。refs 编号取自收集结果本身，分区不破坏对齐。
         """
@@ -124,13 +125,8 @@ class ReferencePool:
                 if not name or name in seen or name in excluded:
                     continue
                 seen.add(name)
-                cleaned = {
-                    **poi,
-                    "name": name,
-                    "category": _clean_pool_text(poi.get("category"), _CATEGORY_LIMIT) or domain,
-                    "open_time": _clean_pool_text(poi.get("open_time"), _OPEN_TIME_LIMIT) or None,
-                    "address": _clean_pool_text(poi.get("address"), _ADDRESS_LIMIT) or None,
-                }
+                # 签发快照不可改写；清洗只应用于提示词显示，不改变事实校验输入。
+                cleaned = {**poi, "_reference_category": domain}
                 (deferred if not is_authoritative_source(poi.get("source")) else collected).append(cleaned)
                 kept += 1
         return collected + deferred
@@ -161,18 +157,18 @@ class ReferencePool:
                     "（以下各行的来源不在本服务外部检索值域内，可能为请求方传入的"
                     "未核验数据，仅作选点参考，不背书任何事实）"
                 )
-            segments = [str(poi.get("category") or "attraction")]
+            segments = [_clean_pool_text(poi.get("category"), _CATEGORY_LIMIT) or poi["_reference_category"]]
             if poi.get("ticket_price") is not None:
                 segments.append(f"票价{float(poi['ticket_price']):g}")
             for key in ("open_time", "address"):
-                value = str(poi.get(key) or "").strip()
+                value = _clean_pool_text(poi.get(key), _OPEN_TIME_LIMIT if key == "open_time" else _ADDRESS_LIMIT)
                 if value:
                     segments.append(value)
             # 外部饮食标签随行标注（P1-A）：模型据此优先把已证实条目排为每一餐
             diets = [str(d) for d in (poi.get("dietary_options") or ()) if d in ("vegetarian", "vegan")]
             if diets:
                 segments.append("外部饮食标签已证实:" + "、".join("纯素" if d == "vegan" else "素食" for d in diets))
-            lines.append(f'[R{no}] """{poi.get("name")}｜' + "｜".join(segments) + '"""')
+            lines.append(f'[R{no}] """{_clean_pool_text(poi.get("name"), _NAME_LIMIT)}｜' + "｜".join(segments) + '"""')
         if not lines:
             return ""
         return (
@@ -259,7 +255,7 @@ class ReferencePool:
         self.stats["cited_references"] = len(self.cited_names)
         if not matched_by_name:
             item["poi_name"] = poi_name
-        item["item_type"] = poi.get("category") or item.get("item_type") or "attraction"
+        item["item_type"] = poi.get("category") or poi["_reference_category"]
         # 背书判定唯一实现：值域外的来源（例如客户端伪造的 context）改写为
         # client-context 并降级；缺 source 的池内行按 pool-unknown 记账——
         # 既不挂"权威知识库"的名号（该表已于 V4 退役），也不谎称是客户端传入。
@@ -271,6 +267,9 @@ class ReferencePool:
         # 真实景点指到调用自选的坐标/poi_id 上（P6）。
         if not is_trusted_row(poi):
             return True
+        poi = evidence_row(poi)
+        assert poi is not None
+        item["evidence_id"] = poi["evidence_id"]
         item["poi_id"] = str(poi.get("id") or "") or item.get("poi_id")
         item["address"] = poi.get("address")
         if has_valid_coords(poi):

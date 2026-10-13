@@ -87,6 +87,7 @@ from app.services import (
     state_and_sessions,
     user_service,
 )
+from tests.llm_binding import FakeBinding
 
 DATASET_PATH = Path(__file__).with_name("e_dataset.json")
 REPORT_PATH = Path(__file__).with_name("report") / "experience_cases.json"
@@ -226,7 +227,7 @@ def e01_requirements() -> TripRequirements:
 def _fake_client_of(raw: str) -> Callable[[], Any]:
     """clarify.get_llm_client 的替身工厂：固定返回一份脚本抽取输出。"""
 
-    class _FakeClient:
+    class _FakeClient(FakeBinding):
         @staticmethod
         def complete(prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
             return raw
@@ -471,7 +472,11 @@ def check_generation_pipeline_preserves_requirements(params: dict) -> CheckOutco
             patch.object(itinerary_generation, "run_generate_day", fake_day),
             patch.object(itinerary_generation, "run_generate_trip_stream", fake_stream),
             patch.object(itinerary_generation, "_submit_budget_recalculate", lambda itinerary_id: None),
-            patch.object(itinerary_generation.enricher_pool, "submit", lambda task, *args: None),
+            patch.object(
+                itinerary_generation.enricher_pool,
+                "submit",
+                lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+            ),
             patch.object(itinerary_generation.generation_pool, "submit", lambda task, *args: task(*args)),
         ):
             body = GenerateTripRequest(
@@ -485,7 +490,7 @@ def check_generation_pipeline_preserves_requirements(params: dict) -> CheckOutco
                 requirementsStruct=struct,
             )
             detail = itinerary_generation.generate(1, body)
-        itinerary_generation.reset_active_planning_for_tests()
+        itinerary_generation.planning_tasks.reset()
         trip_id = int(detail["id"])
 
         research = captured.get("research_request")
@@ -1249,50 +1254,50 @@ def check_turn_id_replay_zero_llm_calls(params: dict) -> CheckOutcome:
         calls.append(1)
         return ChatTurnResponse(reply="已调整", changed=False)
 
-    with business_env("e13-turn"):
-        with (
-            patch.object(cache_store, "_get_client", _raise_redis_unavailable),
-            patch.object(itinerary_chat, "run_chat_turn", fake_run),
-        ):
-            trip_id = _seed_user_and_trip(days=1)
-            first = itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
-            if first.get("messageId") is None:
-                return CheckOutcome(FAIL, "首轮执行未落库")
-            replay = itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
-            problems: list[str] = []
-            if len(calls) != 1:
-                problems.append(f"重放发生了第二次模型调用：{len(calls)}")
-            if replay.get("changed") or replay.get("messageId") is not None:
-                problems.append("重放携带了新变更/新消息")
-            try:
-                itinerary_chat.chat_edit(1, trip_id, "改成别的", [], turn_id=turn_id)
-                problems.append("同 turnId 不同请求未 409")
-            except ApiError as exc:
-                if exc.status != 409:
-                    problems.append(f"同键不同请求错误码：{exc.status}")
-            record = cache_store.get_json(itinerary_chat.TURN_IDEM_NAMESPACE, f"1:{trip_id}:{turn_id}")
-            assert record is not None
-            cache_store.set_json(
-                itinerary_chat.TURN_IDEM_NAMESPACE,
-                f"1:{trip_id}:{turn_id}",
-                {"status": "running", "request_hash": record["request_hash"]},
-                600,
-            )
-            try:
-                itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
-                problems.append("running 期间的重试未 409")
-            except ApiError as exc:
-                if exc.status != 409:
-                    problems.append(f"running 冲突错误码：{exc.status}")
-            if len(calls) != 1:
-                problems.append("409 期间发生了模型调用")
-            if problems:
-                return CheckOutcome(FAIL, "；".join(problems))
-            return CheckOutcome(
-                PASS,
-                "同 turn 重放零调用零落库（不回填旧结果）；同键不同请求 409；running 窗口 409——重复执行数 0",
-                {"duplicate_executions": 0.0, "llm_calls": float(len(calls))},
-            )
+    with (
+        business_env("e13-turn"),
+        patch.object(cache_store, "_get_client", _raise_redis_unavailable),
+        patch.object(itinerary_chat, "run_chat_turn", fake_run),
+    ):
+        trip_id = _seed_user_and_trip(days=1)
+        first = itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
+        if first.get("messageId") is None:
+            return CheckOutcome(FAIL, "首轮执行未落库")
+        replay = itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
+        problems: list[str] = []
+        if len(calls) != 1:
+            problems.append(f"重放发生了第二次模型调用：{len(calls)}")
+        if replay.get("changed") or replay.get("messageId") is not None:
+            problems.append("重放携带了新变更/新消息")
+        try:
+            itinerary_chat.chat_edit(1, trip_id, "改成别的", [], turn_id=turn_id)
+            problems.append("同 turnId 不同请求未 409")
+        except ApiError as exc:
+            if exc.status != 409:
+                problems.append(f"同键不同请求错误码：{exc.status}")
+        record = cache_store.get_json(itinerary_chat.TURN_IDEM_NAMESPACE, f"1:{trip_id}:{turn_id}")
+        assert record is not None
+        cache_store.set_json(
+            itinerary_chat.TURN_IDEM_NAMESPACE,
+            f"1:{trip_id}:{turn_id}",
+            {"status": "running", "request_hash": record["request_hash"]},
+            600,
+        )
+        try:
+            itinerary_chat.chat_edit(1, trip_id, "把节奏放慢", [], turn_id=turn_id)
+            problems.append("running 期间的重试未 409")
+        except ApiError as exc:
+            if exc.status != 409:
+                problems.append(f"running 冲突错误码：{exc.status}")
+        if len(calls) != 1:
+            problems.append("409 期间发生了模型调用")
+        if problems:
+            return CheckOutcome(FAIL, "；".join(problems))
+        return CheckOutcome(
+            PASS,
+            "同 turn 重放零调用零落库（不回填旧结果）；同键不同请求 409；running 窗口 409——重复执行数 0",
+            {"duplicate_executions": 0.0, "llm_calls": float(len(calls))},
+        )
 
 
 # ---------------------------------------------------------------- E14 checks ----

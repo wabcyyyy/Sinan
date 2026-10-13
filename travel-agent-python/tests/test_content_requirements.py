@@ -15,7 +15,7 @@ from app.agent.generation.rules.constraint_checks import check_constraints
 from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import strip_model_claims
 from app.agent.grounding import existence, facts
-from app.agent.grounding.grounding_evidence import issue_evidence, lookup_ticket, verify_evidence
+from app.agent.grounding.grounding_evidence import evidence_row, issue_evidence, verify_evidence
 from app.agent.grounding.grounding_labels import label_for_landed_item
 from app.common.config import settings
 from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
@@ -153,10 +153,12 @@ def test_observed_diet_flows_from_provider_to_ticket_to_delivery(monkeypatch):
     item = _plan()["items"][1]
     assert facts.local_ground(item, "东京")
     assert item["poi_id"] == "p1-diet-test"
-    ticket = lookup_ticket("餐厅", "东京", "p1-diet-test")
-    assert ticket and ticket.dietary_options == ("vegetarian",)
+    ticket = evidence_row({"name": item["poi_name"], "source": item["source"], "evidence_id": item["evidence_id"]})
+    assert ticket and ticket["dietary_options"] == ["vegetarian"]
     label = label_for_landed_item(item, "东京")
-    item["fact_evidence"] = field_fact_evidence(item, label, cost_observed=False, open_time_observed=False)
+    item["fact_evidence"] = field_fact_evidence(
+        item, label, cost_observed=False, open_time_observed=False, evidence_id=item["evidence_id"]
+    )
     assert item["fact_evidence"]["identity"].verification_status == "verified"
     assert item["fact_evidence"]["diet:vegetarian"].review_requirement == "before_departure"
     assert "diet:vegan" not in item["fact_evidence"]

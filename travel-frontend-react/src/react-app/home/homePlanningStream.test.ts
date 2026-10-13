@@ -1,3 +1,4 @@
+import { activateIntakeOwner, intakeSessionStorage } from './intakeStorage'
 import { act } from 'react'
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -239,7 +240,7 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     generateMock.mockReset(); generateMock.mockResolvedValue({ id: 7, status: 1 } as ItineraryDetail)
     getDetailMock.mockReset(); getDetailMock.mockResolvedValue(readyDetail)
     streamChannel = null
@@ -262,7 +263,7 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     vi.clearAllMocks()
   })
 
@@ -319,7 +320,7 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
     expect(stateOf(container).previews).toEqual([])
     expect(stateOf(container).coreReady).toBe(false)
     expect(streamChannel!.signal.aborted).toBe(true)
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBeNull()
+    expect(intakeSessionStorage.getItem('generation')).toBeNull()
     expect(sessionStorage.getItem('sinan-intake-attempt')).toBeNull()
   })
 
@@ -450,7 +451,7 @@ describe('M5a/M5b 渲染（静态断言）', () => {
 
 // ===== 4. M6 attempt 幂等（spec §12 创建入口）：key 持久化 / 复用 / 换新 =====
 
-const ATTEMPT_KEY = 'sinan-intake-attempt'
+const ATTEMPT_KEY = 'attempt'
 
 const inputA = { city: '成都', days: 3, persons: 2, stayNights: 2, preferences: [] }
 const inputB = { city: '杭州', days: 2, persons: 2, stayNights: 2, preferences: [] }
@@ -465,7 +466,7 @@ interface StoredAttempt {
 }
 
 const storedAttempt = (): StoredAttempt | null => {
-  const raw = sessionStorage.getItem(ATTEMPT_KEY)
+  const raw = intakeSessionStorage.getItem(ATTEMPT_KEY)
   return raw ? (JSON.parse(raw) as StoredAttempt) : null
 }
 
@@ -491,7 +492,7 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
   /** 排队一次「先捕获再失败」的 POST（rejected 的 Once 实现不走默认捕获体） */
   function failNextGenerate() {
     generateMock.mockImplementationOnce(async (_input, key) => {
-      posts.push({ key: String(key), attemptAtPost: sessionStorage.getItem(ATTEMPT_KEY) })
+      posts.push({ key: String(key), attemptAtPost: intakeSessionStorage.getItem(ATTEMPT_KEY) })
       throw new TypeError('network down')
     })
   }
@@ -522,12 +523,12 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
     posts = []
     waitCapture = null
     // 捕获 POST 时点的 key 与 sessionStorage 状态（「先落盘再 POST」的直接证据）
     generateMock.mockReset(); generateMock.mockImplementation(async (_input, key) => {
-      posts.push({ key: String(key), attemptAtPost: sessionStorage.getItem(ATTEMPT_KEY) })
+      posts.push({ key: String(key), attemptAtPost: intakeSessionStorage.getItem(ATTEMPT_KEY) })
       return { id: 7, status: 1 } as ItineraryDetail
     })
     getDetailMock.mockReset(); getDetailMock.mockResolvedValue(readyDetail)
@@ -544,7 +545,7 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
       await act(async () => { root.unmount() })
       container.remove()
     }
-    sessionStorage.clear()
+    sessionStorage.clear(); activateIntakeOwner(null)
   })
 
   it('首次 POST 前已持久化 attemptId+hash+状态；成功后 phase=submitted 且绑 itineraryId', async () => {
@@ -565,14 +566,14 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
   it('恢复详情迟到时不能覆盖用户已重置并开始的新行程', async () => {
     let resolveOld!: (detail: ItineraryDetail) => void
     getDetailMock.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve }))
-    sessionStorage.setItem('sinan-intake-generation', '6')
+    intakeSessionStorage.setItem('generation', '6')
     const container = await mount()
     await click(container, '.probe-reset')
     await click(container, '.probe-start-a')
     await act(async () => { resolveOld({ ...readyDetail, id: 6 }) })
     await flush()
     expect(stateOf(container).status).toBe('planning')
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('7')
+    expect(intakeSessionStorage.getItem('generation')).toBe('7')
     await settleWait()
     expect(stateOf(container).status).toBe('ready')
   })
@@ -580,7 +581,7 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
   it('恢复详情未返回就离开页面，迟到响应不得启动后台轮询', async () => {
     let resolveOld!: (detail: ItineraryDetail) => void
     getDetailMock.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve }))
-    sessionStorage.setItem('sinan-intake-generation', '6')
+    intakeSessionStorage.setItem('generation', '6')
     await mount()
     const record = idemRoots.pop()!
     await act(async () => { record.root.unmount() })
@@ -589,7 +590,7 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
     await flush()
     expect(waitForMock).not.toHaveBeenCalled()
     expect(streamMock).not.toHaveBeenCalled()
-    expect(sessionStorage.getItem('sinan-intake-generation')).toBe('6')
+    expect(intakeSessionStorage.getItem('generation')).toBe('6')
   })
 
   it('网络失败后的重试复用同一 key（E13：创建已接受丢响应仍只有一条行程）', async () => {
@@ -636,13 +637,15 @@ describe('useHomePlanning M6 attempt 幂等（spec §12 创建入口）', () => 
   })
 
   it('已有 itineraryId 的刷新恢复只轮询不重复提交（attempt 记录在场也不触发 POST）', async () => {
-    sessionStorage.setItem('sinan-intake-generation', '7')
-    sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({
+    intakeSessionStorage.setItem('generation', '7')
+    intakeSessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({
       attemptId: 'seed-key', hash: 'h', phase: 'submitted', itineraryId: 7,
     }))
     await mount()
     await flush()
     expect(generateMock).not.toHaveBeenCalled()
-    expect(getDetailMock).toHaveBeenCalledWith(7)
+    expect(getDetailMock).toHaveBeenCalledWith(7, expect.any(AbortSignal))
   })
 })
+
+beforeEach(() => { activateIntakeOwner(null) })

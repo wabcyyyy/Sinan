@@ -24,6 +24,7 @@ from app.agent.tools import impl as tools
 from app.agent.tools.function_calling import FunctionCallingError
 from app.common.config import settings
 from app.schemas.trip import GenerateRequest
+from tests.llm_binding import FakeBinding
 
 # ---------- 1. build_intent_keywords：纯规则抽词 ----------
 
@@ -92,12 +93,12 @@ def test_evaluate_intent_uncovered_forces_insufficient(monkeypatch):
 def test_evaluate_intent_hit_via_tags_keeps_llm_verdict(monkeypatch):
     """tags 命中意图词 → 不短路，维持 LLM 判定链路。"""
 
-    class FakeEvalClient:
+    class FakeEvalClient(FakeBinding):
         def complete(self, *_args, **_kwargs):
             return json.dumps({"sufficient": True, "reason": "ok", "extra_keywords": []}, ensure_ascii=False)
 
     monkeypatch.setattr(settings, "llm_api_key", "configured")
-    monkeypatch.setattr(reasoning, "get_llm_client", lambda: FakeEvalClient())
+    monkeypatch.setattr(reasoning, "get_llm_client", lambda _role="main": FakeEvalClient())
     task = ResearchTask(domain="attraction", city="杭州", intent_keywords=["千恋万花"])
     verdict = reasoning.evaluate_research(task, [{"name": "动漫画馆", "tags": ["千恋万花 联动展览"]}], 1)
     assert verdict["sufficient"] is True
@@ -216,7 +217,7 @@ def test_search_places_via_web_without_intent_keeps_query(monkeypatch):
 # ---------- 6. butler / poi Prompt 扩写契约 ----------
 
 
-class CaptureClient:
+class CaptureClient(FakeBinding):
     """捕获 complete 入参的 LLM 替身；reply 可定制。"""
 
     def __init__(self, reply="第一段。\n\n第二段。"):
@@ -231,7 +232,7 @@ class CaptureClient:
 def test_butler_note_prompt_four_paragraph_contract(monkeypatch):
     """管家讲解：400~600 字四段结构 + intent/plans 注入 + max_tokens 1200。"""
     fake = CaptureClient()
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     butler.run_butler_note(
         {
             "city": "杭州",
@@ -259,7 +260,7 @@ def test_poi_intros_prompt_length_and_intent_link(monkeypatch):
     def _fc_fail(*_args, **_kwargs):
         raise FunctionCallingError("测试强制降级")
 
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     monkeypatch.setattr(butler, "run_tool_call_loop", _fc_fail)
     butler.run_poi_intros("杭州", ["西湖"], intent="《千恋万花》圣地巡礼")
     call = fake.calls[0]
@@ -277,7 +278,7 @@ def test_poi_intros_prompt_without_intent_uses_reputation_link(monkeypatch):
     def _fc_fail(*_args, **_kwargs):
         raise FunctionCallingError("测试强制降级")
 
-    monkeypatch.setattr(butler, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(butler, "get_llm_client", lambda _role="main": fake)
     monkeypatch.setattr(butler, "run_tool_call_loop", _fc_fail)
     butler.run_poi_intros("杭州", ["西湖"])
     system = fake.calls[0]["system"]

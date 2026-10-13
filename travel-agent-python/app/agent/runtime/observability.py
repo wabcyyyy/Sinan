@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from threading import Lock
 from typing import Any
 
-from app.agent.runtime.run_limits import begin_limits, current_limits, end_limits
+from app.agent.runtime.run_limits import begin_limits, current_limits, end_limits, phase_scope
 from app.agent.runtime.tool_budget import begin_tool_budget, end_tool_budget
 from app.agent.runtime.trace import TraceRecorder, trace_run
 from app.agent.runtime.trace_store import TraceStore
@@ -274,7 +274,7 @@ def observe_run(
 ) -> Iterator[TraceRecorder]:
     budget_token = begin_tool_budget()
     limits_token = begin_limits()
-    with trace_run(run_id, request_id, action_id) as recorder:
+    with phase_scope(settings.agent_deadline_seconds), trace_run(run_id, request_id, action_id) as recorder:
         try:
             yield recorder
         except Exception as exc:

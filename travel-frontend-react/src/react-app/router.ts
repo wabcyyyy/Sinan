@@ -1,3 +1,4 @@
+import { intakeSessionStorage } from './home/intakeStorage'
 import { useCallback, useEffect, useState } from 'react'
 
 export interface LocationState {
@@ -38,8 +39,8 @@ export function navigate(to: string) {
 /** 重置首页到最初的 idle 状态（清空临时对话与规划草稿，派发 reset 事件） */
 export function resetHomeSession() {
   try {
-    sessionStorage.removeItem('sinan-intake-v1')
-    sessionStorage.removeItem('sinan-intake-generation')
+    intakeSessionStorage.removeItem('current')
+    intakeSessionStorage.removeItem('generation')
   } catch {
     // ignore
   }

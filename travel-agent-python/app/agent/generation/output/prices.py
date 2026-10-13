@@ -18,11 +18,18 @@ from app.common.addons import addons
 from app.common.config import settings
 from app.common.model_registry import configured
 from app.common.season import season_factor, season_label
-from app.schemas.trip import GenerateRequest
+from app.schemas.trip import FactEvidence, GenerateRequest
 
 
 def _append_remark(item: dict[str, Any], note: str) -> None:
     item["remark"] = f"{item['remark']}；{note}" if item.get("remark") else note
+
+
+def _mark_changed_price(item: dict[str, Any], previous: Any) -> None:
+    if item.get("cost") != previous and "cost" in (item.get("fact_evidence") or {}):
+        item["fact_evidence"]["cost"] = FactEvidence(
+            verification_status="unverified", value_kind="estimated", review_requirement="before_departure"
+        )
 
 
 @dataclass
@@ -95,8 +102,10 @@ class PriceStage:
         elif base is None and item.get("cost") is None:
             # 无实时价且无基准价：保持缺省，由预算引擎/知识库回落
             return
+        _mark_changed_price(item, raw_cost)
 
     def price_food(self, item: dict[str, Any], meal_price: float | None) -> None:
+        previous = item.get("cost")
         food_name = str(item.get("poi_name") or "")
         if settings.live_food_price_search and configured("main"):
             if food_name not in self.food_live_cache:
@@ -118,6 +127,7 @@ class PriceStage:
         if clamp_note:
             item["cost"] = new_cost
             _append_remark(item, clamp_note)
+        _mark_changed_price(item, previous)
 
     def recompute_budget(
         self,

@@ -1,7 +1,7 @@
 """图像意图理解（POST /api/image-intent）单测：配额闸 / 大小与格式防线 / BYOK 路由 / 全 mock。
 
 夹具抄 tests/test_cover_api.py 与 tests/test_llm_gateway_api.py（TestClient + sqlite +
-Bearer 头）；视觉调用 mock 掉 agent 模块的 `get_role_client`（2026-10-04 起视觉角色由
+Bearer 头）；视觉调用 mock 掉 agent 模块的 `get_llm_client`（2026-10-04 起视觉角色由
 model_registry 解析）——全部用例零外网。视觉角色显式指向百炼兼容层：默认复用 main 时
 主模型在 DeepSeek 官方，qwen-vl-plus 在那里并不存在，能力闸会先拦下来（那正是它的职责）。
 429 专项按 tests/test_quota_and_headers.py:39-47 的手法自行 monkeypatch 回小值
@@ -31,6 +31,7 @@ from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, UserLlmGateway
 from app.services import image_intent as image_intent_service
+from tests.llm_binding import FakeBinding
 
 SIGNING_MATERIAL = "example-only-hs256-signing-material-32b"  # 测试占位串，非真实凭据
 
@@ -61,7 +62,13 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     db_session.init_engine(None, None)
 
 
-class _CapturingClient:
+class _CapturingClient(FakeBinding):
+    @property
+    def model(self):
+        from app.common.model_registry import binding
+
+        return binding("vision").model
+
     """替身 LLMClient：记录 chat 入参并返回固定回复（覆盖 json/图片两个 part 的断言面）。
 
     base_url 是百炼兼容层口径：视觉模型只在"该通道真提供这个模型名"时才允许发出去
@@ -92,9 +99,9 @@ def _vision_role_on_dashscope(monkeypatch):
 
 @pytest.fixture
 def fake_client(monkeypatch) -> _CapturingClient:
-    """替身注入点：视觉走 `get_role_client("vision")`（2026-10-04 起由注册表解析）。"""
+    """替身注入点：视觉走 `get_llm_client("vision")`（2026-10-04 起由注册表解析）。"""
     fake = _CapturingClient()
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     return fake
 
 
@@ -239,20 +246,20 @@ def test_interpret_quota_429_before_any_work(client: TestClient, fake_client: _C
 
 def test_interpret_parse_failure_is_502(client: TestClient, monkeypatch) -> None:
     fake = _CapturingClient(reply="这不是 JSON")
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     response = _post(client, _png_bytes())
     assert response.status_code == 502
     assert "没能识别这张图片" in response.json()["message"]
 
 
 def test_interpret_upstream_failure_is_generic_502(client: TestClient, monkeypatch) -> None:
-    class _Boom:
+    class _Boom(FakeBinding):
         base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
         def chat(self, *_args, **_kwargs) -> str:
             raise RuntimeError("upstream 503 for url https://gateway.example/v1/chat/completions")
 
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: _Boom())
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: _Boom())
     response = _post(client, _png_bytes())
     assert response.status_code == 502
     assert response.json()["message"] == "图像识别服务暂不可用", "上游异常不得透传"
@@ -263,28 +270,28 @@ def test_interpret_upstream_failure_is_generic_502(client: TestClient, monkeypat
 
 def test_run_image_intent_parses_fenced_json(monkeypatch) -> None:
     fake = _CapturingClient(reply='```json\n{"text": "海边日落", "suggestedMessage": "想去海边看日落"}\n```')
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     result = image_intent_agent.run_image_intent("data:image/jpeg;base64,aGVsbG8=")
     assert result == {"text": "海边日落", "suggestedMessage": "想去海边看日落"}
 
 
 def test_run_image_intent_falls_back_suggested_to_text(monkeypatch) -> None:
     fake = _CapturingClient(reply='{"text": "一碗热气腾腾的牛肉面"}')
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     result = image_intent_agent.run_image_intent("data:image/jpeg;base64,aGVsbG8=")
     assert result["suggestedMessage"] == "一碗热气腾腾的牛肉面"
 
 
 def test_run_image_intent_rejects_garbage(monkeypatch) -> None:
     fake = _CapturingClient(reply="完全不是 JSON")
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     with pytest.raises(ValueError):
         image_intent_agent.run_image_intent("data:image/jpeg;base64,aGVsbG8=")
 
 
 def test_run_image_intent_rejects_empty_text(monkeypatch) -> None:
     fake = _CapturingClient(reply='{"text": "", "suggestedMessage": "x"}')
-    monkeypatch.setattr(image_intent_agent, "get_role_client", lambda _role: fake)
+    monkeypatch.setattr(image_intent_agent, "get_llm_client", lambda _role: fake)
     with pytest.raises(ValueError):
         image_intent_agent.run_image_intent("data:image/jpeg;base64,aGVsbG8=")
 

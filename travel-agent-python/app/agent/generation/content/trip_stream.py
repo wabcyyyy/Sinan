@@ -37,7 +37,6 @@ from app.agent.generation.content.json_output import parse_llm_json_with_repair,
 from app.agent.generation.content.narrative import assemble_trip_output
 from app.common.config import settings
 from app.common.llm_client import get_llm_client
-from app.common.model_registry import json_response_format, model_for
 from app.schemas.trip import GenerateDayRequest
 
 logger = logging.getLogger(__name__)
@@ -62,14 +61,14 @@ def llm_open_trip_stream(
     终止，不产出 final）。不挂 @traced：生成器函数被装饰会改变惰性语义，
     且 stream_chat_deltas 已自带 llm.stream_request 轨迹。
     """
-    client = get_llm_client()
+    client = get_llm_client("fast")
     system, user = open_trip_prompt(req)
     days = req.days or 1
     output_schema = open_trip_output_schema()
     # 预算公式与 llm_open_trip 同源等比（见该函数注），流式同样按天给足，
     # 不以截断换首字节延迟。
     repair_tokens = max(2800, min(16000, days * 8000))
-    response_format = json_response_format("fast", "trip_output", output_schema)
+    response_format = client.json_response_format("trip_output", output_schema)
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     parser = TripPlanStreamParser()
     parts: list[str] = []
@@ -77,7 +76,6 @@ def llm_open_trip_stream(
         messages,
         temperature=GENERATION_TEMPERATURE,
         max_tokens=repair_tokens,
-        model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
         cancel=cancel,
@@ -97,7 +95,6 @@ def llm_open_trip_stream(
     data = parse_llm_json_with_repair(
         raw,
         client,
-        model=model_for("fast"),
         repair_max_tokens=repair_tokens,
         response_format=response_format,
         messages=messages,

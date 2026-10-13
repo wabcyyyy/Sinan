@@ -227,7 +227,11 @@ def _generate_drafts(
             if not str(item.get("verification_status") or "").strip():
                 apply_label(item, label_for_landed_item(item, req.city))
             item["fact_evidence"] = field_fact_evidence(
-                item, label_for_landed_item(item, req.city), cost_observed=False, open_time_observed=False
+                item,
+                label_for_landed_item(item, req.city),
+                cost_observed=False,
+                open_time_observed=False,
+                evidence_id=str(item.get("evidence_id") or "") or None,
             )
         for item in plan["items"]:
             if item.get("poi_name"):

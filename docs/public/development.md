@@ -9,14 +9,15 @@
 
 ## 后端
 
-在 `travel-agent-python/` 执行完整门禁：
+日常在根目录运行 `verify.ps1`（或 `just check`），规则见 `VALIDATION.md`。
+完整门禁交给 CI；用户明确要求本地全量时，在 `travel-agent-python/` 执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1 -Full
 ```
 
 包含 Ruff、类型、分层、规模、秘密扫描、离线测试、变更行覆盖率与契约漂移，CI 在 Linux 执行对应步骤。
-行为变更另执行：
+相关行为可按范围点名 smoke，以下评测全集由 CI 执行：
 
 ```bash
 uv run python tests/agent_eval/eval_agent.py
@@ -30,6 +31,15 @@ uv run python scripts/eval_ratchet.py
 
 schema 变更执行 `uv run python scripts/export_contracts.py`，生成产物随同批提交。迁移只追加，门禁不放宽。
 真实 API 测试、nightly 和生成压测可能调用模型，不属于默认离线门禁。
+
+业务生成任务从提交起共享 `ITINERARY_DEADLINE_SECONDS`（默认 300 秒），研究段另受
+`RESEARCH_DEADLINE_SECONDS`（默认 60 秒）约束。整段生成、逐日修复和富化共用调用、检索和
+token 预算；排队也计时。同一用户同时只能有一个规划任务，持久化预算与 checkpoint 共用
+SQLite，恢复时延续已消耗额度。单独 Agent 图运行仍用 `AGENT_DEADLINE_SECONDS`（默认 240 秒）。
+
+外部事实由数据适配器签发字段快照，`factEvidence.sourceRef` 引用该次取回的证据 ID。
+名称、来源及字段必须与快照相符，模型补的坐标、费用和时间不能仅凭同名地点继承背书。
+候选资料只在提示词显示时清洗，原始事实保持不变；价格调整后的费用重新标为估算。
 
 ## 前端
 

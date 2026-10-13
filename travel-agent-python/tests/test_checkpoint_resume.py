@@ -66,7 +66,7 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "redis_url", "redis://127.0.0.1:1/0")
     cache_store.reset_for_tests()
     state_and_sessions.reset_for_tests()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     with db_session.session_scope() as session:
         session.add(SysUser(username="alice", password=user_service.hash_password(PASSWORD), status=1, role="user"))
     yield
@@ -327,7 +327,11 @@ def _stub_orchestration(monkeypatch, *, deaths: dict | None = None) -> dict:
     monkeypatch.setattr(itinerary_generation, "run_plan_context", fake_context)
     monkeypatch.setattr(itinerary_generation, "run_generate_day", fake_day)
     monkeypatch.setattr(itinerary_generation, "_submit_budget_recalculate", lambda itinerary_id: None)
-    monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", lambda task, *args: None)
+    monkeypatch.setattr(
+        itinerary_generation.enricher_pool,
+        "submit",
+        lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+    )
 
     def inline(task, *args):
         task(*args)
@@ -378,7 +382,7 @@ def test_recovery_rebuilds_command_without_losing_user_params(client, monkeypatc
     trip_id = detail["id"]
     # 提交被 patch 成不执行 → 行程还挂在注册表里；本用例模拟"提交它的进程已死"，
     # 清掉注册表让 recovery 可接（P1-1 存活探测的另一面）
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     # 模拟上一轮真实观测过报价：flight_quotes 非 NULL（save_flight_quotes 的空→NULL 语义
     # 不许把这份观测在恢复路径上无声抹掉）。直接赋 list——JSON 列由 SQLAlchemy 序列化。
     with db_session.session_scope() as session:
@@ -450,7 +454,7 @@ def test_recovery_rebuilds_structured_requirements(client, monkeypatch) -> None:
         },
     ).json()["data"]
     trip_id = detail["id"]
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
 
     main, _days = _rows(trip_id)
     assert main.requirements_json is not None, "新行程建壳一律写需求快照（这是新旧指纹口径的判定信号）"

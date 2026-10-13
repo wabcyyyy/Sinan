@@ -1,3 +1,4 @@
+import type { UserInfoVO } from '../../types/generated/contracts'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { login, register, ReactApiError } from '../../api/sinan'
@@ -7,7 +8,7 @@ import hangzhou from '../../assets/img/cover-hangzhou.webp'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
 
-export function LoginPage({ onAuthenticated }: { onAuthenticated: (username: string) => void }) {
+export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInfoVO) => void }) {
   const location = useLocation()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
@@ -23,7 +24,7 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (username: str
     try {
       if (mode === 'register') await register({ username: username.trim(), password, nickname: nickname.trim() || null })
       const result = await login({ username: username.trim(), password })
-      onAuthenticated(result.user.username)
+      onAuthenticated(result.user)
       const redirect = location.query.get('redirect')
       // // 开头会被浏览器当协议相对 URL 解析成异源地址，history.pushState 直接抛 SecurityError
       navigate(redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/trips')

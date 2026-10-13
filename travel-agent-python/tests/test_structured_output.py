@@ -1,6 +1,6 @@
 """Structured output 收口单测（PR-5）：强约束 schema + 三层解析路径。
 
-背景（spike 2026-09-24，tests/probe_structured_output.py 可重跑）：DashScope
+背景（spike 2026-09-24）：DashScope
 OpenAI 兼容网关**接受并执行** `response_format: json_schema strict`（诱导违规的
 day_no 超界值被约束回界内、多余键被拒）；json_object 基线不执行 schema。据此
 （D3 强约束档）生成主链路出口换 json_schema，`parse_llm_json` 的栅栏/截取打捞
@@ -27,12 +27,13 @@ from app.agent.generation.content.day_prompts import (
 from app.agent.generation.content.json_output import parse_llm_json_with_repair
 from app.common.config import settings
 from app.schemas.trip import GenerateDayRequest
+from tests.llm_binding import FakeBinding
 
 DEEPSEEK = "https://api.deepseek.com"
 DASHSCOPE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 
-class _FakeClient:
+class _FakeClient(FakeBinding):
     """修复重试替身：记录 repair 调用，按脚本返回修复产物。"""
 
     def __init__(self, reply: str) -> None:
@@ -71,7 +72,7 @@ class TestOutputSchemas:
         """
         seen: list[dict] = []
 
-        class _Capture:
+        class _Capture(FakeBinding):
             def complete(self, *args, **kwargs):
                 seen.append(kwargs)
                 return json.dumps(
@@ -90,8 +91,8 @@ class TestOutputSchemas:
         from app.agent.generation.content import day_prompts
         from app.agent.generation.orchestration import day_stream
 
-        monkeypatch.setattr(day_prompts, "get_llm_client", lambda: _Capture())
-        monkeypatch.setattr(day_stream, "get_llm_client", lambda: _Capture())
+        monkeypatch.setattr(day_prompts, "get_llm_client", lambda _role="main": _Capture())
+        monkeypatch.setattr(day_stream, "get_llm_client", lambda _role="main": _Capture())
 
         monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
         for role in ("main", "fast", "vision", "judge", "search", "stt"):

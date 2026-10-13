@@ -1,3 +1,5 @@
+import { intakeEpoch, intakeOwnerIsCurrent } from './intakeStorage'
+import { intakeSessionStorage } from './intakeStorage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   generateItinerary,
@@ -18,12 +20,12 @@ export type PlanningStatus = 'idle' | 'creating' | 'planning' | 'ready' | 'pendi
 
 // 生成中的行程 id 暂存：刷新/断流后重挂载时据此续上监控（行程本身在服务端继续生成）；
 // done 态也保留（F4，PLAN 2026-10-03 §2.4）——刷新后 resume 靠它拉详情恢复 ready+draft，
-// 会话重置与已知终态失败才清空；通道瞬断保留原 id，避免重复生成。
-const GENERATION_KEY = 'sinan-intake-generation'
+// 会话重置与已知终态失败才清空；按已确认身份隔离存储，通道瞬断保留原 id。
+const GENERATION_KEY = 'generation'
 
 function readGenerationId(): number | null {
   try {
-    const id = Number(sessionStorage.getItem(GENERATION_KEY))
+    const id = Number(intakeSessionStorage.getItem(GENERATION_KEY))
     return Number.isInteger(id) && id > 0 ? id : null
   } catch {
     return null
@@ -32,7 +34,7 @@ function readGenerationId(): number | null {
 
 function saveGenerationId(id: number) {
   try {
-    sessionStorage.setItem(GENERATION_KEY, String(id))
+    intakeSessionStorage.setItem(GENERATION_KEY, String(id))
   } catch {
     // 存储不可用：只损失刷新续看，不影响本次生成
   }
@@ -40,7 +42,7 @@ function saveGenerationId(id: number) {
 
 function clearGenerationId() {
   try {
-    sessionStorage.removeItem(GENERATION_KEY)
+    intakeSessionStorage.removeItem(GENERATION_KEY)
   } catch {
     // ignore
   }
@@ -53,7 +55,7 @@ function clearGenerationId() {
 // 请求实质变化（hash 不一致）或用户明确「重新说」（reset 清记录）才换 key。已拿到
 // itineraryId 的恢复只走轮询（GENERATION_KEY resume），不再次提交。storage 不可用时
 // 降级为模块级内存变量——会话内幂等仍成立，跨刷新不可恢复（如实限制）。
-const ATTEMPT_KEY = 'sinan-intake-attempt'
+const ATTEMPT_KEY = 'attempt'
 
 interface AttemptRecord {
   attemptId: string
@@ -63,6 +65,7 @@ interface AttemptRecord {
 }
 
 let memoryAttempt: AttemptRecord | null = null
+let memoryAttemptEpoch = -1
 
 function parseAttempt(raw: string): AttemptRecord | null {
   try {
@@ -88,7 +91,7 @@ function parseAttempt(raw: string): AttemptRecord | null {
  * 只在存储里没有可用记录时调用，用户动作频率，成本可忽略。 */
 function attemptStorageWritable(): boolean {
   try {
-    sessionStorage.setItem(ATTEMPT_KEY, sessionStorage.getItem(ATTEMPT_KEY) ?? '')
+    intakeSessionStorage.setItem(ATTEMPT_KEY, intakeSessionStorage.getItem(ATTEMPT_KEY) ?? '')
     return true
   } catch {
     return false
@@ -96,8 +99,9 @@ function attemptStorageWritable(): boolean {
 }
 
 function readAttempt(): AttemptRecord | null {
+  if (memoryAttemptEpoch !== intakeEpoch()) { memoryAttempt = null; memoryAttemptEpoch = intakeEpoch() }
   try {
-    const raw = sessionStorage.getItem(ATTEMPT_KEY)
+    const raw = intakeSessionStorage.getItem(ATTEMPT_KEY)
     if (raw) return parseAttempt(raw)
   } catch {
     return memoryAttempt
@@ -108,10 +112,11 @@ function readAttempt(): AttemptRecord | null {
 }
 
 function writeAttempt(record: AttemptRecord | null) {
+  memoryAttemptEpoch = intakeEpoch()
   memoryAttempt = record
   try {
-    if (record === null) sessionStorage.removeItem(ATTEMPT_KEY)
-    else sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify(record))
+    if (record === null) intakeSessionStorage.removeItem(ATTEMPT_KEY)
+    else intakeSessionStorage.setItem(ATTEMPT_KEY, JSON.stringify(record))
   } catch {
     // 写不进：内存影子已保会话内幂等；跨刷新恢复能力如实受限（下次读取经探测走内存）
   }
@@ -164,6 +169,7 @@ function clearAttempt() {
 }
 
 export function useHomePlanning() {
+  const ownerEpoch = useRef(intakeEpoch()).current
   const [status, setStatus] = useState<PlanningStatus>('idle')
   const [message, setMessage] = useState('')
   const [progress, setProgress] = useState(0)
@@ -184,7 +190,7 @@ export function useHomePlanning() {
 
   const monitor = useCallback(async (created: ItineraryDetail, controller: AbortController) => {
     const onEvent = (event: ItineraryStreamEvent) => {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       const data = event.data || {}
       if (event.type === 'research_start') { setProgress(1); setMessage('正在查找目的地信息') }
       if (event.type === 'research_done') { setProgress(2); setMessage('正在安排每天的路线') }
@@ -216,7 +222,7 @@ export function useHomePlanning() {
         signal: controller.signal,
         timeoutMs: 30 * 60 * 1000,
         onUpdate: (detail) => {
-          if (!controller.signal.aborted) {
+          if (!controller.signal.aborted && intakeOwnerIsCurrent(ownerEpoch)) {
             setDraft(detail)
             // M5a：正式 day 快照（轮询对账到达）是权威内容——已有条目的天候选整日让位
             setPreviewState((prev) => prunePreviewsByDraft(prev, detail))
@@ -227,7 +233,7 @@ export function useHomePlanning() {
           }
         },
       })
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       // done 不清 generationId：刷新后走 resume 恢复同一 ready 呈现（见 GENERATION_KEY 注）
       // 完整收尾（轮询通道先于 SSE 终态帧到达是常态）：残余预览与里程碑提示一并清
       setDraft(result); setPreviewState(emptyPreviewState()); setCoreReady(false)
@@ -249,7 +255,7 @@ export function useHomePlanning() {
       }
       controller.abort()
     } catch (error) {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       if (lastStatus === 3) {
         clearGenerationId()
         clearAttempt()
@@ -276,13 +282,13 @@ export function useHomePlanning() {
     let created: ItineraryDetail | null = null
     try {
       created = await generateItinerary(input, attempt.attemptId, controller.signal)
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       saveGenerationId(created.id)
       settleAttempt(attempt.attemptId, created.id)
       setDraft(created); setStatus('planning')
       await monitor(created, controller)
     } catch (error) {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       if (isUnauthorized(error)) {
         setStatus('login'); setMessage('登录后即可开始规划，你填写的想法会保留。')
       } else if (created) {
@@ -308,8 +314,8 @@ export function useHomePlanning() {
     const controller = new AbortController()
     saveGenerationId(id)
     try {
-      const shell = await getItineraryDetail(id)
-      if (!mounted.current || version !== requestVersion.current) return
+      const shell = await getItineraryDetail(id, controller.signal)
+      if (!mounted.current || version !== requestVersion.current || !intakeOwnerIsCurrent(ownerEpoch)) return
       request.current = controller
       setDraft(shell)
       if (shell.status === 3 || shell.genState === 'FAILED') {
@@ -336,7 +342,7 @@ export function useHomePlanning() {
       setStatus('planning'); setMessage('上次的规划还在进行，接着看'); setProgress(2)
       await monitor(shell, controller)
     } catch (error) {
-      if (!controller.signal.aborted && version === requestVersion.current) {
+      if (!controller.signal.aborted && version === requestVersion.current && intakeOwnerIsCurrent(ownerEpoch)) {
         setStatus(isUnauthorized(error) ? 'login' : 'pending')
         setMessage(isUnauthorized(error) ? '登录后即可继续查看上次的行程。' : '暂时无法读取上次的行程，请刷新重试。')
       }

@@ -40,6 +40,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.external_client import ExternalClient
 from app.common.http_client import api_client, contact_user_agent
 from app.schemas.trip import FactEvidence
@@ -111,34 +112,64 @@ def extract_evidence(html: str, *, fetched_at: str, url: str = "") -> OfficialPa
     提取不是理解：命中关键词才算证据，未命中 = 本 adapter 表达不了该页面，
     宁可 None 交给上层保持 unknown，也不产出似是而非的字段值。
     """
-    text = _page_text(html)
+    parsed = _applicable_article(html, fetched_at)
+    if parsed is None:
+        return None
+    entity, text, published_at = parsed
     fields: dict[str, str] = {}
     excerpts: list[str] = []
-    free = _TICKET_FREE_RE.search(text)
-    if free is not None:
-        fields["ticket"] = TICKET_FREE
-        excerpts.append(_excerpt_of(text, free))
-    else:
-        paid = _TICKET_PAID_RE.search(text)
-        if paid is not None:
-            # 免票表述优先：同页既有"免票"又有历史票价（如飞来峰另计）时不误判收费
+    sentences = re.split(r"[。！？；]", text)
+    ticket_sentences = [part for part in sentences if _TICKET_FREE_RE.search(part) or _TICKET_PAID_RE.search(part)]
+    # 条件、历史、混合项目任一出现都不能归纳为全体游客的普遍票价。
+    ambiguous = re.search(r"儿童|学生|老人|老年|成人|部分|持.+证|限时|活动期间|节假日|曾经|原价|历史|套餐|联票", text)
+    applicable = [part for part in ticket_sentences if entity in part]
+    if not ambiguous and len(applicable) == 1 and len(_TICKET_PAID_RE.findall(text)) <= 1:
+        sentence = applicable[0]
+        free, paid = _TICKET_FREE_RE.search(sentence), _TICKET_PAID_RE.search(sentence)
+        if free is not None and paid is None:
+            fields["ticket"] = TICKET_FREE
+        elif paid is not None and free is None:
             fields["ticket"] = f"paid:{paid.group(1)}"
-            excerpts.append(_excerpt_of(text, paid))
-    reservation = _RESERVATION_RE.search(text)
-    if reservation is not None:
-        fields["reservation"] = RESERVATION_REQUIRED
-        excerpts.append(_excerpt_of(text, reservation))
+        if "ticket" in fields:
+            excerpts.append(sentence.strip()[:100])
+    reservation_sentences = [part for part in sentences if _RESERVATION_RE.search(part)]
+    if len(reservation_sentences) == 1:
+        sentence = reservation_sentences[0]
+        if (entity in sentence or "寺院" in sentence) and not re.search(
+            r"无需|不需|不用|不必|免预约|取消|不实行|未实行|儿童|部分|活动期间", sentence
+        ):
+            fields["reservation"] = RESERVATION_REQUIRED
+            excerpts.append(sentence.strip()[:100])
     if not fields:
         return None
+    return OfficialPageEvidence(url, fetched_at, published_at, "；".join(excerpts)[:240], fields)
+
+
+def _applicable_article(html: str, fetched_at: str) -> tuple[str, str, str] | None:
+    article = re.search(r"<article\b[^>]*>(.*?)</article>", html, re.S | re.I)
+    title = re.search(r"<(?:h2|title)\b[^>]*>(.*?)</(?:h2|title)>", html, re.S | re.I)
+    if article is None or title is None:
+        return None
+    names = re.findall(r"[\u4e00-\u9fffA-Za-z0-9]{2,20}(?:博物馆|纪念馆|公园|寺|景区)", _page_text(title[1]))
+    entity = next((name for name in names if name not in ("景区", "景区公告")), "")
+    text = _page_text(article[1])
     published = _PUBLISHED_RE.search(text)
-    published_at = published.group(1) if published is not None else None
-    return OfficialPageEvidence(
-        url=url,
-        observed_at=fetched_at,
-        published_at=published_at,
-        excerpt="；".join(dict.fromkeys(excerpts))[:240],
-        fields=fields,
-    )
+    if not entity or published is None:
+        return None
+    try:
+        observed = datetime.fromisoformat(fetched_at).date()
+        publication = datetime.strptime(published[1], "%Y-%m-%d").date()
+        effective = re.search(r"自\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日起", text)
+        # 必须有明确开始日期；结束日期/季节窗口尚不能可靠解释，保持 unknown。
+        if effective is None or re.search(r"截至|截止|至\s*\d|期间|每年|仅限|当日免费", text):
+            return None
+        year, month, day = (int(value) for value in effective.groups())
+        begins = datetime(year, month, day).date()
+        if publication > observed or begins > observed:
+            return None
+    except ValueError:
+        return None
+    return entity, text, published[1]
 
 
 # ---- 抓取守卫（限域 / 禁私网 / 大小 / 超时 / 单跳重定向） -----------------------
@@ -155,6 +186,8 @@ OFFICIAL_PAGE_CLIENT: ExternalClient = ExternalClient(
     max_response_bytes=_MAX_RESPONSE_BYTES,
     timeout_seconds=_FETCH_TIMEOUT_SECONDS,
     retry_attempts=0,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 

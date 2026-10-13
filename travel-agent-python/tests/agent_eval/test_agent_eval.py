@@ -66,7 +66,7 @@ def test_authority_is_evidence_based_not_directory_membership():
     """
     from app.agent.grounding.grounding_evidence import issue_evidence
     from app.common import cache_store
-    from app.schemas.trip import DailyPlan, GenerateResponse, TripItem
+    from app.schemas.trip import DailyPlan, FactEvidence, GenerateResponse, TripItem
     from tests.agent_eval import mock_llm
     from tests.agent_eval.metrics import evaluate_response
 
@@ -76,7 +76,8 @@ def test_authority_is_evidence_based_not_directory_membership():
     rows = mock_llm._attractions("杭州")
     catalog = {"attractions": rows, "foods": [], "hotels": [], "consumption": {"meal_price": 60}}
     signed, unsigned = rows[0]["name"], rows[1]["name"]
-    issue_evidence({**rows[0], "city": "杭州"})
+    rows[0]["city"] = "杭州"
+    issue_evidence(rows[0])
 
     response = GenerateResponse(
         city="杭州",
@@ -86,7 +87,18 @@ def test_authority_is_evidence_based_not_directory_membership():
             DailyPlan(
                 day_no=1,
                 items=[
-                    TripItem(item_type="attraction", poi_name=signed),
+                    TripItem(
+                        item_type="attraction",
+                        poi_name=signed,
+                        fact_evidence={
+                            "identity": FactEvidence(
+                                value_kind="observed",
+                                verification_status="verified",
+                                source_ref=rows[0]["evidence_id"],
+                                provider=rows[0]["source"],
+                            )
+                        },
+                    ),
                     TripItem(item_type="attraction", poi_name=unsigned),
                 ],
             )

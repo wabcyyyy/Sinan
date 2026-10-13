@@ -15,6 +15,7 @@ import logging
 import pytest
 
 from app.agent.data import web_search
+from tests.llm_binding import FakeBinding
 
 
 @pytest.fixture(autouse=True)
@@ -60,11 +61,11 @@ def test_web_search_json_failure_is_observable_and_returns_none(monkeypatch, cap
     monkeypatch.setattr(web_search, "web_search_enabled", lambda: True)
     monkeypatch.setattr(web_search, "search_channel_ready", lambda: True)  # 本用例验解析层，与通道能力无关
 
-    class _FakeClient:
+    class _FakeClient(FakeBinding):
         def complete(self, *_args, **_kwargs):
             return '<html>{"status": 502, detail: gateway timeout}</html>'
 
-    monkeypatch.setattr(web_search, "get_role_client", lambda _role: _FakeClient())
+    monkeypatch.setattr(web_search, "get_llm_client", lambda _role: _FakeClient())
     with caplog.at_level(logging.WARNING, logger="app.agent.data.web_search"):
         assert web_search.web_search_json("成都有哪些酒店？", schema_hint="{}") is None
     assert "unparseable answer" in caplog.text
@@ -76,10 +77,10 @@ def test_web_search_json_repairs_trailing_comma_end_to_end(monkeypatch):
     monkeypatch.setattr(web_search, "web_search_enabled", lambda: True)
     monkeypatch.setattr(web_search, "search_channel_ready", lambda: True)  # 本用例验解析层，与通道能力无关
 
-    class _FakeClient:
+    class _FakeClient(FakeBinding):
         def complete(self, *_args, **_kwargs):
             return '{"items": [{"name": "成都首座万豪酒店", "estimated_cost": 600,},],}'
 
-    monkeypatch.setattr(web_search, "get_role_client", lambda _role: _FakeClient())
+    monkeypatch.setattr(web_search, "get_llm_client", lambda _role: _FakeClient())
     data = web_search.web_search_json("成都有哪些酒店？", schema_hint="{}")
     assert data == {"items": [{"name": "成都首座万豪酒店", "estimated_cost": 600}]}

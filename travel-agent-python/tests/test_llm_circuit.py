@@ -17,6 +17,7 @@ llm_breaker.api_client 捕获，时钟用 tests/_fake_clock 的 FakeClock。
 
 from __future__ import annotations
 
+import contextlib
 import time
 
 import httpx
@@ -75,6 +76,9 @@ class _ScriptedClient:
         if isinstance(step, Exception):
             raise step
         return step
+
+    def stream(self, _method, url, **kwargs):
+        return contextlib.nullcontext(self.post(url, **kwargs))
 
     def is_closed(self) -> bool:
         return False
@@ -365,9 +369,9 @@ def test_fallback_switch_back_after_cooldown(monkeypatch, fallback_env, fake_clo
 
 
 def test_role_client_main_follows_fallback(monkeypatch, fallback_env):
-    """get_role_client("main") 同样经备选链解析（其余角色不受影响）。"""
+    """get_llm_client("main") 同样经备选链解析（其余角色不受影响）。"""
     _open_main(monkeypatch)
-    assert llm_client.get_role_client("main").base_url == FALLBACK_URL
+    assert llm_client.get_llm_client("main").base_url == FALLBACK_URL
 
 
 def test_byok_route_never_switches_to_deployment_fallback(monkeypatch, fallback_env):

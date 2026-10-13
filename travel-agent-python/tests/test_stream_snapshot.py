@@ -199,6 +199,9 @@ def _day_chain_snapshot() -> dict:
 
 
 def _compare(actual: object, golden_path: pathlib.Path) -> None:
+    from tests.evidence_snapshot import normalize_evidence_ids
+
+    actual = normalize_evidence_ids(actual)
     rendered = json.dumps(actual, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
     if _REGENERATE:
         golden_path.parent.mkdir(parents=True, exist_ok=True)

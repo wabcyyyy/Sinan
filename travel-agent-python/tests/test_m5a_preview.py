@@ -40,6 +40,7 @@ from app.schemas.stream_events import (
 )
 from app.schemas.trip import GenerateDayRequest, GenerateRequest
 from app.services import generation_events, itinerary_generation
+from tests.llm_binding import FakeBinding
 
 # ---------------------------------------------------------------- 测试数据 ----
 
@@ -144,7 +145,7 @@ class TestPreviewEventContract:
 # ------------------------------------- llm_open_trip_stream（生成器核心） ----
 
 
-class _FakeLLMClient:
+class _FakeLLMClient(FakeBinding):
     """stream_chat_deltas 按 chunks 吐增量；chat 仅修复重试路径使用。"""
 
     def __init__(self, chunks: list[str], repair_text: str | None = None) -> None:
@@ -189,7 +190,7 @@ class TestLlmOpenTripStream:
         proceed = threading.Event()
         first_item_sent = threading.Event()
 
-        class BlockingClient:
+        class BlockingClient(FakeBinding):
             def stream_chat_deltas(self, messages, **kwargs):
                 for index, chunk in enumerate(PARTS):
                     yield chunk
@@ -199,7 +200,7 @@ class TestLlmOpenTripStream:
                         # 若实现是"先 join 全部 chunks 再喂"，这里必然超时。
                         assert proceed.wait(10), "消费方未在候选发布后及时到达：候选未边流边出"
 
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: BlockingClient())
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": BlockingClient())
 
         previews: list[tuple] = []
         finals: list[tuple] = []
@@ -247,7 +248,7 @@ class TestLlmOpenTripStream:
             ensure_ascii=False,
         )
         client = _FakeLLMClient([payload[i] for i in range(len(payload))])
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: client)
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": client)
 
         previews: list[tuple] = []
         finals: list[tuple] = []
@@ -262,7 +263,7 @@ class TestLlmOpenTripStream:
         """截断 → parser 判 TruncatedTripPlanError → 修复再失败 → 向上抛（不冒充成功）。"""
         truncated = '{"trip_theme": "T", "daily_plans": [{"day_no": 1, "theme"'
         client = _FakeLLMClient([truncated], repair_text="这不是 JSON")
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: client)
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": client)
 
         previews: list[tuple] = []
         finals: list[tuple] = []
@@ -279,7 +280,7 @@ class TestLlmOpenTripStream:
         """截断 → 一次修复重试返回完整 JSON → final 正常发布。"""
         full = json.dumps(_trip_payload(), ensure_ascii=False)
         client = _FakeLLMClient([full[: len(full) // 2]], repair_text=full)
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: client)
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": client)
 
         messages = list(llm_open_trip_stream(_day_req()))
         finals = [m for m in messages if m[0] == "final"]
@@ -300,7 +301,7 @@ class TestLlmOpenTripStream:
                 return super().stream_chat_deltas(messages, **kwargs)
 
         client = SpyClient([TRIP_TEXT])
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: client)
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": client)
         monkeypatch.setattr(settings, "llm_generation_web_search", False)
         list(llm_open_trip_stream(_day_req(2)))
         assert client.stream_kwargs["max_tokens"] == 2 * 8000, "max_tokens 按天数等比（与 llm_open_trip 同公式）"
@@ -321,7 +322,7 @@ class TestLlmOpenTripStream:
             ' "day_no": 2, "theme": "d2", "note": "n2"}], "suggestions": []}'
         )
         client = _FakeLLMClient([payload])
-        monkeypatch.setattr(trip_stream, "get_llm_client", lambda: client)
+        monkeypatch.setattr(trip_stream, "get_llm_client", lambda _role="main": client)
 
         previews: list[tuple] = []
         finals: list[tuple] = []
@@ -339,14 +340,14 @@ class TestLlmOpenTripStream:
         """llm_open_trip 抽出共享装配段后原签名行为不变：返回值 + 主题注入。"""
         payload = json.dumps(_trip_payload(), ensure_ascii=False)
 
-        class BlockingClient:
+        class BlockingClient(FakeBinding):
             def complete(self, user, **kwargs):
                 return payload
 
             def chat(self, *args, **kwargs):
                 raise AssertionError("成功路径不应触发修复重试")
 
-        monkeypatch.setattr(day_prompts, "get_llm_client", lambda: BlockingClient())
+        monkeypatch.setattr(day_prompts, "get_llm_client", lambda _role="main": BlockingClient())
         plans, suggestions = day_prompts.llm_open_trip(_day_req())
         assert [plan["day_no"] for plan in plans] == [1, 2]
         assert plans[0]["trip_theme"] == "湖光山色" and plans[1]["trip_theme"] == "湖光山色"

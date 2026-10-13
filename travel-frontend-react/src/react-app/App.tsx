@@ -1,6 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import type { UserInfoVO } from '../types/generated/contracts'
+import { activateIntakeOwner, clearLegacyIntakeStorage, suspendIntakeOwner } from './home/intakeStorage'
+import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { getUserInfo, logout } from '../api/sinan'
+import { getUserInfo, logout, isUnauthorized, cancelSessionRequests } from '../api/sinan'
 import { AppShell } from './layout/AppShell'
 import { ExplorePage } from './explore/ExplorePage'
 import { GuideDetailPage } from './explore/GuideDetailPage'
@@ -9,7 +11,7 @@ import { LoginPage } from './auth/LoginPage'
 import { TripsPage } from './itinerary/TripsPage'
 import { SettingsPage } from './settings/SettingsPage'
 import { navigate, useLocation } from './router'
-import { LoadingBlock, NotFoundBlock } from './shared/States'
+import { ErrorBlock, LoadingBlock, NotFoundBlock, ScreenState } from './shared/States'
 import { SharePage } from './shared/SharePage'
 
 // 行程详情页是 maplibre-gl 的唯一消费链（全站最重依赖），路由级懒加载让
@@ -40,36 +42,71 @@ export default function App() {
 
 function BusinessApp() {
   const location = useLocation()
-  const [username, setUsername] = useState(() => localStorage.getItem('sinan-username') || '')
+  const revision = useRef(0)
+  const [user, setUser] = useState<UserInfoVO | null>(null)
+  const [status, setStatus] = useState<'checking' | 'ready' | 'logout' | 'logout-error' | 'check-error'>('checking')
+  const [sessionVersion, setSessionVersion] = useState(0)
   useEffect(() => { document.title = pageTitle(location.path) }, [location.path])
-  // 用户名以服务端为准：localStorage 只是首帧占位，启动后对账 /user/info，
-  // 防止换账号/登出后导航仍显示上一个用户（401 时连占位一起清掉）。
   useEffect(() => {
-    let cancelled = false
-    getUserInfo().then(
-      (info) => {
-        if (cancelled) return
-        if (info?.username) {
-          setUsername(info.username)
-          localStorage.setItem('sinan-username', info.username)
-        }
-      },
-      () => {
-        if (cancelled) return
-        setUsername('')
-        localStorage.removeItem('sinan-username')
-      },
-    )
-    return () => { cancelled = true }
+    let disposed = false
+    try { clearLegacyIntakeStorage() } catch { /* unavailable storage */ }
+    const verify = async () => {
+      const mine = ++revision.current
+      cancelSessionRequests()
+      suspendIntakeOwner()
+      setStatus('checking')
+      try {
+        const info = await getUserInfo()
+        if (disposed || mine !== revision.current) return
+        activateIntakeOwner(info.id)
+        setUser(info)
+        setStatus('ready')
+        setSessionVersion((value) => value + 1)
+      } catch (error) {
+        if (disposed || mine !== revision.current) return
+        if (isUnauthorized(error)) {
+          activateIntakeOwner(null)
+          setUser(null)
+          try { localStorage.removeItem('sinan-username') } catch { /* unavailable storage */ }
+          setStatus('ready')
+          setSessionVersion((value) => value + 1)
+        } else setStatus('check-error')
+      }
+    }
+    const changed = (event: StorageEvent) => { if (event.key === 'sinan-auth-change') void verify() }
+    window.addEventListener('storage', changed)
+    void verify()
+    return () => { disposed = true; revision.current += 1; window.removeEventListener('storage', changed) }
   }, [])
-  const authenticated = (value: string) => { setUsername(value); localStorage.setItem('sinan-username', value) }
-  /** 登出（P1-7）：先清本地身份并回首页；POST /auth/logout 清 HttpOnly Cookie 是 best-effort，失败不阻塞。 */
-  const handleLogout = () => {
-    setUsername('')
-    localStorage.removeItem('sinan-username')
-    logout().catch(() => {})
-    navigate('/')
+  const authenticated = (info: UserInfoVO) => {
+    revision.current += 1
+    cancelSessionRequests()
+    activateIntakeOwner(info.id, true)
+    setUser(info)
+    setStatus('ready')
+    setSessionVersion((value) => value + 1)
+    broadcastIdentity(info.username)
   }
+  const handleLogout = async () => {
+    const mine = ++revision.current
+    cancelSessionRequests()
+    suspendIntakeOwner()
+    setStatus('logout')
+    try {
+      await logout()
+      if (mine !== revision.current) return
+      activateIntakeOwner(null)
+      setUser(null)
+      broadcastIdentity('')
+      setSessionVersion((value) => value + 1)
+      setStatus('ready')
+      navigate('/')
+    } catch { if (mine === revision.current) setStatus('logout-error') }
+  }
+  if (status === 'checking' || status === 'logout') return <ScreenState><LoadingBlock label={status === 'logout' ? '正在退出登录…' : '正在确认登录状态…'} /></ScreenState>
+  if (status === 'logout-error') return <ScreenState><ErrorBlock title="退出未完成" message="网络可能断开了，稍后再试一次。" retryLabel="重试退出" onRetry={() => void handleLogout()} /></ScreenState>
+  if (status === 'check-error') return <ScreenState><ErrorBlock title="暂时没有连上司南" message="无法确认登录状态，检查网络后再试一次。" retryLabel="重试" onRetry={() => window.location.reload()} /></ScreenState>
+  const username = user?.username ?? ''
   if (location.path === '/login') return <LoginPage onAuthenticated={authenticated} />
   if (location.path.startsWith('/s/')) return <SharePage path={location.path} />
   let page: ReactNode
@@ -82,8 +119,16 @@ function BusinessApp() {
   else page = <div className="page-content"><NotFoundBlock onHome={() => navigate('/')} /></div>
   return (
     <AppShell onLogin={() => navigate('/login')} username={username} onLogout={handleLogout}>
-      <Suspense fallback={<LoadingBlock label="正在打开行程…" />}>{page}</Suspense>
+      <Suspense key={`${user?.id ?? 'anonymous'}:${sessionVersion}`} fallback={<LoadingBlock label="正在打开行程…" />}>{page}</Suspense>
       {username && <span className="sr-only">已登录：{username}</span>}
     </AppShell>
   )
+}
+
+function broadcastIdentity(username: string): void {
+  try {
+    if (username) localStorage.setItem('sinan-username', username)
+    else localStorage.removeItem('sinan-username')
+    localStorage.setItem('sinan-auth-change', crypto.randomUUID())
+  } catch { /* storage availability does not change server authentication */ }
 }

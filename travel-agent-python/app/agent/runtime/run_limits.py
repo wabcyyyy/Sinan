@@ -7,7 +7,11 @@
 from __future__ import annotations
 
 import contextvars
+import threading
 import time
+import uuid
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from app.common.config import settings
@@ -42,8 +46,68 @@ class RunLimits:
     replans: int = 0
     no_progress_count: int = 0
 
+    task_id: str | None = None
+    user_id: int | None = None
+    itinerary_id: int | None = None
+    submitted_at: float = field(default_factory=time.time)
+    usage_unknown: int = 0
+    terminal_resets: int = 0
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    _reservations: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
+    persist: Callable[[dict], None] | None = field(default=None, repr=False)
+
+    def remaining(self) -> float:
+        remaining = (
+            self.deadline_seconds - (time.monotonic() - self.started_at) if self.deadline_seconds > 0 else float("inf")
+        )
+        if self.task_id:
+            remaining -= 5  # 留给终态事务的收尾窗口，不再用于外呼。
+        phase = _phase_deadline.get()
+        return min(remaining, phase - time.monotonic()) if phase else remaining
+
+    def _save(self) -> None:
+        if self.persist is not None:
+            self.persist(self.snapshot())
+
+    def reserve_llm(self, prompt_estimate: int, output_tokens: int) -> str:
+        with self._lock:
+            self.check("llm")
+            prompt, output = max(0, prompt_estimate), max(0, output_tokens)
+            if self.max_tokens > 0 and self.prompt_tokens + self.completion_tokens + prompt + output > self.max_tokens:
+                raise RunLimitExceeded("Token 预算不足以发起本次请求")
+            key = uuid.uuid4().hex
+            self.llm_calls += 1
+            self.prompt_tokens += prompt
+            self.completion_tokens += output
+            self._reservations[key] = (prompt, output)
+            self._save()
+            return key
+
+    def settle_llm(self, reservation: str, usage: dict | None) -> None:
+        with self._lock:
+            reserved = self._reservations.pop(reservation, None)
+            if reserved is None:
+                return
+            if usage is None or "prompt_tokens" not in usage or "completion_tokens" not in usage:
+                self.usage_unknown += 1
+            else:
+                self.prompt_tokens += max(0, int(usage["prompt_tokens"])) - reserved[0]
+                self.completion_tokens += max(0, int(usage["completion_tokens"])) - reserved[1]
+            self._save()
+            if self.max_tokens > 0 and self.prompt_tokens + self.completion_tokens > self.max_tokens:
+                raise RunLimitExceeded("供应商报告用量超过预留预算")
+
+    def _reserve_counter(self, field_name: str, maximum: int, reason: str, n: int = 1) -> None:
+        with self._lock:
+            self.check("deadline")
+            value = getattr(self, field_name) + max(1, int(n or 1))
+            if maximum > 0 and value > maximum:
+                raise RunLimitExceeded(reason)
+            setattr(self, field_name, value)
+            self._save()
+
     def check(self, kind: str) -> None:
-        if self.deadline_seconds > 0 and time.monotonic() - self.started_at >= self.deadline_seconds:
+        if self.remaining() <= 0:
             raise RunLimitExceeded(f"Agent 总 Deadline 已到达（{kind}）")
         if kind == "llm" and self.llm_calls >= self.max_llm_calls:
             raise RunLimitExceeded("模型调用预算已耗尽")
@@ -58,38 +122,41 @@ class RunLimits:
 
     def record_retrieval(self, n: int = 1) -> None:
         """记录检索/证据类调用；超预算抛出，由调用方决定是否降级。"""
-        self.retrievals += max(1, int(n or 1))
-        if self.max_retrievals > 0 and self.retrievals > self.max_retrievals:
-            raise RunLimitExceeded("检索预算已耗尽")
+        self._reserve_counter("retrievals", self.max_retrievals, "检索预算已耗尽", n)
 
     def record_research(self, n: int = 1) -> None:
-        """记录一次研究取数；超预算抛出，由研究阶段带着已有证据降级。"""
-        self.research_calls += max(1, int(n or 1))
-        if self.max_research_calls > 0 and self.research_calls > self.max_research_calls:
-            raise RunLimitExceeded("研究额度已用完")
+        self._reserve_counter("research_calls", self.max_research_calls, "研究额度已用完", n)
 
     def record_existence(self, n: int = 1) -> None:
-        """记录一次存在性解析；超预算抛出，由调用方降级为 UNKNOWN（不得当成不存在）。"""
-        self.existence_checks += max(1, int(n or 1))
-        if self.max_existence_checks > 0 and self.existence_checks > self.max_existence_checks:
-            raise RunLimitExceeded("存在性解析预算已耗尽")
+        self._reserve_counter("existence_checks", self.max_existence_checks, "存在性解析预算已耗尽", n)
 
     def record_llm(self, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
-        self.llm_calls += 1
-        self.prompt_tokens += max(int(prompt_tokens or 0), 0)
-        self.completion_tokens += max(int(completion_tokens or 0), 0)
-        if self.max_tokens > 0 and self.prompt_tokens + self.completion_tokens > self.max_tokens:
-            raise RunLimitExceeded("Token 预算已耗尽")
+        reservation = self.reserve_llm(prompt_tokens, completion_tokens)
+        self.settle_llm(reservation, {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens})
 
     def record_replan(self, progressed: bool) -> None:
-        self.replans += 1
-        self.no_progress_count = 0 if progressed else self.no_progress_count + 1
-        if self.no_progress_count >= settings.no_progress_limit:
-            raise RunLimitExceeded("检测到连续重规划无进展")
+        with self._lock:
+            self.check("replan")
+            self.replans += 1
+            self.no_progress_count = 0 if progressed else self.no_progress_count + 1
+            self._save()
+            if self.no_progress_count >= settings.no_progress_limit:
+                raise RunLimitExceeded("检测到连续重规划无进展")
+
+    def record_terminal_reset(self) -> None:
+        with self._lock:
+            self.terminal_resets += 1
+            self._save()
 
     def snapshot(self) -> dict:
         elapsed = time.monotonic() - self.started_at
         return {
+            "task_id": self.task_id,
+            "user_id": self.user_id,
+            "itinerary_id": self.itinerary_id,
+            "submitted_at": self.submitted_at,
+            "usage_unknown": self.usage_unknown,
+            "terminal_resets": self.terminal_resets,
             "elapsed_ms": round(elapsed * 1000, 2),
             "deadline_seconds": self.deadline_seconds,
             "llm_calls": self.llm_calls,
@@ -115,7 +182,7 @@ _active_limits: contextvars.ContextVar[RunLimits | None] = contextvars.ContextVa
 
 
 def begin_limits() -> contextvars.Token:
-    return _active_limits.set(RunLimits())
+    return _active_limits.set(current_limits() or RunLimits())
 
 
 def end_limits(token: contextvars.Token) -> None:
@@ -124,3 +191,32 @@ def end_limits(token: contextvars.Token) -> None:
 
 def current_limits() -> RunLimits | None:
     return _active_limits.get()
+
+
+_phase_deadline: contextvars.ContextVar[float | None] = contextvars.ContextVar("agent_phase_deadline", default=None)
+
+
+@contextmanager
+def phase_scope(seconds: float) -> Iterator[None]:
+    previous = _phase_deadline.get()
+    deadline = time.monotonic() + seconds
+    token = _phase_deadline.set(min(previous, deadline) if previous else deadline)
+    try:
+        yield
+    finally:
+        _phase_deadline.reset(token)
+
+
+@contextmanager
+def use_task_limits(limits: RunLimits) -> Iterator[RunLimits]:
+    token = _active_limits.set(limits)
+    try:
+        yield limits
+    finally:
+        _active_limits.reset(token)
+
+
+def check_task_write() -> None:
+    limits = current_limits()
+    if limits is not None and limits.task_id:
+        limits.check("write")

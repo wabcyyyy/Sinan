@@ -22,6 +22,8 @@ from __future__ import annotations
 NUMERIC_RULES: tuple[tuple[str, str, float, float], ...] = (
     ("llm_timeout", "必须 > 0", 0, float("inf")),
     ("llm_connect_timeout", "必须 > 0", 0, float("inf")),
+    ("itinerary_deadline_seconds", "必须 > 0", 0, float("inf")),
+    ("research_deadline_seconds", "必须 > 0", 0, float("inf")),
     ("agent_deadline_seconds", "必须 > 0", 0, float("inf")),
     ("db_port", "必须在 1-65535 之间", 0, 65535),
     ("db_pool_max", "必须 >= 1", 0, float("inf")),

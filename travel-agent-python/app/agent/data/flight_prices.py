@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
 from app.common.external_client import BACKGROUND, ExternalClient, fetch_json
 from app.common.http_client import api_client, contact_user_agent
@@ -44,6 +45,8 @@ _flight_client: ExternalClient = ExternalClient(
     negative_ttl_seconds=600,
     min_interval_seconds=1.0,
     retry_attempts=1,
+    limits_provider=current_limits,
+    limit_error=RunLimitExceeded,
 )
 
 #: 行内必须可用的最小键集（缺失即丢行，容错口径见 fetch_price_dates）

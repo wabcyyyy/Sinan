@@ -41,7 +41,7 @@ from app.db import session as db_session
 from app.db.models import Base
 from app.schemas.business.itinerary import GenerateTripRequest
 from app.schemas.trip import DailyPlan, GenerateResponse, TripItem
-from app.services import itinerary_generation, itinerary_query
+from app.services import itinerary_generation, itinerary_query, planning_tasks
 from tests.agent_eval import mock_llm
 
 EVAL_USER_ID = 1
@@ -68,9 +68,14 @@ def _isolated_database() -> Iterator[None]:
         engine = create_engine(f"sqlite:///{Path(tmp) / 'eval.db'}")
         Base.metadata.create_all(engine)
         db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
+        checkpoint = patch.object(settings, "checkpoint_db_path", str(Path(tmp) / "checkpoints.db"))
+        checkpoint.start()
+        planning_tasks.reset()
         try:
             yield
         finally:
+            planning_tasks.reset()
+            checkpoint.stop()
             db_session.init_engine(None, None)
             engine.dispose()
 

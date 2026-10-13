@@ -57,7 +57,7 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "redis_url", "redis://127.0.0.1:1/0")
     cache_store.reset_for_tests()
     state_and_sessions.reset_for_tests()
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     with db_session.session_scope() as session:
         session.add(SysUser(username="alice", password=user_service.hash_password(PASSWORD), status=1, role="user"))
         session.add(SysUser(username="bob", password=user_service.hash_password(PASSWORD), status=1, role="user"))
@@ -111,7 +111,11 @@ def _fake_agents(monkeypatch, per_day: list[DailyPlan] | None = None) -> dict:
 
     monkeypatch.setattr(itinerary_generation, "run_plan_context", fake_context)
     monkeypatch.setattr(itinerary_generation, "run_generate_day", fake_day)
-    monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", lambda task, *args: None)
+    monkeypatch.setattr(
+        itinerary_generation.enricher_pool,
+        "submit",
+        lambda task, *args: itinerary_generation.planning_tasks.release(args[1]) if len(args) > 1 else None,
+    )
     return calls
 
 
@@ -127,7 +131,7 @@ def partial_trip(clients, monkeypatch) -> int:
     response = clients["alice"].post("/api/itinerary/generate", json={"city": CITY, "days": 2})
     assert response.status_code == 200, response.json()
     trip_id = response.json()["data"]["id"]
-    itinerary_generation.reset_active_planning_for_tests()
+    itinerary_generation.planning_tasks.reset()
     stale = datetime.now() - timedelta(minutes=30)
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)

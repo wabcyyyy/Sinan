@@ -61,8 +61,9 @@ class ResolveResult:
     authoritative_negative: bool = False
     dietary_options: tuple[str, ...] = ()
     source_url: str | None = None
-    #: 外部主分类原样搬运（(amenity, place_of_worship) 等），不在这里下语义结论
+    #: 外部主分类原样搬运；不在这里下语义结论
     category_tags: tuple[tuple[str, str], ...] = ()
+    evidence_id: str | None = None
 
     @property
     def grounded(self) -> bool:
@@ -295,9 +296,9 @@ def providers_in_order() -> list[ExistenceProvider]:
     return out or [registry["otm"], registry["nominatim"]]
 
 
-def issue_resolve_ticket(result: ResolveResult, target: str, city: str) -> None:
+def issue_resolve_ticket(result: ResolveResult, target: str, city: str) -> ResolveResult:
     """判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票。"""
-    issue_evidence(
+    ticket = issue_evidence(
         {
             "name": result.localized_name or result.name or target,
             "city": city,
@@ -311,6 +312,7 @@ def issue_resolve_ticket(result: ResolveResult, target: str, city: str) -> None:
             "category_tags": dict(result.category_tags),
         }
     )
+    return replace(result, evidence_id=ticket.evidence_id) if ticket is not None else result
 
 
 def resolve_poi(name: str, city: str) -> ResolveResult:
@@ -325,7 +327,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
 
     result = _run_providers(target, city)
     if result.grounded:
-        issue_resolve_ticket(result, target, city)
+        result = issue_resolve_ticket(result, target, city)
     if result.state != UNKNOWN:
         # 只记忆化**判定**（VERIFIED / NOT_FOUND）。UNKNOWN 绝大多数是"没问到"：
         # 额度耗尽、源不可用、超时。_memo 是进程级、跨 run 的，缓存它等于让一次

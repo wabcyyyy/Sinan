@@ -725,6 +725,7 @@ def all_scenarios():
 
 def build_snapshot(stubbed) -> dict:
     import app.agent.generation.orchestration.workflow as wf
+    from tests.evidence_snapshot import normalize_evidence_ids
 
     snapshot = {}
     for name, (state, live_price, live_food) in all_scenarios():
@@ -735,7 +736,7 @@ def build_snapshot(stubbed) -> dict:
         if "validated_at" in qr:
             qr["validated_at"] = "<normalized>"
         snapshot[name] = payload
-    return snapshot
+    return normalize_evidence_ids(snapshot)
 
 
 def _flatten(obj, prefix=""):
