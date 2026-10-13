@@ -181,6 +181,10 @@ def _ask(req: ClarifyRequest, slots: dict, state: IntakeState) -> str | None:
             f"已问过的可选问题：{json.dumps(state.optional_asked, ensure_ascii=False)}\n用户说：{req.message}",
             system_prompt=_SYSTEM_PROMPT,
             temperature=0,
+            # 思考（全局 low）计入 completion：2026-10-12 同一原话 5 次实测 completion
+            # 416-1856（reasoning 185-1617），旧默认 2048 最高用到 91%，与此前空串/JSON
+            # 解析失败一致。4096 ≈ 实测上沿 2.2 倍；正文本身只有 ~650 字。
+            max_tokens=4096,
         )
     except Exception as e:
         # AILIVE-2：只记 str(e) 会丢类型名（连接层异常甚至可能是空串），排障困难

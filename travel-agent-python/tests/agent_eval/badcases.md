@@ -18,7 +18,7 @@
 - 预期：最终只有一份日期结果，重试只读取 `SUCCEEDED` 状态，不重复插入行程项。
 - 首次偏离：旧实现没有稳定的日期动作标识和写入前状态判断。
 - 根因：请求状态和业务写入状态没有绑定，超时被误判为“未执行”。
-- 修复：Java `ItineraryDayPersistenceService` 使用 `day-{itineraryId}-{dayNo}`、参数指纹和 `PENDING/RUNNING/SUCCEEDED/FAILED` 状态；成功状态在写入前直接返回。
+- 修复：`app/services/day_persistence.py` 的 `persist` 与 `generation_gate.verify_action` 使用 `day-{itineraryId}-{dayNo}`、参数指纹和 `PENDING/RUNNING/SUCCEEDED/FAILED` 状态；成功状态在写入前直接返回。
 - 验收：重复调用 `persist` 时检查 `SUCCEEDED` 短路；数据库集成环境还应验证唯一约束、事务回滚和服务重启恢复。
 
 ## C：自然语言编辑越权修改未要求部分
@@ -26,5 +26,5 @@
 - 输入：用户只要求删除一个景点。
 - 预期：只删除目标项，其他日期、酒店和预算口径保持不变。
 - 首次偏离：开放式计划重写可能返回整份被改动的计划。
-- 修复：对话草稿使用 `baseRevision`，Java 应用层校验 POI 身份、字段白名单和版本一致性；计划应用前后建立版本快照。
+- 修复：对话草稿使用 `baseRevision`（计划内容指纹）；`agent/editing/chat_draft/validate.py` 的 `_scope_violations` 校验修改范围与保留条目；`services/itinerary_plan_apply.py` 应用时以 `planning_revision` 乐观锁（CAS，失配 409）拒绝过期草稿，并在同一事务内建立版本快照。
 - 回放：现有对话编辑/草稿应用回归测试；版本 Diff API 可用于核对实际变更范围。

@@ -1,0 +1,506 @@
+{
+  "sample": 1,
+  "variant": "current_high",
+  "thinking": true,
+  "requestedEffort": "high",
+  "promptSha256": "1a57272391faa68a7f1e369d281e0e368c0d4eb7e91463e46a58ccafebebbd7b",
+  "usage": {
+    "prompt_tokens": 1942,
+    "completion_tokens": 10918,
+    "total_tokens": 12860,
+    "prompt_tokens_details": {
+      "cached_tokens": 1152
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 9379
+    },
+    "prompt_cache_hit_tokens": 1152,
+    "prompt_cache_miss_tokens": 790
+  },
+  "finishReason": "stop",
+  "rawFinal": "{\"trip_theme\":\"东京新宿·素食慢游：城市展望与公园绿意（新宿华盛顿酒店为据点）\",\"daily_plans\":[{\"day_no\":1,\"theme\":\"东京都厅舍晨望，素食午晚餐间的新宿御苑慢步\",\"note\":\"上午登东京都厅舍展望，午间素食，午后新宿御苑，晚餐 AFURI 后入住酒店。\",\"items\":[{\"item_type\":\"attraction\",\"poi_name\":\"东京都厅舍\",\"why_this\":\"从新宿华盛顿酒店出发较近，展望室可俯瞰东京，节奏轻松，适合带老人慢游。\",\"start_time\":\"09:30\",\"end_time\":\"11:00\",\"duration_min\":90,\"cost\":0,\"tag\":\"城市展望\",\"remark\":\"展望室开放时间与安检规定以官网为准，周末排队较长，带老人可乘电梯直达。\",\"refs\":[2]},{\"item_type\":\"food\",\"poi_name\":\"PLANT BASED\",\"why_this\":\"参考资料标注为纯素/素食，可满足蛋奶素需求，作为午间慢食正餐。\",\"start_time\":\"11:30\",\"end_time\":\"12:45\",\"duration_min\":75,\"cost\":90,\"tag\":\"纯素午餐\",\"remark\":\"营业时间与菜单可能调整，建议出发前确认当日素食供应并预留等位时间。\",\"refs\":[10]},{\"item_type\":\"attraction\",\"poi_name\":\"新宿御苑\",\"why_this\":\"东京都厅舍之后顺路前往，园内步道平缓，适合老人慢走，避开寺庙类景点。\",\"start_time\":\"13:30\",\"end_time\":\"15:30\",\"duration_min\":120,\"cost\":24,\"tag\":\"国民公园\",\"remark\":\"需在入口购票入园，园内禁止饮酒，轮椅租借与无障碍入口请提前查询。\",\"refs\":[5]},{\"item_type\":\"food\",\"poi_name\":\"AFURI\",\"why_this\":\"参考资料标注素食可用，晚餐时段提供素食拉面选择，适合轻松收尾。\",\"start_time\":\"17:30\",\"end_time\":\"18:30\",\"duration_min\":60,\"cost\":60,\"tag\":\"素食拉面\",\"remark\":\"热门时段需取号排队，可避开刚下班高峰；点单时确认素食汤底。\",\"refs\":[9]},{\"item_type\":\"hotel\",\"poi_name\":\"新宿华盛顿酒店\",\"why_this\":\"位于新宿站附近，作为两日慢游的固定据点，减少换店与长途转场。\",\"start_time\":\"18:45\",\"end_time\":\"19:15\",\"duration_min\":30,\"cost\":720,\"tag\":\"舒适酒店\",\"remark\":\"入住需出示护照，可寄存行李；如早到可先办理寄存后出行。\",\"refs\":[12]}],\"practical_notes\":[\"东京都厅舍与 PLANT BASED 之间可步行或乘出租车，带老人优先走地下通道与电梯，避开地面天桥台阶。\",\"新宿御苑入园需在自动售票机购票，园内禁酒；带老人建议从新宿门进，租借轮椅请提前咨询。\",\"AFURI 晚间易排队，可先在附近休息再取号；点单时明确要求素食汤底。\",\"新宿华盛顿酒店入住需护照，办理入住时可要求低楼层或电梯近的房间。\"],\"photo_spots\":[{\"name\":\"东京都厅舍 展望室\",\"tip\":\"靠窗拍城市天际线，避免反光；带老人可在座椅区轮流拍摄。\",\"best_time\":\"09:30-10:30\"},{\"name\":\"新宿御苑 草坪\",\"tip\":\"利用树影与草坪线条拍人像，午后光线柔和。\",\"best_time\":\"14:00-15:30\"}],\"backup_plan\":[{\"if\":\"下雨或老人体力下降\",\"action\":\"取消新宿御苑，改为东京都厅舍展望室延长休息，午餐与晚餐时间不变。\"}],\"day_options\":[]},{\"day_no\":2,\"theme\":\"新宿中央公园晨步，绕东京都议会议事堂寻素食慢食\",\"note\":\"上午新宿中央公园与东京都议会议事堂，午晚素食，傍晚结束。\",\"items\":[{\"item_type\":\"attraction\",\"poi_name\":\"新宿中央公园\",\"why_this\":\"从酒店步行可达，清晨绿意与都厅前景适合慢走，不耗体力。\",\"start_time\":\"09:00\",\"end_time\":\"10:30\",\"duration_min\":90,\"cost\":0,\"tag\":\"城市绿地\",\"remark\":\"清晨人少，园内长椅多；轮椅通道从都厅前地下通道上到地面较平缓。\",\"refs\":[1]},{\"item_type\":\"attraction\",\"poi_name\":\"东京都议会议事堂\",\"why_this\":\"紧邻新宿中央公园，建筑参观可了解东京都政，无需寺庙类行程。\",\"start_time\":\"10:45\",\"end_time\":\"11:45\",\"duration_min\":60,\"cost\":0,\"tag\":\"城市建筑\",\"remark\":\"参观需提前在官网确认开放日与预约，带护照安检，周一或休会日可能不开放。\",\"refs\":[4]},{\"item_type\":\"food\",\"poi_name\":\"FOOD HALL BLAST\",\"why_this\":\"参考资料标注纯素/素食，适合作为午间正餐，满足蛋奶素与慢食需求。\",\"start_time\":\"12:00\",\"end_time\":\"13:30\",\"duration_min\":90,\"cost\":90,\"tag\":\"素食美食广场\",\"remark\":\"营业时间与摊位可能变动，建议出发前确认当日素食摊位。\",\"refs\":[11]},{\"item_type\":\"food\",\"poi_name\":\"Saishoku kenbi\",\"why_this\":\"参考资料标注素食，晚餐可安排有色拉与熟食的素食套餐，收尾轻松。\",\"start_time\":\"17:30\",\"end_time\":\"19:00\",\"duration_min\":90,\"cost\":120,\"tag\":\"素食晚餐\",\"remark\":\"建议提前确认营业时间并预约，点餐时说明可吃蛋奶。\",\"refs\":[7]}],\"practical_notes\":[\"东京都议会议事堂参观需提前在官网确认开放日并预约，携带护照配合安检。\",\"新宿中央公园到东京都议会议事堂步行即可，带老人走无障碍坡道，避开都厅前车流密集路口。\",\"FOOD HALL BLAST 与 Saishoku kenbi 营业时间可能变动，出发前电话或官网确认素食供应。\",\"当天退房后可将行李寄存在新宿华盛顿酒店前台或新宿站投币柜，傍晚取回。\"],\"photo_spots\":[{\"name\":\"新宿中央公园\",\"tip\":\"以都厅双塔为背景拍绿地步道，清晨顺光。\",\"best_time\":\"09:00-10:00\"},{\"name\":\"东京都议会议事堂 外观\",\"tip\":\"拍摄对称建筑立面，人像站在广场侧边。\",\"best_time\":\"11:00-11:45\"}],\"backup_plan\":[{\"if\":\"东京都议会议事堂临时闭馆\",\"action\":\"改为在新宿中央公园长椅休息后提前前往 FOOD HALL BLAST，晚餐按原计划。\"}],\"day_options\":[]}]}",
+  "validJson": true,
+  "days": [
+    {
+      "dayNo": 1,
+      "attractions": 2,
+      "meals": 2,
+      "evidencedMeals": 2,
+      "blockers": []
+    },
+    {
+      "dayNo": 2,
+      "attractions": 2,
+      "meals": 1,
+      "evidencedMeals": 1,
+      "blockers": []
+    }
+  ],
+  "issues": [],
+  "strictRulePass": true,
+  "twoMealsEachDay": false,
+  "plans": [
+    {
+      "day_no": 1,
+      "theme": "东京都厅舍晨望，素食午晚餐间的新宿御苑慢步",
+      "note": "上午登东京都厅舍展望，午间素食，午后新宿御苑，晚餐 AFURI 后入住酒店。",
+      "items": [
+        {
+          "item_type": "attraction",
+          "poi_name": "东京都厅舍",
+          "why_this": "从新宿华盛顿酒店出发较近，展望室可俯瞰东京，节奏轻松，适合带老人慢游。",
+          "start_time": "09:30",
+          "end_time": "11:00",
+          "duration_min": 90,
+          "cost": 0,
+          "tag": "城市展望",
+          "remark": "展望室开放时间与安检规定以官网为准，周末排队较长，带老人可乘电梯直达。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "food",
+          "poi_name": "PLANT BASED",
+          "why_this": "参考资料标注为纯素/素食，可满足蛋奶素需求，作为午间慢食正餐。",
+          "start_time": "11:30",
+          "end_time": "12:45",
+          "duration_min": 75,
+          "cost": 90,
+          "tag": "纯素午餐",
+          "remark": "营业时间与菜单可能调整，建议出发前确认当日素食供应并预留等位时间。",
+          "source": "overpass",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "osm:node:12060629549",
+          "address": null,
+          "latitude": 35.6874645,
+          "longitude": 139.6996558,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "overpass",
+              "source_url": "https://www.openstreetmap.org/node/12060629549",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "diet:vegan": {
+              "source_ref": "osm:node:12060629549:diet:vegan",
+              "source_url": "https://www.openstreetmap.org/node/12060629549",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "diet:vegetarian": {
+              "source_ref": "osm:node:12060629549:diet:vegetarian",
+              "source_url": "https://www.openstreetmap.org/node/12060629549",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "category:amenity=restaurant": {
+              "source_ref": "osm:node:12060629549:category:amenity:restaurant",
+              "source_url": "https://www.openstreetmap.org/node/12060629549",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "attraction",
+          "poi_name": "新宿御苑",
+          "why_this": "东京都厅舍之后顺路前往，园内步道平缓，适合老人慢走，避开寺庙类景点。",
+          "start_time": "13:30",
+          "end_time": "15:30",
+          "duration_min": 120,
+          "cost": 24,
+          "tag": "国民公园",
+          "remark": "需在入口购票入园，园内禁止饮酒，轮椅租借与无障碍入口请提前查询。",
+          "source": "nominatim",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "osm:way:15772074",
+          "address": null,
+          "latitude": 35.685072,
+          "longitude": 139.709547,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "nominatim",
+              "source_url": "https://www.openstreetmap.org/way/15772074",
+              "provider": "nominatim",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "food",
+          "poi_name": "AFURI",
+          "why_this": "参考资料标注素食可用，晚餐时段提供素食拉面选择，适合轻松收尾。",
+          "start_time": "17:30",
+          "end_time": "18:30",
+          "duration_min": 60,
+          "cost": 60,
+          "tag": "素食拉面",
+          "remark": "热门时段需取号排队，可避开刚下班高峰；点单时确认素食汤底。",
+          "source": "overpass",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "osm:node:11287702869",
+          "address": null,
+          "latitude": 35.6893288,
+          "longitude": 139.6992356,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "overpass",
+              "source_url": "https://www.openstreetmap.org/node/11287702869",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "diet:vegetarian": {
+              "source_ref": "osm:node:11287702869:diet:vegetarian",
+              "source_url": "https://www.openstreetmap.org/node/11287702869",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "category:amenity=restaurant": {
+              "source_ref": "osm:node:11287702869:category:amenity:restaurant",
+              "source_url": "https://www.openstreetmap.org/node/11287702869",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "hotel",
+          "poi_name": "新宿华盛顿酒店",
+          "why_this": "位于新宿站附近，作为两日慢游的固定据点，减少换店与长途转场。",
+          "start_time": "18:45",
+          "end_time": "19:15",
+          "duration_min": 30,
+          "cost": 720,
+          "tag": "舒适酒店",
+          "remark": "入住需出示护照，可寄存行李；如早到可先办理寄存后出行。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        }
+      ],
+      "practical_notes": [
+        "东京都厅舍与 PLANT BASED 之间可步行或乘出租车，带老人优先走地下通道与电梯，避开地面天桥台阶。",
+        "新宿御苑入园需在自动售票机购票，园内禁酒；带老人建议从新宿门进，租借轮椅请提前咨询。",
+        "AFURI 晚间易排队，可先在附近休息再取号；点单时明确要求素食汤底。",
+        "新宿华盛顿酒店入住需护照，办理入住时可要求低楼层或电梯近的房间。"
+      ],
+      "photo_spots": [
+        {
+          "name": "东京都厅舍 展望室",
+          "tip": "靠窗拍城市天际线，避免反光；带老人可在座椅区轮流拍摄。",
+          "best_time": "09:30-10:30"
+        },
+        {
+          "name": "新宿御苑 草坪",
+          "tip": "利用树影与草坪线条拍人像，午后光线柔和。",
+          "best_time": "14:00-15:30"
+        }
+      ],
+      "backup_plan": [
+        {
+          "if": "下雨或老人体力下降",
+          "action": "取消新宿御苑，改为东京都厅舍展望室延长休息，午餐与晚餐时间不变。"
+        }
+      ],
+      "day_options": []
+    },
+    {
+      "day_no": 2,
+      "theme": "新宿中央公园晨步，绕东京都议会议事堂寻素食慢食",
+      "note": "上午新宿中央公园与东京都议会议事堂，午晚素食，傍晚结束。",
+      "items": [
+        {
+          "item_type": "attraction",
+          "poi_name": "新宿中央公园",
+          "why_this": "从酒店步行可达，清晨绿意与都厅前景适合慢走，不耗体力。",
+          "start_time": "09:00",
+          "end_time": "10:30",
+          "duration_min": 90,
+          "cost": 0,
+          "tag": "城市绿地",
+          "remark": "清晨人少，园内长椅多；轮椅通道从都厅前地下通道上到地面较平缓。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "attraction",
+          "poi_name": "东京都议会议事堂",
+          "why_this": "紧邻新宿中央公园，建筑参观可了解东京都政，无需寺庙类行程。",
+          "start_time": "10:45",
+          "end_time": "11:45",
+          "duration_min": 60,
+          "cost": 0,
+          "tag": "城市建筑",
+          "remark": "参观需提前在官网确认开放日与预约，带护照安检，周一或休会日可能不开放。",
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "llm.open_day",
+              "source_url": null,
+              "provider": "llm.open_day",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        },
+        {
+          "item_type": "food",
+          "poi_name": "Saishoku kenbi",
+          "why_this": "参考资料标注素食，晚餐可安排有色拉与熟食的素食套餐，收尾轻松。",
+          "start_time": "17:30",
+          "end_time": "19:00",
+          "duration_min": 90,
+          "cost": 120,
+          "tag": "素食晚餐",
+          "remark": "建议提前确认营业时间并预约，点餐时说明可吃蛋奶。",
+          "source": "overpass",
+          "source_updated_at": null,
+          "verification_status": "partially_verified",
+          "value_kind": "observed",
+          "freshness_status": "unknown",
+          "review_requirement": "before_departure",
+          "poi_id": "osm:node:4943298621",
+          "address": null,
+          "latitude": 35.7023724,
+          "longitude": 139.6972782,
+          "fact_evidence": {
+            "identity": {
+              "source_ref": "overpass",
+              "source_url": "https://www.openstreetmap.org/node/4943298621",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "diet:vegetarian": {
+              "source_ref": "osm:node:4943298621:diet:vegetarian",
+              "source_url": "https://www.openstreetmap.org/node/4943298621",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "category:amenity=restaurant": {
+              "source_ref": "osm:node:4943298621:category:amenity:restaurant",
+              "source_url": "https://www.openstreetmap.org/node/4943298621",
+              "provider": "overpass",
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "verified",
+              "value_kind": "observed",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            },
+            "cost": {
+              "source_ref": null,
+              "source_url": null,
+              "provider": null,
+              "retrieved_at": null,
+              "expires_at": null,
+              "verification_status": "unverified",
+              "value_kind": "generated",
+              "freshness_status": "unknown",
+              "review_requirement": "before_departure"
+            }
+          }
+        }
+      ],
+      "practical_notes": [
+        "东京都议会议事堂参观需提前在官网确认开放日并预约，携带护照配合安检。",
+        "新宿中央公园到东京都议会议事堂步行即可，带老人走无障碍坡道，避开都厅前车流密集路口。",
+        "FOOD HALL BLAST 与 Saishoku kenbi 营业时间可能变动，出发前电话或官网确认素食供应。",
+        "当天退房后可将行李寄存在新宿华盛顿酒店前台或新宿站投币柜，傍晚取回。"
+      ],
+      "photo_spots": [
+        {
+          "name": "新宿中央公园",
+          "tip": "以都厅双塔为背景拍绿地步道，清晨顺光。",
+          "best_time": "09:00-10:00"
+        },
+        {
+          "name": "东京都议会议事堂 外观",
+          "tip": "拍摄对称建筑立面，人像站在广场侧边。",
+          "best_time": "11:00-11:45"
+        }
+      ],
+      "backup_plan": [
+        {
+          "if": "东京都议会议事堂临时闭馆",
+          "action": "改为在新宿中央公园长椅休息后提前前往 FOOD HALL BLAST，晚餐按原计划。"
+        }
+      ],
+      "day_options": []
+    }
+  ],
+  "seconds": 65.66
+}

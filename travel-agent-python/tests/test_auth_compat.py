@@ -1,8 +1,8 @@
-"""鉴权互认单测（离线，不连 MySQL / Redis）。
+"""鉴权单测（离线，不连 MySQL / Redis）。JWT 由 PyJWT 实现（app/common/jwt_tokens.py）。
 
-覆盖 PLAN v3.0 §1.1 的四个易错点：
-1. 算法按密钥字节长度定档（jjwt signWith 行为），写死 HS256 会在长密钥下全判失败；
-2. 只接受 HMAC 族，alg=none / RS256 必须拒；
+覆盖四个易错点：
+1. 算法按密钥字节长度定档（换库前签发的票继续有效），解码只认该档，降档签名也拒；
+2. 只接受 HMAC，alg=none / RS256 必须拒；exp/sub/jti 缺一即拒；
 3. 黑名单 key 与 Java 逐字一致（auth:jwt:revoked: + sha256(整串 token) 小写十六进制）；
 4. Redis 故障降级进程内表时语义不变（否则一边登出另一边仍有效）。
 """
@@ -14,10 +14,11 @@ import hashlib
 import json
 import time
 
+import jwt
 import pytest
 
 from app.common import token_revocation
-from app.common.jwt_compat import (
+from app.common.jwt_tokens import (
     JwtError,
     decode_token,
     encode_token,
@@ -83,6 +84,22 @@ def test_non_hmac_algorithms_rejected(alg):
     payload = _b64(json.dumps({"sub": "alice", "exp": int(time.time()) + 300}).encode())
     with pytest.raises(JwtError):
         decode_token(f"{header}.{payload}.ZmFrZXNpZw", SECRET_32)
+
+
+def test_alg_downgrade_under_long_secret_rejected():
+    """解码只认当前密钥定档出的算法：64 字节密钥定档 HS512，同密钥签的 HS256 票不收。"""
+    downgraded = jwt.encode({"jti": "j", "sub": "alice", "exp": int(time.time()) + 300}, SECRET_64, algorithm="HS256")
+    with pytest.raises(JwtError):
+        decode_token(downgraded, SECRET_64)
+
+
+@pytest.mark.parametrize("missing", ["exp", "sub", "jti"])
+def test_required_claims_enforced(missing):
+    """缺 exp 的票永不过期、缺 jti 无法吊销、缺 sub 无主——一律拒（旧手写实现缺 exp 也放行）。"""
+    claims = {"jti": "j", "sub": "alice", "exp": int(time.time()) + 300}
+    claims.pop(missing)
+    with pytest.raises(JwtError):
+        decode_token(jwt.encode(claims, SECRET_32, algorithm="HS256"), SECRET_32)
 
 
 @pytest.mark.parametrize("broken", ["", "a.b", "a.b.c.d", "!!!.###.$$$"])

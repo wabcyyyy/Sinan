@@ -122,7 +122,7 @@ def search_attractions(city: str, preferences: list[str], limit: int = 30, *, co
 
 
 @traced("tool", "fixture.search_foods")
-def search_foods(city: str, limit: int = 10, *, coords: bool = True) -> list[dict]:
+def search_foods(city: str, limit: int = 10, dietary: str | None = None, *, coords: bool = True) -> list[dict]:
     return deepcopy(catalog(city, coords=coords)["foods"][:limit])
 
 

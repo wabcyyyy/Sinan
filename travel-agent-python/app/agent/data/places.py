@@ -266,22 +266,43 @@ def enrich_with_details(places: list[dict[str, Any]], *, top: int = 12) -> list[
 
 
 def _osm_facts(item: dict[str, Any]) -> dict[str, Any]:
-    """仅采信 OSM 实体的明确饮食标签；limited/缺失不推断为适用。"""
+    """仅采信 OSM 实体的明确饮食标签；limited/缺失不推断为适用。
+
+    类别证据（category_tags）同场提取：jsonv2 的 category/type 是实体主分类
+    （amenity/place_of_worship、leisure/park…），extratags 补 religion 等定性标签。
+    两者都只做"原样搬运"，语义判定（是不是寺庙/博物馆）由消费方做。
+    """
     raw_tags = item.get("extratags")
     tags = raw_tags if isinstance(raw_tags, dict) else {}
     diets = {diet for diet in ("vegetarian", "vegan") if tags.get(f"diet:{diet}") in ("yes", "only")}
     if "vegan" in diets:
         diets.add("vegetarian")
+    category_tags: dict[str, str] = {}
+    main_category = str(item.get("category") or "").strip()
+    main_type = str(item.get("type") or "").strip()
+    if main_category and main_type:
+        category_tags[main_category] = main_type
+    for key in ("religion", "tourism", "leisure", "historic"):
+        value = str(tags.get(key) or "").strip()
+        if value:
+            category_tags.setdefault(key, value)
     osm_type, osm_id = item.get("osm_type"), str(item.get("osm_id") or "")
     valid = osm_type in ("node", "way", "relation") and osm_id.isdigit()
     return {
         "place_id": f"osm:{osm_type}:{osm_id}" if valid else None,
         "source_url": f"https://www.openstreetmap.org/{osm_type}/{osm_id}" if valid else None,
         "dietary_options": sorted(diets),
+        "category_tags": category_tags,
     }
 
 
-def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool = False) -> list[dict[str, Any]] | None:
+def geocode_place_rows(
+    name: str,
+    city: str | None = None,
+    *,
+    namedetails: bool = False,
+    viewbox: tuple[float, float, float, float] | None = None,
+) -> list[dict[str, Any]] | None:
     """点名→候选要素列表；**None 与 [] 是两种结论**，不可合并。
 
     - `None`：未启用 / 请求失败 / 非 200 / 解析失败——"没问到"，不能当成不存在；
@@ -291,6 +312,8 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
     "景点不存在"去删用户的点位，是本模块最不能犯的错。
     `namedetails=True` 时带回 OSM 的全部名称标签（name:ja / name:zh-Hans /
     alt_name…），跨脚本与简繁写法只有靠它才能对上（2026-09-18 量测实测）。
+    `viewbox=(south, west, north, east)` 时只在框内找（Nominatim `bounded=1`）：
+    连锁店名全城有几十家分店，不限范围时回的是 OSM 排序最前的那家，不是行程附近那家。
     """
     if not settings.nominatim_enabled:  # 离线护栏：eval/CI 不能因为"点名解析"打公网
         return None
@@ -301,8 +324,14 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
     if namedetails:
         params["namedetails"] = "1"
         params["extratags"] = "1"
+    box_key = ""
+    if viewbox is not None:
+        south, west, north, east = viewbox
+        params["viewbox"] = f"{west:.5f},{north:.5f},{east:.5f},{south:.5f}"
+        params["bounded"] = "1"
+        box_key = f":box:{params['viewbox']}"
     payload = _nominatim_client.call(
-        f"q:v2:{query[:120]}:{int(namedetails)}",
+        f"q:v2:{query[:120]}:{int(namedetails)}{box_key}",
         lambda: fetch_json(
             _nominatim_client,
             api_client(),
@@ -313,36 +342,36 @@ def geocode_place_rows(name: str, city: str | None = None, *, namedetails: bool 
     )
     if not isinstance(payload, list):
         return None
-    rows: list[dict[str, Any]] = []
-    for item in payload:
-        if not isinstance(item, dict):
-            continue
-        try:
-            lat, lng = float(item["lat"]), float(item["lon"])
-        except (TypeError, ValueError, KeyError):
-            continue
-        raw_details: Any = item.get("namedetails")
-        details: dict[str, Any] = raw_details if isinstance(raw_details, dict) else {}
-        rows.append(
-            {
-                "name": str(item.get("name") or ""),
-                "display_name": str(item.get("display_name") or ""),
-                "latitude": lat,
-                "longitude": lng,
-                # 别名集合：任何一条名称标签都算同一个实体的写法
-                "aliases": sorted({str(v).strip() for v in details.values() if str(v or "").strip()}),
-                "localized_name": str(
-                    details.get("name:zh-Hans") or details.get("name:zh-CN") or details.get("name:zh") or ""
-                ).strip()
-                or None,
-                "country_code": str(item.get("country_code") or "").upper() or None,
-                "category": str(item.get("category") or ""),
-                "type": str(item.get("type") or ""),
-                "source": "nominatim",
-                **_osm_facts(item),
-            }
-        )
-    return rows
+    return [row for row in map(_nominatim_row, payload) if row is not None]
+
+
+def _nominatim_row(item: Any) -> dict[str, Any] | None:
+    """Nominatim jsonv2 单条 → 候选行；缺坐标/形状不对返回 None。"""
+    if not isinstance(item, dict):
+        return None
+    try:
+        lat, lng = float(item["lat"]), float(item["lon"])
+    except (TypeError, ValueError, KeyError):
+        return None
+    raw_details: Any = item.get("namedetails")
+    details: dict[str, Any] = raw_details if isinstance(raw_details, dict) else {}
+    return {
+        "name": str(item.get("name") or ""),
+        "display_name": str(item.get("display_name") or ""),
+        "latitude": lat,
+        "longitude": lng,
+        # 别名集合：任何一条名称标签都算同一个实体的写法
+        "aliases": sorted({str(v).strip() for v in details.values() if str(v or "").strip()}),
+        "localized_name": str(
+            details.get("name:zh-Hans") or details.get("name:zh-CN") or details.get("name:zh") or ""
+        ).strip()
+        or None,
+        "country_code": str(item.get("country_code") or "").upper() or None,
+        "category": str(item.get("category") or ""),
+        "type": str(item.get("type") or ""),
+        "source": "nominatim",
+        **_osm_facts(item),
+    }
 
 
 def geocode_place(name: str, city: str | None = None) -> dict[str, Any] | None:

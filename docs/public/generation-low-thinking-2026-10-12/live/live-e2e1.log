@@ -1,0 +1,23 @@
+extraction 0 degraded False ok True 9.91
+strict 24 FAILED BLOCKED 450.94s
+  day1 SUCCEEDED attr=2 meals=2 diet=2 err=
+     09:30-10:50 attraction 新宿中央公园 
+     11:30-12:54 food       Ain Soph. Journey diet:vegan,diet:vegetarian
+     13:30-15:30 attraction 東京都廳舍 第二本廳舍 
+     16:00-17:00 hotel      京王广场酒店 
+     18:00-19:30 food       Vegan Bistro Jangara diet:vegan,diet:vegetarian
+  day2 FAILED attr=2 meals=0 diet=0 err=
+     None-11:30 attraction 皇居东御苑 
+     14:00-15:30 attraction 东京站丸之内站舍 
+candidate 25 COMPLETED READY_WITH_WARNINGS 184.3s
+  day1 SUCCEEDED attr=2 meals=2 diet=1 err=
+     09:30-10:30 attraction 东京都厅展望室 
+     10:40-11:30 attraction 新宿中央公园 
+     11:45-13:00 food       くら寿司 新宿三丁目店 
+     15:00-15:30 hotel      京王广场酒店 
+     17:30-19:00 food       Ain Soph. Journey diet:vegan,diet:vegetarian
+  day2 SUCCEEDED attr=2 meals=2 diet=0 err=
+     09:30-11:30 attraction 新宿御苑 
+     11:45-13:00 food       ナタラジ 新宿店 
+     13:30-15:00 attraction 代代木公园 
+     17:30-19:00 food       日高屋 新宿东口店 

@@ -1,5 +1,6 @@
 {
-  "mode": "offline-fixture-fallback",
+  "mode": "offline-fixture-product-path",
+  "generation_path": "stream",
   "case_count": 13,
   "dataset": {
     "file": "cases.json",
@@ -13,11 +14,11 @@
     "time_conflict_rate": 0.0,
     "route_violation_rate": 0.0,
     "attraction_duplicate_rate": 0.0,
-    "budget_deviation_rate": 0.0,
+    "budget_deviation_rate": 0.0769,
     "terminal_reset_day_rate": 0.0154,
-    "success_status_rate": 0.0,
-    "degraded_status_rate": 1.0,
-    "failed_status_rate": 0.0,
+    "success_status_rate": 0.9231,
+    "degraded_status_rate": 0.0,
+    "failed_status_rate": 0.0769,
     "fallback_success_rate": 1.0,
     "trace_complete_rate": 1.0,
     "research_rounds_avg": 3.0,
@@ -35,10 +36,10 @@
         "preferences": [
           "人文历史"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 1,
       "total_items": 3,
       "terminal_reset_day_rate": 0.0,
@@ -53,19 +54,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 5,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -74,9 +66,7 @@
           "fixture.get_consumption",
           "flight.search_quotes"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -92,10 +82,10 @@
         "preferences": [
           "网红出片"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -110,19 +100,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 7,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -133,9 +114,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -151,10 +130,10 @@
         "preferences": [
           "自然风光"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 3,
       "total_items": 11,
       "terminal_reset_day_rate": 0.0,
@@ -169,19 +148,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 8,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -193,9 +163,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -211,10 +179,10 @@
         "preferences": [
           "美食"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 4,
       "total_items": 15,
       "terminal_reset_day_rate": 0.0,
@@ -229,19 +197,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 9,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -254,9 +213,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -272,10 +229,10 @@
         "preferences": [
           "人文历史"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -290,19 +247,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 7,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -313,9 +261,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -331,10 +277,10 @@
         "preferences": [
           "自然风光"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核；开放模式结果未通过全部约束校验（见校验日志），已保留但请复核当日时间安排；达到重试上限后仍存在行程约束问题",
+      "status": "failed",
+      "status_reason": "行程生成失败，请稍后重试或调整条件重新生成（错误码 ValueError）",
       "days": 5,
       "total_items": 18,
       "terminal_reset_day_rate": 0.2,
@@ -349,26 +295,19 @@
       "time_conflict_rate": 0.0,
       "route_violation_rate": 0.0,
       "attraction_duplicate_rate": 0.0,
-      "budget_deviation_rate": 0.0,
+      "budget_deviation_rate": 1.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 14,
-        "tool_count": 15,
+        "node_count": 7,
+        "tool_count": 10,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate",
+          "day.generate",
+          "day.reflect",
+          "day.generate",
+          "day.reflect",
+          "day.generate",
+          "day.reflect"
         ],
         "tools": [
           "search_hotels",
@@ -380,17 +319,12 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi",
           "fixture.resolve_poi",
-          "fixture.resolve_poi",
-          "fixture.resolve_poi",
-          "fixture.resolve_poi",
-          "fixture.resolve_poi",
-          "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
         "routes": [
-          "fix",
-          "pass",
-          "keep_llm_result"
+          "retry",
+          "fallback",
+          "finish"
         ]
       },
       "research_rounds": 3,
@@ -407,10 +341,10 @@
         "preferences": [
           "美食"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -425,19 +359,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 7,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -448,9 +373,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -466,10 +389,10 @@
         "preferences": [
           "海滨"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 3,
       "total_items": 11,
       "terminal_reset_day_rate": 0.0,
@@ -484,19 +407,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 8,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -508,9 +422,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -526,10 +438,10 @@
         "preferences": [
           "高迪建筑"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 3,
       "total_items": 11,
       "terminal_reset_day_rate": 0.0,
@@ -544,19 +456,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 8,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -568,9 +471,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -586,10 +487,10 @@
         "preferences": [
           "城市观察"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -604,19 +505,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 7,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -627,9 +519,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -645,10 +535,10 @@
         "preferences": [
           "海岛"
         ],
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 4,
       "total_items": 15,
       "terminal_reset_day_rate": 0.0,
@@ -663,19 +553,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 9,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -688,9 +569,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -707,10 +586,10 @@
           "无坐标边界"
         ],
         "coords": false,
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -725,19 +604,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 13,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -754,9 +624,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,
@@ -773,10 +641,10 @@
           "博物馆"
         ],
         "coords": false,
-        "prompt_version": "v1.5.localized/v1.5.localized"
+        "prompt_version": "v1.6.localized/v1.7.localized"
       },
-      "status": "degraded",
-      "status_reason": "已使用开放研究生成；关键事实需出发前复核",
+      "status": "success",
+      "status_reason": null,
       "days": 2,
       "total_items": 7,
       "terminal_reset_day_rate": 0.0,
@@ -791,19 +659,10 @@
       "budget_deviation_rate": 0.0,
       "fallback_success": true,
       "trace": {
-        "node_count": 10,
+        "node_count": 1,
         "tool_count": 13,
         "nodes": [
-          "parse",
-          "parse",
-          "research",
-          "research",
-          "generate",
-          "generate",
-          "reflect",
-          "reflect",
-          "format",
-          "format"
+          "stream_generate"
         ],
         "tools": [
           "search_hotels",
@@ -820,9 +679,7 @@
           "fixture.resolve_poi",
           "fixture.resolve_poi"
         ],
-        "routes": [
-          "pass"
-        ]
+        "routes": []
       },
       "research_rounds": 3,
       "research_pack": 18,

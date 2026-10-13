@@ -14,6 +14,7 @@ from app.agent.generation.content.suggestions import activity_floor, build_sugge
 from app.agent.generation.output.facts import (
     apply_item_facts,
     build_lookup,
+    pool_row_for,
     sync_duration_from_time_window,
 )
 from app.agent.generation.output.prices import PriceStage
@@ -86,7 +87,7 @@ def format_output(state: UnifiedAgentState) -> dict:
                 continue
             # city 必须传：证据票按 `name:{城市}|{归一名}` 建键，漏传等于查询侧换了
             # 一把键去取，服务端已接地的字段反被降级成 client-context。
-            apply_item_facts(item, lookup.get(str(item.get("poi_name") or "")), source_records, city=req.city)
+            apply_item_facts(item, pool_row_for(lookup, item), source_records, city=req.city)
             if item.get("item_type") == "hotel":
                 prices.price_hotel(item)
                 if count_hotel_nights_in_budget(plan["day_no"], req.days, "hotel"):

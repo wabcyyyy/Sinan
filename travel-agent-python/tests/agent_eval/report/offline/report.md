@@ -1,6 +1,7 @@
 # Agent 离线评测报告
 
-- 数据模式：固定权威 fixture + fallback 生成器（不依赖外部服务）
+- 生成路径：产品路径（业务层 plan_days：研究 → 整段流式 → 落库终检 → 逐日补齐，临时 SQLite）
+- 数据模式：固定权威 fixture + mock 开放模式输出（不依赖外部服务）
 - 用例数：13
 - 数据集：cases.json（sha256 deb7abf771b7…）
 
@@ -13,11 +14,11 @@
 | time_conflict_rate | 0.00% |
 | route_violation_rate | 0.00% |
 | attraction_duplicate_rate | 0.00% |
-| budget_deviation_rate | 0.00% |
+| budget_deviation_rate | 7.69% |
 | terminal_reset_day_rate | 1.54% |
-| success_status_rate | 0.00% |
-| degraded_status_rate | 100.00% |
-| failed_status_rate | 0.00% |
+| success_status_rate | 92.31% |
+| degraded_status_rate | 0.00% |
+| failed_status_rate | 7.69% |
 | fallback_success_rate | 100.00% |
 | trace_complete_rate | 100.00% |
 | research_rounds_avg | 3 |
@@ -33,7 +34,7 @@
 | 杭州 | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |
 | 成都 | 4 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 9 |
 | 西安 | 2 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 7 |
-| 三亚 | 5 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 15 |
+| 三亚 | 5 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 100.00% | 10 |
 | 广州 | 2 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 7 |
 | 厦门 | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |
 | Barcelona | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |

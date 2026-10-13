@@ -313,7 +313,7 @@ def client(monkeypatch) -> TestClient:
 
 
 def _auth_header() -> dict[str, str]:
-    from app.common.jwt_compat import encode_token
+    from app.common.jwt_tokens import encode_token
 
     return {"Authorization": f"Bearer {encode_token('alice', JWT_MATERIAL, 3600)}"}
 

@@ -228,7 +228,7 @@ def _fake_client_of(raw: str) -> Callable[[], Any]:
 
     class _FakeClient:
         @staticmethod
-        def complete(prompt: str, system_prompt: str = "", temperature: float = 0) -> str:
+        def complete(prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
             return raw
 
     return lambda: _FakeClient()

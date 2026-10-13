@@ -199,7 +199,7 @@ def test_queue_full_releases_key_for_fresh_retry(monkeypatch, tmp_path):
 def test_api_passes_idempotency_header(monkeypatch, tmp_path):
     from app.api import deps
     from app.common import token_revocation
-    from app.common.jwt_compat import encode_token
+    from app.common.jwt_tokens import encode_token
 
     _setup_db(tmp_path)
     cache_store.reset_for_tests()

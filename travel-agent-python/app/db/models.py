@@ -227,6 +227,8 @@ class ItineraryItem(Base, SoftDelete):
     end_time: Mapped[time | None] = mapped_column(Time)
     duration_min: Mapped[int | None] = mapped_column(Integer)
     cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # cost 的币种（V15）：'CNY' = 币种有据（模型声明后已换算 / 用户手填）；NULL = 未声明
+    cost_currency: Mapped[str | None] = mapped_column(String(3))
     tag: Mapped[str | None] = mapped_column(String(32))
     remark: Mapped[str | None] = mapped_column(String(255))
     open_time: Mapped[str | None] = mapped_column(String(64))

@@ -1,0 +1,25 @@
+extraction 0 degraded False ok True 5.0
+strict 28 FAILED BLOCKED 380.72s
+  day1 FAILED attr=2 meals=2 diet=1 err=
+     11:30-12:30 food       Nagi Shokudo diet:vegan,diet:vegetarian
+     13:00-14:30 attraction 代代木公园 
+     15:00-16:00 attraction MIYASHITA PARK（宫下公园） 
+     18:00-19:30 food       Pure Cafe 
+     20:00-20:30 hotel      hilton tokyo hotel 
+  day2 SUCCEEDED attr=2 meals=2 diet=2 err=
+     09:30-10:30 attraction 东京都厅展望室 
+     11:45-13:00 food       AIN SOPH. journey diet:vegan,diet:vegetarian
+     15:00-16:30 attraction 皇居东御苑 
+     17:45-18:45 food       T's TanTan diet:vegan,diet:vegetarian
+candidate 29 COMPLETED READY_WITH_WARNINGS 208.33s
+  day1 SUCCEEDED attr=2 meals=2 diet=0 err=
+     09:30-10:45 attraction 东京都厅展望室 
+     11:00-11:45 attraction 新宿中央公园 
+     12:00-13:15 food       くら寿司新宿三丁目店 
+     15:00-15:30 hotel      Shinjuku Washington Hotel 
+     18:00-19:30 food       日高屋 新宿西口店 
+  day2 SUCCEEDED attr=2 meals=2 diet=1 err=
+     09:30-11:10 attraction 新宿御苑 
+     11:30-12:45 food       ナタラジ 新宿店 
+     13:20-14:50 attraction 代代木公园 
+     17:45-18:45 food       Délifrance diet:vegetarian

@@ -1,0 +1,21 @@
+RUN itinerary-26 elapsed_s 57.0 llm_calls 2 tokens 11106 status ok
+    stream_request max? fin= stop comp= 8742 reason= 6810 chars= 4835
+    request max? fin= stop comp= 274 reason= 263 chars= 19
+RUN itinerary-26 elapsed_s 188.2 llm_calls 6 tokens 39166 status 第 2 天待确认（dietary_requirement）：「日高屋 新宿西口店」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求；第 2 天待确认（dietary_requirement）：「Tully's Coffee ふれ
+    request max? fin= stop comp= 8685 reason= 6438 chars= 5386
+    request max? fin= stop comp= 100 reason= 83 chars= 34
+    request max? fin= stop comp= 10561 reason= 8397 chars= 5261
+    request max? fin= stop comp= 11162 reason= 9613 chars= 3646
+    request max? fin= stop comp= 87 reason= 72 chars= 21
+    request max? fin= stop comp= 251 reason= 234 chars= 23
+RUN itinerary-27 elapsed_s 38.0 llm_calls 1 tokens 7889 status ok
+    stream_request max? fin= stop comp= 5885 reason= 3228 chars= 6332
+RUN itinerary-27 elapsed_s 113.1 llm_calls 6 tokens 24965 status ok
+    request max? fin= stop comp= 8448 reason= 6249 chars= 5301
+    request max? fin= stop comp= 108 reason= 97 chars= 19
+    request max? fin= stop comp= 10153 reason= 7792 chars= 5853
+    request max? fin= stop comp= 83 reason= 73 chars= 17
+    request max? fin= stop comp= 126 reason= 113 chars= 25
+    request max? fin= stop comp= 93 reason= 77 chars= 22
+RUN itinerary-27 elapsed_s 90.9 llm_calls 1 tokens 17238 status ok
+    request max? fin= stop comp= 14642 reason= 12497 chars= 5041

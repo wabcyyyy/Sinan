@@ -24,6 +24,7 @@ from uuid import uuid4
 
 from langgraph.graph import END, StateGraph
 
+from app.agent.generation.content.landing import DEDUP_EMPTIED_MARK
 from app.agent.generation.content.reflect import build_feedback, hard_day_issues, validate_plans
 from app.agent.generation.orchestration.stream_branch import stream_generate
 from app.agent.generation.rules.generation_core import MAX_DAY_ATTEMPTS
@@ -138,6 +139,11 @@ def day_route_after_reflect(state: UnifiedAgentState) -> str:
         max_attempts = MAX_DAY_ATTEMPTS
     else:
         max_attempts = 1 if request is not None and (request.days or 1) > 1 else MAX_DAY_ATTEMPTS
+        # 去重/否证清空当日破例给一次反馈重试：这条反馈带着「本日已移除哪些名字」，
+        # 模型要做的正是改选其他片区的真实点位；整段链原本 1 次不重试，于是清空
+        # 直接落成失败天（实测 2026-10-12 trip 19 第 2 天）。仍收敛到 fallback 兜底。
+        if max_attempts == 1 and any(DEDUP_EMPTIED_MARK in issue for issue in state.validation_issues):
+            max_attempts = 2
     if state.attempts < max_attempts and not state.force_fallback:
         record_event("route", "retry", metadata={"reason": "validation_issue"})
         return "retry"
@@ -153,6 +159,11 @@ def day_prepare_retry(state: UnifiedAgentState) -> dict:
 
 
 def day_prepare_fallback(state: UnifiedAgentState) -> dict:
+    """进入最后一次尝试：与 retry 同样带反馈重新采样，区别只是之后路由一律收尾。
+
+    「fallback」是历史命名（早期指确定性兜底拼装，LLM-only 后已移除）；节点名与
+    state 字段随轨迹事件和检查点持久化，保留原名以兼容存量数据。
+    """
     # 最后一次仍需知道过滤/交付失败原因；清空会再次生成同一批已被删掉的地点。
     return {"force_fallback": True}
 

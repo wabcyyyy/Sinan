@@ -1,0 +1,24 @@
+extraction 0 degraded False ok True 3.08
+strict 26 FAILED BLOCKED 259.94s
+  day1 SUCCEEDED attr=2 meals=2 diet=2 err=
+     09:30-11:00 attraction 东京都厅舍展望室 
+     11:30-12:00 food       Délifrance diet:vegetarian
+     14:36-15:06 attraction 新宿中央公园 
+     15:30-16:00 hotel      Hyatt Regency Tokyo 
+     22:19-23:49 food       くら寿司 diet:vegan,diet:vegetarian
+  day2 FAILED attr=1 meals=2 diet=1 err=
+     09:30-10:27 attraction 新宿御苑 
+     12:30-13:30 food       日高屋 diet:vegetarian
+     17:30-18:30 food       松屋銀座 
+candidate 27 COMPLETED READY_WITH_WARNINGS 251.76s
+  day1 SUCCEEDED attr=2 meals=2 diet=0 err=
+     09:00-10:30 attraction 东京都厅舍 
+     10:45-11:45 attraction 新宿中央公园 
+     12:00-13:00 food       Délifrance 新宿店 
+     15:00-16:00 hotel      Hyatt Regency Tokyo 
+     17:30-19:00 food       くら寿司 新宿東口店 
+  day2 SUCCEEDED attr=2 meals=2 diet=2 err=
+     09:30-11:54 attraction 新宿御苑 
+     12:15-13:25 food       AIN SOPH. journey diet:vegan,diet:vegetarian
+     14:00-15:11 attraction 新宿住友大厦 
+     17:45-19:00 food       日高屋 diet:vegetarian

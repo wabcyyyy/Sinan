@@ -28,6 +28,7 @@ from app.agent.data.weather import day_clause as weather_day_clause
 from app.agent.generation.content.day_prompts import (
     DAY_ATTRACTION_CONTEXT_LIMIT,
     DAY_FOOD_CONTEXT_LIMIT,
+    DAY_MAX_TOKENS,
     GENERATION_TEMPERATURE,
     destination_line,
     has_structured_requirements,
@@ -44,7 +45,7 @@ from app.agent.generation.content.narrative import normalize_name_mentions, sani
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
-from app.agent.generation.output.facts import field_fact_evidence
+from app.agent.generation.output.facts import field_fact_evidence, pool_row_for
 from app.agent.generation.rules.budget import budget_tier, clamp_meal_cost, pricing_clause
 from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import (
@@ -165,15 +166,11 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
         user,
         system_prompt=system,
         temperature=GENERATION_TEMPERATURE,
-        # 输出要求是"一天 items + 叙事字段 + 24-40 条 suggestions"，体量大，
-        # 截断即 JSON 解析失败 → 整日草案；叙事字段约占输出增量 30-50%，
-        # 给足输出预算。3200 实测装不下（2026-09-18 量测 6/6 城截断，
-        # 见 docs/量测-存在性接地-2026-09-18.md §5），8000 后 6/6 城解析成功。
-        max_tokens=8000,
+        # 截断即 JSON 解析失败 → 整日草案；预算口径（正文 + 思考占用）见 DAY_MAX_TOKENS
+        max_tokens=DAY_MAX_TOKENS,
         model=model_for("fast"),
         response_format=response_format,
         enable_search=settings.llm_generation_web_search,
-        enable_thinking=False,
     )
     # 三层：严格解析 → 单次修复重试（decide 模式推广）→ 抛 LlmJsonError 交
     # open_plans 兜底；叙事字段轻量清洗（超限截断/类型降级），骨架照常交付。
@@ -184,7 +181,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
             raw,
             client,
             model=model_for("fast"),
-            repair_max_tokens=8000,
+            repair_max_tokens=DAY_MAX_TOKENS,
             response_format=response_format,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             validate=validate_day_output,
@@ -287,7 +284,9 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     # 再进装配：留在行程里把一个名字指到别的城市，比少一个点更糟（G5）。
     before_filter = [item["poi_name"] for item in drafts]
     drafts = drop_refuted_items(drafts, city=req.city)
-    drafts = drop_used_items(drafts, req.used_names, day_no=req.day_no)
+    drafts = drop_used_items(
+        drafts, req.used_names, day_no=req.day_no, used_points=ctx.get("used_points"), ref_pool=ref_pool
+    )
     policy = day_policy_for(req.requirements_struct, req.day_no)
     require_playable_items(before_filter, drafts, day_no=req.day_no, playable=policy.playable)
 
@@ -299,7 +298,8 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
 
     items: list[TripItem] = []
     for item in drafts:
-        poi = lookup.get(str(item.get("poi_name") or ""))
+        # 按名回填候选快照；就近校正换过/撤销过的远处分店不取同名行（见 pool_row_for）
+        poi = pool_row_for(lookup, item)
         cost_observed = False
         open_time_observed = False
         if poi and is_trusted_row(poi):

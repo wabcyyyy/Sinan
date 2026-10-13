@@ -9,7 +9,8 @@
 - LLMClient.chat 支持 system/user 消息、temperature、max_tokens、
   enable_search（联网搜索，只有百炼兼容层支持：其余通道要求它即抛错，
   防"静默丢参数→拿模型记忆冒充检索结果"，能力判据见 channel_supports_search）、
-  enable_thinking（思考开关，llm_enable_thinking 显式配置时才发送）与
+  思考开关与强度（只读 settings 的 llm_enable_thinking / llm_reasoning_effort，
+  调用点不按次覆盖——单一真源，见 _apply_provider_options）与
   json_mode（response_format=json_object）；
 - 通道能力（能搜不能搜、供不供某个模型）由 channel_supports_search /
   channel_serves_model 判定；require_model_served 在发请求前拦下"模型名与网关
@@ -222,8 +223,6 @@ def _apply_provider_options(
     payload: dict,
     base_url: str,
     enable_search: bool,
-    reasoning_effort: str | None = None,
-    enable_thinking: bool | None = None,
 ) -> None:
     """按网关供应商规范填充扩展参数（搜索插件、思考模式与思考强度）。
 
@@ -239,9 +238,13 @@ def _apply_provider_options(
     此前 `.env` 里 `LLM_REASONING_EFFORT=`（留空）被 pydantic-settings 解析成 `""` 而不是
     None，于是 `LLM_ENABLE_THINKING=false` 永远进不了"关闭"分支、空串还会被当成有效强度
     发给 DeepSeek（400）。所以这里统一把空串归一到"没配"。
+
+    思考配置只读 settings（2026-10-12 拍板：正式生成以 low 为目标）：此前结构生成/修复
+    按次传 enable_thinking=False，全局 low 对生成实际不生效，换环境键看不出差别。
+    调用点不再提供按次覆盖，换档只改 .env。
     """
-    effort = (reasoning_effort or settings.llm_reasoning_effort or "").strip() or None
-    thinking = settings.llm_enable_thinking if enable_thinking is None else enable_thinking
+    effort = (settings.llm_reasoning_effort or "").strip() or None
+    thinking = settings.llm_enable_thinking
     if enable_search and not _is_dashscope_url(base_url):
         raise ValueError(
             f"通道 {base_url} 不支持联网搜索（enable_search）：该插件只有 DashScope 百炼兼容层提供，"
@@ -328,8 +331,6 @@ class LLMClient:
         response_format: dict | None = None,
         tools: list[dict] | None = None,
         tool_choice: str | dict | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> dict:
         url = self._base_url.rstrip("/") + "/chat/completions"
         headers = {
@@ -342,7 +343,7 @@ class LLMClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        _apply_provider_options(payload, self._base_url, enable_search, reasoning_effort, enable_thinking)
+        _apply_provider_options(payload, self._base_url, enable_search)
         if response_format is not None:
             # response_format 原样透传；档位（json_schema 强约束 vs json_object）由调用点
             # 按 model_registry 能力位选（DeepSeek 官方 2026-10-05 起拒 json_schema，R2-F1）。
@@ -465,8 +466,6 @@ class LLMClient:
         json_mode: bool = False,
         response_format: dict | None = None,
         cancel: threading.Event | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> Iterator[str]:
         """流式调用 LLM，逐段 yield 内容增量（不做重试；异常在迭代时抛出）。
 
@@ -491,7 +490,7 @@ class LLMClient:
             "max_tokens": max_tokens,
             "stream": True,
         }
-        _apply_provider_options(payload, self._base_url, enable_search, reasoning_effort, enable_thinking)
+        _apply_provider_options(payload, self._base_url, enable_search)
         if response_format is not None:
             payload["response_format"] = response_format
         elif json_mode:
@@ -516,6 +515,7 @@ class LLMClient:
 
         started = time.monotonic()
         stream_usage: dict = {}
+        finish_reason = None
         content_length = 0
         try:
             with _get_http_client().stream(
@@ -554,7 +554,9 @@ class LLMClient:
                     if chunk.get("usage"):
                         stream_usage = chunk["usage"]
                     # usage-only 末分片的 choices 为空列表，注意防空。
-                    delta = chunk.get("choices", [{}])[0].get("delta", {}) if chunk.get("choices") else {}
+                    first = chunk["choices"][0] if chunk.get("choices") else {}
+                    finish_reason = first.get("finish_reason") or finish_reason
+                    delta = first.get("delta", {})
                     content = delta.get("content")
                     if content:
                         content_length += len(content)
@@ -596,6 +598,9 @@ class LLMClient:
                 "content_length": content_length,
                 "prompt_tokens": prompt,
                 "completion_tokens": completion,
+                # 与阻塞式 llm.request 同口径：思考占 completion 预算，截断要能从轨迹看出来
+                "finish_reason": finish_reason,
+                "reasoning_tokens": (stream_usage.get("completion_tokens_details") or {}).get("reasoning_tokens"),
             },
         )
 
@@ -608,8 +613,6 @@ class LLMClient:
         model: str | None = None,
         json_mode: bool = False,
         response_format: dict | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> str:
         """流式调用 LLM，返回完整响应文本。适用于多日整段生成等长响应场景。"""
         started = time.monotonic()
@@ -623,8 +626,6 @@ class LLMClient:
                 model=model,
                 json_mode=json_mode,
                 response_format=response_format,
-                reasoning_effort=reasoning_effort,
-                enable_thinking=enable_thinking,
             ):
                 content_parts.append(delta)
         except RunLimitExceeded as exc:
@@ -646,8 +647,6 @@ class LLMClient:
         model: str | None = None,
         json_mode: bool = False,
         response_format: dict | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> str:
         response = self.chat_response(
             messages,
@@ -657,8 +656,6 @@ class LLMClient:
             model=model,
             json_mode=json_mode,
             response_format=response_format,
-            reasoning_effort=reasoning_effort,
-            enable_thinking=enable_thinking,
         )
         return str(response["message"].get("content") or "")
 
@@ -672,8 +669,6 @@ class LLMClient:
         model: str | None = None,
         json_mode: bool = False,
         response_format: dict | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> str:
         return self.chat(
             [
@@ -686,8 +681,6 @@ class LLMClient:
             model=model,
             json_mode=json_mode,
             response_format=response_format,
-            reasoning_effort=reasoning_effort,
-            enable_thinking=enable_thinking,
         )
 
     def stream_complete(
@@ -700,8 +693,6 @@ class LLMClient:
         model: str | None = None,
         json_mode: bool = False,
         response_format: dict | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
     ) -> str:
         """流式单轮调用的便捷封装。"""
         return self.stream_chat(
@@ -715,8 +706,6 @@ class LLMClient:
             model=model,
             json_mode=json_mode,
             response_format=response_format,
-            reasoning_effort=reasoning_effort,
-            enable_thinking=enable_thinking,
         )
 
 

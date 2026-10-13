@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-10-11T06:37:40+00:00",
+  "generated_at": "2026-10-12T20:32:18+00:00",
   "mode": "offline-business-path",
-  "commit": "5fef88ef63b6430c3b79bfffab2e012ddc1cd1bb",
+  "commit": "59459fa2c52330dcaeb9de3eb83c069ceaa736e5",
   "dataset": {
     "file": "e_dataset.json",
     "dataset_hash": "5a3e812fd59d8ea78fe3478f2ad4abd3c287eadfa0a0b538fd784e03ccd28c91",
     "case_count": 14
   },
   "prompt_version": {
-    "open_day": "v1.5.localized",
-    "open_trip": "v1.5.localized",
+    "open_day": "v1.6.localized",
+    "open_trip": "v1.7.localized",
     "note": "checks 主要走服务编排与确定性规则；prompt 版本绑定供真实 LLM 复跑时对齐"
   },
   "model": "offline-mock (no real LLM)",

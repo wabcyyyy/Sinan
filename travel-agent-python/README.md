@@ -2,7 +2,7 @@
 
 **单进程后端 + AI Agent 服务**：既提供业务接口（`/api/**`：鉴权、行程读写、版本快照、PDF 导出、后台管理、SSE 事件流），也提供 Agent 接口（`/api/agent/v1/**`）。行程生成/调整通过 LangGraph 工作流调用 LLM（任意 OpenAI 兼容端点，默认 DeepSeek 官方 `deepseek-flash`）。**AI-NATIVE 数据面（2026-09-17 起）**：本地不再维护景点语料库（`poi_knowledge` 已随 V4 迁移退役）——地点事实走「LLM 世界知识 + 联网搜索（DashScope enable_search）+ **OpenTripMap**（OSM+Wikidata 加工的旅游切片：坐标/分类/图片/百科简介）+ **Nominatim**（点名→坐标兜底）」，票价/营业时间无结构化来源，由 LLM 估价并按 `estimated` 如实标注，前端以**地图深链**（国内高德 URI / 海外谷歌 Maps）引导用户出发前核实。数据库只存用户数据：用户、偏好、行程快照（`itinerary_item` 为快照式落库，已生成行程不依赖任何外部数据源）、`city_geo` 城市字典与 `city_consumption` 消费基准。（历史上业务面在 Spring Boot 侧，已按绞杀者路线整体迁到本服务，两个面同进程直调。）
 
-生产主链路为**整段流式生成**（`/v1/generate-stream`）：一次 LLM 调用生成整趟行程（模型看得见全盘，跨天重复与片区走回头路在源头收敛），流式增量解析 `daily_plans` 数组，每解析出一个完整天立即做引用落地/坐标补齐/双通道去重（归一化同名 + 落地坐标 <80m），以 JSON Lines 逐天下发；`/v1/generate`（整段非流式，走同一张 LangGraph 图）用于直接调用与离线评测，`/v1/generate-day` 供编排器做恢复续跑与缺天修复。
+生产主链路为**整段流式生成**（`/v1/generate-stream`）：一次 LLM 调用生成整趟行程（模型看得见全盘，跨天重复与片区走回头路在源头收敛），流式增量解析 `daily_plans` 数组，每解析出一个完整天立即做引用落地/坐标补齐/双通道去重（归一化同名 + 落地坐标 <80m），以 JSON Lines 逐天下发；`/v1/generate`（整段非流式，走同一张 LangGraph 图）用于直接调用（离线评测默认走业务层 `plan_days`，此图只作 `--path graph` 对照），`/v1/generate-day` 供编排器做恢复续跑与缺天修复。
 
 ## 技术栈
 
@@ -79,7 +79,7 @@ uv run python main.py  # 127.0.0.1:8000，默认不开启 reload
 | --- | --- |
 | `GET /api/agent/hello` | 健康检查 |
 | `POST /api/agent/v1/generate-stream` | 整段流式生成（JSON Lines：start / day / day_patch / suggestions / done / error 逐天事件，事件体 camelCase） |
-| `POST /api/agent/v1/generate` | 生成行程（城市/天数/偏好/预算 → 每日计划 + 预算明细 + validation_log + `status`；直接调用与离线评测用） |
+| `POST /api/agent/v1/generate` | 生成行程（城市/天数/偏好/预算 → 每日计划 + 预算明细 + validation_log + `status`；直接调用，离线评测 `--path graph` 对照用） |
 | `POST /api/agent/v1/adjust` | 增量调整（替换/删除/排序 + 预算重算推荐） |
 | `POST /api/agent/v1/generate-day` | 单日生成（恢复续跑 / 缺天修复；开放模式 + 候选资料注入，外部数据只作证据） |
 | `POST /api/agent/v1/plan-context` | 一次性构建检索上下文（候选/餐饮/酒店/消费系数） |
@@ -103,7 +103,7 @@ uv run python main.py  # 127.0.0.1:8000，默认不开启 reload
 | 偏好 | `GET/POST /api/itinerary/preferences`、`POST/GET .../preferences/signals` | 用户偏好与行为信号 |
 | 行程读 | `GET /api/itinerary`、`GET /api/itinerary/{id}` | 列表 / 详情（叙事、预算、溯源字段），详情带 Redis 缓存与精确失效 |
 | 行程写 | `POST /api/itinerary/{generate,nl-edit,apply-plans,hotel-option}`、`PUT /api/itinerary/items/{itemId}`、`DELETE /api/itinerary/{id}` | 每次写都落版本快照；`/versions` 支持 diff 与回滚 |
-| 对话与实时 | `GET /api/itinerary/{id}/events`、`POST /api/itinerary/{id}/chat-edit`（及 `/stream`）、`GET/DELETE /api/itinerary/{id}/chat-history` | 进度事件流（进程内 SSE，15s 心跳、每行程 5 连接上限）与对话改行程（阻塞 + 流式） |
+| 对话与实时 | `GET /api/itinerary/{id}/events`、`POST /api/itinerary/{id}/chat-edit`（及 `/stream`）、`GET/DELETE /api/itinerary/{id}/chat-history` | 进度事件流（进程内 SSE，15s 心跳、每行程 5 连接上限；业务帧带 `id:`，重连带 `Last-Event-ID` 补发最近 256 帧内错过的帧，补不全发 `resync`）与对话改行程（阻塞 + 流式） |
 | 对话输入 | `POST /api/image-intent`、`POST /api/speech-intent` | 图片 / 录音 → 一句话回填输入框（**交用户编辑后发送，不自动发送**）；图片走 `LLM_ROLE_VISION`，语音走 `LLM_ROLE_STT`（服务端 ASR，MiMo）；格式白名单 + 体积上限 + 配额闸 |
 | 图片域 | `GET /api/poi-photo`、`GET /api/image-proxy` | POI 实景图解析（维基/图库链，未命中 404）后 302 到同源代理；代理只代取白名单图床（SSRF 防护） |
 | PDF 导出 | `POST /api/export/pdf/{itineraryId}`、`GET /api/export/tasks/{taskId}`、`GET /api/export/download/{taskId}` | 异步任务 + reportlab 排版；下载是文件流，不套信封 |

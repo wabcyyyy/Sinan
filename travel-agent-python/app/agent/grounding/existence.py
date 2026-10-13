@@ -25,12 +25,14 @@ OpenTripMap 的半径池按热度截断 top-40、对"不存在"根本无资格�
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from app.agent.core.poi_identity import haversine_m, matches_any, same_entity
 from app.agent.data import city_center as city_center_data
 from app.agent.data import places
+from app.agent.grounding.core_name import core_name_via_llm, reset_core_name_cache
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.config import settings
@@ -59,6 +61,8 @@ class ResolveResult:
     authoritative_negative: bool = False
     dietary_options: tuple[str, ...] = ()
     source_url: str | None = None
+    #: 外部主分类原样搬运（(amenity, place_of_worship) 等），不在这里下语义结论
+    category_tags: tuple[tuple[str, str], ...] = ()
 
     @property
     def grounded(self) -> bool:
@@ -182,11 +186,28 @@ class NominatimProvider:
         if rows is None:
             return ResolveResult.unknown("provider_unavailable")
         if not rows:
+            # 描述性名称全串查询实测必空（"新宿御苑前 ソラノイロ"0 行，短名命中
+            # 同一实体；"明治神宫外苑银杏并木"同理）。让 fast 模型抽一次核心店名
+            # 重查：名称门槛仍按原名判，抽错实体过不了 same_entity，最坏多一次 1rps 查询。
+            core = core_name_via_llm(name, city)
+            if core and core != name and same_entity(core, name):
+                retry_rows = places.geocode_place_rows(core, city, namedetails=True)
+                if retry_rows:
+                    return pick_row(retry_rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
             return ResolveResult(state=NOT_FOUND, provider=self.name, reason="provider_empty")
-        return pick_row(rows, name, city, provider=self.name, spellings_of=_nominatim_spellings)
+        result = pick_row(rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
+        if result.grounded or result.out_of_area:
+            return result
+        core = core_name_via_llm(name, city)
+        if not core or core == name or not same_entity(core, name):
+            return result
+        retry_rows = places.geocode_place_rows(core, city, namedetails=True)
+        if not retry_rows:
+            return result
+        return pick_row(retry_rows, name, city, provider=self.name, spellings_of=nominatim_spellings)
 
 
-def _nominatim_spellings(row: dict[str, Any]) -> list[str]:
+def nominatim_spellings(row: dict[str, Any]) -> list[str]:
     text = str(row.get("name") or "").strip()
     aliases = [str(a) for a in row.get("aliases") or []]
     return [text, *aliases] if text else aliases
@@ -218,6 +239,7 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
             address=str(row.get("display_name") or row.get("address") or "") or None,
             dietary_options=tuple(row.get("dietary_options") or ()),
             source_url=row.get("source_url") or None,
+            category_tags=_category_tags_of(row),
         )
         if _in_destination_area(south_east[0], south_east[1], city) is False:
             first_mismatch = first_mismatch or replace(
@@ -228,6 +250,18 @@ def pick_row(rows: list[dict[str, Any]], name: str, city: str, *, provider: str,
     if first_mismatch is not None:
         return first_mismatch
     return ResolveResult.unknown("name_gate_rejected")
+
+
+def _category_tags_of(row: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """行上的类别证据原样搬运成有序元组；无/形状不对返回空。"""
+    tags = row.get("category_tags")
+    if not isinstance(tags, Mapping):
+        return ()
+    return tuple(
+        (str(key), str(value))
+        for key, value in sorted(tags.items(), key=lambda kv: str(kv[0]))
+        if str(key or "").strip() and str(value or "").strip()
+    )[:8]
 
 
 # 免费源常驻；收费留白源见 `existence_commercial`（它要用本模块的结论类型，
@@ -261,6 +295,24 @@ def providers_in_order() -> list[ExistenceProvider]:
     return out or [registry["otm"], registry["nominatim"]]
 
 
+def issue_resolve_ticket(result: ResolveResult, target: str, city: str) -> None:
+    """判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票。"""
+    issue_evidence(
+        {
+            "name": result.localized_name or result.name or target,
+            "city": city,
+            "source": result.provider,
+            "external_id": result.external_id or "",
+            "latitude": result.latitude,
+            "longitude": result.longitude,
+            "dietary_options": result.dietary_options,
+            "source_url": result.source_url,
+            "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
+            "category_tags": dict(result.category_tags),
+        }
+    )
+
+
 def resolve_poi(name: str, city: str) -> ResolveResult:
     """存在性判定唯一入口：按配置顺序问，命中即止；全未判定才算未判定。"""
     target = str(name or "").strip()
@@ -273,20 +325,7 @@ def resolve_poi(name: str, city: str) -> ResolveResult:
 
     result = _run_providers(target, city)
     if result.grounded:
-        # 判定成功当场签发证据票：之后这行数据在任何链路被引用，背书凭的是票
-        issue_evidence(
-            {
-                "name": result.localized_name or result.name or target,
-                "city": city,
-                "source": result.provider,
-                "external_id": result.external_id or "",
-                "latitude": result.latitude,
-                "longitude": result.longitude,
-                "dietary_options": result.dietary_options,
-                "source_url": result.source_url,
-                "aliases": [target],  # provider 名称门槛已确认的查询写法，不是模型任意别名
-            }
-        )
+        issue_resolve_ticket(result, target, city)
     if result.state != UNKNOWN:
         # 只记忆化**判定**（VERIFIED / NOT_FOUND）。UNKNOWN 绝大多数是"没问到"：
         # 额度耗尽、源不可用、超时。_memo 是进程级、跨 run 的，缓存它等于让一次
@@ -303,9 +342,10 @@ _memo: dict[str, ResolveResult] = {}
 
 
 def reset_existence_state() -> None:
-    """测试/评测用：清掉城市中心与判定结果记忆。"""
+    """测试/评测用：清掉城市中心、判定结果与核心名抽取记忆。"""
     _memo.clear()
     _center_memo.clear()
+    reset_core_name_cache()
 
 
 def _run_providers(target: str, city: str) -> ResolveResult:
@@ -317,10 +357,10 @@ def _run_providers(target: str, city: str) -> ResolveResult:
             unknowns.append(f"{provider.name}:not_configured")
             continue
         if not charged:
-            if not _budget_allows():
+            if not budget_allows():
                 return ResolveResult.unknown("budget_exhausted")
             # 一次点位名解析扣一次；provider 失败与回退也属于这次解析。
-            _consume_budget()
+            consume_budget()
             charged = True
         try:
             result = provider.resolve(target, city)
@@ -342,12 +382,12 @@ def _run_providers(target: str, city: str) -> ResolveResult:
     return ResolveResult.unknown("; ".join(unknowns) or "no_provider")
 
 
-def _budget_allows() -> bool:
+def budget_allows() -> bool:
     limits = current_limits()
     return limits is None or limits.max_existence_checks <= 0 or limits.existence_checks < limits.max_existence_checks
 
 
-def _consume_budget() -> None:
+def consume_budget() -> None:
     limits = current_limits()
     if limits is None:
         return

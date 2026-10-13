@@ -23,9 +23,10 @@ web_search（联网补池）。**零本地语料、零向量库。**
 
 import logging
 import re
+import time
 
 from app.agent.core.poi_identity import same_entity
-from app.agent.data import city_reference, places, web_search
+from app.agent.data import city_reference, overpass, places, web_search
 from app.agent.data.city_center import city_center
 from app.agent.grounding.grounding_evidence import issue_evidence
 from app.agent.runtime.trace import traced
@@ -147,9 +148,32 @@ def search_attractions(city: str, preferences: list[str], limit: int = 30) -> li
     return _sort_by_preferences(rows, preferences)[:limit]
 
 
+#: 饮食标签池（Overpass）从 search_foods 入口起算的最长等待：必须小于 catalog 中
+#: search_foods 的工具预算（timeout_seconds=10），给 OTM/web 两池与合并留出余量。
+DIET_POOL_WAIT_SECONDS = 6.0
+
+
 @traced("tool", "poi.search_foods")
-def search_foods(city: str, limit: int = 10) -> list[dict]:
-    return _merge_by_name(_otm_pool(city, "food", limit), _web_pool(city, "food", limit))[:limit]
+def search_foods(city: str, limit: int = 10, dietary: str | None = None) -> list[dict]:
+    """餐饮候选池；携带饮食要求时，带外部 diet 标签的 Overpass 行排在前。
+
+    顺序即证据优先级：OTM/web 行没有饮食标签，模型从池里选餐时，已证实条目
+    必须先进 参考资料 注入窗口（REFERENCE_FOOD_LIMIT 截断），否则严格模式的
+    饮食证据在池源头就断供。合并去重仍按名称先到先得，已证实名称不被覆盖。
+
+    Overpass 行同样要走 `_as_candidate` 当场签票：落地阶段只信票不信行上的
+    source 字符串，没签票的行拿不到背书，poi_id 不会被 graft，随后按名重解析
+    可能落到同一连锁店的另一个 OSM 元素（实测 2026-10-12：diet 标签在 node、
+    重解析命中 way），饮食证据就在源头断掉。
+    """
+    # 饮食池（Overpass，可等 25s+重试）与 OTM/web 并行，只在剩余预算内等：串行等它会让整个
+    # 工具撞上 catalog 的 10s 预算，连已到手的 OTM/web 行一起丢（current-state-review P1）。
+    deadline = time.monotonic() + DIET_POOL_WAIT_SECONDS
+    diet_future = overpass.submit_diet_tagged_places(city, str(dietary), limit=min(limit, 8)) if dietary else None
+    otm_rows, web_rows = _otm_pool(city, "food", limit), _web_pool(city, "food", limit)
+    diet_rows = overpass.collect_diet_tagged_places(diet_future, deadline) if diet_future else []
+    diet_pool = [_as_candidate(row, city) for row in diet_rows]
+    return _merge_by_name(diet_pool, otm_rows, web_rows)[:limit]
 
 
 @traced("tool", "poi.search_hotels")
@@ -169,6 +193,12 @@ def get_poi_detail(city: str, name: str) -> dict | None:
             "longitude": hit["longitude"],
             "address": hit.get("display_name") or None,
             "source": hit.get("source") or "nominatim",
+            # 证据字段随票带走：`hit` 已由 `_osm_facts` 填好 diet/类别/实体链接，
+            # 这里不搬就等于当场签一张无饮食依据的票——严格模式在点名解析路径上
+            # 会和池路径一样断供（与 Overpass 池补签同源，实测 2026-10-12）。
+            "dietary_options": hit.get("dietary_options") or [],
+            "category_tags": hit.get("category_tags") or {},
+            "source_url": hit.get("source_url") or None,
         },
         city,
     )

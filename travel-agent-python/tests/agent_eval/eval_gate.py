@@ -40,8 +40,12 @@ EXPECTED_PROMPT_VERSION = "workflow-v2-authority-route-20260828"
 # 使 prompt_text_sha256 随之改变（该指纹由源码现值算出，无需在此登记）。
 # 2026-10-09（M5b，spec §11）：整趟主输出去 suggestions 长备选（备选池改由研究
 # 候选池确定性构建），open_trip bump v1.4→v1.5；open_day（逐日兜底链）口径不变。
-EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
-EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.5.localized"
+EXPECTED_OPEN_DAY_PROMPT_VERSION = "v1.6.localized"
+# 2026-10-12（生成改走全局 low 思考后同输入 A/B）：open_trip v1.5→v1.6——参考资料餐厅
+# 照抄店名、删与结构化上限冲突的密度示例、每天午晚餐各一、合并重复条款；open_day 不变。
+# 2026-10-12（条目币种字段）：两套 Prompt 条目新增 cost_currency，open_day v1.5→v1.6、
+# open_trip v1.6→v1.7；cost 由 data.fx.normalize_item_cost 按声明币种确定性换算。
+EXPECTED_OPEN_TRIP_PROMPT_VERSION = "v1.7.localized"
 
 # 一致性基线（2026-09-23 重新认账）：流式路径真实小样本（qwen-plus，`llm_eval.py
 # --path stream --limit 3`，与 nightly 门禁同题同口径）实测两遍一致率 **0.0**

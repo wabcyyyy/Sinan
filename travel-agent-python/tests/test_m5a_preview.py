@@ -288,7 +288,7 @@ class TestLlmOpenTripStream:
         assert [plan["day_no"] for plan in finals[0][1]] == [1, 2]
 
     def test_stream_kwargs_match_llm_open_trip_contract(self, monkeypatch):
-        """流式调用参数与 llm_open_trip 同源：max_tokens 公式 / response_format / 关闭思考。"""
+        """流式调用参数与 llm_open_trip 同源：max_tokens 公式 / response_format / 思考走全局配置。"""
 
         class SpyClient(_FakeLLMClient):
             def __init__(self, chunks):
@@ -305,7 +305,7 @@ class TestLlmOpenTripStream:
         list(llm_open_trip_stream(_day_req(2)))
         assert client.stream_kwargs["max_tokens"] == 2 * 8000, "max_tokens 按天数等比（与 llm_open_trip 同公式）"
         assert client.stream_kwargs["enable_search"] is False
-        assert client.stream_kwargs["enable_thinking"] is False
+        assert "enable_thinking" not in client.stream_kwargs
         assert client.stream_kwargs["response_format"] is not None
         assert [m["role"] for m in client.messages] == ["system", "user"]
 

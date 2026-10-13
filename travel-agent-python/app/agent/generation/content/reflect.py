@@ -24,12 +24,18 @@ from app.agent.generation.rules.constraint_checks import check_constraints
 from app.agent.generation.rules.day_policy import (
     day_policy_for,
 )
-from app.agent.generation.rules.generation_core import estimate_plans_total, has_double_lunch, meal_slot_of
+from app.agent.generation.rules.generation_core import (
+    DINNER_SLOT_END_MIN,
+    estimate_plans_total,
+    has_double_lunch,
+    meal_slot_of,
+)
 from app.agent.generation.rules.transfer_time import (
     estimate_transfer_minutes,
     item_end,
     item_start,
     parse_open_window,
+    parse_time,
 )
 from app.schemas.trip_requirements import TripRequirements
 
@@ -37,7 +43,19 @@ from app.schemas.trip_requirements import TripRequirements
 # 预算项（BIZ-1），不许在别处再写字面量。
 BUDGET_OVERAGE_MARK = "超出预算"
 
-_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀")
+# 餐次过晚：餐厅大多已打烊，属于不可执行的安排，与"未安排景点"同级阻断交付
+LATE_MEAL_MARK = "餐饮安排过晚"
+_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀", LATE_MEAL_MARK)
+
+
+def is_late_meal(start_time: str | None) -> bool:
+    """餐饮开始时刻越过晚餐时段（> 21:30）或落在凌晨（< 05:00）。
+
+    实测 2026-10-12：远处分店坐标触发转场顺延，晚餐被推到 22:19-23:49，校验此前不看
+    餐次时段，当天仍判成功。只拦"过晚"，午后茶点/早餐等其它时段不在此判。
+    """
+    start = parse_time(start_time)
+    return start is not None and (start > DINNER_SLOT_END_MIN or start < 5 * 60)
 
 
 def hard_day_issues(
@@ -203,6 +221,14 @@ def validate_plans(
             issues.append(
                 f"第 {day_no} 天出现两顿午餐（{('、'.join(lunch_names) or '多条餐饮')}），"
                 "请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐"
+            )
+        late_meals = [
+            f"{it.get('poi_name')}({it.get('start_time')})" for it in foods if is_late_meal(it.get("start_time"))
+        ]
+        if late_meals:
+            issues.append(
+                f"第 {day_no} 天{LATE_MEAL_MARK}：{'、'.join(late_meals)} 开始时间晚于 21:30 或在凌晨，"
+                "请把晚餐安排在 17:30-20:30，必要时减少前序景点或换同片区餐厅"
             )
         # 付费餐饮写 0：预算会失效
         for it in foods:

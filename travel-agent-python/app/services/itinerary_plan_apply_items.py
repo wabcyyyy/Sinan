@@ -70,7 +70,14 @@ def _apply_item_fields(entity: ItineraryItem, raw_item: dict[str, Any], name: st
     if _is_number(raw_item.get("longitude")):
         entity.longitude = Decimal(str(raw_item["longitude"]))
     if _is_number(raw_item.get("cost")):
-        entity.cost = Decimal(str(raw_item["cost"]))
+        new_cost = Decimal(str(raw_item["cost"]))
+        # 币种有据性跟着金额走：草稿显式带币种就用它；没带且金额变了，回到「未声明」，
+        # 不让旧条目的「有据」冒充新金额的口径；金额没变则原样保留。
+        if "cost_currency" in raw_item:
+            entity.cost_currency = "CNY" if raw_item.get("cost_currency") == "CNY" else None
+        elif entity.cost is None or new_cost != entity.cost:
+            entity.cost_currency = None
+        entity.cost = new_cost
 
     entity.start_time = _parse_time(raw_item.get("start_time"))
     entity.end_time = _parse_time(raw_item.get("end_time"))

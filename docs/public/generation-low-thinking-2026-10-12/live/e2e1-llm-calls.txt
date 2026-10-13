@@ -1,0 +1,27 @@
+RUN itinerary-24 elapsed_s 180.4 llm_calls 6 tokens 30778 status ok
+    stream_request max? fin= length comp= 16000 reason= 16000 chars= 0
+    request max? fin= stop comp= 9818 reason= 7921 chars= 5007
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    drops [{'day_no': 2, 'poi_name': 'Naritaya 东京站'}, {'day_no': 2, 'poi_name': 'AIN SOPH. Journey 新宿'}]
+RUN itinerary-24 elapsed_s 60.3 llm_calls 1 tokens 11867 status ok
+    request max? fin= stop comp= 9446 reason= 7331 chars= 5256
+RUN itinerary-24 elapsed_s 193.8 llm_calls 9 tokens 37171 status 第 2 天待确认（dietary_requirement）：「AIN SOPH. soars」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求
+    request max? fin= stop comp= 8804 reason= 7299 chars= 3567
+    request max? fin= stop comp= 56 reason= 44 chars= 18
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= stop comp= 10404 reason= 8364 chars= 5127
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= stop comp= 51 reason= 42 chars= 16
+    request max? fin= stop comp= 9255 reason= 7748 chars= 3792
+    request max? fin= length comp= 60 reason= 60 chars= 0
+RUN itinerary-25 elapsed_s 176.4 llm_calls 6 tokens 33728 status ok
+    stream_request max? fin= length comp= 16000 reason= 14846 chars= 2796
+    request max? fin= stop comp= 11253 reason= 9108 chars= 5173
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0
+    request max? fin= length comp= 60 reason= 60 chars= 0

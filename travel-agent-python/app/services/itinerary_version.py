@@ -273,6 +273,7 @@ def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
                         end_time=_as_time(item_snapshot.get("endTime")),
                         duration_min=item_snapshot.get("durationMin"),
                         cost=item_snapshot.get("cost"),
+                        cost_currency=item_snapshot.get("costCurrency"),
                         tag=item_snapshot.get("tag"),
                         remark=item_snapshot.get("remark"),
                         open_time=item_snapshot.get("openTime"),

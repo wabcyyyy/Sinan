@@ -1,0 +1,10 @@
+extraction 0 degraded False next dining_evidence_policy max 2 diet vegetarian
+candidate created 22
+candidate 22 COMPLETED 66.66s quality READY_WITH_WARNINGS
+  day 1 SUCCEEDED | attractions 2 | meals 1 withDiet 0 | ['新宿三丁目 素食餐厅(-)']
+  day 2 SUCCEEDED | attractions 2 | meals 1 withDiet 0 | ['新宿站西口素食咖啡店（豆乳甜品与轻食）(-)']
+strict created 23
+strict 23 FAILED 70.44s quality BLOCKED
+  day 1 FAILED | attractions 2 | meals 2 withDiet 0 | ["Tully's Coffee 新宿中央公園店(-)", '京王プラザホテル オールデイダイニング 樹林(-)']
+  day 2 PENDING | attractions 2 | meals 2 withDiet 0 | ["Tully's Coffee ふれあい通り店(-)", '京王プラザホテル 日本料理 かがり(-)']
+[{"case": "candidate", "tripId": 22, "seconds": 66.66, "genState": "COMPLETED", "quality": "READY_WITH_WARNINGS"}, {"case": "strict", "tripId": 23, "seconds": 70.44, "genState": "FAILED", "quality": "BLOCKED"}]

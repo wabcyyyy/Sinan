@@ -35,11 +35,13 @@ class ResearchTask:
     intent: str | None = None
     intent_keywords: list[str] = field(default_factory=list)
     # M1b（spec §6.2）：研究层消费完整需求——人数（酒店域房间口径）、
-    # 明确必去（attraction 域并入补池检索词）/排除地点与类别（任务卡随行）。
+    # 明确必去（attraction 域并入补池检索词）/排除地点与类别（任务卡随行）、
+    # 饮食要求（food 域的已证实餐厅检索面）。
     persons: int = 1
     required_names: list[str] = field(default_factory=list)
     excluded_names: list[str] = field(default_factory=list)
     excluded_categories: list[str] = field(default_factory=list)
+    dietary: str | None = None
 
     def __post_init__(self) -> None:
         if self.domain not in RESEARCH_DOMAINS:

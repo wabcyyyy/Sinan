@@ -17,6 +17,12 @@ asyncio 侧的 `wait_for(queue.get(), …)` 可被取消：连接一断，生成
 
 刻意不移植：Java 的「Redis 失联守卫 → closeAll() 断开所有 SSE」。事件源已经在进程内，
 切断健康的本地流只会让前端白白重连一次。
+
+断线续传（2026-10-12）：业务事件进入按行程的有界回放日志，分配本进程内单调的回放编号
+（SSE `id:` 行）。重连带 `Last-Event-ID` 时先补发编号之后的帧，再接实时流。登记与投递
+在同一把锁里，所以每条连接收到的顺序就是日志顺序，按编号切分不会漏帧也不会重复。
+补不全（日志已被挤出、进程重启、编号来自别的进程）时如实告知调用方，由它发 resync 帧，
+前端回到「以 DB 为准」的对账路径。心跳与会话私有帧（对话流式）不进日志。
 """
 
 from __future__ import annotations
@@ -24,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from collections import OrderedDict, deque
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -32,9 +39,39 @@ MAX_SUBSCRIBERS_PER_ITINERARY = 5
 HEARTBEAT_SECONDS = 15.0
 # 慢消费者缓冲：一条生成事件约 200B，200 条足够覆盖一次前端卡顿；再满即判定连接已死
 SINK_BUFFER = 200
+# 回放日志：每个行程保留最近 256 帧（一次多日生成的进度 + 候选预览帧量级），
+# 最多记 512 个行程（按最近活跃淘汰），内存上界约 256×512×~300B ≈ 40MB 的最坏情况
+REPLAY_BUFFER = 256
+REPLAY_MAX_ITINERARIES = 512
 
 # 队列排空且连接已关闭：响应流据此立即收尾（被拒的连接不该再等一次心跳）
 CLOSED = object()
+
+
+class Envelope(str):
+    """带回放编号的信封：值就是信封 JSON（与普通 str 等价比较、可直接 json.loads），
+    event_id 是本进程内该行程的回放编号；不进回放日志的帧（心跳/会话私有）为 None。"""
+
+    event_id: int | None = None
+
+
+class _ReplayLog:
+    __slots__ = ("evicted_upto", "frames", "last_id")
+
+    def __init__(self) -> None:
+        self.frames: deque[Envelope] = deque(maxlen=REPLAY_BUFFER)
+        self.last_id = 0
+        # 已被挤出日志的最大编号：Last-Event-ID 比它小，说明中间有补不回来的帧
+        self.evicted_upto = 0
+
+    def append(self, envelope: str) -> Envelope:
+        self.last_id += 1
+        if len(self.frames) == self.frames.maxlen:
+            self.evicted_upto = self.frames[0].event_id or self.evicted_upto
+        frame = Envelope(envelope)
+        frame.event_id = self.last_id
+        self.frames.append(frame)
+        return frame
 
 
 class Subscription:
@@ -81,6 +118,7 @@ class Subscription:
 
 _lock = threading.Lock()
 _subscribers: dict[int, list[Subscription]] = {}
+_replays: OrderedDict[int, _ReplayLog] = OrderedDict()
 
 
 def subscribe(itinerary_id: int, limit_envelope: str) -> tuple[Subscription, bool]:
@@ -129,22 +167,49 @@ def close_after_terminal(itinerary_id: int) -> None:
         sink.open = False
 
 
-def broadcast(itinerary_id: int, envelope: str) -> int:
-    """把一帧信封投递给该行程的全部连接，返回尽力送达数；已死连接就地摘除。"""
-    with _lock:
-        sinks = list(_subscribers.get(itinerary_id, ()))
-    if not sinks:
-        return 0
-    delivered = 0
+def _record(itinerary_id: int, envelope: str) -> Envelope:
+    """把一帧写进回放日志（调用方持锁）；日志表按最近活跃淘汰。"""
+    log = _replays.pop(itinerary_id, None) or _ReplayLog()
+    while len(_replays) >= REPLAY_MAX_ITINERARIES:
+        _replays.popitem(last=False)
+    _replays[itinerary_id] = log
+    return log.append(envelope)
+
+
+def broadcast(itinerary_id: int, envelope: str, *, replayable: bool = False) -> int:
+    """把一帧信封投递给该行程的全部连接，返回尽力送达数；已死连接就地摘除。
+
+    replayable=True 的帧先进回放日志再投递，二者同在一把锁里（offer 只是
+    call_soon_threadsafe 入队，不阻塞），保证各连接的接收顺序 = 日志顺序。
+    """
     dead: list[Subscription] = []
-    for sink in sinks:
-        if sink.offer(envelope):
-            delivered += 1
-        else:
-            dead.append(sink)
+    delivered = 0
+    with _lock:
+        frame = _record(itinerary_id, envelope) if replayable else envelope
+        for sink in _subscribers.get(itinerary_id, ()):
+            if sink.offer(frame):
+                delivered += 1
+            else:
+                dead.append(sink)
     for sink in dead:
         unsubscribe(sink)
     return delivered
+
+
+def replay_after(itinerary_id: int, last_event_id: int) -> tuple[list[Envelope], bool, int]:
+    """取回放编号 > last_event_id 的帧，返回 (帧列表, 是否完整, 日志当前最新编号)。
+
+    不完整的三种情况都意味着中间有帧补不回来：日志里没有这个行程（进程重启/被淘汰）、
+    编号比日志最新编号还大（编号出自别的进程或旧日志）、编号早于已挤出的部分。
+    最新编号给调用方做实时流去重：订阅先于回放登记，编号 ≤ 它的实时帧已经补发过或补不回来。
+    """
+    with _lock:
+        log = _replays.get(itinerary_id)
+        if log is None:
+            return [], False, 0
+        frames = [frame for frame in log.frames if (frame.event_id or 0) > last_event_id]
+        complete = log.evicted_upto <= last_event_id <= log.last_id
+        return frames, complete, log.last_id
 
 
 def subscriber_count(itinerary_id: int) -> int:
@@ -155,3 +220,4 @@ def subscriber_count(itinerary_id: int) -> int:
 def reset_for_tests() -> None:
     with _lock:
         _subscribers.clear()
+        _replays.clear()

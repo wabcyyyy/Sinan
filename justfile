@@ -5,8 +5,8 @@
 # 本文件只是入口，不是唯一路径。
 #
 # 设计口径：
-# - check 是唯一"全量门禁"入口，直接委托 travel-agent-python/scripts/check.ps1，
-#   保证本地与 CI 同序同果（不在这里重复一遍步骤，避免两处漂移）；
+# - check/test 是日常快速入口；check-full 显式运行完整本地门禁；
+#   CI 保留完整门禁，不以本地快速结果替代；
 # - 命令体尽量薄：复杂逻辑留在 scripts/ 下的脚本里（AI 写的必须有人读懂，
 #   四行的 just 配方比二十行的内联更好维护）。
 
@@ -22,13 +22,16 @@ default:
 
 # ---- 门禁 ----
 
-# 一键门禁：ruff → format → pyright → import-linter → 规模 → 密钥 → 测试(+覆盖率) → diff-cover → 契约漂移
+# 日常只运行自动选择的相关检查；全量交 CI。
 check:
-    cd {{py}}; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File verify.ps1; exit $LASTEXITCODE
 
-# 后端离线测试（不含覆盖率，快；tests/agent_eval 度量层单测在内，PR-0 收紧）
-test:
-    cd {{py}}; uv run pytest tests/ -q --ignore=tests/api --ignore=tests/perf
+# 保留习惯用法，日常 test 同样使用快速入口。
+test: check
+
+# 显式本地全量：旧 check.ps1 + eval/ratchet + 前端完整门禁。
+check-full:
+    powershell -NoProfile -ExecutionPolicy Bypass -File verify.ps1 -Full; exit $LASTEXITCODE
 
 # 离线评测（行为类改动后对比指标；跑完即棘轮，指标动了红；体验题集 fail>0 自红）
 eval:

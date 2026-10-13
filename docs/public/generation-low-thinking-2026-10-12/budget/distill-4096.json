@@ -1,0 +1,38 @@
+[
+  {
+    "entry": "",
+    "mode": "blocking",
+    "max_tokens": 4096,
+    "seconds": 4.77,
+    "finish_reason": "stop",
+    "prompt_tokens": 211,
+    "completion_tokens": 723,
+    "reasoning_tokens": 662,
+    "content_chars": 126,
+    "json_complete": true
+  },
+  {
+    "entry": "",
+    "mode": "blocking",
+    "max_tokens": 4096,
+    "seconds": 6.06,
+    "finish_reason": "stop",
+    "prompt_tokens": 197,
+    "completion_tokens": 1032,
+    "reasoning_tokens": 978,
+    "content_chars": 111,
+    "json_complete": true
+  },
+  {
+    "entry": "",
+    "mode": "blocking",
+    "max_tokens": 4096,
+    "seconds": 6.03,
+    "finish_reason": "stop",
+    "prompt_tokens": 194,
+    "completion_tokens": 1012,
+    "reasoning_tokens": 965,
+    "content_chars": 119,
+    "json_complete": true
+  }
+]

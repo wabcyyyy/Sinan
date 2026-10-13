@@ -1,0 +1,40 @@
+[
+  {
+    "sample": 0,
+    "variant": "current_high",
+    "thinking": true,
+    "requestedEffort": "high",
+    "promptSha256": "261e8f2fad5a5d283beca2233b5266da0824e1c0bf246140f284ddc82ceed13b",
+    "finishReason": "stop",
+    "validJson": true,
+    "days": [
+      {
+        "dayNo": 1,
+        "attractions": 2,
+        "meals": 2,
+        "evidencedMeals": 2,
+        "blockers": []
+      },
+      {
+        "dayNo": 2,
+        "attractions": 2,
+        "meals": 0,
+        "evidencedMeals": 0,
+        "blockers": [
+          "第 2 天安排过稀（有效活动约 165 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白",
+          "第 2 天待确认（dietary_requirement）：本日未提供餐饮安排，无法确认饮食要求已满足"
+        ]
+      }
+    ],
+    "issues": [
+      "第 1 天路线时间不足：新宿御苑 → くら寿司 仅留 15 分钟，按坐标估算需约 467 分钟（含 10 分钟固定缓冲和 25% 容错）",
+      "第 2 天需求检查（dietary_requirement）：本日未提供餐饮安排，无法确认饮食要求已满足",
+      "第 2 天安排过稀（有效活动约 165 分钟，建议 ≥240 分钟）；请根据地理邻近与用户偏好补充 1-2 个可衔接的景点/餐饮/体验，避免午后与傍晚大片空白",
+      "第 2 天未安排餐饮"
+    ],
+    "strictRulePass": false,
+    "twoMealsEachDay": false,
+    "seconds": 93.08,
+    "reasoningTokens": 14141
+  }
+]

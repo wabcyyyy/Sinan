@@ -33,15 +33,19 @@ from app.schemas.trip import SourceRecord
 # （verification_status=partially_verified / value_kind=observed）。
 # /v1/generate-day 的 context 由 HTTP 调用方传入，属于不可信输入；若不做
 # 值域校验，调用方可伪造 "opentripmap" 让幻觉事实获得外部背书。
-# POI 库退役后，外部来源即 OpenTripMap / Nominatim（真实坐标与分类）与
-# 联网搜索（真实店名）。"llm" 不在值域内（D5：LLM 不得作为权威入口）。
-AUTHORITATIVE_SOURCE_PREFIXES = ("opentripmap", "nominatim", "web.search")
+# POI 库退役后，外部来源即 OpenTripMap / Nominatim（真实坐标与分类）、
+# Overpass（OSM 标签检索，饮食证据面）与联网搜索（真实店名）。
+# "llm" 不在值域内（D5：LLM 不得作为权威入口）。
+AUTHORITATIVE_SOURCE_PREFIXES = ("opentripmap", "nominatim", "overpass", "web.search")
 # 来源不在值域内（多为调用方传入的伪造值）时统一改写为该标记并降级。
 UNTRUSTED_SOURCE = "client-context"
 # 池内行丢了 source：既不背书，也不谎称是客户端传入。
 POOL_UNKNOWN_SOURCE = "pool-unknown"
 # 未命中任何证据的模型自选点位来源。
 OPEN_ITEM_SOURCE = "llm.open_day"
+# 就近校正撤销了落地的远处分店（landing.relocate_far_meals）：不背书，且按名回填
+# 候选快照时跳过（facts.pool_row_for）；后续重打标签会把它覆盖为生成态来源。
+FAR_BRANCH_SOURCE = "far-branch-detached"
 
 VerificationStatus = Literal["verified", "partially_verified", "unverified"]
 ValueKind = Literal["observed", "estimated", "generated"]

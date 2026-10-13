@@ -1,0 +1,1178 @@
+{
+  "label": "p1b",
+  "case": "candidate",
+  "tripId": 31,
+  "seconds": 187.17,
+  "summary": {
+    "id": 31,
+    "genState": "FAILED",
+    "quality": "BLOCKED",
+    "days": [
+      {
+        "dayNo": 1,
+        "status": "FAILED",
+        "error": null,
+        "attractions": 2,
+        "meals": 2,
+        "mealsWithDiet": 2,
+        "items": [
+          {
+            "type": "attraction",
+            "name": "东京都厅舍展望室",
+            "time": "10:00-11:30",
+            "poiId": null,
+            "diet": []
+          },
+          {
+            "type": "food",
+            "name": "くら寿司",
+            "time": "12:00-12:30",
+            "poiId": "osm:node:1174641596",
+            "diet": [
+              "diet:vegan",
+              "diet:vegetarian"
+            ]
+          },
+          {
+            "type": "attraction",
+            "name": "新宿中央公园",
+            "time": "18:29-19:49",
+            "poiId": "osm:relation:13272644",
+            "diet": []
+          },
+          {
+            "type": "food",
+            "name": "おきなわ軒",
+            "time": "22:29-23:59",
+            "poiId": "osm:node:1654251446",
+            "diet": [
+              "diet:vegetarian"
+            ]
+          },
+          {
+            "type": "hotel",
+            "name": "Shinjuku Washington Hotel",
+            "time": "20:00-20:30",
+            "poiId": "N475090896",
+            "diet": []
+          }
+        ]
+      },
+      {
+        "dayNo": 2,
+        "status": "SUCCEEDED",
+        "error": null,
+        "attractions": 1,
+        "meals": 2,
+        "mealsWithDiet": 1,
+        "items": [
+          {
+            "type": "food",
+            "name": "Délifrance",
+            "time": "11:30-12:00",
+            "poiId": "osm:node:1511441588",
+            "diet": [
+              "diet:vegetarian"
+            ]
+          },
+          {
+            "type": "attraction",
+            "name": "新宿御苑",
+            "time": "13:59-15:59",
+            "poiId": "osm:way:15772074",
+            "diet": []
+          },
+          {
+            "type": "food",
+            "name": "松屋銀座",
+            "time": "18:29-19:59",
+            "poiId": "osm:way:103509470",
+            "diet": []
+          }
+        ]
+      }
+    ]
+  },
+  "input": {
+    "city": "东京",
+    "days": 2,
+    "persons": 2,
+    "budget": 3000,
+    "preferences": [
+      "美食",
+      "慢节奏"
+    ],
+    "requirements": "带70岁老人，不去寺庙，每天最多两个景点，素食。",
+    "intent": "东京两天省力游，不去寺庙，每天最多两个景点，素食",
+    "requirementsStruct": {
+      "schemaVersion": 1,
+      "dayWindows": [],
+      "requiredPlaces": [],
+      "excludedPlaces": [],
+      "excludedCategories": [
+        "temple"
+      ],
+      "pace": "relaxed",
+      "maxAttractionsPerDay": 2,
+      "dietaryRequirement": "vegetarian",
+      "diningEvidencePolicy": "review_candidates",
+      "transportPreference": null,
+      "maxWalkMinutesPerLeg": null,
+      "budgetPolicy": null,
+      "lodging": null,
+      "unresolvedRequests": []
+    }
+  },
+  "body": {
+    "schemaVersion": "1.0",
+    "id": 31,
+    "title": "东京2日游",
+    "city": "东京",
+    "startDate": null,
+    "endDate": null,
+    "days": 2,
+    "stayNights": 1,
+    "persons": 2,
+    "budget": 3000.0,
+    "preferences": "美食,慢节奏",
+    "hotelTier": null,
+    "originCity": null,
+    "status": 3,
+    "genState": "FAILED",
+    "coreReady": false,
+    "planNote": "行程生成失败，请稍后重试或调整条件重新生成（错误码 ValueError）",
+    "tripTheme": "新宿绿意与都厅展望的两日素食慢游",
+    "coverUrl": null,
+    "coverSource": null,
+    "coverCredit": null,
+    "favorite": false,
+    "archived": false,
+    "shareToken": null,
+    "templatePublishedAt": null,
+    "destinationStatus": "researched",
+    "qualityStatus": "BLOCKED",
+    "qualityRuleVersion": "travel-quality-1.2",
+    "validatedAt": null,
+    "pendingFactCount": 8,
+    "qualityReport": {
+      "qualityStatus": "BLOCKED",
+      "qualityRuleVersion": "travel-quality-1.2",
+      "blockingIssues": [
+        {
+          "code": "DAY_GENERATION_FAILED",
+          "message": "至少一天的行程生成失败"
+        },
+        {
+          "code": "DIETARY_EVIDENCE_REVIEW",
+          "message": "第 1 天：「くら寿司」有外部素食标签，当前菜单仍须出发前核实"
+        },
+        {
+          "code": "DIETARY_EVIDENCE_REVIEW",
+          "message": "第 1 天：「おきなわ軒」有外部素食标签，当前菜单仍须出发前核实"
+        },
+        {
+          "code": "DIETARY_EVIDENCE_REVIEW",
+          "message": "第 2 天：「Délifrance」有外部素食标签，当前菜单仍须出发前核实"
+        },
+        {
+          "code": "DIETARY_EVIDENCE_REVIEW",
+          "message": "第 2 天：「松屋銀座」尚无素食可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求"
+        }
+      ],
+      "warnings": [],
+      "metrics": {
+        "pendingFactCount": 8
+      }
+    },
+    "sources": [
+      {
+        "sourceId": "llm.open_day",
+        "storageSource": "llm.open_day",
+        "provider": "llm.open_day"
+      },
+      {
+        "sourceId": "overpass",
+        "storageSource": "overpass",
+        "provider": "overpass"
+      },
+      {
+        "sourceId": "nominatim",
+        "storageSource": "nominatim",
+        "provider": "nominatim"
+      },
+      {
+        "sourceId": "opentripmap",
+        "storageSource": "opentripmap",
+        "provider": "opentripmap"
+      }
+    ],
+    "suggestions": [
+      {
+        "poiId": "Q963514",
+        "name": "Tōkaidō",
+        "category": "attraction",
+        "address": "議事堂通り 東京都議会議事堂 新宿区 東京都",
+        "latitude": 35.68939971923828,
+        "longitude": 139.6916961669922,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q3530518",
+        "name": "Tokyo City Hall Tower II",
+        "category": "attraction",
+        "address": "ふれあい通り タリーズコーヒー 新宿区 東京都",
+        "latitude": 35.6879997253418,
+        "longitude": 139.69200134277344,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "W35863704",
+        "name": "Shinjuku Central Park",
+        "category": "attraction",
+        "address": "新宿区 東京都",
+        "latitude": 35.68907165527344,
+        "longitude": 139.68983459472656,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "W54044218",
+        "name": "Shinjuku Niagara Falls",
+        "category": "attraction",
+        "address": "新宿区 東京都",
+        "latitude": 35.69009017944336,
+        "longitude": 139.6896209716797,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "W95937718",
+        "name": "Juniso Kumano Shrine",
+        "category": "attraction",
+        "address": "十二社通り 新宿区 東京都",
+        "latitude": 35.69024658203125,
+        "longitude": 139.68833923339844,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q2413330",
+        "name": "Shinjuku Mitsui Building",
+        "category": "attraction",
+        "address": "東通り 新宿三井ビル 新宿区 東京都",
+        "latitude": 35.691898345947266,
+        "longitude": 139.69390869140625,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q35134652",
+        "name": "Chueigekijo Theater",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.68948745727539,
+        "longitude": 139.69171142578125,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q35134697",
+        "name": "Grant Heights Theater",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.68948745727539,
+        "longitude": 139.69171142578125,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q35134725",
+        "name": "Meigaza Theater",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.68948745727539,
+        "longitude": 139.69171142578125,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "Q35134751",
+        "name": "Shingekijo Theater",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.68948745727539,
+        "longitude": 139.69171142578125,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "osm:node:986424791",
+        "name": "松屋",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.6876124,
+        "longitude": 139.5999429,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "osm:node:1654251511",
+        "name": "日高屋",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.6994218,
+        "longitude": 139.764814,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "osm:node:1671916464",
+        "name": "マクドナルド",
+        "category": "attraction",
+        "address": null,
+        "latitude": 35.6510346,
+        "longitude": 139.6368659,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "N5561328322",
+        "name": "keio plaza hotel tokyo",
+        "category": "activity",
+        "address": "新宿区 東京都",
+        "latitude": 35.69053268432617,
+        "longitude": 139.693603515625,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": "H2468674",
+        "name": "keio plaza hotel tokyo premier grand",
+        "category": "activity",
+        "address": "議事堂通り 京王プラザホテル 新宿区 東京都",
+        "latitude": 35.68988037109375,
+        "longitude": 139.69395446777344,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": "N1420779754",
+        "name": "Memorial Museum for Soldiers, Detainees in Siberia, and Postwar Repatriates",
+        "category": "activity",
+        "address": "新宿区 東京都",
+        "latitude": 35.691261291503906,
+        "longitude": 139.6925048828125,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": "Q863588",
+        "name": "Shinjuku Sumitomo Building",
+        "category": "activity",
+        "address": "新宿区 東京都",
+        "latitude": 35.69126510620117,
+        "longitude": 139.69261169433594,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": "N4316519393",
+        "name": "Kyubei Sushi at Keio Plaza Hotel",
+        "category": "food",
+        "address": "議事堂通り 京王プラザホテル 新宿区 東京都",
+        "latitude": 35.68973159790039,
+        "longitude": 139.6943817138672,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": null,
+        "name": "Tully's Coffee",
+        "category": "food",
+        "address": null,
+        "latitude": null,
+        "longitude": null,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": null,
+        "name": "Metropolitan Officers' Cafeteria",
+        "category": "food",
+        "address": null,
+        "latitude": null,
+        "longitude": null,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": null,
+        "name": "Tochō",
+        "category": "food",
+        "address": null,
+        "latitude": null,
+        "longitude": null,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": "N810644323",
+        "name": "Hyatt Regency Tokyo",
+        "category": "hotel",
+        "address": "新宿区 東京都",
+        "latitude": 35.690711975097656,
+        "longitude": 139.691162109375,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": null,
+        "used": false
+      },
+      {
+        "poiId": "W116596175",
+        "name": "Keio Plaza Hotel",
+        "category": "hotel",
+        "address": "議事堂通り 京王プラザホテル 新宿区 東京都",
+        "latitude": 35.68983459472656,
+        "longitude": 139.6944122314453,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      },
+      {
+        "poiId": null,
+        "name": "shinjuku washington hotel annex",
+        "category": "hotel",
+        "address": null,
+        "latitude": null,
+        "longitude": null,
+        "intro": null,
+        "needReservation": false,
+        "estimatedCost": 0.0,
+        "used": false
+      }
+    ],
+    "flightQuotes": [],
+    "dayList": [
+      {
+        "dayId": 58,
+        "dayNo": 1,
+        "generationStatus": "FAILED",
+        "travelDate": null,
+        "note": "10:00–11:30 东京都厅舍展望室；12:00–12:30 くら寿司；18:29–19:49 新宿中央公园；22:29–23:59 おきなわ軒；20:00–20:30 Shinjuku Washington Hotel（价格为估算，请以现场或官方渠道为准）",
+        "theme": "东京都厅舍展望室 → くら寿司",
+        "miniRoute": null,
+        "backupPlan": [
+          {
+            "if": "都厅展望室排队过长或休馆",
+            "action": "改去新宿中央公园内的咖啡座休息，或提前去くら寿司午餐。"
+          },
+          {
+            "if": "下雨",
+            "action": "把新宿中央公园替换为新宿站地下街慢走，减少淋雨。"
+          }
+        ],
+        "photoSpots": [
+          {
+            "name": "东京都厅舍展望室",
+            "tip": "北展望室拍新宿高楼群，傍晚可拍富士山轮廓。",
+            "bestTime": "上午或日落前"
+          },
+          {
+            "name": "新宿中央公园",
+            "tip": "绿地与高楼对比，长椅旁拍慢游氛围。",
+            "bestTime": "午后"
+          }
+        ],
+        "practicalNotes": [
+          "都厅展望室需安检，带好护照；周一休馆，出发前查官网。",
+          "新宿站到都厅可走地下通道或乘都营巴士，减少老人步行。",
+          "餐厅素食选项以豆皮、蔬菜寿司、豆腐料理为主，点单时确认不含鱼汤。",
+          "酒店入住需护照，可要求低楼层或近电梯房间。"
+        ],
+        "dayOptions": [
+          {
+            "label": "都厅优先",
+            "summary": "按原计划登都厅展望室，再逛中央公园。",
+            "tradeoff": "都厅可能排队，公园时间略压缩。",
+            "items": []
+          },
+          {
+            "label": "公园优先",
+            "summary": "先在新宿中央公园慢走，午后登都厅看夕景。",
+            "tradeoff": "夕景时段人多，需预留排队时间。",
+            "items": []
+          }
+        ],
+        "items": [
+          {
+            "id": 347,
+            "itemType": "attraction",
+            "poiName": "东京都厅舍展望室",
+            "poiId": null,
+            "address": null,
+            "latitude": null,
+            "longitude": null,
+            "startTime": "10:00",
+            "endTime": "11:30",
+            "durationMin": 90,
+            "cost": 0.0,
+            "tag": "城市展望",
+            "remark": "展望室免费，需安检；周一休馆，出发前确认开放日。",
+            "whyThis": "免费高层展望台，电梯直达，适合带老人省力看东京全景；不去寺庙也能感受城市地标。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "llm.open_day",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "unverified",
+            "valueKind": "estimated",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"llm.open_day\", \"sourceUrl\": null, \"provider\": \"llm.open_day\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "llm.open_day",
+                "sourceUrl": null,
+                "provider": "llm.open_day",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 0
+          },
+          {
+            "id": 348,
+            "itemType": "food",
+            "poiName": "くら寿司",
+            "poiId": "osm:node:1174641596",
+            "address": null,
+            "latitude": 35.601618,
+            "longitude": 139.509662,
+            "startTime": "12:00",
+            "endTime": "12:30",
+            "durationMin": 30,
+            "cost": 96.0,
+            "tag": "素食午餐",
+            "remark": "可平板点单，有素食选项；高峰需取号。",
+            "whyThis": "参考资料标注纯素、素食，回转寿司形式轻松，适合慢节奏午餐，可选素食寿司与豆皮寿司。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "overpass",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"overpass\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1174641596\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegan\": {\"sourceRef\": \"osm:node:1174641596:diet:vegan\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1174641596\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegetarian\": {\"sourceRef\": \"osm:node:1174641596:diet:vegetarian\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1174641596\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:amenity=fast_food\": {\"sourceRef\": \"osm:node:1174641596:category:amenity:fast_food\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1174641596\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "overpass",
+                "sourceUrl": "https://www.openstreetmap.org/node/1174641596",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "diet:vegan": {
+                "sourceRef": "osm:node:1174641596:diet:vegan",
+                "sourceUrl": "https://www.openstreetmap.org/node/1174641596",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "diet:vegetarian": {
+                "sourceRef": "osm:node:1174641596:diet:vegetarian",
+                "sourceUrl": "https://www.openstreetmap.org/node/1174641596",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:amenity=fast_food": {
+                "sourceRef": "osm:node:1174641596:category:amenity:fast_food",
+                "sourceUrl": "https://www.openstreetmap.org/node/1174641596",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 1
+          },
+          {
+            "id": 349,
+            "itemType": "attraction",
+            "poiName": "新宿中央公园",
+            "poiId": "osm:relation:13272644",
+            "address": "Shinjuku Central Park, 新宿区, 东京都/東京都, 160-8484, 日本",
+            "latitude": 35.690029,
+            "longitude": 139.689585,
+            "startTime": "18:29",
+            "endTime": "19:49",
+            "durationMin": 80,
+            "cost": 0.0,
+            "tag": "城市公园",
+            "remark": "公园全天开放，园内有洗手间和饮水处。",
+            "whyThis": "新宿高层楼群中的开阔绿地，步道平缓，长椅多，适合老人散步休息，衔接都厅与酒店。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "nominatim",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/relation/13272644\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:leisure=park\": {\"sourceRef\": \"osm:relation:13272644:category:leisure:park\", \"sourceUrl\": \"https://www.openstreetmap.org/relation/13272644\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "nominatim",
+                "sourceUrl": "https://www.openstreetmap.org/relation/13272644",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:leisure=park": {
+                "sourceRef": "osm:relation:13272644:category:leisure:park",
+                "sourceUrl": "https://www.openstreetmap.org/relation/13272644",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 2
+          },
+          {
+            "id": 350,
+            "itemType": "food",
+            "poiName": "おきなわ軒",
+            "poiId": "osm:node:1654251446",
+            "address": null,
+            "latitude": 35.699415,
+            "longitude": 139.764853,
+            "startTime": "22:29",
+            "endTime": "23:59",
+            "durationMin": 90,
+            "cost": 72.0,
+            "tag": "素食晚餐",
+            "remark": "座位不多，可提前到店或避开高峰。",
+            "whyThis": "参考资料标注素食，冲绳家庭料理风格，晚餐清淡不油腻，符合慢游与素食需求。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "overpass",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"overpass\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1654251446\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegetarian\": {\"sourceRef\": \"osm:node:1654251446:diet:vegetarian\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1654251446\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:amenity=restaurant\": {\"sourceRef\": \"osm:node:1654251446:category:amenity:restaurant\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1654251446\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "overpass",
+                "sourceUrl": "https://www.openstreetmap.org/node/1654251446",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "diet:vegetarian": {
+                "sourceRef": "osm:node:1654251446:diet:vegetarian",
+                "sourceUrl": "https://www.openstreetmap.org/node/1654251446",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:amenity=restaurant": {
+                "sourceRef": "osm:node:1654251446:category:amenity:restaurant",
+                "sourceUrl": "https://www.openstreetmap.org/node/1654251446",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 3
+          },
+          {
+            "id": 351,
+            "itemType": "hotel",
+            "poiName": "Shinjuku Washington Hotel",
+            "poiId": "N475090896",
+            "address": "南通り 新宿区 東京都",
+            "latitude": 35.686832,
+            "longitude": 139.692856,
+            "startTime": "20:00",
+            "endTime": "20:30",
+            "durationMin": 30,
+            "cost": 720.0,
+            "tag": "舒适酒店",
+            "remark": "可寄存行李，有前往新宿站的通道，入住需护照。",
+            "whyThis": "新宿站南口步行可达，舒适档价格适中，房间紧凑但交通省力，适合带老人连住。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "opentripmap",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"opentripmap\", \"sourceUrl\": null, \"provider\": \"opentripmap\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "opentripmap",
+                "sourceUrl": null,
+                "provider": "opentripmap",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 4
+          }
+        ]
+      },
+      {
+        "dayId": 59,
+        "dayNo": 2,
+        "generationStatus": "SUCCEEDED",
+        "travelDate": null,
+        "note": "11:30–12:00 Délifrance；13:59–15:59 新宿御苑；18:29–19:59 松屋銀座（价格为估算，请以现场或官方渠道为准）",
+        "theme": "Délifrance → 新宿御苑",
+        "miniRoute": null,
+        "backupPlan": [
+          {
+            "if": "下雨",
+            "action": "把新宿御苑改为新宿站地下街或百货公司内散步，午餐晚餐不变。"
+          },
+          {
+            "if": "老人体力不足",
+            "action": "缩短御苑停留至1小时，提前去松屋銀座晚餐。"
+          }
+        ],
+        "photoSpots": [
+          {
+            "name": "新宿御苑",
+            "tip": "草坪与温室前拍自然感照片，樱花季更佳。",
+            "bestTime": "上午柔和光线"
+          },
+          {
+            "name": "Délifrance",
+            "tip": "窗边拍面包咖啡慢生活。",
+            "bestTime": "午间"
+          }
+        ],
+        "practicalNotes": [
+          "新宿御苑周一休园，入园需购票，带好现金或交通卡。",
+          "园内步道多但平缓，给老人备水与遮阳帽，慢慢走。",
+          "松屋銀座点餐机支持中文，选素食定食时确认不含肉汁。",
+          "若从酒店出发，乘地铁到新宿御苑前站最省力。"
+        ],
+        "dayOptions": [
+          {
+            "label": "御苑慢走",
+            "summary": "午餐后进新宿御苑散步两小时。",
+            "tradeoff": "需购票且周一休园。",
+            "items": []
+          },
+          {
+            "label": "室内省力",
+            "summary": "午餐后逛新宿站地下街与百货，免门票。",
+            "tradeoff": "缺少自然绿地体验。",
+            "items": []
+          }
+        ],
+        "items": [
+          {
+            "id": 352,
+            "itemType": "food",
+            "poiName": "Délifrance",
+            "poiId": "osm:node:1511441588",
+            "address": null,
+            "latitude": 35.699261,
+            "longitude": 139.76284,
+            "startTime": "11:30",
+            "endTime": "12:00",
+            "durationMin": 30,
+            "cost": 48.0,
+            "tag": "素食轻食",
+            "remark": "可选蔬菜三明治与沙拉，确认酱料不含肉汤。",
+            "whyThis": "参考资料标注素食，面包咖啡轻食适合老人慢早餐兼午餐，位置便利，不费脚力。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "overpass",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"overpass\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1511441588\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"diet:vegetarian\": {\"sourceRef\": \"osm:node:1511441588:diet:vegetarian\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1511441588\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:amenity=restaurant\": {\"sourceRef\": \"osm:node:1511441588:category:amenity:restaurant\", \"sourceUrl\": \"https://www.openstreetmap.org/node/1511441588\", \"provider\": \"overpass\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "overpass",
+                "sourceUrl": "https://www.openstreetmap.org/node/1511441588",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "diet:vegetarian": {
+                "sourceRef": "osm:node:1511441588:diet:vegetarian",
+                "sourceUrl": "https://www.openstreetmap.org/node/1511441588",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:amenity=restaurant": {
+                "sourceRef": "osm:node:1511441588:category:amenity:restaurant",
+                "sourceUrl": "https://www.openstreetmap.org/node/1511441588",
+                "provider": "overpass",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 0
+          },
+          {
+            "id": 353,
+            "itemType": "attraction",
+            "poiName": "新宿御苑",
+            "poiId": "osm:way:15772074",
+            "address": "新宿御苑, Naitomachi, 新宿区, 东京都/東京都, 160-0014, 日本",
+            "latitude": 35.685072,
+            "longitude": 139.709547,
+            "startTime": "13:59",
+            "endTime": "15:59",
+            "durationMin": 120,
+            "cost": 24.0,
+            "tag": "城市庭园",
+            "remark": "周一休园，需在入口购票；园内禁止饮酒，有轮椅借用。",
+            "whyThis": "东京市中心大型庭园，步道平坦，草坪开阔，不是寺庙神社，适合带老人慢走赏花，符合不去寺庙与慢节奏。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "nominatim",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "partially_verified",
+            "valueKind": "observed",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/way/15772074\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:emergency=assembly_point\": {\"sourceRef\": \"osm:way:15772074:category:emergency:assembly_point\", \"sourceUrl\": \"https://www.openstreetmap.org/way/15772074\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:leisure=park\": {\"sourceRef\": \"osm:way:15772074:category:leisure:park\", \"sourceUrl\": \"https://www.openstreetmap.org/way/15772074\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "nominatim",
+                "sourceUrl": "https://www.openstreetmap.org/way/15772074",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:emergency=assembly_point": {
+                "sourceRef": "osm:way:15772074:category:emergency:assembly_point",
+                "sourceUrl": "https://www.openstreetmap.org/way/15772074",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:leisure=park": {
+                "sourceRef": "osm:way:15772074:category:leisure:park",
+                "sourceUrl": "https://www.openstreetmap.org/way/15772074",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 1
+          },
+          {
+            "id": 354,
+            "itemType": "food",
+            "poiName": "松屋銀座",
+            "poiId": "osm:way:103509470",
+            "address": "松屋銀座, 1, Ginza 3, Ginza, 中央区, 东京都/東京都, 104-8130, 日本",
+            "latitude": 35.672404,
+            "longitude": 139.766779,
+            "startTime": "18:29",
+            "endTime": "19:59",
+            "durationMin": 90,
+            "cost": 38.0,
+            "tag": "素食简餐",
+            "remark": "可用自助点餐机，选择蔬菜定食或豆腐类菜品。",
+            "whyThis": "参考资料标注素食，连锁快餐点单方便，晚餐简单快捷，适合省力收尾。",
+            "openTime": null,
+            "image": null,
+            "imageUrl": null,
+            "source": "nominatim",
+            "sourceUpdatedAt": null,
+            "verificationStatus": "unverified",
+            "valueKind": "estimated",
+            "freshnessStatus": "unknown",
+            "reviewRequirement": "before_departure",
+            "factEvidenceJson": "{\"identity\": {\"sourceRef\": \"nominatim\", \"sourceUrl\": \"https://www.openstreetmap.org/way/103509470\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"category:shop=department_store\": {\"sourceRef\": \"osm:way:103509470:category:shop:department_store\", \"sourceUrl\": \"https://www.openstreetmap.org/way/103509470\", \"provider\": \"nominatim\", \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"verified\", \"valueKind\": \"observed\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}, \"cost\": {\"sourceRef\": null, \"sourceUrl\": null, \"provider\": null, \"retrievedAt\": null, \"expiresAt\": null, \"verificationStatus\": \"unverified\", \"valueKind\": \"generated\", \"freshnessStatus\": \"unknown\", \"reviewRequirement\": \"before_departure\"}}",
+            "factEvidence": {
+              "identity": {
+                "sourceRef": "nominatim",
+                "sourceUrl": "https://www.openstreetmap.org/way/103509470",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "category:shop=department_store": {
+                "sourceRef": "osm:way:103509470:category:shop:department_store",
+                "sourceUrl": "https://www.openstreetmap.org/way/103509470",
+                "provider": "nominatim",
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "verified",
+                "valueKind": "observed",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              },
+              "cost": {
+                "sourceRef": null,
+                "sourceUrl": null,
+                "provider": null,
+                "retrievedAt": null,
+                "expiresAt": null,
+                "verificationStatus": "unverified",
+                "valueKind": "generated",
+                "freshnessStatus": "unknown",
+                "reviewRequirement": "before_departure"
+              }
+            },
+            "intro": null,
+            "description": null,
+            "sortNo": 2
+          }
+        ]
+      }
+    ],
+    "budgetList": [
+      {
+        "category": "门票",
+        "amount": 48.0,
+        "itemCount": 3
+      },
+      {
+        "category": "餐饮",
+        "amount": 508.0,
+        "itemCount": 4
+      },
+      {
+        "category": "交通",
+        "amount": 140.0,
+        "itemCount": 2
+      },
+      {
+        "category": "酒店",
+        "amount": 720.0,
+        "itemCount": 1
+      }
+    ],
+    "totalAmount": 1416.0,
+    "myRole": "owner"
+  }
+}

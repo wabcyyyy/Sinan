@@ -17,7 +17,7 @@ from sqlalchemy import Table, create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.api.business.auth import auth_router, user_router
-from app.common import jwt_compat
+from app.common import jwt_tokens
 from app.common.client_ip import client_ip
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
@@ -223,8 +223,8 @@ def test_logout_all_revokes_every_registered_session(client: TestClient) -> None
     _register(client)
     first = _issue_token("alice")
     second = _issue_token("alice")
-    sessions.register_session("alice", jwt_compat.decode_token(first, JWT_MATERIAL)["jti"], first, 3600)
-    sessions.register_session("alice", jwt_compat.decode_token(second, JWT_MATERIAL)["jti"], second, 3600)
+    sessions.register_session("alice", jwt_tokens.decode_token(first, JWT_MATERIAL)["jti"], first, 3600)
+    sessions.register_session("alice", jwt_tokens.decode_token(second, JWT_MATERIAL)["jti"], second, 3600)
     client.cookies.set("TA_AUTH", first)
     body = client.post("/api/auth/logout-all").json()
     assert body["data"]["revoked"] >= 2
@@ -232,7 +232,7 @@ def test_logout_all_revokes_every_registered_session(client: TestClient) -> None
 
 
 def _issue_token(username: str) -> str:
-    return jwt_compat.encode_token(username, JWT_MATERIAL, 3600)
+    return jwt_tokens.encode_token(username, JWT_MATERIAL, 3600)
 
 
 # ---------- IP 归属与共享键 ----------

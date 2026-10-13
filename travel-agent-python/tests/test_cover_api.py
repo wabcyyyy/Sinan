@@ -30,7 +30,7 @@ from app.api.business.covers import router as covers_router
 from app.api.business.itinerary import router as itinerary_router
 from app.api.business.uploads import router as uploads_router
 from app.common.envelope import ApiError, install_exception_handlers
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, ItineraryMain
 from app.services import cover_service

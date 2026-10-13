@@ -140,6 +140,10 @@ class TripItem(WireModel):
     duration_min: int | None = None
     open_time: str | None = None
     cost: float | None = None
+    # cost 这个数字的币种：模型显式声明过币种的条目由 data.fx.normalize_item_cost 按固定汇率
+    # 换算后恒为 "CNY"（原始币种写进 remark）；None = 模型未声明，沿用旧约定按人民币理解，
+    # 可能经过按金额大小的推断兜底。前端据此区分「币种有据」与「币种未声明」。
+    cost_currency: Literal["CNY"] | None = None
     tag: str | None = None
     remark: str | None = None
     # 入选理由（≤120 字，M3-① 叙事层字段）：attraction 必填，讲该点与本趟

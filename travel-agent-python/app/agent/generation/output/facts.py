@@ -13,13 +13,15 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from collections.abc import Mapping
+from typing import Any, TypeVar, cast
 
 from app.agent.generation.rules.generation_core import PoiFactRow
 from app.agent.generation.rules.transfer_time import parse_time
 from app.agent.grounding.facts import has_coord
-from app.agent.grounding.grounding_evidence import lookup_ticket
+from app.agent.grounding.grounding_evidence import EvidenceTicket, lookup_ticket
 from app.agent.grounding.grounding_labels import (
+    FAR_BRANCH_SOURCE,
     ItemLabel,
     apply_label,
     has_valid_coords,
@@ -81,21 +83,62 @@ def field_fact_evidence(
     )
     if ticket and ticket.source_url and ticket.provider == label.source:
         identity.source_url = ticket.source_url
-        for diet in ticket.dietary_options:
-            evidence[f"diet:{diet}"] = FactEvidence(
-                source_ref=f"{ticket.external_id}:diet:{diet}",
-                source_url=ticket.source_url,
-                provider=ticket.provider,
-                verification_status="verified",
-                value_kind="observed",
-                freshness_status="unknown",
-                review_requirement="before_departure",
-            )
+        evidence.update(_external_tag_evidence(ticket))
     if item.get("cost") is not None:
         evidence["cost"] = _ticket(cost_observed)
     if item.get("open_time"):
         evidence["open_time"] = _ticket(open_time_observed)
     return evidence
+
+
+def _external_tag_evidence(ticket: EvidenceTicket) -> dict[str, FactEvidence]:
+    """证据票的 diet/category 标签 → 独立字段票（observed）。
+
+    只把外部实际取回的标签原样透传，键形如 "diet:vegetarian" /
+    "category:amenity=place_of_worship"；是否构成排除类别违例由确定性检查器判，
+    这里不做语义结论。
+    """
+
+    def _tagged(source_ref: str) -> FactEvidence:
+        return FactEvidence(
+            source_ref=source_ref,
+            source_url=ticket.source_url,
+            provider=ticket.provider,
+            verification_status="verified",
+            value_kind="observed",
+            freshness_status="unknown",
+            review_requirement="before_departure",
+        )
+
+    evidence = {f"diet:{diet}": _tagged(f"{ticket.external_id}:diet:{diet}") for diet in ticket.dietary_options}
+    evidence.update(
+        {
+            f"category:{key}={value}": _tagged(f"{ticket.external_id}:category:{key}:{value}")
+            for key, value in ticket.category_tags
+        }
+    )
+    return evidence
+
+
+_Row = TypeVar("_Row", bound=Mapping[str, Any])
+
+
+def pool_row_for(lookup: Mapping[str, _Row], item: dict[str, Any]) -> _Row | None:
+    """按名取本次候选快照行，用于回填坐标/价格与标签；与条目落地实体对不上时不取。
+
+    两种情况跳过：就近校正撤销过落地的远处分店（FAR_BRANCH_SOURCE）——按名回填会
+    把远处分店的坐标与饮食证据原样装回来；条目已落到另一个实体（poi_id 与同名行
+    不同，如换成了附近分店）——同名行是别的分店，它的标签与票不属于这一条。
+    """
+    if item.get("source") == FAR_BRANCH_SOURCE:
+        return None
+    row = lookup.get(str(item.get("poi_name") or ""))
+    if row is None:
+        return None
+    item_id, row_id = str(item.get("poi_id") or ""), str(row.get("id") or "")
+    if item_id and row_id and item_id != row_id:
+        return None
+    return row
 
 
 def build_lookup(

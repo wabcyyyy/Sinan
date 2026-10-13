@@ -1,0 +1,80 @@
+[
+  {
+    "entry": "新宿御苑前 ソラノイロ",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 1.0,
+    "finish_reason": "stop",
+    "prompt_tokens": 149,
+    "completion_tokens": 100,
+    "reasoning_tokens": 90,
+    "content_chars": 16,
+    "json_complete": true,
+    "raw": "{\"core\":\"ソラノイロ\"}"
+  },
+  {
+    "entry": "明治神宫外苑银杏并木",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 2.16,
+    "finish_reason": "stop",
+    "prompt_tokens": 146,
+    "completion_tokens": 302,
+    "reasoning_tokens": 289,
+    "content_chars": 21,
+    "json_complete": true,
+    "raw": "{\"core\":\"明治神宫外苑银杏并木\"}"
+  },
+  {
+    "entry": "AFURI 新宿店",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 1.02,
+    "finish_reason": "stop",
+    "prompt_tokens": 144,
+    "completion_tokens": 75,
+    "reasoning_tokens": 63,
+    "content_chars": 21,
+    "json_complete": true,
+    "raw": "{\"core\": \"AFURI 新宿店\"}"
+  },
+  {
+    "entry": "Naritaya 东京站",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 2.47,
+    "finish_reason": "stop",
+    "prompt_tokens": 144,
+    "completion_tokens": 315,
+    "reasoning_tokens": 303,
+    "content_chars": 24,
+    "json_complete": true,
+    "raw": "{\"core\": \"Naritaya 东京站\"}"
+  },
+  {
+    "entry": "新宿站西口素食咖啡店（豆乳甜品与轻食）",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 3.8,
+    "finish_reason": "stop",
+    "prompt_tokens": 154,
+    "completion_tokens": 558,
+    "reasoning_tokens": 552,
+    "content_chars": 12,
+    "json_complete": true,
+    "raw": "{\"core\": \"\"}"
+  },
+  {
+    "entry": "菜食健美 新宿本店",
+    "mode": "blocking",
+    "max_tokens": 1024,
+    "seconds": 1.33,
+    "finish_reason": "stop",
+    "prompt_tokens": 146,
+    "completion_tokens": 180,
+    "reasoning_tokens": 166,
+    "content_chars": 21,
+    "json_complete": true,
+    "raw": "{\"core\": \"菜食健美 新宿本店\"}"
+  }
+]

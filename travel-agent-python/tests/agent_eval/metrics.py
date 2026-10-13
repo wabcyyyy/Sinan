@@ -301,8 +301,11 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
     #   复刻的是 prices.recompute_budget（prices.py:134-154）。两者对「无价餐饮」的处理
     #   不同：estimate 按 0 计，expected 回落城市人均×2 餐。实测一条无价餐饮就能造出
     #   62.75% 的偏差——那是**公式错配，不是产品问题**。
-    # - 结论：本指标只能当「合成口径 vs 期望口径」的漂移绊线用，**不能当产品预算质量**读；
-    #   要真测产品预算，评测必须跑业务层（落库后读时算的那条路），那是另一件事。
+    # - 结论（graph 路径与 llm_eval）：本指标只能当「合成口径 vs 期望口径」的漂移绊线用，
+    #   **不能当产品预算质量**读。
+    # - 2026-10-12 起离线默认走产品路径（eval_agent --path stream）：预算取自落库后
+    #   budget_engine 重算的 budget 行（budgetList），即用户看到的那个数；整趟 FAILED 时
+    #   _finish 不执行、没有交付预算，偏差按 1.0 计（与 failed_status_rate 成对读）。
     # 5 键形状（含「合计」便捷键）的重复计数是已修的历史 bug：裸 sum(values()) 会把明细
     # 与合计各加一遍，任何预算都恒判 ~100% 偏差（实测一份完全正确的预算得 1.0）。
     budget = response.budget_estimate or {}
@@ -317,10 +320,11 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
     research_rounds = sum((a or {}).get("rounds", 0) for a in research_agents.values())
     research_pack = sum((a or {}).get("count", 0) for a in research_agents.values())
     # 生产终检口径：stream 落库天后业务侧逐天跑 validate_plans，违规天重置 PENDING
-    # 交逐日循环重生成（itinerary_generation.py:591-651）。评测只调
-    # run_generate_trip_stream、不跑那道终检，所以上面的 route_violation_rate 量的是
-    # 「终检前」的中间产物；这个指标用同一判官算出「生产会重置几天」，才是用户实际
-    # 会撞到的缺口信号——重置天意味着该天要重烧一次 LLM，或最终落 PENDING。
+    # 交逐日循环重生成（itinerary_generation._revalidate_stream_days）。按评测路径读：
+    # - 离线产品路径（eval_agent 默认）：输入已是终检 + 逐日补齐之后的交付结果，这个率
+    #   = 补齐后仍不合规的天占比（补不动的天）；
+    # - llm_eval / graph 路径：不跑业务层终检，量的是「终检前」的中间产物，这个率 =
+    #   生产会重置几天——重置天意味着该天要重烧一次 LLM，或最终落 PENDING。
     # 与生产一致：逐天调用 budget=None（reflect.py:229 有 budget is not None 前置）。
     # ⚠ 这是**下界**：生产在逐天判定之外还叠了整趟预算 issue（_trip_budget_issues，
     # 带 command.budget 与 settings.budget_hard_constraint），评测不复制那一层——

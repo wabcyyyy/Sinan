@@ -45,6 +45,18 @@ class EvidenceTicket:
     dietary_options: tuple[str, ...] = ()
     source_url: str | None = None
     aliases: tuple[str, ...] = ()
+    #: 外部主分类原样搬运（(amenity, place_of_worship) 等）；语义判定由消费方做
+    category_tags: tuple[tuple[str, str], ...] = ()
+
+
+def _category_tags_of(value: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(value, dict):
+        return ()
+    return tuple(
+        (str(key), str(tag))
+        for key, tag in sorted(value.items(), key=lambda kv: str(kv[0]))
+        if str(key or "").strip() and str(tag or "").strip()
+    )[:8]
 
 
 def _keys(name: str, city: str, external_id: str) -> list[str]:
@@ -75,8 +87,12 @@ def issue_evidence(row: Mapping[str, Any]) -> EvidenceTicket | None:
         dietary_options=tuple(diet for diet in (row.get("dietary_options") or ()) if diet in ("vegetarian", "vegan")),
         source_url=str(row.get("source_url") or "") or None,
         aliases=tuple(str(alias) for alias in (row.get("aliases") or ())),
+        category_tags=_category_tags_of(row.get("category_tags")),
     )
     payload = asdict(ticket)
+    # asdict 保留 tuple-of-tuples，JSON 往返后是 list-of-lists；票据落存一律转
+    # dict（lookup 侧 _category_tags_of 只认 dict），否则类别证据签发后读不回来。
+    payload["category_tags"] = dict(ticket.category_tags)
     for key in _keys(name, city, external_id):
         cache_store.set_json(NAMESPACE, key, payload, TICKET_TTL_SECONDS)
     return ticket
@@ -99,6 +115,7 @@ def lookup_ticket(name: str, city: str = "", external_id: str = "") -> EvidenceT
                     ),
                     source_url=str(raw.get("source_url") or "") or None,
                     aliases=tuple(str(alias) for alias in (raw.get("aliases") or ())),
+                    category_tags=_category_tags_of(raw.get("category_tags")),
                 )
             except (TypeError, ValueError):
                 continue

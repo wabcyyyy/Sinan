@@ -1,0 +1,559 @@
+FFFFFFFFFFFFFFFFFFFFF...F.FF.                                            [100%]
+================================== FAILURES ===================================
+____________ test_incomplete_tags_cannot_clear_temple_name[tags0] _____________
+
+tags = {'amenity': 'place_of_worship'}
+
+    @pytest.mark.parametrize("tags", [{"amenity": "place_of_worship"}, {"tourism": "attraction"}, {"religion": "unknown"}])
+    def test_incomplete_tags_cannot_clear_temple_name(tags):
+>       assert _check("浅草寺", _facts(**tags)).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:33: AssertionError
+____________ test_incomplete_tags_cannot_clear_temple_name[tags1] _____________
+
+tags = {'tourism': 'attraction'}
+
+    @pytest.mark.parametrize("tags", [{"amenity": "place_of_worship"}, {"tourism": "attraction"}, {"religion": "unknown"}])
+    def test_incomplete_tags_cannot_clear_temple_name(tags):
+>       assert _check("浅草寺", _facts(**tags)).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:33: AssertionError
+____________ test_incomplete_tags_cannot_clear_temple_name[tags2] _____________
+
+tags = {'religion': 'unknown'}
+
+    @pytest.mark.parametrize("tags", [{"amenity": "place_of_worship"}, {"tourism": "attraction"}, {"religion": "unknown"}])
+    def test_incomplete_tags_cannot_clear_temple_name(tags):
+>       assert _check("浅草寺", _facts(**tags)).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:33: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[verification_status-unverified-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'verification_status'
+value = 'unverified'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[verification_status-unverified-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'verification_status'
+value = 'unverified'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[verification_status-partially_verified-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'verification_status'
+value = 'partially_verified'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[verification_status-partially_verified-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'verification_status'
+value = 'partially_verified'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[value_kind-generated-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'value_kind', value = 'generated'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[value_kind-generated-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'value_kind'
+value = 'generated'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[freshness_status-stale-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'freshness_status', value = 'stale'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[freshness_status-stale-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'freshness_status'
+value = 'stale'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[source_url-None-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'source_url', value = None
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[source_url-None-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'source_url', value = None
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[source_url-https://www.openstreetmap.org/way/2-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'source_url'
+value = 'https://www.openstreetmap.org/way/2'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[source_url-https://www.openstreetmap.org/way/2-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'source_url'
+value = 'https://www.openstreetmap.org/way/2'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[provider-overpass-temple-\u795e\u5bab\u516c\u56ed] _
+
+category = 'temple', name = '神宫公园', field = 'provider', value = 'overpass'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+_ test_unusable_category_fact_cannot_clear_name[provider-overpass-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97] _
+
+category = 'museum', name = '博物馆纪念品商店', field = 'provider', value = 'overpass'
+
+    @pytest.mark.parametrize("category,name", [("temple", "神宫公园"), ("museum", "博物馆纪念品商店")])
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("verification_status", "unverified"),
+            ("verification_status", "partially_verified"),
+            ("value_kind", "generated"),
+            ("freshness_status", "stale"),
+            ("source_url", None),
+            ("source_url", "https://www.openstreetmap.org/way/2"),
+            ("provider", "overpass"),
+        ],
+    )
+    def test_unusable_category_fact_cannot_clear_name(category, name, field, value):
+        facts = _facts(shop="gift")
+        facts["category:shop=gift"][field] = value
+>       assert _check(name, facts, category).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:52: AssertionError
+__ test_unusable_identity_cannot_clear_name[verification_status-unverified] ___
+
+field = 'verification_status', value = 'unverified'
+
+    @pytest.mark.parametrize("field,value", [("verification_status", "unverified"), ("value_kind", "generated"), ("freshness_status", "stale")])
+    def test_unusable_identity_cannot_clear_name(field, value):
+        facts = _facts(leisure="park")
+        facts["identity"][field] = value
+>       assert _check("神宫公园", facts).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:59: AssertionError
+_______ test_unusable_identity_cannot_clear_name[value_kind-generated] ________
+
+field = 'value_kind', value = 'generated'
+
+    @pytest.mark.parametrize("field,value", [("verification_status", "unverified"), ("value_kind", "generated"), ("freshness_status", "stale")])
+    def test_unusable_identity_cannot_clear_name(field, value):
+        facts = _facts(leisure="park")
+        facts["identity"][field] = value
+>       assert _check("神宫公园", facts).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:59: AssertionError
+______ test_unusable_identity_cannot_clear_name[freshness_status-stale] _______
+
+field = 'freshness_status', value = 'stale'
+
+    @pytest.mark.parametrize("field,value", [("verification_status", "unverified"), ("value_kind", "generated"), ("freshness_status", "stale")])
+    def test_unusable_identity_cannot_clear_name(field, value):
+        facts = _facts(leisure="park")
+        facts["identity"][field] = value
+>       assert _check("神宫公园", facts).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:59: AssertionError
+___________________ test_missing_identity_cannot_clear_name ___________________
+
+    def test_missing_identity_cannot_clear_name():
+        facts = _facts(leisure="park")
+        facts.pop("identity")
+>       assert _check("神宫公园", facts).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:65: AssertionError
+_______ test_missing_religion_worship_tag_cannot_be_cleared_by_park_tag _______
+
+    def test_missing_religion_worship_tag_cannot_be_cleared_by_park_tag():
+>       assert _check("浅草寺", _facts(amenity="place_of_worship", leisure="park")).status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:82: AssertionError
+________________ test_same_name_items_are_checked_individually ________________
+
+    def test_same_name_items_are_checked_individually():
+        req = TripRequirements(excluded_categories=["temple"])
+        plan = {"items": [
+            {"poi_name": "神宫公园", "item_type": "attraction", "fact_evidence": _facts(leisure="park")},
+            {"poi_name": "神宫公园", "item_type": "attraction", "fact_evidence": _facts(tourism="attraction")},
+        ]}
+        report = check_constraints(plan, req, 1, day_policy_for(req, 1))
+        check = next(c for c in report.checks if c.kind == "excluded_category")
+>       assert check.status == "violation"
+E       AssertionError: assert 'pass' == 'violation'
+E         
+E         - violation
+E         + pass
+
+tests\test_category_evidence_gate.py:97: AssertionError
+_______ test_delivery_boundary_preserves_category_decision[tags0-True] ________
+
+tags = {'amenity': 'place_of_worship'}, blocked = True
+
+    @pytest.mark.parametrize("tags,blocked", [({"amenity": "place_of_worship"}, True), ({"leisure": "park"}, False)])
+    def test_delivery_boundary_preserves_category_decision(tags, blocked):
+        plan = DailyPlan(day_no=1, items=[TripItem(
+            item_type="attraction", poi_name="神宫公园", start_time="10:00", end_time="14:00", duration_min=240,
+            fact_evidence={k: FactEvidence.model_validate(v) for k, v in _facts(**tags).items()},
+        )])
+        blockers = hard_delivery_blockers(1, plan, TripRequirements(excluded_categories=["temple"]))
+>       assert any("excluded_category" in issue for issue in blockers) is blocked
+E       assert False is True
+E        +  where False = any(<generator object test_delivery_boundary_preserves_category_decision.<locals>.<genexpr> at 0x000001CFB2EDA740>)
+
+tests\test_category_evidence_gate.py:108: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\starlette\formparsers.py:12
+  D:\wcy\project\Sinan\travel-agent-python\.venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_category_evidence_gate.py::test_incomplete_tags_cannot_clear_temple_name[tags0]
+FAILED tests/test_category_evidence_gate.py::test_incomplete_tags_cannot_clear_temple_name[tags1]
+FAILED tests/test_category_evidence_gate.py::test_incomplete_tags_cannot_clear_temple_name[tags2]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[verification_status-unverified-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[verification_status-unverified-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[verification_status-partially_verified-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[verification_status-partially_verified-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[value_kind-generated-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[value_kind-generated-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[freshness_status-stale-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[freshness_status-stale-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[source_url-None-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[source_url-None-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[source_url-https://www.openstreetmap.org/way/2-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[source_url-https://www.openstreetmap.org/way/2-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[provider-overpass-temple-\u795e\u5bab\u516c\u56ed]
+FAILED tests/test_category_evidence_gate.py::test_unusable_category_fact_cannot_clear_name[provider-overpass-museum-\u535a\u7269\u9986\u7eaa\u5ff5\u54c1\u5546\u5e97]
+FAILED tests/test_category_evidence_gate.py::test_unusable_identity_cannot_clear_name[verification_status-unverified]
+FAILED tests/test_category_evidence_gate.py::test_unusable_identity_cannot_clear_name[value_kind-generated]
+FAILED tests/test_category_evidence_gate.py::test_unusable_identity_cannot_clear_name[freshness_status-stale]
+FAILED tests/test_category_evidence_gate.py::test_missing_identity_cannot_clear_name
+FAILED tests/test_category_evidence_gate.py::test_missing_religion_worship_tag_cannot_be_cleared_by_park_tag
+FAILED tests/test_category_evidence_gate.py::test_same_name_items_are_checked_individually
+FAILED tests/test_category_evidence_gate.py::test_delivery_boundary_preserves_category_decision[tags0-True]
+24 failed, 5 passed, 1 warning in 2.18s

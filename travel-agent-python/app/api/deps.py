@@ -13,7 +13,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from app.common import jwt_compat, token_revocation, user_repository
+from app.common import jwt_tokens, token_revocation, user_repository
 from app.common.config import settings
 
 logger = logging.getLogger(__name__)
@@ -52,8 +52,8 @@ def authenticate(token: str | None) -> AuthUser | None:
         logger.debug("jwt token revoked")
         return None
     try:
-        claims = jwt_compat.decode_token(token, settings.jwt_secret)
-    except jwt_compat.JwtError as exc:
+        claims = jwt_tokens.decode_token(token, settings.jwt_secret)
+    except jwt_tokens.JwtError as exc:
         logger.debug("invalid jwt token: %s", exc)
         return None
 

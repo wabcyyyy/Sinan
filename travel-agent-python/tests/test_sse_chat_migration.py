@@ -262,7 +262,9 @@ def test_events_endpoint_streams_in_process_frames() -> None:
         event_publisher.publish_event(TRIP, "complete", {"status": 2})
         # starlette stub 把 body_iterator 标成 bytes，实际产出是 event_frames 的 str 帧
         frames = cast(AsyncGenerator[str], response.body_iterator).__aiter__()
-        first = json.loads((await frames.__anext__()).removeprefix("data:").strip())
+        id_line, data_line = (await frames.__anext__()).strip().splitlines()
+        assert id_line == "id:1", "业务帧带回放编号（断线续传的 Last-Event-ID）"
+        first = json.loads(data_line.removeprefix("data:"))
         # 终态帧后服务端收尾流（R3-F4）。旧预期"终态后下一个周期补心跳"就是缺陷本身：
         # 终态后连接的唯一产出是无限心跳，把 MAX_SUBSCRIBERS_PER_ITINERARY 的槽占到
         # 客户端自己断开——改为断言迭代器在终态帧后排空收尾。

@@ -157,6 +157,7 @@ export interface TripItem {
   durationMin: number | null
   openTime: string | null
   cost: number | null
+  costCurrency: "CNY" | null
   tag: string | null
   remark: string | null
   whyThis: string | null

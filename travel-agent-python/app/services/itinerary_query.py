@@ -425,6 +425,7 @@ def item_vo(item: ItineraryItem, intro_by_name: dict[str, ItineraryItem]) -> dic
         "endTime": _iso_time(item.end_time),
         "durationMin": item.duration_min,
         "cost": _num(item.cost),
+        "costCurrency": item.cost_currency,
         "tag": item.tag,
         "remark": item.remark,
         "whyThis": item.why_note,

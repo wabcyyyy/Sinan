@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from app.api import deps
 from app.api.business.llm_gateway import router as gateway_router
 from app.common.envelope import ApiError, install_exception_handlers
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, UserLlmGateway
 from app.services import llm_gateway_service, state_and_sessions

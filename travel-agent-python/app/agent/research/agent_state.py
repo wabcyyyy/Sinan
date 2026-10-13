@@ -49,6 +49,9 @@ class UnifiedAgentState(BaseModel):
     day_request: GenerateDayRequest | None = None
     plan: DailyPlan | None = None
     source: str = ""
+    # 历史命名：语义是「已进入最后一次尝试」，不是确定性兜底拼装（LLM-only 后已不存在）。
+    # 生成函数不读它，只有 day_route_after_reflect 用它判定收尾。字段名随检查点持久化
+    # （extra="forbid"），改名会让存量 checkpoint 续跑失败，故保留原名。
     force_fallback: bool = False
 
     # ---- trip（与 workflow 门面的节点函数对齐）----

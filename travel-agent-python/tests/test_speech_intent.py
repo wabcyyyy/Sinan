@@ -28,7 +28,7 @@ from app.common import speech_client
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.common.http_client import configure_clients
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base
 from app.services import speech_intent as speech_service

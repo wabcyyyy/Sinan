@@ -1,0 +1,38 @@
+{
+  "vegetarian": {
+    "count": 8,
+    "names": [
+      "Délifrance",
+      "おきなわ軒",
+      "松屋",
+      "くら寿司",
+      "日高屋",
+      "マクドナルド",
+      "松屋",
+      "かっぱ寿司"
+    ],
+    "sample": {
+      "name": "Délifrance",
+      "id": "osm:node:1511441588",
+      "display_name": "Délifrance",
+      "latitude": 35.6992606,
+      "longitude": 139.7628397,
+      "aliases": [],
+      "localized_name": null,
+      "source": "overpass",
+      "place_id": "osm:node:1511441588",
+      "source_url": "https://www.openstreetmap.org/node/1511441588",
+      "dietary_options": [
+        "vegetarian"
+      ],
+      "category_tags": {
+        "amenity": "restaurant"
+      }
+    }
+  },
+  "vegan": {
+    "count": 0,
+    "names": [],
+    "sample": null
+  }
+}

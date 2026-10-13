@@ -93,6 +93,21 @@ def test_whole_trip_day_request_still_single_attempt():
     assert day_route_after_reflect(_day_state(req, 1)) == "fallback"
 
 
+def test_dedup_emptied_day_gets_one_feedback_retry():
+    """整段链原本 1 次不重试；去重清空当日的反馈带着被删名字（模型据此改选其他
+    片区），破例给一次重试，第二次仍失败才收敛到 fallback。"""
+    from app.agent.generation.content.landing import DEDUP_EMPTIED_MARK
+    from app.agent.generation.orchestration.trip_graph import day_route_after_reflect
+    from app.agent.research.agent_state import UnifiedAgentState
+
+    req = GenerateDayRequest(city="东京", days=2)
+    issues = [f"第 2 天{DEDUP_EMPTIED_MARK}；已移除：东京都厅展望室。"]
+    emptied = UnifiedAgentState(mode=MODE_DAY, day_request=req, validation_issues=issues, attempts=1)
+    assert day_route_after_reflect(emptied) == "retry"
+    exhausted = UnifiedAgentState(mode=MODE_DAY, day_request=req, validation_issues=issues, attempts=2)
+    assert day_route_after_reflect(exhausted) == "fallback"
+
+
 def test_budget_tier_divides_by_real_days():
     """BIZ-2 的另一半：预算分档按真实天数摊——¥7000/7 天是日均 ¥1000，
     不再被当成单日 ¥7000 直升奢华档。"""

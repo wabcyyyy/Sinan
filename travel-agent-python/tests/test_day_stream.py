@@ -239,7 +239,8 @@ def test_degraded_gateway_gets_compact_prompt(monkeypatch):
         GenerateDayRequest(city="杭州", day_no=2, days=2, budget=3000, persons=2, context={}), used=set()
     )
     assert captured["compact_output"] is True
-    assert "人民币 CNY/RMB" in calls["system_prompt"] and "每间每晚" in calls["system_prompt"]
+    assert "cost_currency" in calls["system_prompt"] and "CNY" in calls["system_prompt"]
+    assert "每间每晚" in calls["system_prompt"]
 
     monkeypatch.setattr(
         day_stream, "json_response_format", lambda *a, **k: {"type": "json_schema", "json_schema": {"name": "x"}}

@@ -1,0 +1,24 @@
+extraction 0 degraded False ok True 3.38
+strict 30 FAILED BLOCKED 223.34s
+  day1 FAILED attr=2 meals=2 diet=2 err=
+     09:00-10:00 attraction Shinjuku Central Park 
+     10:30-11:00 attraction Tokyo City Hall Tower II 
+     13:32-14:02 food       Délifrance diet:vegetarian
+     15:00-15:30 hotel      Shinjuku Washington Hotel 
+     22:29-23:59 food       くら寿司 diet:vegan,diet:vegetarian
+  day2 PENDING attr=2 meals=2 diet=2 err=
+     09:30-10:00 attraction Shinjuku Sumitomo Building 
+     12:34-13:04 food       おきなわ軒 diet:vegetarian
+     15:35-16:35 attraction Shinjuku Mitsui Building 
+     20:05-21:35 food       日高屋 diet:vegetarian
+candidate 31 FAILED BLOCKED 187.17s
+  day1 FAILED attr=2 meals=2 diet=2 err=
+     10:00-11:30 attraction 东京都厅舍展望室 
+     12:00-12:30 food       くら寿司 diet:vegan,diet:vegetarian
+     18:29-19:49 attraction 新宿中央公园 
+     22:29-23:59 food       おきなわ軒 diet:vegetarian
+     20:00-20:30 hotel      Shinjuku Washington Hotel 
+  day2 SUCCEEDED attr=1 meals=2 diet=1 err=
+     11:30-12:00 food       Délifrance diet:vegetarian
+     13:59-15:59 attraction 新宿御苑 
+     18:29-19:59 food       松屋銀座 

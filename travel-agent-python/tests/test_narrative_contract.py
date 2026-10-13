@@ -201,8 +201,10 @@ def test_prompt_versions_current():
     # 写进两套 Prompt，两版本同步 bump
     # 2026-10-09（M5b）：整趟主输出去 suggestions 长备选（spec §11），open_trip
     # 再 bump v1.4→v1.5；open_day（逐日兜底链）建议契约不变
-    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.5.localized"
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.5.localized"
+    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.6.localized"
+    # 2026-10-12（v1.6）：open_trip 命名优先级 / 删冲突密度示例 / 午晚餐各一 / 合并重复条款
+    # 2026-10-12（v1.6/v1.7）：两套 Prompt 条目新增 cost_currency（币种显式化）
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.7.localized"
 
 
 class _Mem:
@@ -296,8 +298,19 @@ def test_open_trip_contract_contains_narrative_fields():
     assert "叙事句" in prompt
     assert "2-4 条" in prompt
     assert "120 字" in prompt
-    assert "防啰嗦" in prompt
+    assert "可整体省略，禁止为凑数编造" in prompt, "无意图时可选叙事字段不得凑数（防啰嗦）"
     assert "day_options" in prompt
+
+
+def test_open_trip_v16_naming_priority_and_meal_rules():
+    """v1.6：参考资料餐厅照抄店名（饮食依据只挂在资料原名上）；不再给与结构化上限冲突的密度示例。"""
+    prompt = open_generation.open_trip_system_prompt(
+        days=2, hotel_clause="", min_active_minutes=MIN_ACTIVE_MINUTES, max_daily_minutes=MAX_DAILY_MINUTES
+    )
+    assert "逐字照抄该行资料的店名（不翻译、不加分店名或地名前后缀）" in prompt
+    assert "可含分店名" not in prompt
+    assert "3-5 景" not in prompt and "景点数量服从用户需求与下文结构化上限" in prompt
+    assert "每天安排午餐（11:00-13:30）与晚餐（17:30-20:30）各一" in prompt
 
 
 # ---------- 4. 透传：LLM 输出 → plan dict → DailyPlan ----------
@@ -346,7 +359,8 @@ def test_llm_open_day_returns_sanitized_narrative_fields(monkeypatch):
     # max_tokens 三次上调：2400 → 3200 → 8000。3200 实测装不下"叙事字段 +
     # 24-40 条 suggestions"的输出契约（2026-09-18 量测 6/6 城整段 JSON 被截断
     # → parse 失败 → 该日退化为草案），见 docs/量测-存在性接地-2026-09-18.md §5。
-    assert client.kwargs[0]["max_tokens"] == 8000
+    # 2026-10-12 生成走 low 思考后再上调到 16000（思考计入 completion，8000 档实测截断）。
+    assert client.kwargs[0]["max_tokens"] == day_stream.DAY_MAX_TOKENS == 16000
     # 清洗后全字段到位
     assert plan["trip_theme"] == "题" * 40
     assert plan["theme"] == "长" * 40

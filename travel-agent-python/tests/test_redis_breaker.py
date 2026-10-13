@@ -119,3 +119,38 @@ def test_full_mark_table_refuses_new_lock_instead_of_evicting(monkeypatch):
     assert all(state_and_sessions.is_marked(f"gen:day:{i}") for i in range(4)), "已有占用被挤掉了"
     # 同键重入仍回 False（不续期别人的占用）
     assert state_and_sessions.try_mark("gen:day:0", 600) is False
+
+
+def test_sliding_hit_commits_window_update_in_one_transaction(monkeypatch):
+    """滑动窗口的清过期/记本次/续期/计数必须在同一个 MULTI/EXEC 里提交，计数取事务结果。"""
+
+    class _Pipe:
+        def __init__(self, owner):
+            self.owner = owner
+            self.commands: list[str] = []
+
+        def __getattr__(self, name):
+            def _record(*args, **kwargs):
+                self.commands.append(name)
+                return self
+
+            return _record
+
+        def execute(self):
+            self.owner.executed.append(list(self.commands))
+            return [0, 1, True, 3]
+
+    class _Client:
+        def __init__(self):
+            self.executed: list[list[str]] = []
+            self.transactions: list[bool] = []
+
+        def pipeline(self, transaction=True):
+            self.transactions.append(transaction)
+            return _Pipe(self)
+
+    client = _Client()
+    monkeypatch.setattr(state_and_sessions, "_redis", lambda: client)
+    assert state_and_sessions.sliding_hit("quota:llm:min:7", 60) == 3
+    assert client.transactions == [True]
+    assert client.executed == [["zremrangebyscore", "zadd", "expire", "zcard"]]

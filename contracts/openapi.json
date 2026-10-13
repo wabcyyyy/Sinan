@@ -2622,7 +2622,7 @@
           "itinerary"
         ],
         "summary": "Events",
-        "description": "订阅生成进度事件流（进程内 SSE；取代 Java 的「Redis pub/sub → SseEmitter」转发桥）。",
+        "description": "订阅生成进度事件流（进程内 SSE；取代 Java 的「Redis pub/sub → SseEmitter」转发桥）。\n\n断线续传：请求头 `Last-Event-ID`（或查询参数 lastEventId）给出最后收到的回放编号时，\n先补发其后的帧再接实时流；被超限拒绝的连接不补发。",
         "operationId": "events_api_itinerary__id__events_get",
         "parameters": [
           {
@@ -2633,6 +2633,38 @@
               "type": "integer",
               "minimum": 1,
               "title": "Id"
+            }
+          },
+          {
+            "name": "lastEventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lasteventid"
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
             }
           }
         ],
@@ -10743,6 +10775,21 @@
               }
             ],
             "title": "Cost"
+          },
+          "costCurrency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "CNY"
+                ],
+                "const": "CNY"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costcurrency"
           },
           "tag": {
             "anyOf": [

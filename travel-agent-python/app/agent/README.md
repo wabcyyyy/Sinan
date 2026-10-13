@@ -74,6 +74,7 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `grounding_evidence.py` | 证据票：「本服务真的抓过这一行」的不可伪造凭据 |
 | `grounding_labels.py` | 背书口径唯一实现：来源值域 + 证据校验 → 溯源标签（三条链路共用） |
 | `grounding/facts.py` | 事实落地：坐标校验与本地权威补点（判定委托 `existence`） |
+| `grounding/nearby_branch.py` | 就近分店判定：同名取离当天锚点最近的实体（限框重查），供落地把连锁店远处分店换成附近分店或撤销落地 |
 | `map_link.py` | 地图深链：关键词/路线两种 URL 与 GCJ-02 偏移 |
 | `open_plans.py` | 图路径的逐日草案：补池 → 落地 → 删证伪点 → 组装（`on_day`/`on_patch` 流式挂点在此） |
 | `generators.py` | 内容组装原语与对外面（纯函数优先，无编排） |
@@ -88,6 +89,7 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `content/trip_stream.py` | 整段流式 LLM 调用：与阻塞 `llm_open_trip` 同 prompt/schema，逐 chunk 喂解析器产出候选泵，EOF 走有界修复（M5a） |
 | `rules/day_policy.py` | DayPolicy 到/离日窗口语义：每天可用窗与时长上限（M3 共用规则单源，reflect 不再各带一份） |
 | `rules/constraint_checks.py` | ConstraintReport 硬约束检查（必去/排除/窗口/冲突）：core_ready 交付门与编辑草稿确定性硬校验共用（M3/M4） |
+| `rules/category_evidence.py` | 类别证据资格与三态判定：已验证字段绑定同一地点身份，未知/过期证据不能解除名称排除 |
 | `content/reflect.py::hard_day_issues` | 单日结构伤及需求交付闸：图内修复、最后尝试和业务落库共用同一判据；过滤缺口由 `content/landing.py` 回喂生成 |
 | `workflow.py` | 图工作流的门面：生成 → 校验 → 修复循环 |
 | `grounding/official_pages.py` | 官方页面证据 adapter：限域抓取（仅 http(s)/私网 fail-closed/2MB/10s），只认登记过的公告句式，认不出 = unknown（M7） |

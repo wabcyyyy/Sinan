@@ -339,11 +339,21 @@ def clear_chat_history(id: int = Path(..., ge=1), user: AuthUser = Depends(enfor
 
 
 @router.get("/{id}/events")
-async def events(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)) -> StreamingResponse:
-    """订阅生成进度事件流（进程内 SSE；取代 Java 的「Redis pub/sub → SseEmitter」转发桥）。"""
+async def events(
+    id: int = Path(..., ge=1),
+    last_event_id_header: str | None = Header(default=None, alias="Last-Event-ID"),
+    last_event_id: str | None = Query(default=None, alias="lastEventId"),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> StreamingResponse:
+    """订阅生成进度事件流（进程内 SSE；取代 Java 的「Redis pub/sub → SseEmitter」转发桥）。
+
+    断线续传：请求头 `Last-Event-ID`（或查询参数 lastEventId）给出最后收到的回放编号时，
+    先补发其后的帧再接实时流；被超限拒绝的连接不补发。
+    """
+    resume_from = itinerary_events.parse_last_event_id(last_event_id_header, last_event_id)
     # 归属查询进线程池，登记订阅必须在事件循环里做（要捕获 loop 才能跨线程投递）
     main = await run_in_threadpool(itinerary_query.find_readable_main, user.id, id)
-    subscription, _rejected = event_hub.subscribe(id, event_publisher.too_many_connections_envelope(id))
+    subscription, rejected = event_hub.subscribe(id, event_publisher.too_many_connections_envelope(id))
     try:
         snapshot = await run_in_threadpool(itinerary_events.terminal_snapshot, id, main)
     except BaseException:
@@ -352,7 +362,9 @@ async def events(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_bus
         # 泄漏的队列不会自愈——5 次之后这条行程的进度流彻底打死到重启。
         event_hub.unsubscribe(subscription)
         raise
-    return itinerary_events.sse_response(itinerary_events.event_frames(id, subscription, snapshot))
+    if rejected:
+        resume_from = None
+    return itinerary_events.sse_response(itinerary_events.event_frames(id, subscription, snapshot, resume_from))
 
 
 @router.post("/{id}/chat-edit")

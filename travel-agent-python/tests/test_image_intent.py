@@ -27,7 +27,7 @@ from app.api import deps
 from app.api.business.image_intent import router as image_intent_router
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, UserLlmGateway
 from app.services import image_intent as image_intent_service
