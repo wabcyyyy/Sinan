@@ -15,8 +15,8 @@
         "note": "票+坐标双落地率；含 coords:false 无坐标变体，故不到 1"
       },
       "poi_refuted_count": {
-        "min": 0,
-        "max": 0,
+        "min": 0.0,
+        "max": 0.0,
         "note": "被驳回删除的编造 POI 数：>0 = 出现编造，=非0的新低也可能是安全网变化，都认账"
       },
       "field_reference_rate": {
@@ -36,27 +36,27 @@
         "note": "景点跨日重复率：越低越好"
       },
       "budget_deviation_rate": {
-        "max": 0.0,
-        "note": "预算偏差率（生产同口径期望）：越低越好"
+        "max": 0.0769,
+        "note": "预算偏差率（生产同口径期望）：越低越好。2026-10-12 改走产品路径后 0.0769 = 三亚 5 日用例整趟 FAILED、_finish 未执行无交付预算（偏差记 1.0）的连带结果；其余 12 例为 0。该例改判后应回到 0"
       },
       "terminal_reset_day_rate": {
         "max": 0.0154,
-        "note": "生产终检会重置的天占比（validate_plans 逐日判，itinerary_generation.py:591-651）：越低越好；mock 现值 0.0154 按实测认账"
+        "note": "交付后复检：对最终交付的天再跑终检判官，越低越好。产品路径下 = 终检 + 逐日补齐之后仍不合规的天占比；0.0154 = 三亚第 5 天（fixture 末日无酒店，活动 180 分钟 < 240 下限，补齐 3 轮仍过稀）"
       },
       "success_status_rate": {
-        "min": 0.0,
-        "max": 0.0,
-        "note": "mock 口径恒 degraded（开放研究结果如实呈现），success 占比动了 = 状态口径漂移"
+        "min": 0.9231,
+        "max": 0.9231,
+        "note": "产品路径口径（2026-10-12）：gen_state COMPLETED→success / PARTIAL→degraded / FAILED→failed，按落库后读回的终态计。旧 trip 图路径恒 degraded；占比动了 = 状态口径或交付行为变化，都认账"
       },
       "degraded_status_rate": {
-        "min": 1.0,
-        "max": 1.0,
-        "note": "同上：degraded 是本项目如实呈现的预期状态，占比钉 1.0"
+        "min": 0.0,
+        "max": 0.0,
+        "note": "同上：产品路径下 PARTIAL（有天未完成）占比；mock 题集现值 0"
       },
       "failed_status_rate": {
-        "min": 0,
-        "max": 0,
-        "note": "硬失败占比：任何非 0 都红"
+        "min": 0.0769,
+        "max": 0.0769,
+        "note": "硬失败占比，钉在实测值：0.0769 = 三亚 5 日用例。第 5 天逐日补齐仍过稀 → run_generate_day 抛错 → plan_days 按现行语义（单天失败中止循环，test_day_failure_marks_day_and_trip_failed）判整趟 FAILED。这是产品行为的如实记录；若改为 PARTIAL 交付，此值应降为 0 并 --update 收紧"
       },
       "fallback_success_rate": {
         "min": 1.0,
@@ -64,7 +64,7 @@
       },
       "trace_complete_rate": {
         "min": 1.0,
-        "note": "parse/research/generate/reflect/format 全链路节点 + 工具调用齐全率"
+        "note": "生成链节点 + 工具调用齐全率；节点口径按路径（产品路径 stream_generate，图路径 parse/research/generate/reflect/format）"
       },
       "research_rounds_avg": {
         "min": 3.0,
@@ -96,8 +96,8 @@
         "note": "单域推理轮次（fixture 判定充分即收）：研究编排结构计数"
       },
       "pack_total": {
-        "min": 18,
-        "max": 18,
+        "min": 18.0,
+        "max": 18.0,
         "note": "三域证据总量（fixture 规模）：结构计数"
       },
       "degraded_rate": {

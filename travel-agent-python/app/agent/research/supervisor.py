@@ -102,7 +102,7 @@ def run_research_parallel(tasks: list[ResearchTask]) -> dict[ResearchDomain, Evi
     """
     packs: dict[ResearchDomain, EvidencePack] = {}
     # 研究阶段并行度 = 三个领域 Agent；与 _search_pois 的并行度口径一致，
-    # 避免并行检索把高德/RAG 的等待从串行叠加放大。调用期读 settings
+    # 避免并行检索把外部地点服务的等待从串行叠加放大。调用期读 settings
     # （PR-11 并发配置化，原硬编码 3），monkeypatch 单点可注入。
     with ThreadPoolExecutor(max_workers=settings.research_workers, thread_name_prefix="research-agent") as pool:
         futures: dict[ResearchDomain, Future[EvidencePack]] = {}

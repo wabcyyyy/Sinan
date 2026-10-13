@@ -26,7 +26,7 @@ from app.api import deps
 from app.api.business.itinerary import router as itinerary_router
 from app.api.business.share import router as share_router
 from app.common.envelope import install_exception_handlers
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain
 from app.services import share_service, state_and_sessions

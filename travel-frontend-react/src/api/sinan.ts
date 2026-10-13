@@ -342,20 +342,23 @@ export async function streamItineraryEvents(
   const baseDelayMs = options.baseDelayMs ?? 1500
   let attempt = 0
   let lastError: Error | null = null
+  // 断线续传：记住最后收到的回放编号（SSE `id:` 行），重连时作为 Last-Event-ID 带回，
+  // 服务端补发断线期间错过的帧；补不全时服务端先发一帧 resync（DB 轮询对账照常兜底）
+  const cursor: StreamCursor = { lastEventId: null }
   for (;;) {
     // 终态帧之后的干净关流不重连：服务端对终态行程只补一帧快照就关，
     // 无脑重连会跟 snapshot 打成 ping-pong（每次都「连上→补帧→关流」）。
     let terminal = false
     const forwarding: StreamHandlers = {
       onEvent: (event) => {
-        if (event.type === 'done' || event.type === 'error') terminal = true
+        if (event.type === 'complete' || event.type === 'done' || event.type === 'error') terminal = true
         handlers.onEvent(event)
       },
       // 中间失败静默（后面可能重连成功），最终失败由本函数收口时回调
       onError: () => {},
     }
     try {
-      await readItineraryStream(id, signal, forwarding)
+      await readItineraryStream(id, signal, forwarding, cursor)
       if (terminal || signal.aborted) return
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
@@ -383,10 +386,21 @@ export interface StreamReconnectOptions {
   baseDelayMs?: number
 }
 
-async function readItineraryStream(id: number | string, signal: AbortSignal, handlers: StreamHandlers) {
+interface StreamCursor {
+  lastEventId: string | null
+}
+
+async function readItineraryStream(
+  id: number | string,
+  signal: AbortSignal,
+  handlers: StreamHandlers,
+  cursor: StreamCursor,
+) {
+  const headers: Record<string, string> = { Accept: 'text/event-stream' }
+  if (cursor.lastEventId) headers['Last-Event-ID'] = cursor.lastEventId
   const response = await fetch(`/api/itinerary/${id}/events`, {
     credentials: 'include',
-    headers: { Accept: 'text/event-stream' },
+    headers,
     signal,
   })
   if (!response.ok || !response.body) {
@@ -404,11 +418,13 @@ async function readItineraryStream(id: number | string, signal: AbortSignal, han
       while (boundary >= 0) {
         const frame = buffer.slice(0, boundary)
         buffer = buffer.slice(boundary + 2)
-        const data = frame
-          .split('\n')
+        const lines = frame.split('\n')
+        const data = lines
           .filter((line) => line.startsWith('data:'))
           .map((line) => line.slice(5).trim())
           .join('\n')
+        const idLine = lines.find((line) => line.startsWith('id:'))
+        if (idLine) cursor.lastEventId = idLine.slice(3).trim()
         if (data) {
           try {
             handlers.onEvent(JSON.parse(data) as ItineraryStreamEvent)

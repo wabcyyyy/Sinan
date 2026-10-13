@@ -19,7 +19,7 @@ from collections.abc import Mapping
 from typing import Any, TypedDict
 
 from app.agent.core.poi_identity import replace_name_mentions
-from app.agent.data.fx import backstop_item_costs
+from app.agent.data.fx import normalize_item_costs
 from app.agent.generation.rules.hotel_schedule import hotel_for_day
 
 # 单日/兼容路径的校验修复次数
@@ -100,8 +100,9 @@ class PoiFactRow(TypedDict, total=False):
 def sanitize_itinerary_items(items: list[Any] | None, *, city: str | None = None) -> list[dict[str, Any]]:
     """过滤脏项并归一 item_type，供 format_output / day_stream 构造 TripItem 前调用。
 
-    传 city 时顺带做大面额币种 cost 兜底（data.fx.backstop_item_costs：按人民币离谱、
-    按本币合理的 cost 视为本币换算）——两条生成链共用这一个落地入口，口径不分叉。
+    顺带把 cost 统一成人民币（data.fx.normalize_item_costs）：有 cost_currency 声明按汇率
+    确定性换算；未声明且传了 city 时，才把按人民币离谱、按本币合理的 cost 视为本币换算。
+    两条生成链共用这一个落地入口，口径不分叉。
 
     返回 dict[str, Any] 而非 TypedDict：落地链上每一步都允许缺键/写 None
     （可变开放草稿），TypedDict(total=False) 的读写严格度会在这条链上处处
@@ -112,8 +113,7 @@ def sanitize_itinerary_items(items: list[Any] | None, *, city: str | None = None
         row = dict(item)
         row["item_type"] = normalize_item_type(row.get("item_type"))
         out.append(row)
-    if city:
-        backstop_item_costs(out, city)
+    normalize_item_costs(out, city)
     return out
 
 

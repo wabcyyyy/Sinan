@@ -128,15 +128,22 @@ def register_key(ip: str) -> str:
 
 
 def sliding_hit(key: str, window_seconds: int) -> int:
-    """记一次事件，返回窗口内事件数（含本次）。"""
+    """记一次事件，返回窗口内事件数（含本次）。
+
+    Redis 路径用 MULTI/EXEC 事务管道一次提交「清过期 → 记本次 → 续期 → 计数」：
+    分条发送时并发请求会在各自的 zadd 与 zcard 之间互相穿插，计数可能偏大或偏小；
+    事务内四条命令连续执行，计数即本次写入后的窗口真实大小，同时省掉 3 次往返。
+    """
     now = time.time()
     try:
-        redis = _redis()
         member = f"{int(now * 1000)}:{uuid.uuid4().hex[:8]}"
-        redis.zadd(key, {member: now * 1000})
-        redis.zremrangebyscore(key, 0, (now - window_seconds) * 1000)
-        redis.expire(key, window_seconds + 1)
-        return int(cast(int, redis.zcard(key)) or 0)
+        pipe = _redis().pipeline(transaction=True)
+        pipe.zremrangebyscore(key, 0, (now - window_seconds) * 1000)
+        pipe.zadd(key, {member: now * 1000})
+        pipe.expire(key, window_seconds + 1)
+        pipe.zcard(key)
+        results = pipe.execute()
+        return int(cast(int, results[-1]) or 0)
     except Exception as exc:
         redis_client.note_failure(exc)
         logger.debug("sliding_hit redis fallback (%s): %s", key, exc)

@@ -19,7 +19,7 @@ from app.api import deps
 from app.api.business.itinerary import router
 from app.common import token_revocation
 from app.common.envelope import ApiError, install_exception_handlers, ok
-from app.common.jwt_compat import encode_token
+from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
 from app.db.models import Base, CityGeo
 

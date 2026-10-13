@@ -262,6 +262,7 @@ _ITEM_PROPERTIES: dict = {
     "end_time": {"type": ["string", "null"]},
     "duration_min": {"type": ["number", "null"]},
     "cost": {"type": ["number", "null"]},
+    "cost_currency": {"type": ["string", "null"]},
     "tag": {"type": ["string", "null"]},
     "remark": {"type": ["string", "null"]},
     "refs": {"type": ["array", "null"], "items": {"type": "integer"}},

@@ -101,3 +101,13 @@ clarify 抽取第一次就成功（9.9s / 3.1s，均未降级）。e2e2 中所�
 - 最终 [`check.ps1`](generation-low-thinking-2026-10-12/check.log)：**ALL GREEN，1858 passed、1 skipped、3 warnings，871.65 秒**；diff-cover 统计已跟踪改动 128 行，覆盖 100%；pyright 0（基线 0）；规模棘轮中长函数 33/33、巨型文件 11/11（第一次跑时单日预算常量把 `day_stream.py` 推到 408 行而失败，常量移到 `day_prompts.py` 后通过；上限没有放宽）。
 - [四套离线评测](generation-low-thinking-2026-10-12/evals.log)全部 exit 0，[ratchet](generation-low-thinking-2026-10-12/eval-ratchet.log) 的 31 项指标都在基线内。评测报告文件只有生成时间、commit 和提示词版本元数据变化。
 - open_trip 提示词版本已同步 bump 到 `eval_gate` 的期望常量；nightly 的 `llm_report.json` 需要按新版本重新跑一次才会带上新的指纹。
+
+## 后续（同日，结论「仍未解决」清单的状态更新）
+
+本节只更新状态，不改写上文证据。
+
+- **默认 90 秒 deadline**：已随本报告对应的提交 `faaff22` 调整，`AGENT_DEADLINE_SECONDS` 默认 90→240（`app/common/config.py`、`.env.example`）；上文写于调整之前。
+- **连锁店远处分店借证据**：提交 `59459fa` 就近校正（`grounding/nearby_branch.py`），并阻断餐次过晚的交付。
+- **`search_foods` 超时**：饮食标签池（Overpass）改为后台线程与 OTM/web 池并行，只在 `DIET_POOL_WAIT_SECONDS=6` 内等待；超时只放弃饮食行，不再让整个餐饮域撞上工具 10 秒预算（并发与限时等待在 `app/agent/data/overpass.py` 的 `submit_diet_tagged_places` / `collect_diet_tagged_places`，等待上限在 `app/agent/tools/impl.py`；回归用例在 `tests/test_release_p1_evidence.py`）。限流滑动窗口同步改为单个 MULTI/EXEC 事务提交（`app/services/state_and_sessions.py`）。
+- **货币启发式**：已改为显式币种。两套生成 Prompt（open_day v1.6 / open_trip v1.7）要求条目同时输出 `cost_currency`，后端 `normalize_item_cost`（`app/agent/data/fx.py`）按声明的币种以固定汇率确定性换算成人民币，不再看金额大小；换算后 `cost_currency` 记为 `CNY`（V15 迁移新增 `itinerary_item.cost_currency` 列，契约 `TripItem.costCurrency`），原始币种写入 remark。模型未声明或写法认不出时才退回旧的按金额推断，并且条目文字明确写了人民币时不推断；这类条目的 `cost_currency` 为空，如实表示「币种未声明」。真实模型对新字段的遵循率尚未实测。
+- 其余项（单日提示词命名冲突、整趟流式偶发思考占满预算、联网搜索通道不可用、OTM 池内餐厅类别覆盖、全局 low 档下的小预算调用）状态不变。

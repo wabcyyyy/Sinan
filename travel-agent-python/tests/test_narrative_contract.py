@@ -201,9 +201,10 @@ def test_prompt_versions_current():
     # 写进两套 Prompt，两版本同步 bump
     # 2026-10-09（M5b）：整趟主输出去 suggestions 长备选（spec §11），open_trip
     # 再 bump v1.4→v1.5；open_day（逐日兜底链）建议契约不变
-    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.5.localized"
+    assert open_generation.OPEN_DAY_PROMPT_VERSION == "v1.6.localized"
     # 2026-10-12（v1.6）：open_trip 命名优先级 / 删冲突密度示例 / 午晚餐各一 / 合并重复条款
-    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.6.localized"
+    # 2026-10-12（v1.6/v1.7）：两套 Prompt 条目新增 cost_currency（币种显式化）
+    assert open_generation.OPEN_TRIP_PROMPT_VERSION == "v1.7.localized"
 
 
 class _Mem:

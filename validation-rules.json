@@ -1,0 +1,410 @@
+{
+  "exclude": [
+    "*/node_modules/*",
+    "node_modules/*",
+    "*/.venv/*",
+    ".venv/*",
+    "*/__pycache__/*",
+    ".validation/*",
+    "tests/fixtures/*",
+    "Ultralytics/*",
+    "runs/*",
+    ".uv-cache/*",
+    ".tmp*/*",
+    ".claude/*",
+    "travel-agent-python/tests/api/*",
+    "travel-agent-python/tests/perf/*",
+    "travel-agent-python/tests/agent_eval/report/*"
+  ],
+  "docs": [
+    "*.md",
+    "*.rst",
+    "docs/*.png",
+    "docs/*.jpg"
+  ],
+  "inputs": [
+    "*.py",
+    "*.toml",
+    "*.json",
+    "*.yaml",
+    "*.yml",
+    "*.ini",
+    "*.cfg",
+    "*.txt",
+    "*.md",
+    "*.ps1",
+    "*.ts",
+    "*.tsx",
+    "*.js",
+    "*.mjs",
+    "*.css",
+    "*.vue",
+    "justfile",
+    ".github/*",
+    ".env.example",
+    "*.lock"
+  ],
+  "high_risk": [
+    "pyproject.toml",
+    "uv.lock",
+    "*requirements*.txt",
+    "*conftest.py",
+    "*__init__.py",
+    ".github/*",
+    "validation-rules.json",
+    "scripts/ai_validate.py",
+    "travel-agent-python/pyproject.toml",
+    "travel-agent-python/uv.lock",
+    "travel-agent-python/pyright-baseline.txt",
+    "travel-agent-python/app/common/*",
+    "travel-agent-python/app/schemas/*",
+    "travel-agent-python/app/db/*",
+    "travel-agent-python/app/api/auth*",
+    "travel-agent-python/app/services/auth*",
+    "travel-agent-python/app/agent/runtime/*",
+    "travel-agent-python/app/agent/core/intent.py",
+    "travel-agent-python/app/agent/generation/orchestration/*",
+    "travel-agent-python/scripts/*",
+    "travel-agent-python/tests/agent_eval/*",
+    "travel-agent-python/tests/experience_cases/*",
+    "travel-frontend-react/package*.json",
+    "travel-frontend-react/tsconfig*",
+    "travel-frontend-react/vite*config*",
+    "travel-frontend-react/scripts/*",
+    "travel-frontend-react/e2e/*",
+    "contracts/*",
+    "docker*",
+    "compose*",
+    "scripts/*"
+  ],
+  "module_static": [
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/typecheck.py"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "lint-imports"
+      ]
+    }
+  ],
+  "frontend": "travel-frontend-react/",
+  "frontend_static": [
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "typecheck:fast"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "theme:lint"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "ep:lint"
+      ]
+    }
+  ],
+  "frontend_full": [
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "test:unit"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "theme:lint"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "ep:lint"
+      ]
+    }
+  ],
+  "frontend_tests": [
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "node",
+        "node_modules/vitest/vitest.mjs",
+        "run"
+      ]
+    }
+  ],
+  "frontend_node_tests": [
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "node",
+        "--test",
+        "e2e/delivery-gate.test.mjs"
+      ]
+    }
+  ],
+  "frontend_related": true,
+  "python_prefix": "travel-agent-python/",
+  "python_cwd": "travel-agent-python",
+  "ruff": true,
+  "ruff_flags": [
+    "--config",
+    "pyproject.toml"
+  ],
+  "pytest_args": [],
+  "tests": [
+    "travel-agent-python/tests/test_*.py",
+    "travel-agent-python/tests/agent_eval/test_*.py",
+    "travel-agent-python/tests/experience_cases/test_*.py"
+  ],
+  "groups": [
+    {
+      "name": "research",
+      "files": [
+        "travel-agent-python/app/agent/research/*",
+        "travel-agent-python/app/agent/data/*"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_research*.py",
+        "travel-agent-python/tests/test_budget_and_web_search.py",
+        "travel-agent-python/tests/test_reference_pool_injection.py"
+      ]
+    },
+    {
+      "name": "generation",
+      "files": [
+        "travel-agent-python/app/agent/generation/*",
+        "travel-agent-python/app/prompts/*"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_generation*.py",
+        "travel-agent-python/tests/test_trip_graph.py",
+        "travel-agent-python/tests/test_day_stream.py",
+        "travel-agent-python/tests/test_stream*.py",
+        "travel-agent-python/tests/test_narrative*.py"
+      ]
+    },
+    {
+      "name": "grounding",
+      "files": [
+        "travel-agent-python/app/agent/grounding/*"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_existence.py",
+        "travel-agent-python/tests/test_grounding*.py",
+        "travel-agent-python/tests/test_poi_identity.py"
+      ]
+    },
+    {
+      "name": "editing",
+      "files": [
+        "travel-agent-python/app/agent/editing/*"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_clarify*.py",
+        "travel-agent-python/tests/test_local_replan.py",
+        "travel-agent-python/tests/test_regenerate_day.py"
+      ]
+    },
+    {
+      "name": "business",
+      "files": [
+        "travel-agent-python/app/api/*",
+        "travel-agent-python/app/services/*"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_cutover_contract.py",
+        "travel-agent-python/tests/test_business_api_pilot.py"
+      ]
+    },
+    {
+      "name": "frontend",
+      "files": [
+        "travel-frontend-react/*"
+      ],
+      "tests": []
+    },
+    {
+      "name": "validation",
+      "files": [
+        "scripts/ai_validate*.py",
+        "verify.ps1",
+        "validation-rules.json"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_ai_validation.py"
+      ]
+    },
+    {
+      "name": "jwt_migration",
+      "files": [
+        "travel-agent-python/app/common/jwt_compat.py",
+        "travel-agent-python/app/common/jwt_tokens.py"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_auth_compat.py",
+        "travel-agent-python/tests/test_auth_migration.py"
+      ]
+    },
+    {
+      "name": "schema_migration",
+      "files": [
+        "travel-agent-python/app/db/migrations/versions/*.py",
+        "travel-agent-python/app/db/migrations/sql/*.sql"
+      ],
+      "tests": [
+        "travel-agent-python/tests/test_schema_bootstrap_migration.py",
+        "travel-agent-python/tests/test_db_schema_parity.py"
+      ]
+    }
+  ],
+  "project": "Sinan",
+  "full": [
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/check.ps1",
+        "-Full"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "tests/agent_eval/eval_agent.py"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "tests/agent_eval/eval_research.py"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "tests/agent_eval/eval_editing.py"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "tests/agent_eval/eval_experience.py"
+      ]
+    },
+    {
+      "cwd": "travel-agent-python",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/eval_ratchet.py"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "test:unit"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "theme:lint"
+      ]
+    },
+    {
+      "cwd": "travel-frontend-react",
+      "argv": [
+        "npm",
+        "run",
+        "ep:lint"
+      ]
+    }
+  ],
+  "python_sources": [
+    "travel-agent-python/app/*.py",
+    "travel-agent-python/tests/*.py",
+    "travel-agent-python/scripts/*.py",
+    "travel-agent-python/main.py"
+  ],
+  "quick_test_files": 6,
+  "quick_budget_seconds": 90,
+  "cache_max_age_seconds": 86400,
+  "quick_critical_names": [
+    "auth",
+    "gates",
+    "executor",
+    "default_deny",
+    "ai_validation"
+  ]
+}

@@ -26,6 +26,8 @@ uv run python tests/agent_eval/eval_experience.py
 uv run python scripts/eval_ratchet.py
 ```
 
+`eval_agent.py` 默认走业务层产品路径（`plan_days` 在临时 SQLite 上真跑，按落库读回的交付结果计分）；`--path graph` 跑 Agent 面的 trip 分支作对照，报告另存 `report_graph.*`，不进棘轮。评测期间 LLM HTTP 出口有哨兵，任何真实调用都会让该用例报错。
+
 schema 变更执行 `uv run python scripts/export_contracts.py`，生成产物随同批提交。迁移只追加，门禁不放宽。
 真实 API 测试、nightly 和生成压测可能调用模型，不属于默认离线门禁。
 

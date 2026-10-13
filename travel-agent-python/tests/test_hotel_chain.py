@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from app.agent.data import live_quotes
 from app.api.business.auth import auth_router
 from app.api.business.itinerary import router as itinerary_router
-from app.common import cache_store, jwt_compat
+from app.common import cache_store, jwt_tokens
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.common.http_client import configure_clients
@@ -204,7 +204,7 @@ def client(db):
     install_exception_handlers(app)
     app.include_router(auth_router)
     app.include_router(itinerary_router)
-    token = jwt_compat.encode_token("dora", JWT_MATERIAL, 3600)
+    token = jwt_tokens.encode_token("dora", JWT_MATERIAL, 3600)
     api = TestClient(app)
     api.headers.update({"Authorization": f"Bearer {token}"})
     return api

@@ -23,6 +23,7 @@ web_search（联网补池）。**零本地语料、零向量库。**
 
 import logging
 import re
+import time
 
 from app.agent.core.poi_identity import same_entity
 from app.agent.data import city_reference, overpass, places, web_search
@@ -147,6 +148,11 @@ def search_attractions(city: str, preferences: list[str], limit: int = 30) -> li
     return _sort_by_preferences(rows, preferences)[:limit]
 
 
+#: 饮食标签池（Overpass）从 search_foods 入口起算的最长等待：必须小于 catalog 中
+#: search_foods 的工具预算（timeout_seconds=10），给 OTM/web 两池与合并留出余量。
+DIET_POOL_WAIT_SECONDS = 6.0
+
+
 @traced("tool", "poi.search_foods")
 def search_foods(city: str, limit: int = 10, dietary: str | None = None) -> list[dict]:
     """餐饮候选池；携带饮食要求时，带外部 diet 标签的 Overpass 行排在前。
@@ -160,15 +166,14 @@ def search_foods(city: str, limit: int = 10, dietary: str | None = None) -> list
     可能落到同一连锁店的另一个 OSM 元素（实测 2026-10-12：diet 标签在 node、
     重解析命中 way），饮食证据就在源头断掉。
     """
-    diet_pool = (
-        [
-            _as_candidate(row, city)
-            for row in overpass.search_diet_tagged_places(city, str(dietary), limit=min(limit, 8))
-        ]
-        if dietary
-        else []
-    )
-    return _merge_by_name(diet_pool, _otm_pool(city, "food", limit), _web_pool(city, "food", limit))[:limit]
+    # 饮食池（Overpass，可等 25s+重试）与 OTM/web 并行，只在剩余预算内等：串行等它会让整个
+    # 工具撞上 catalog 的 10s 预算，连已到手的 OTM/web 行一起丢（current-state-review P1）。
+    deadline = time.monotonic() + DIET_POOL_WAIT_SECONDS
+    diet_future = overpass.submit_diet_tagged_places(city, str(dietary), limit=min(limit, 8)) if dietary else None
+    otm_rows, web_rows = _otm_pool(city, "food", limit), _web_pool(city, "food", limit)
+    diet_rows = overpass.collect_diet_tagged_places(diet_future, deadline) if diet_future else []
+    diet_pool = [_as_candidate(row, city) for row in diet_rows]
+    return _merge_by_name(diet_pool, otm_rows, web_rows)[:limit]
 
 
 @traced("tool", "poi.search_hotels")

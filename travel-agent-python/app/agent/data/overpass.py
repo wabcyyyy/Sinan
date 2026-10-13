@@ -14,12 +14,19 @@
 
 from __future__ import annotations
 
+import contextvars
+import logging
+import time
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any
 
 from app.agent.data.places import _osm_facts
 from app.common.config import settings
 from app.common.external_client import ExternalClient, fetch_json
 from app.common.http_client import api_client, contact_user_agent
+
+logger = logging.getLogger(__name__)
 
 _BASE = "https://overpass-api.de/api/interpreter"
 _UA = contact_user_agent()
@@ -49,6 +56,31 @@ def search_diet_tagged_places(city: str, diet: str, limit: int = 8) -> list[dict
     # 标签本身仍原样透传、不增不减），restaurant 行排前只是展示顺序先验。
     rows.sort(key=lambda row: 0 if row.get("category_tags", {}).get("amenity") == "restaurant" else 1)
     return rows
+
+
+def submit_diet_tagged_places(city: str, diet: str, limit: int = 8) -> Future[list[dict[str, Any]]]:
+    """在后台线程启动 `search_diet_tagged_places`，让调用方与其它数据池并行等待。
+
+    本客户端单次可等 25s 且重试 1 次，远超调用方的工具预算；放后台后调用方只按
+    自己的剩余时间等结果（`collect_diet_tagged_places`），等不到就放弃。后台请求
+    跑完照常写 ExternalClient 缓存，下次同城查询直接命中。
+    """
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="diet-pool")
+    context = contextvars.copy_context()
+    future = executor.submit(context.run, lambda: search_diet_tagged_places(city, diet, limit=limit))
+    executor.shutdown(wait=False)
+    return future
+
+
+def collect_diet_tagged_places(future: Future[list[dict[str, Any]]], deadline: float) -> list[dict[str, Any]]:
+    """在 monotonic `deadline` 前取回后台结果；超时或失败返回空（只丢饮食行）。"""
+    try:
+        return future.result(timeout=max(0.0, deadline - time.monotonic())) or []
+    except FuturesTimeoutError:
+        logger.warning("overpass diet-tagged pool missed the caller deadline; continuing without diet rows")
+    except Exception as exc:
+        logger.warning("overpass diet-tagged pool failed: %s", exc)
+    return []
 
 
 def _fetch(city: str, diet: str, limit: int) -> Any:

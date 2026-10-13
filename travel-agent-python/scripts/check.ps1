@@ -6,14 +6,20 @@
 # working tree, so it is meaningful mid-feature (it does not diff against HEAD).
 # Usage (from anywhere): powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check.ps1
 # Opt out of the diff-cover step only when no baseline ref exists:
-#   ... -File scripts\check.ps1 -AllowNoDiffCover
+#   ... -File scripts\check.ps1 -Full -AllowNoDiffCover
 # NOTE: ASCII-only comments - Windows PowerShell 5.1 reads BOM-less files as ANSI.
 
-param([switch]$AllowNoDiffCover)
+param([switch]$AllowNoDiffCover, [switch]$Full)
 
 $ErrorActionPreference = 'Stop'
 $pkg = Split-Path -Parent $PSScriptRoot
 Set-Location $pkg
+
+# Ordinary local calls are quick. Explicit -Full or CI preserves the original gate.
+if (-not $Full -and $env:CI -notin @('true', '1')) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path (Split-Path -Parent $pkg) 'verify.ps1')
+    exit $LASTEXITCODE
+}
 
 function Step([string]$name) { Write-Host "==> $name" -ForegroundColor Cyan }
 

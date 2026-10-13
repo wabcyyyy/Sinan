@@ -45,6 +45,10 @@ dependencies = [
     # pickle 关闭（见 runtime/checkpoint.py）。
     "langgraph-checkpoint-sqlite==3.1.1",
     "ijson==3.5.1",
+    # 会话 JWT（2026-10-12）：替换手写的 HMAC/base64url 实现（app/common/jwt_tokens.py）。
+    # 此前经 redis 传递进锁（2.14.0），显式列为直接依赖：签名、时间声明与算法白名单
+    # 交给维护中的库，项目只保留「按密钥长度定档 + 只认 HMAC + 必备声明」的业务约束。
+    "pyjwt>=2.10,<3",
 ]
 
 [dependency-groups]

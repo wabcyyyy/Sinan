@@ -97,15 +97,16 @@ def test_revision_refuses_to_rebuild_an_existing_schema(sqlite_db) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_head_is_0014_and_linear() -> None:
-    """结构化需求快照列（M1a）接在 city_geo 补种之后，历史链保持单一且完整。"""
+def test_head_is_0015_and_linear() -> None:
+    """条目币种列（V15）接在规划修订号之后，历史链保持单一且完整。"""
     script = ScriptDirectory.from_config(db_migrate.alembic_config())
-    assert script.get_current_head() == "0014_itinerary_planning_revision"
+    assert script.get_current_head() == "0015_item_cost_currency"
     # 从 head 沿 down_revision 走回基线，链路上每个 revision 都必须真实存在
     chain: list[str] = []
     for revision in script.walk_revisions(base="base", head="heads"):
         chain.append(revision.revision)
     assert chain == [
+        "0015_item_cost_currency",
         "0014_itinerary_planning_revision",
         "0013_itinerary_requirements_json",
         "0012_city_geo_domestic_expansion",
@@ -208,6 +209,27 @@ def test_v4_revision_refuses_downgrade() -> None:
     module = importlib.import_module("app.db.migrations.versions.0004_retire_poi_knowledge")
     with pytest.raises(NotImplementedError, match="downgrade"):
         module.downgrade()
+
+
+def test_v15_revision_executes_only_its_sql_truth(monkeypatch) -> None:
+    """升级已有库只执行 V15；缺 SQL 必须失败，禁止静默推进版本。"""
+    module = importlib.import_module("app.db.migrations.versions.0015_item_cost_currency")
+    schema_source = importlib.import_module("app.db.schema_source")
+    expected = schema_source.statements_between(15, 15)
+    connection = Mock()
+    monkeypatch.setattr(module.op, "get_bind", lambda: connection)
+
+    module.upgrade()
+
+    assert module.down_revision == "0014_itinerary_planning_revision"
+    assert expected
+    assert [call.args[0] for call in connection.exec_driver_sql.call_args_list] == [s for _, s in expected]
+    assert all("cost_currency" in s for _, s in expected)
+    connection.reset_mock()
+    monkeypatch.setattr(module, "statements_between", lambda lo, hi: [])
+    with pytest.raises(RuntimeError, match="V15"):
+        module.upgrade()
+    connection.exec_driver_sql.assert_not_called()
 
 
 def test_v12_seeds_domestic_tourist_cities_from_sql_truth() -> None:

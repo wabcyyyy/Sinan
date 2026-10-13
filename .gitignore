@@ -76,3 +76,6 @@ coverage.xml
 
 # nightly journal (local only, never committed)
 .nightly-journal/
+
+# Local validation receipts and process lock
+.validation/

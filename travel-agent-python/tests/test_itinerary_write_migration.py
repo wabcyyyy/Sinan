@@ -200,6 +200,20 @@ def test_add_item_writes_two_snapshots(client: TestClient) -> None:
     assert versions[0]["parentVersionId"] is not None
 
 
+def test_manual_cost_marks_currency_as_declared_cny(client: TestClient) -> None:
+    """V15 币种列：存量行未声明（null）；用户亲手填的费用按人民币口径记为有据。"""
+    trip_id = _trip_id(client)
+    day1, _ = _day_ids(trip_id)
+    xihu = _item_ids(trip_id, day1)[0]
+    assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]["items"][0]["costCurrency"] is None
+    client.put(f"/api/itinerary/items/{xihu}", json={"remark": "只改备注"})
+    item = client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]["items"][0]
+    assert item["costCurrency"] is None, "没动费用就不改币种口径"
+    client.put(f"/api/itinerary/items/{xihu}", json={"cost": 30})
+    item = client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]["items"][0]
+    assert item["cost"] == 30 and item["costCurrency"] == "CNY"
+
+
 # ---------- 部分更新与跨天移动 ----------
 
 

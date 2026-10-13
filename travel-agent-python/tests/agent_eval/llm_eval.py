@@ -9,7 +9,7 @@ temperature、知识库城市和两遍结果签名，供分析稳定性、反思
   `run_generate_trip_stream` 逐日产事件，评测把 `day`/`day_patch`/`suggestions`/`done`
   收割回 `GenerateResponse` 再算指标。与研究"分开包 run"的形状是刻意复刻的：生产里
   `run_plan_context` 就不在 `observe_run` 内（`app/services/itinerary_generation.py`
-  注 3），所以研究不受 RunLimits/deadline 记账，生成有自己的一份 90s。
+  注 3），所以研究不受 RunLimits/deadline 记账，生成有自己的一份 deadline（默认 240s）。
   因此报告里 `research_rounds` / `research_pack` 恒为 0：那是"研究不在这个 run 里"
   的事实，不是丢数。
 - `graph`：同步 `/v1/generate` 的一张图（研究+生成+反思+落地共用一个 run 与一份

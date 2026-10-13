@@ -6,12 +6,15 @@
    既有分工相反；② 它连带把 router 文件顶到巨大文件棘轮的顶格（11/11），此后任何
    新路由都会把 `just check` 判红，而 INV-1 禁止放宽门禁。
 
-终态补帧本身是 R2-2 的修复：`event_hub` 只广播不留历史，所以"生成结束后才连上"
-（EventSource 断线重连、或用户在结果页重新打开）永远等不到终态帧。
+终态补帧本身是 R2-2 的修复：生成结束后才连上（断线重连、或用户在结果页重新打开）的连接
+等不到实时终态帧。2026-10-12 起 `event_hub` 另有按行程的有界回放日志：重连带
+`Last-Event-ID`（或 `lastEventId` 查询参数）时先补发错过的帧，补不全发 `resync` 帧；
+终态补帧仍保留，覆盖回放日志里已经没有该行程的情况。
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -46,10 +49,52 @@ def terminal_snapshot(itinerary_id: int, main: Any) -> str | None:
     )
 
 
-async def event_frames(itinerary_id: int, subscription: Any, snapshot: str | None = None) -> AsyncIterator[str]:
+_TERMINAL_TYPES = ("complete", "done", "error")
+
+
+def parse_last_event_id(*candidates: str | None) -> int | None:
+    """取第一个合法的非负整数回放编号（请求头 Last-Event-ID 优先，其次查询参数）；都没有返回 None。"""
+    for raw in candidates:
+        text = raw.strip() if isinstance(raw, str) else ""
+        # HTTP 游标只收有界 ASCII 数字：isdigit 还接受 int 无法解析的上标数字，
+        # 超长数字也会触发 Python 的转换上限，不能让坏请求把 SSE 路由变成 500。
+        if text.isascii() and text.isdecimal() and len(text) <= 20:
+            return int(text)
+    return None
+
+
+def _sse_frame(envelope: str) -> str:
+    """一帧 SSE：进回放日志的帧带 `id:` 行（客户端重连时作为 Last-Event-ID 带回）。"""
+    event_id = getattr(envelope, "event_id", None)
+    prefix = f"id:{event_id}\n" if event_id is not None else ""
+    return f"{prefix}data:{envelope}\n\n"
+
+
+def _is_terminal(envelope: str) -> bool:
     try:
+        return json.loads(envelope).get("type") in _TERMINAL_TYPES
+    except (ValueError, AttributeError):
+        return False
+
+
+async def event_frames(
+    itinerary_id: int, subscription: Any, snapshot: str | None = None, last_event_id: int | None = None
+) -> AsyncIterator[str]:
+    """进度事件帧：先补发断线期间错过的帧（有 last_event_id 时），再接实时流或终态快照。"""
+    try:
+        replayed_upto = 0
+        replayed_terminal = False
+        if last_event_id is not None:
+            missed, complete, replayed_upto = event_hub.replay_after(itinerary_id, last_event_id)
+            if not complete:
+                yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
+            for frame in missed:
+                replayed_terminal = replayed_terminal or _is_terminal(frame)
+                yield _sse_frame(frame)
         if snapshot is not None:
-            yield f"data:{snapshot}\n\n"
+            # 补发里已经有真实终态帧就不再叠一帧快照（前端终态收尾只该跑一次）
+            if not replayed_terminal:
+                yield _sse_frame(snapshot)
             return
         while True:
             envelope = await subscription.take()
@@ -58,7 +103,9 @@ async def event_frames(itinerary_id: int, subscription: Any, snapshot: str | Non
             if envelope is None:
                 # 空闲一个心跳周期才补心跳帧：连接保持活跃，但业务事件永远优先
                 envelope = event_publisher.heartbeat_envelope(itinerary_id)
-            yield f"data:{envelope}\n\n"
+            elif (getattr(envelope, "event_id", None) or 0) and envelope.event_id <= replayed_upto:
+                continue  # 订阅先于回放登记：这帧已在补发里出现过（或属于补不回来的那段）
+            yield _sse_frame(envelope)
     finally:
         # 客户端断开/服务收尾都要摘除，否则注册表里留死连接
         event_hub.unsubscribe(subscription)

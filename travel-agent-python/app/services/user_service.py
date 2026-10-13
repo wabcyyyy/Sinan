@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import bcrypt
 from sqlalchemy import select
 
-from app.common import jwt_compat
+from app.common import jwt_tokens
 from app.common.config import settings
 from app.common.envelope import ApiError
 from app.db.models import SysUser
@@ -130,10 +130,10 @@ def login(username: str, password: str, ip: str) -> LoginResult:
 
     sessions.reset_counter(throttle_key)
     ttl = settings.jwt_expire_hours * 3600
-    token = jwt_compat.encode_token(user.username, settings.jwt_secret, ttl)
+    token = jwt_tokens.encode_token(user.username, settings.jwt_secret, ttl)
     try:
-        claims = jwt_compat.decode_token(token, settings.jwt_secret)
-        sessions.register_session(user.username, claims["jti"], token, jwt_compat.remaining_seconds(claims))
+        claims = jwt_tokens.decode_token(token, settings.jwt_secret)
+        sessions.register_session(user.username, claims["jti"], token, jwt_tokens.remaining_seconds(claims))
     except Exception as exc:
         # 会话登记失败不影响登录：Cookie 仍然可用
         logger.warning("session register failed: %s", exc)
@@ -145,10 +145,10 @@ def logout(raw_token: str | None) -> None:
     if not token:
         return
     try:
-        claims = jwt_compat.decode_token(token, settings.jwt_secret)
-        ttl = jwt_compat.remaining_seconds(claims)
+        claims = jwt_tokens.decode_token(token, settings.jwt_secret)
+        ttl = jwt_tokens.remaining_seconds(claims)
         sessions.revoke_current(claims.get("sub", ""), claims.get("jti", ""), token, ttl)
-    except jwt_compat.JwtError:
+    except jwt_tokens.JwtError:
         # 无效/过期 token：登出仍视为成功（幂等）
         return
 

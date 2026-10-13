@@ -1,8 +1,12 @@
 from tests.agent_eval.eval_agent import build_report
 
+_HANGZHOU = {"city": "杭州", "days": 2, "persons": 2, "preferences": ["自然风光"]}
 
-def test_offline_agent_evaluation_covers_workflow_and_authority():
-    report = build_report([{"city": "杭州", "days": 2, "persons": 2, "preferences": ["自然风光"]}])
+
+def test_offline_agent_evaluation_covers_product_path_and_authority():
+    """默认走产品路径：业务层 plan_days 在临时库上真跑，指标按落库读回的交付结果算。"""
+    report = build_report([_HANGZHOU])
+    assert report["generation_path"] == "stream"
     metrics = report["metrics"]
     assert metrics["poi_authority_rate"] == 1.0
     assert metrics["field_reference_rate"] == 1.0
@@ -10,11 +14,47 @@ def test_offline_agent_evaluation_covers_workflow_and_authority():
     assert metrics["route_violation_rate"] == 0.0
     assert metrics["attraction_duplicate_rate"] == 0.0
     assert metrics["budget_deviation_rate"] == 0.0
-    assert metrics["success_status_rate"] == 0.0
-    assert metrics["degraded_status_rate"] == 1.0
+    # 产品路径按落库终态计：COMPLETED → success（旧图路径对同一用例恒报 degraded）
+    assert metrics["success_status_rate"] == 1.0
     assert metrics["failed_status_rate"] == 0.0
     assert metrics["fallback_success_rate"] == 1.0
     assert metrics["trace_complete_rate"] == 1.0
+    assert report["details"][0]["trace"]["nodes"][0] == "stream_generate"
+
+
+def test_graph_path_remains_available_for_agent_face():
+    """图路径（Agent 面 /v1/generate）仍可评测，节点口径是 trip 分支五节点。"""
+    report = build_report([_HANGZHOU], path="graph")
+    metrics = report["metrics"]
+    assert report["generation_path"] == "graph"
+    assert metrics["poi_authority_rate"] == 1.0
+    assert metrics["degraded_status_rate"] == 1.0
+    assert metrics["trace_complete_rate"] == 1.0
+
+
+def test_offline_eval_refuses_real_llm_calls(monkeypatch):
+    """LLM HTTP 哨兵：有入口漏 mock 时整例报错，不能被生成链的降级吞成一份「正常」报告。
+
+    复现 2026-10-12 实测漏掉的入口：逐日补齐经 day_stream 自己的 llm_open_day 绑定取模型，
+    只 mock open_plans 那一份时，三亚第 5 天的补齐会打真网关、拿到 401 后被降级吞掉。
+    """
+    from unittest.mock import patch
+
+    import pytest
+
+    from app.agent.generation.orchestration import day_stream
+    from tests.agent_eval import eval_agent
+
+    real_open_day = day_stream.llm_open_day
+    real_enter = eval_agent._enter_offline_mocks
+
+    def leaky_mocks(stack, coords):
+        real_enter(stack, coords)
+        stack.enter_context(patch.object(day_stream, "llm_open_day", real_open_day))
+
+    monkeypatch.setattr(eval_agent, "_enter_offline_mocks", leaky_mocks)
+    with pytest.raises(eval_agent.LlmLeak):
+        eval_agent.run_case({"city": "三亚", "days": 5, "persons": 2, "preferences": ["自然风光"]})
 
 
 def test_authority_is_evidence_based_not_directory_membership():

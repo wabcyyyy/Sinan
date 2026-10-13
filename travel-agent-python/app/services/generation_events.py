@@ -20,7 +20,8 @@ string` 消费（sinan.ts ItineraryStreamEvent），互不冒充。新增业务�
   里程碑（M5b，spec §11）：core_ready（主行程可查看、备选富化中的 DB 权威中间态）
   指标（M5b，spec §11）：stage_timing（生成阶段分段耗时，观测用，前端可忽略）
   降级与错误：degraded / error（AGENT_ERROR 等码在 data 层）
-  会话层（event_publisher）：heartbeat / error_envelope（含 AGENT_BUSY）
+  会话层（event_publisher）：heartbeat / error_envelope（含 AGENT_BUSY）/ resync（断线续传补不全，
+    seq=0，前端以 DB 详情为准；业务帧另带 SSE `id:` 回放编号，见 event_hub 回放日志）
   导出：export_done
 """
 

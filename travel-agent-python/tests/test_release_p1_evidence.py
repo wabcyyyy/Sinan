@@ -211,6 +211,40 @@ def test_overpass_pool_rows_are_ticketed_on_pool_entry(monkeypatch):
     assert (ticket.source_url or "").endswith("/node/9")
 
 
+def test_slow_diet_pool_does_not_drop_other_food_pools(monkeypatch):
+    """Overpass 慢于等待上限时只放弃饮食行，OTM/web 行照常返回（不再拖垮整个餐饮域）。"""
+    import threading
+
+    from app.agent.tools import impl as tools
+
+    release = threading.Event()
+
+    def _slow_diet(city, diet, limit=8):
+        release.wait(5)
+        return _diet_rows()
+
+    monkeypatch.setattr(tools.overpass, "search_diet_tagged_places", _slow_diet)
+    monkeypatch.setattr(tools, "DIET_POOL_WAIT_SECONDS", 0.05)
+    monkeypatch.setattr(tools, "_otm_pool", lambda city, category, limit: [{"name": "OTM 食堂", "source": "otm"}])
+    monkeypatch.setattr(tools, "_web_pool", lambda city, category, limit: [])
+    try:
+        rows = search_foods("东京", limit=10, dietary="vegetarian")
+    finally:
+        release.set()
+    assert [row["name"] for row in rows] == ["OTM 食堂"]
+
+
+def test_diet_pool_runs_alongside_other_pools(monkeypatch):
+    """饮食池与 OTM/web 并行：OTM 查询期间饮食池已可完成，结果仍排在最前。"""
+    from app.agent.tools import impl as tools
+
+    monkeypatch.setattr(tools.overpass, "search_diet_tagged_places", lambda city, diet, limit=8: _diet_rows())
+    monkeypatch.setattr(tools, "_otm_pool", lambda city, category, limit: [{"name": "OTM 食堂", "source": "otm"}])
+    monkeypatch.setattr(tools, "_web_pool", lambda city, category, limit: [])
+    rows = search_foods("东京", limit=10, dietary="vegetarian")
+    assert [row["name"] for row in rows] == ["PLANT BASED", "OTM 食堂"]
+
+
 def _diet_rows() -> list[dict]:
     return [
         {

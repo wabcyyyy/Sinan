@@ -254,3 +254,11 @@ def test_time_conflict_blocks_delivery_since_m3(db):
     status, error = _day_status(2)
     assert status == "PENDING", "时间冲突自 M3 起是硬违例"
     assert "time_conflict" in (error or "")
+
+
+def test_build_item_persists_cost_currency() -> None:
+    """V15：TripItem.cost_currency 原样落列（'CNY'=币种有据，None=未声明）。"""
+    declared = day_persistence._build_item(1, 1, TripItem(poi_name="寿司店", cost=43, cost_currency="CNY"), 0)
+    undeclared = day_persistence._build_item(1, 1, TripItem(poi_name="拉面店", cost=60), 1)
+    assert declared.cost_currency == "CNY"
+    assert undeclared.cost_currency is None

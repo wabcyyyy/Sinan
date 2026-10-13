@@ -63,8 +63,32 @@ describe('streamItineraryEvents 断流重连', () => {
     expect(seen).toEqual(['day_done', 'done'])
   })
 
-  it('见到终态帧后的干净关流不再重连', async () => {
-    const { calls } = stubFetchSequence([Promise.resolve(sseStub([event('done')]))])
+  it('重连带上最后收到的回放编号（Last-Event-ID），首连不带', async () => {
+    const responses = [
+      sseStub([`id:3\n${event('day_start')}`, event('heartbeat')]),
+      sseStub([`id:4\n${event('day_done')}`, event('done')]),
+    ]
+    const sentHeaders: Array<Record<string, string>> = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        sentHeaders.push({ ...(init?.headers as Record<string, string>) })
+        return responses.shift()
+      }),
+    )
+    const seen: string[] = []
+    await streamItineraryEvents(
+      1,
+      new AbortController().signal,
+      { onEvent: (e) => seen.push(e.type), onError: () => {} },
+      { baseDelayMs: 1, maxReconnects: 2 },
+    )
+    expect(sentHeaders.map((headers) => headers['Last-Event-ID'])).toEqual([undefined, '3'])
+    expect(seen).toEqual(['day_start', 'heartbeat', 'day_done', 'done'])
+  })
+
+  it.each(['complete', 'done', 'error'])('见到 %s 终态帧后的干净关流不再重连', async (type) => {
+    const { calls } = stubFetchSequence([Promise.resolve(sseStub([event(type)]))])
     await streamItineraryEvents(
       1,
       new AbortController().signal,

@@ -434,6 +434,9 @@ def _copy_optional(target: ItineraryItem, request: ItemUpsertRequest) -> None:
         value = getattr(request, field)
         if value is not None:
             setattr(target, _COLUMN_BY_FIELD[field], value)
+    if request.cost is not None:
+        # 编辑面的费用输入框按人民币填写：用户亲手写的金额，币种有据
+        target.cost_currency = "CNY"
 
 
 def set_favorite(user_id: int, itinerary_id: int, favorite: bool) -> dict[str, Any]:

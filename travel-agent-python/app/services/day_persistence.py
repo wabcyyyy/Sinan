@@ -106,6 +106,7 @@ def _build_item(itinerary_id: int, day_id: int, item: Any, sort_no: int) -> Itin
         end_time=parse_time_safe(item.end_time),
         duration_min=item.duration_min,
         cost=_decimal(item.cost),
+        cost_currency=item.cost_currency,
         tag=item.tag,
         remark=item.remark,
         why_note=item.why_this,  # 契约 why_this → 列 why_note（PDF/VO 直接读列）

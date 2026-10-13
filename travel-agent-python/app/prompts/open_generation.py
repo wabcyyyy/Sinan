@@ -22,13 +22,15 @@ import json
 # 实测 68 天里 20 天因过满/过稀被重置（详见各构造器 docstring）。
 # 2026-10-07 v1.4/v1.3（P1-4）：动态追加的参考资料块改为三引号定界 + 可信/
 # 不可信分区渲染（reference_pool.block），两套生成 Prompt 的实际正文随之变化。
-OPEN_DAY_PROMPT_VERSION = "v1.5.localized"
+# 2026-10-12 v1.6/v1.7：条目新增 cost_currency（cost 数字的币种），系统按固定汇率确定性
+# 换算成人民币，取代「按金额大小猜币种」（data.fx.normalize_item_cost）。
+OPEN_DAY_PROMPT_VERSION = "v1.6.localized"
 # 2026-10-09 v1.5/v1.4（M5b，spec §11）：整趟主输出不再要求 suggestions 长备选数组
 # （24-40 条 × 60-100 字是主 JSON 截断的头号税源）；备选池改由研究候选池确定性构建
 # （open_plans.floor_suggestions / build_suggestions），缺口经既有有界富化补齐。
 # 2026-10-12 v1.6（open_trip）：命名优先级（参考资料餐厅照抄店名）+ 删与结构化上限冲突的
 # 密度示例 + 每天午晚餐各一 + 合并重复条款（见 open_trip_system_prompt docstring）。
-OPEN_TRIP_PROMPT_VERSION = "v1.6.localized"
+OPEN_TRIP_PROMPT_VERSION = "v1.7.localized"
 
 
 def open_day_system_prompt(
@@ -114,7 +116,9 @@ def open_day_system_prompt(
         '"items":[{"item_type":"attraction|food|hotel","poi_name":"真实存在的地点名称",'
         f'"why_this":"入选理由({why_this_limit}；attraction 必填，讲该点与本趟意图的具体关系，'
         '无意图时写口碑/地理/节奏理由；餐饮/酒店可省略)",'
-        '"start_time":"HH:mm","end_time":"HH:mm","duration_min":数字,"cost":人均人民币估算数字,"tag":"标签",'
+        '"start_time":"HH:mm","end_time":"HH:mm","duration_min":数字,"cost":人均估算数字,'
+        '"cost_currency":"cost 数字的币种代码(CNY 或目的地本币如 JPY)",'
+        '"tag":"标签",'
         '"remark":"实用提示(开放时间/预约方式/着装等；禁止写任何价格与金额数字，价格由系统联网核实后统一填写)","refs":[从参考资料编号中选，如3]}],'
         '"practical_notes":["当日可执行提示(每日必填 2-4 条：预约方式/着装要求/礼仪禁忌/交通衔接)"],'
         '"photo_spots":[{"name":"出片点位名","tip":"拍摄建议(≤40 字)","best_time":"最佳时段"}],'
@@ -159,7 +163,7 @@ def open_day_system_prompt(
         "餐饮时段：午餐 11:00-13:30、晚餐 17:30-20:30，禁止一天两顿午餐，优先一午一晚。"
         f"{hotel_hint}"
         f"避开已去过的地点：{json.dumps(mem.as_sorted_list(), ensure_ascii=False)}。"
-        "免费景点 cost 写 0；餐饮/酒店/付费景点必须写合理人民币估算，禁止写 0。"
+        "免费景点 cost 写 0；餐饮/酒店/付费景点必须写合理估算并在 cost_currency 写明币种，禁止写 0。"
         f"{suggestions_clause}"
     )
 
@@ -191,7 +195,8 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
         '"why_this":"入选理由(≤120 字；attraction 必填，讲该点与本趟意图的具体关系，'
         '无意图时写口碑/地理/节奏理由)",'
         '"start_time":"HH:mm","end_time":"HH:mm","duration_min":数字,'
-        '"cost":数字,"tag":"标签","remark":"实用提示(开放时间/预约方式等；禁止写任何价格与金额数字)","refs":[从参考资料编号中选，如3]}],'
+        '"cost":数字,"cost_currency":"cost 数字的币种代码(CNY 或目的地本币如 JPY)",'
+        '"tag":"标签","remark":"实用提示(开放时间/预约方式等；禁止写任何价格与金额数字)","refs":[从参考资料编号中选，如3]}],'
         '"practical_notes":["当日可执行提示(每日必填 2-4 条：预约方式/着装要求/礼仪禁忌/交通衔接)"],'
         '"photo_spots":[{"name":"出片点位名","tip":"拍摄建议","best_time":"最佳时段"}],'
         '"backup_plan":[{"if":"触发条件","action":"可直接执行的替换方案"}],'
@@ -210,7 +215,7 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
         f"{min_active_minutes}-{max_daily_minutes} 分钟，低于或高于都会被退回重生成；慢节奏取下沿。"
         "每天安排午餐（11:00-13:30）与晚餐（17:30-20:30）各一；餐饮写目的地城市真实存在的具体餐厅，"
         "禁止「某商场美食层」等笼统称呼，禁止套用其它城市的知名餐厅。"
-        "免费景点 cost 写 0，餐饮/酒店/付费景点必须写合理人民币估算，禁止写 0。"
+        "免费景点 cost 写 0，餐饮/酒店/付费景点必须写合理估算并在 cost_currency 写明币种，禁止写 0。"
         "trip_theme 只在顶层输出一次。theme 是叙事句，只提当天 items 里的地点并按游玩顺序概括主线，"
         "禁止写成「A→B→C」纯路径串。practical_notes 每日 2-4 条，每条可执行（怎么预约/穿什么/怎么走），禁止空话；"
         "photo_spots 每日 0-4 个，backup_plan 每日 0-3 条，day_options 每日 0-2 组（当天有明显取舍分叉时输出）；"

@@ -155,6 +155,20 @@ def heartbeat_envelope(itinerary_id: int) -> str:
     return build_envelope(itinerary_id, "heartbeat", {}, seq=0)
 
 
+def resync_envelope(itinerary_id: int) -> str:
+    """断线续传补不全时的提示帧：type=resync、seq=0，前端据此回到以 DB 为准的对账。
+
+    回放日志有界且只在本进程内：被挤出、进程重启或编号来自别的进程时，中间的进度帧
+    补不回来，如实说明，不假装续上了。
+    """
+    return build_envelope(
+        itinerary_id,
+        "resync",
+        {"reason": "REPLAY_GAP", "message": "部分实时进度未能补发，请以行程详情为准"},
+        seq=0,
+    )
+
+
 def too_many_connections_envelope(itinerary_id: int) -> str:
     """连接数超限提示：与 Java 网关同文案同 code；retryable=false，前端不该重连。"""
     return build_envelope(
@@ -192,7 +206,8 @@ def publish_event(itinerary_id: int | None, event_type: str, data: dict, run_id:
     # 先送进程内订阅者，再尽力广播到 Redis：Redis 缺席不再等于没有进度。
     # seq 由 _next_seq 负责（Redis 共用计数器 + 进程内兜底，同 Java 的 fallbackSeq）。
     envelope = build_envelope(itinerary_id, event_type, data, run_id=run_id)
-    event_hub.broadcast(int(itinerary_id), envelope)
+    # 业务进度帧进回放日志：断线重连带 Last-Event-ID 时可补发（publish_local 的会话私有帧不进）
+    event_hub.broadcast(int(itinerary_id), envelope, replayable=True)
     if event_type in ("complete", "error"):
         # R3-F4：生成终态帧后主动收尾该行程的订阅——此前服务端在终态后无限心跳，
         # MAX_SUBSCRIBERS_PER_ITINERARY=5 的槽被死会话占到客户端自己断开。广播在前

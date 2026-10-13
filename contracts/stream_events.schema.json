@@ -808,6 +808,22 @@
           "default": null,
           "title": "Cost"
         },
+        "costCurrency": {
+          "anyOf": [
+            {
+              "const": "CNY",
+              "enum": [
+                "CNY"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Costcurrency"
+        },
         "tag": {
           "anyOf": [
             {
@@ -940,6 +956,7 @@
         "durationMin",
         "openTime",
         "cost",
+        "costCurrency",
         "tag",
         "remark",
         "whyThis",

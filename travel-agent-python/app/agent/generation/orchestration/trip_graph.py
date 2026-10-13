@@ -159,6 +159,11 @@ def day_prepare_retry(state: UnifiedAgentState) -> dict:
 
 
 def day_prepare_fallback(state: UnifiedAgentState) -> dict:
+    """进入最后一次尝试：与 retry 同样带反馈重新采样，区别只是之后路由一律收尾。
+
+    「fallback」是历史命名（早期指确定性兜底拼装，LLM-only 后已移除）；节点名与
+    state 字段随轨迹事件和检查点持久化，保留原名以兼容存量数据。
+    """
     # 最后一次仍需知道过滤/交付失败原因；清空会再次生成同一批已被删掉的地点。
     return {"force_fallback": True}
 

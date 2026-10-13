@@ -5,18 +5,21 @@
 1. 「cost 一律人民币」的提示只挂在 budget_clause 里，用户没给预算时整句缺席；
 2. 生成后没有任何确定性兜底（city_consumption 餐价钳制在库表无数据时不生效）。
 
-本模块提供两件事：
-- currency_clause：按目的地生成「币种 + 汇率 + 换算示例」提示句，每次生成都注入；
-- backstop_item_cost：大面额币种（日元/韩元/泰铢等，1 单位远小于 1 元）的确定性兜底——
-  某条 cost 按人民币看明显离谱、按本币换算后落在合理区间，才视为本币并换算，
-  在 remark 里如实写明。小面额币种（美元/欧元等）本币数字按人民币看并不离谱，
-  无从判别，只靠提示句约束。
+本模块提供三件事：
+- currency_clause：按目的地生成「cost_currency 必填 + 汇率 + 两种写法示例」提示句，每次生成都注入；
+- normalize_item_cost（主路径，2026-10-12 币种显式化）：条目带 cost_currency 声明时按固定
+  汇率确定性换算成人民币，不看金额大小；换算后 cost_currency 恒为 "CNY"（重复调用幂等）；
+- backstop_item_cost（仅未声明时的旧兜底）：大面额币种（日元/韩元/泰铢等）某条 cost 按人民币
+  看明显离谱、按本币换算后落在合理区间，才视为本币并换算，在 remark 里如实写明。
+  条目文字写明人民币时不换算；小面额币种（美元/欧元等）无从判别，只靠声明与提示句。
 
 汇率是粗估常量（行程费用本就标「估算」），不追实时；量级正确是唯一目标。
 依赖：无（纯数据 + 纯函数）。
 """
 
 from __future__ import annotations
+
+import re
 
 #: 币种 → (中文名, 1 单位约合人民币)。粗估，量级正确即可。
 _RATES: dict[str, tuple[str, float]] = {
@@ -191,31 +194,47 @@ def _two_sig(value: float) -> float:
 
 def currency_clause(city: str | None) -> str:
     """每次生成都注入的 cost 币种约束句（与预算是否给出无关）。"""
-    base = "cost 一律填人民币 CNY/RMB 数值：餐饮/门票为每人每次，酒店为每间每晚。"
+    base = "cost 是餐饮/门票每人每次、酒店每间每晚的估算数字，cost_currency 必须写明这个数字的币种代码。"
     code = destination_currency(city)
     if code is None or code not in _RATES:
-        return base
+        return f"{base}国内行程 cost 填人民币，cost_currency 写 CNY。"
     name, rate = _RATES[code]
     # 示例金额从「人民币 150 的一餐 / 700 的一晚」反推本币并取两位有效数字，任何面额都像样
     meal_local = _two_sig(150 / rate)
     hotel_local = _two_sig(700 / rate)
     return (
-        f"{base}目的地使用{name}（{code}），1 {code} ≈ ¥{rate:g}；"
-        f"你记得的本地价格必须先换算再写入 cost，例如人均 {meal_local:g} {name}的一餐写 {meal_local * rate:.0f}，"
-        f"一晚 {hotel_local:g} {name}的酒店写 {hotel_local * rate:.0f}；禁止把{name}数字直接写进 cost。"
+        f"{base}目的地使用{name}（{code}），1 {code} ≈ ¥{rate:g}，系统按此汇率统一换算成人民币。"
+        f"你记得的是本地价格就直接写本币数字并把 cost_currency 写成 {code}，"
+        f"例如人均 {meal_local:g} {name}的一餐写 cost={meal_local:g}、cost_currency={code}；"
+        f"写人民币数字就把 cost_currency 写成 CNY（同一餐写 cost={meal_local * rate:.0f}、cost_currency=CNY）。"
+        f"一晚约 {hotel_local:g} {name}的酒店同理。禁止数字与币种代码不一致。"
     )
+
+
+#: 条目文本里「明确是人民币」的字样。不含 ¥/￥：日元同样用 ¥ 符号，不能当证据。
+_CNY_DECLARED = re.compile(r"人民币|RMB|CNY", re.IGNORECASE)
+#: 读取币种声明的文本字段（模型在这些字段里写明计价口径）
+_CURRENCY_TEXT_FIELDS = ("remark", "why_this", "tips")
+
+
+def _declares_cny(item: dict) -> bool:
+    return any(_CNY_DECLARED.search(str(item.get(field) or "")) for field in _CURRENCY_TEXT_FIELDS)
 
 
 def backstop_item_cost(item: dict, city: str | None) -> str | None:
     """大面额币种目的地：cost 按人民币离谱、按本币换算后合理 → 原地换算并返回备注。
 
     只改 item["cost"]（不追加 remark，由调用方决定落位）；不满足判据返回 None。
+    条目自己写明是人民币时不换算：金额大小只是猜测，明确的币种声明才是证据
+    （current-state-review 2026-10-12 P1：「人民币估算」的 1500 元被改成 72 元）。
     """
     code = destination_currency(city)
     if code is None or code not in _RATES:
         return None
     name, rate = _RATES[code]
     if rate > _BACKSTOP_MAX_RATE:
+        return None
+    if _declares_cny(item):
         return None
     bounds = _PLAUSIBLE_CNY.get(str(item.get("item_type") or ""))
     if bounds is None:
@@ -232,10 +251,53 @@ def backstop_item_cost(item: dict, city: str | None) -> str | None:
     return f"原估价 {cost:g} 为{name}，已按 1 {code}≈¥{rate:g} 换算为约 ¥{item['cost']:g}"
 
 
-def backstop_item_costs(items: list[dict], city: str | None) -> None:
-    """对一组 LLM 条目逐条兜底，换算说明追加进 remark。"""
+#: 模型可能写的币种别名 → ISO 代码（中文名取自 _RATES，免得两份名单漂移）
+_CURRENCY_ALIASES: dict[str, str] = {
+    "RMB": "CNY",
+    "CNY": "CNY",
+    "人民币": "CNY",
+    **{name: code for code, (name, _rate) in _RATES.items()},
+    **{code: code for code in _RATES},
+}
+
+
+def declared_cost_currency(item: dict) -> str | None:
+    """条目 cost_currency 字段声明的币种（ISO 代码）；未写或认不出返回 None。"""
+    raw = str(item.get("cost_currency") or "").strip()
+    return _CURRENCY_ALIASES.get(raw.upper()) or _CURRENCY_ALIASES.get(raw)
+
+
+def normalize_item_cost(item: dict, city: str | None) -> str | None:
+    """把条目 cost 统一成人民币，返回要追加进 remark 的换算说明（无换算返回 None）。
+
+    有显式币种声明（cost_currency）时按固定汇率确定性换算，不再看金额大小；
+    没有声明（或写法认不出）才退回 backstop_item_cost 的按金额推断。
+
+    出口语义：cost_currency 是「cost 这个数字的币种」——有声明的条目换算后恒为 "CNY"，
+    未声明的条目为 None（沿用旧约定按人民币理解，可能经过按金额推断）。原始币种写进
+    remark 的换算说明。这样重复调用是幂等的：第二次看到 "CNY" 不会再换算一次。
+    """
+    code = declared_cost_currency(item)
+    if code is None:
+        item["cost_currency"] = None
+        return backstop_item_cost(item, city)
+    try:
+        cost = float(item.get("cost"))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        item["cost_currency"] = None  # 没有金额就没有「金额的币种」
+        return None
+    item["cost_currency"] = "CNY"
+    if code == "CNY":
+        return None
+    name, rate = _RATES[code]
+    item["cost"] = float(round(cost * rate))
+    return f"原估价 {cost:g} {name}，已按 1 {code}≈¥{rate:g} 换算为约 ¥{item['cost']:g}"
+
+
+def normalize_item_costs(items: list[dict], city: str | None) -> None:
+    """对一组 LLM 条目逐条统一成人民币，换算说明追加进 remark。"""
     for item in items:
-        note = backstop_item_cost(item, city)
+        note = normalize_item_cost(item, city)
         if note:
             remark = item.get("remark")
             item["remark"] = f"{remark}；{note}" if remark else note
