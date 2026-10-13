@@ -205,7 +205,7 @@ class PersonalValidation(unittest.TestCase):
         self.assertTrue(result["deferred_commands"])
 
     def test_windows_cleanup_failure_does_not_wait_forever(self) -> None:
-        import ai_validate_quick
+        ai_validate_quick = importlib.import_module("ai_validate_quick")
 
         process = Mock(pid=123, poll=Mock(return_value=None))
         process.wait.side_effect = subprocess.TimeoutExpired(["fixture"], 1)
