@@ -33,6 +33,25 @@ from app.agent.grounding.grounding_labels import (
 from app.schemas.trip import FactEvidence, SourceRecord
 
 
+def _field_ticket(label: ItemLabel, snapshot: Mapping[str, Any] | None, observed: bool) -> FactEvidence:
+    if observed and snapshot:
+        return FactEvidence(
+            source_ref=str(snapshot["evidence_id"]),
+            provider=label.source,
+            retrieved_at=label.source_updated_at,
+            verification_status="verified",
+            value_kind="observed",
+            freshness_status=label.freshness_status,
+            review_requirement=label.review_requirement,
+        )
+    return FactEvidence(
+        verification_status="unverified",
+        value_kind="generated",
+        freshness_status="unknown",
+        review_requirement="before_departure",
+    )
+
+
 def field_fact_evidence(
     item: dict[str, Any],
     label: ItemLabel,
@@ -66,42 +85,28 @@ def field_fact_evidence(
         review_requirement=label.review_requirement,
     )
 
-    def _ticket(observed: bool) -> FactEvidence:
-        if observed and snapshot:
-            return FactEvidence(
-                source_ref=source_ref,
-                provider=label.source,
-                retrieved_at=label.source_updated_at,
-                verification_status="verified",
-                value_kind="observed",
-                freshness_status=label.freshness_status,
-                review_requirement=label.review_requirement,
-            )
-        return FactEvidence(
-            verification_status="unverified",
-            value_kind="generated",
-            freshness_status="unknown",
-            review_requirement="before_departure",
-        )
-
     evidence: dict[str, FactEvidence] = {"identity": identity}
     if snapshot:
         identity.source_url = snapshot.get("source_url")
         evidence.update(_external_tag_evidence(snapshot))
     if has_valid_coords(item):
-        evidence["coordinates"] = _ticket(
+        evidence["coordinates"] = _field_ticket(
+            label,
+            snapshot,
             label.endorsed
             and snapshot is not None
             and item.get("latitude") == snapshot.get("latitude")
-            and item.get("longitude") == snapshot.get("longitude")
+            and item.get("longitude") == snapshot.get("longitude"),
         )
     if item.get("cost") is not None:
-        evidence["cost"] = _ticket(
-            cost_observed and snapshot is not None and item.get("cost") == snapshot.get("ticket_price")
+        evidence["cost"] = _field_ticket(
+            label, snapshot, cost_observed and snapshot is not None and item.get("cost") == snapshot.get("ticket_price")
         )
     if item.get("open_time"):
-        evidence["open_time"] = _ticket(
-            open_time_observed and snapshot is not None and item.get("open_time") == snapshot.get("open_time")
+        evidence["open_time"] = _field_ticket(
+            label,
+            snapshot,
+            open_time_observed and snapshot is not None and item.get("open_time") == snapshot.get("open_time"),
         )
     return evidence
 

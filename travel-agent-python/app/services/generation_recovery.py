@@ -125,8 +125,8 @@ def recover() -> int:
 
 def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime | None = None) -> bool:
     """返回是否真的动了状态。"""
-    # 存活探测（P1-1）：本进程里这次生成还在跑/排队（研究段最坏静默 ≈19 分钟 ≫
-    # 5 分钟阈值）时，updated_at 老 ≠ 僵尸——直接不碰，消灭"对活着的生成二次放行"
+    # 存活探测（P1-1）：本进程里这次生成还在跑/排队时，updated_at 老 ≠ 僵尸。
+    # 直接不碰，消灭"对活着的生成二次放行"
     # 的双跑窗口。单进程前提同 event_hub/幂等；多实例需升级 DB 租约。
     if itinerary_generation.planning_tasks.is_active(itinerary_id):
         return False

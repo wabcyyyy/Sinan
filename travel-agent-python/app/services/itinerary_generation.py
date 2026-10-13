@@ -129,9 +129,8 @@ enricher_pool = _SlotExecutor("travel-enricher", 2, _ENRICHER_SLOTS)
 
 # ---------- 活跃生成注册表（P1-1 僵尸双跑窗口） ----------
 
-# 研究段最坏静默 ≈19 分钟 ≫ recovery 的 5 分钟阈值：只看 updated_at 会把"活着的
-# 慢生成"误判成僵尸，对同一次生成二次放行（双份真金 + day_patch 互相覆盖）。
-# submit_planning 登记、plan_days finally 注销；recover_one 开头查到即不碰。
+# 只看 updated_at 不能区分排队/慢生成与僵尸；规划租约从提交到富化结束保持活跃，
+# 总时限到期会终态化。recover_one 查到活跃租约就不碰，避免二次执行。
 # 前提与 event_hub/幂等一致：**单进程**。多实例部署需升级为 DB 租约（带 TTL 的
 # 行级心跳），不能只靠本表。
 
@@ -236,9 +235,7 @@ def plan_days(
     # 网关失败响亮报错、不回退默认通道（成本不转嫁 + 模型家族不割裂）。
     # 路由解析先于 with 单独兜 ApiError：密文解不开（加密 key 轮换）若从 route_scope
     # 直接抛出，会绕过下方 try 的失败收尾（fail_trip / SSE 错误 / finally 解注册），
-    # 409 裸穿 generation_pool 还会漏 _unregister_planning 造成注册表泄漏（终审补丁）。
-    # M5b：timing 从本函数第一条语句起算——「submit→各里程碑」的 submit 就是
-    # 任务体开始执行这一刻（排队耗时不在本函数视野内，如实不含）。
+    # 路由失败也要释放规划租约。timing 从共享预算的提交时刻起算，包含排队耗时。
     limits = (
         limits
         if limits is not None
