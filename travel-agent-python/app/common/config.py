@@ -123,6 +123,11 @@ class Settings(BaseSettings):
     agent_deadline_seconds: float = 240
     itinerary_deadline_seconds: float = 300
     research_deadline_seconds: float = 60
+    # 规划任务（V16/T1）：心跳与每次预算写入都续租，租约过期即视为 worker 已死、可被接管，
+    # 旧 worker 的条件更新同时失效。90 = 3 个心跳周期；探针缓存只服务无预算变化的纯写路径。
+    planning_live_seconds: float = 90
+    planning_heartbeat_seconds: float = 30
+    planning_write_probe_seconds: float = 1
     trusted_proxies: str = "127.0.0.1,0:0:0:0:0:0:0:1,::1"
 
     # ---- LLM ----

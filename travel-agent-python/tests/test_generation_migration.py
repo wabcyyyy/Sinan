@@ -43,6 +43,7 @@ from app.db.models import (
 )
 from app.schemas.trip import DailyPlan, FactEvidence, TripItem
 from app.services import generation_gate, generation_recovery, itinerary_generation, state_and_sessions, user_service
+from tests.planning_task_probe import simulate_worker_exit
 
 JWT_MATERIAL = "example-only-hs256-test-signing-material"
 PASSWORD = "example123"
@@ -605,7 +606,7 @@ def broken_trip(client: TestClient, monkeypatch) -> int:
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: None)
     _fake_agents(monkeypatch, [_plan(1, ["西湖"])])
     detail = _trip(client, {"city": CITY, "days": 2})
-    itinerary_generation.planning_tasks.reset()
+    simulate_worker_exit(detail["id"])
     with db_session.session_scope() as session:
         for day in session.execute(select(ItineraryDay)).scalars().all():
             day.generation_status = "PENDING"

@@ -12,7 +12,14 @@ from app.common.envelope import ApiError
 from app.common.task_pool import TaskRejected
 from app.db import session as db_session
 from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain, ItineraryMember
-from app.services import budget_engine, itinerary_chat, itinerary_generation, itinerary_query, itinerary_version
+from app.services import (
+    budget_engine,
+    itinerary_chat,
+    itinerary_generation,
+    itinerary_query,
+    itinerary_version,
+    planning_tasks,
+)
 
 
 @pytest.fixture
@@ -105,10 +112,18 @@ def test_final_delivery_has_budget_even_if_enrichment_queue_is_full(trip_db, mon
 
     monkeypatch.setattr(itinerary_generation.enricher_pool, "submit", reject)
     command = itinerary_generation.GenerateCommand(city="杭州", days=2, persons=1, stay_nights=1)
-    itinerary_generation._finish(1, 1, command)
+    # 收尾由持有租约的 worker 发起（V16/T1）：生产里 _finish 只在任务内被调用，
+    # 这里显式 acquire 一份所有权，而不是绕过判定去写终态。
+    limits = planning_tasks.acquire(1, 1)
+    try:
+        itinerary_generation._finish(1, 1, command)
+    finally:
+        planning_tasks.release(1, limits.task_id)
     detail = itinerary_query.detail(1, 1)
     assert detail["status"] == 2 and detail["totalAmount"] == 640
     assert detail["qualityReport"]["warnings"][0]["code"] == "BUDGET_EXCEEDED"
+    durable = planning_tasks.state_of(1)
+    assert durable is not None and durable["state"] == "FINISHED", "任务脱离时落执行终态"
 
 
 @pytest.mark.parametrize("user_id,itinerary_id", [(3, 1), (1, 999)])

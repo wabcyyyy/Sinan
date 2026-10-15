@@ -21,13 +21,20 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import and_, or_, select, update
 
-from app.agent import RunLimitExceeded, load_task_budget, resume_day, use_task_limits
+from app.agent import RunLimitExceeded, TaskStopped, resume_day, use_task_limits
 from app.common import cron
 from app.common.envelope import ApiError
-from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
+from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain, PlanningTask
 from app.db.session import session_scope
 from app.schemas.trip_requirements import TripRequirements
-from app.services import day_persistence, generation_gate, itinerary_generation, itinerary_query, llm_gateway_service
+from app.services import (
+    day_persistence,
+    generation_gate,
+    itinerary_generation,
+    itinerary_query,
+    llm_gateway_service,
+    planning_tasks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,10 +132,10 @@ def recover() -> int:
 
 def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime | None = None) -> bool:
     """返回是否真的动了状态。"""
-    # 存活探测（P1-1）：本进程里这次生成还在跑/排队时，updated_at 老 ≠ 僵尸。
-    # 直接不碰，消灭"对活着的生成二次放行"
-    # 的双跑窗口。单进程前提同 event_hub/幂等；多实例需升级 DB 租约。
-    if itinerary_generation.planning_tasks.is_active(itinerary_id):
+    # 存活探测（P1-1 → V16/T1）：判据从"本进程的活跃表里有没有这条行程"换成持久租约——
+    # 进程重启后本地表必然为空，旧口径会把仍在有效期内的任务当成僵尸接管或终态化。
+    # 现在读 planning_task 的 lease：本进程或别的 worker 只要租约未过期，就不碰。
+    if planning_tasks.is_active(itinerary_id):
         return False
     cutoff = active_after or (datetime.now() - timedelta(seconds=IDLE_SECONDS))
     with session_scope() as session:
@@ -187,12 +194,12 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 留给用户走「重新生成这一天」端点显式自救——前提是 complete_trip 在写
             # PARTIAL 终态时不清这面旗（否则每轮扫描都重拉，白烧 LLM 成无限补齐）。
             return False
-        limits = load_task_budget(itinerary_id)
-        if limits is None or limits.remaining() <= 0:
-            if completed_days:
-                day_persistence.complete_trip(itinerary_id, False)
-            else:
-                day_persistence.fail_trip(itinerary_id, "检查点缺少有效预算或任务已过期，请重新生成", user_facing=True)
+        task = session.get(PlanningTask, itinerary_id)
+        if task is None or task.deadline_at <= datetime.now():
+            # 绝对截止已过（或从来没有任务行）：终态化，不重开时间窗。
+            # 旧口径在这里读 SQLite 预算快照并用「提交时刻反推的剩余时间」判定，
+            # 重启越晚越容易判成过期——那才是 PLAN 里"默认恢复时预算已过期"的成因。
+            _terminalize_expired(itinerary_id, completed_days)
             return True
         if not generation_gate.try_resume_lock(itinerary_id):
             return False
@@ -210,6 +217,17 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # 断在图里的天直接续完落库（已完成超步不重跑、已产出天不重生成），并把研究上下文
     # 从检查点找回喂给兜底排程——"僵尸整段续跑"（整段研究 + 整段重生成）由此降级为
     # 无检查点时的兜底，长行程流断后的恢复不再丢天、也不整段重来。
+    #
+    # 接管（V16/T1）：租约、绝对截止与已花掉的预算都读自 planning_task 这一行，
+    # 预算不归零（计数器继承）、时间窗沿用原 deadline_at；attempt +1 记录"这是第几个
+    # worker 执行过同一份交付责任"。
+    try:
+        limits = planning_tasks.takeover(user_id, itinerary_id)
+    except planning_tasks.TaskWindowExpired as expired:
+        generation_gate.release_resume_lock(itinerary_id)
+        _terminalize_expired(itinerary_id, completed_days)
+        logger.info("planning task expired before takeover, itinerary %s: %s", itinerary_id, expired)
+        return True
     context: dict | None = None
     remaining: list[int] = []
     resumed_any = False
@@ -220,7 +238,6 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # 密文解不开（ApiError 409）必须就地终态化并放 resume 锁：扫描周期重拉也必败，
     # 漏放锁则这条行程永远进不了恢复（终审补丁）。
     try:
-        itinerary_generation.planning_tasks.acquire(user_id, itinerary_id, limits)
         with llm_gateway_service.route_scope(user_id), use_task_limits(limits):
             for day_no in pending:
                 action_id = f"day-{itinerary_id}-{day_no}"
@@ -233,13 +250,19 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
                 day_persistence.persist(itinerary_id, command, day_no, resumed.plan, action_id, fingerprint)
                 logger.info("resumed itinerary %s day %s from checkpoint", itinerary_id, day_no)
                 resumed_any = True
+    except TaskStopped as stopped:
+        # 续跑途中又被接管/被取消：放锁退出、不写终态——结论归当前持有者，
+        # 这里写只会把新 owner 的判断覆盖成旧事实。
+        generation_gate.release_resume_lock(itinerary_id)
+        logger.warning("resume interrupted for itinerary %s: %s", itinerary_id, stopped)
+        return False
     except (ApiError, RunLimitExceeded) as exc:
         generation_gate.release_resume_lock(itinerary_id)
         day_persistence.fail_trip(itinerary_id, str(exc) or None, user_facing=True)
         logger.warning("byok route broken, failed itinerary %s: %s", itinerary_id, exc)
         return True
     finally:
-        itinerary_generation.planning_tasks.release(itinerary_id, limits.task_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
 
     if pending and not remaining:
         # 全部从检查点续完：补终态（与"数据齐了"分支同口径），不整段重排
@@ -283,6 +306,11 @@ def _mark_completed(session, itinerary_id: int, city: str, days: int) -> None:
         .where(ItineraryMain.id == itinerary_id)
         .values(status=2, gen_state="COMPLETED", gen_finished_at=datetime.now(), title=f"{city}{days}日游")
     )
+
+
+def _terminalize_expired(itinerary_id: int, completed_days: int) -> None:
+    """过期收敛委托给 `planning_tasks.terminalize_expired`（产品终态 + 最终预算 + 执行态一处实现）。"""
+    planning_tasks.terminalize_expired(itinerary_id, completed_days=completed_days)
 
 
 # 周期调度统一走 app.common.cron（G-3.3）：本模块只负责"扫什么"，不负责

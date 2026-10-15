@@ -21,6 +21,23 @@ class RunLimitExceeded(ValueError):
     """一次运行触达 Deadline、模型调用或 Token 预算。"""
 
 
+class TaskStopped(RuntimeError):
+    """任务被外部介入，整趟必须停止（失权或用户取消）。
+
+    刻意**不**继承 `RunLimitExceeded`：预算耗尽是"诚实降级继续交付"的信号，研究段等处
+    会捕获它并带着已有证据收尾；失权/取消则意味着这个 worker 已经没有资格再写任何东西，
+    被降级分支吞掉就等于继续双写。两者必须靠类型区分，而不是靠 message 猜。
+    """
+
+
+class TaskOwnershipLost(TaskStopped):
+    """本 worker 不再是该任务的持有者（被接管、已终态或进程身份已换）。"""
+
+
+class TaskCancelled(TaskStopped):
+    """用户请求取消：停止后续外呼与写入，由编排负责收敛终态。"""
+
+
 @dataclass
 class RunLimits:
     started_at: float = field(default_factory=time.monotonic)
@@ -50,16 +67,26 @@ class RunLimits:
     user_id: int | None = None
     itinerary_id: int | None = None
     submitted_at: float = field(default_factory=time.time)
+    # 绝对截止（epoch 秒）。持久化任务必填：预算剩余只由它决定，与"这个进程活了多久"无关——
+    # 从 submitted_at 反推 monotonic 起点是旧 task_budget 的做法，重启越晚越容易把还在
+    # 有效期内的任务误判成过期（V16/T1 要消除的那条）。None = 无持久化任务（离线/单测）。
+    deadline_at: float | None = None
     usage_unknown: int = 0
     terminal_resets: int = 0
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     _reservations: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
     persist: Callable[[dict], None] | None = field(default=None, repr=False)
+    # 失权/取消探针：由 services 侧注入（agent 不反向依赖 services）。check() 每次调用它，
+    # 探针内部的缓存与代价由注入方决定。
+    guard: Callable[[], None] | None = field(default=None, repr=False)
 
     def remaining(self) -> float:
-        remaining = (
-            self.deadline_seconds - (time.monotonic() - self.started_at) if self.deadline_seconds > 0 else float("inf")
-        )
+        if self.deadline_at is not None:
+            remaining = self.deadline_at - time.time()
+        elif self.deadline_seconds > 0:
+            remaining = self.deadline_seconds - (time.monotonic() - self.started_at)
+        else:
+            remaining = float("inf")
         if self.task_id:
             remaining -= 5  # 留给终态事务的收尾窗口，不再用于外呼。
         phase = _phase_deadline.get()
@@ -107,6 +134,10 @@ class RunLimits:
             self._save()
 
     def check(self, kind: str) -> None:
+        # 先问持久面：失权或已取消的任务不该再发起外呼（也不该继续写库）。
+        # 探针由 services 注入并自带缓存窗口，这里不重复读库。
+        if self.guard is not None:
+            self.guard()
         if self.remaining() <= 0:
             raise RunLimitExceeded(f"Agent 总 Deadline 已到达（{kind}）")
         if kind == "llm" and self.llm_calls >= self.max_llm_calls:
@@ -155,6 +186,7 @@ class RunLimits:
             "user_id": self.user_id,
             "itinerary_id": self.itinerary_id,
             "submitted_at": self.submitted_at,
+            "deadline_at": self.deadline_at,
             "usage_unknown": self.usage_unknown,
             "terminal_resets": self.terminal_resets,
             "elapsed_ms": round(elapsed * 1000, 2),

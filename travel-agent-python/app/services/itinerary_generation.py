@@ -35,7 +35,6 @@ from app.agent import (
     RunLimits,
     current_limits,
     destination_problem,
-    new_task_budget,
     observe_run,
     phase_scope,
     run_generate_day,
@@ -127,12 +126,13 @@ _SlotExecutor = SlotExecutor
 generation_pool = _SlotExecutor("travel-generation", 4, _GENERATION_SLOTS)
 enricher_pool = _SlotExecutor("travel-enricher", 2, _ENRICHER_SLOTS)
 
-# ---------- 活跃生成注册表（P1-1 僵尸双跑窗口） ----------
+# ---------- 执行所有权（V16/T1：判据在持久租约，不在本进程） ----------
 
-# 只看 updated_at 不能区分排队/慢生成与僵尸；规划租约从提交到富化结束保持活跃，
-# 总时限到期会终态化。recover_one 查到活跃租约就不碰，避免二次执行。
-# 前提与 event_hub/幂等一致：**单进程**。多实例部署需升级为 DB 租约（带 TTL 的
-# 行级心跳），不能只靠本表。
+# "这趟行程有没有人在跑"读 `planning_task`：state∈(QUEUED,RUNNING) 且租约未过期。
+# 租约从提交一直维持到富化释放（心跳 + 每次预算写入续租），总时限由绝对 deadline 表达；
+# 进程内的句柄表只用于取本地 RunLimits 与定时器，不再被任何判定当作唯一依据。
+# 多进程/多实例部署因此不需要再改这套判据——它本来就是数据库租约（当年注释里
+# "单进程前提，多实例需升级为 DB 租约"的那条 TODO 到此结束）。
 
 
 @dataclass
@@ -206,10 +206,15 @@ def submit_planning(
     `context` = 已产出的研究上下文（PR-3 起恢复侧从检查点找回再喂进来，免"僵尸续跑
     = 整段研究重跑"）；None 由 plan_days 自己跑 `run_plan_context`。
 
-    登记活跃表（P1-1）：从提交这一刻起（含排队期）该 itinerary 就算"活着"，
-    recovery 的存活探测据此跳过，最坏静默 19 分钟的研究段不再被误判成僵尸双跑。
+    排队准入（V16/T1）：`limits=None` 时在 `planning_task` 上开一个新的执行尝试
+    （QUEUED + 绝对截止 + 租约 + 累计账本继承）；传入 limits 只可能是恢复接管的结果，
+    用 `attach` 重新绑定同一份所有权——两条路径都不再看进程内活跃表，所以重启后
+    "谁在跑这趟行程"仍然问得出答案。最坏静默 19 分钟的研究段不会被误判成僵尸双跑。
     """
-    limits = planning_tasks.acquire(user_id, itinerary_id, limits)
+    if limits is None:
+        limits = planning_tasks.acquire(user_id, itinerary_id)
+    else:
+        planning_tasks.attach(limits)
     try:
         generation_pool.submit(plan_days, user_id, itinerary_id, command, context, limits)
     except BaseException:
@@ -239,7 +244,7 @@ def plan_days(
     limits = (
         limits
         if limits is not None
-        else planning_tasks.task_limits(itinerary_id) or new_task_budget(user_id, itinerary_id)
+        else planning_tasks.task_limits(itinerary_id) or planning_tasks.acquire(user_id, itinerary_id)
     )
     timing = _StageClock(itinerary_id, limits.started_at)
     try:
@@ -259,6 +264,7 @@ def plan_days(
                 logger.error("itinerary shell %s not visible before planning; abort", itinerary_id)
                 raise ApiError(500, "行程壳数据不存在，无法开始生成")
             day_persistence.mark_generating(itinerary_id)
+            planning_tasks.mark_running(itinerary_id)
 
             used_names: list[str] = []
             used_points: list[tuple[str, str, float | None, float | None]] = []
@@ -1030,6 +1036,12 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
     if main is None:
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
+    if not planning_tasks.holds_task(itinerary_id):
+        # 失权（被接管/定时器已收/进程身份已换）的 worker 不再拥有这趟行程的结论：
+        # 照常写会把接管者判的 PARTIAL 覆盖成 COMPLETED，还会重复发终帧。
+        logger.warning("finish skipped for itinerary %s: lease no longer held", itinerary_id)
+        itinerary_query.evict_detail(user_id, itinerary_id)
+        return
     limits = current_limits()
     if limits is not None and limits.remaining() <= 0:
         # 收尾窗口只做本地事务，仍需发布终态和最终预算。
@@ -1043,6 +1055,7 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
             day_persistence.unfinished_day_nos(itinerary_id),
             None,
         )
+        planning_tasks.finish_success(itinerary_id)
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
     stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
@@ -1064,6 +1077,8 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         day_persistence.unfinished_day_nos(itinerary_id),
         version_id,
     )
+    # 执行终态在富化释放句柄时才落（release 里带 outcome），这里只登记结论。
+    planning_tasks.finish_success(itinerary_id)
     try:
         # M5b（spec §11）：富化任务绑定提交时的规划修订——core_ready 后用户的编辑
         # 会推进 revision，旧富化不得覆盖新行程；比对在富化侧写 suggestions_json

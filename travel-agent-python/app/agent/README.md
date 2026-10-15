@@ -28,6 +28,7 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 |---|---|---|
 | 一个纯计算 / 纯解析原语 | `core/` | 只准 stdlib / `app.common` / `core` 自身 |
 | 一次运行边界（deadline、计数） | `runtime/run_limits.py` | 沿用既有 `check(kind)` 口径，不新开预算通道 |
+| 一份要活过进程重启的任务状态 / 租约 / 消耗账本 | `app/services/planning_task_store.py`（业务库 `planning_task`，V16） | agent 不反向依赖 services：持久化与所有权探针由 services 注入 `RunLimits.persist` / `RunLimits.guard`（见 `planning_tasks.py`）。SQLite 只留 LangGraph 检查点 |
 | 一次 agent run 的图状态（day/trip/research 共用） | `research/agent_state.py`（`UnifiedAgentState`，全仓唯一） | 节点一律属性访问、无兼容访问器；落 research 是因为状态携带 `ResearchTask`/`EvidencePack` 域内类型（PR-2） |
 | 一份跨模块共享的计数状态 | `runtime/tool_budget.py` | 开/占用分离：observability 开、消费方就地自增 |
 | 一条轨迹事件 / 一个指标 | `runtime/trace.py` / `runtime/observability.py` | 不新开采集通道 |

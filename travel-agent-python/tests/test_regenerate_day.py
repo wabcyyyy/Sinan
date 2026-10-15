@@ -45,6 +45,7 @@ from app.services import (
     state_and_sessions,
     user_service,
 )
+from tests.planning_task_probe import simulate_worker_exit
 
 PASSWORD = "example123"
 CITY = "杭州"
@@ -133,7 +134,8 @@ def partial_trip(clients, monkeypatch) -> int:
     response = clients["alice"].post("/api/itinerary/generate", json={"city": CITY, "days": 2})
     assert response.status_code == 200, response.json()
     trip_id = response.json()["data"]["id"]
-    itinerary_generation.planning_tasks.reset()
+    # 「提交它的进程已经死了」在持久租约下 = 清本地句柄 **且** 租约过期
+    simulate_worker_exit(trip_id)
     stale = datetime.now() - timedelta(minutes=30)
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
@@ -267,7 +269,11 @@ def test_exhausted_finish_window_still_delivers_terminal_frame_and_budget(client
 
 
 def test_finish_failure_keeps_delivered_days_with_final_budget(clients, partial_trip, monkeypatch) -> None:
-    """后续天失败：已交付天保留为 PARTIAL，最终预算同步重算（富化/预算后台队列可能已满或未跑）。"""
+    """后续天失败：已交付天保留为 PARTIAL，最终预算同步重算（富化/预算后台队列可能已满或未跑）。
+
+    终态写必须由持有租约的 worker 发起（V16/T1），所以这里先 acquire 再收尾——
+    直接对一个没人持有的任务写终态是被拒绝的，见 test_planning_task_lifecycle 的失权用例。
+    """
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, partial_trip)
         assert main is not None
@@ -276,6 +282,7 @@ def test_finish_failure_keeps_delivered_days_with_final_budget(clients, partial_
         assert pending is not None
         pending.generation_status = "FAILED"
     events = _capture_events(monkeypatch)
+    limits = itinerary_generation.planning_tasks.acquire(1, partial_trip)
 
     itinerary_generation.planning_tasks.finish_failure(partial_trip, ValueError("第 2 天安排过稀"))
 
@@ -284,6 +291,7 @@ def test_finish_failure_keeps_delivered_days_with_final_budget(clients, partial_
     assert terminal == [("PARTIAL", [2])], "部分交付告知前端哪些天未完成"
     # 只按可见条目计：无价西湖 + 交通 35×2 天（未完成天不虚构消费）
     assert _budget_total(partial_trip) == Decimal("70.00")
+    itinerary_generation.planning_tasks.release(partial_trip, limits.task_id)
 
 
 def test_regenerate_day_rejects_succeeded_day(clients, partial_trip, monkeypatch) -> None:

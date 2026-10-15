@@ -48,6 +48,7 @@ from app.services import (
     state_and_sessions,
     user_service,
 )
+from tests.planning_task_probe import simulate_worker_exit
 
 PASSWORD = "example123"
 CITY = "杭州"
@@ -380,9 +381,9 @@ def test_recovery_rebuilds_command_without_losing_user_params(client, monkeypatc
         },
     ).json()["data"]
     trip_id = detail["id"]
-    # 提交被 patch 成不执行 → 行程还挂在注册表里；本用例模拟"提交它的进程已死"，
-    # 清掉注册表让 recovery 可接（P1-1 存活探测的另一面）
-    itinerary_generation.planning_tasks.reset()
+    # 提交被 patch 成不执行 → 任务行还挂着活的租约；本用例模拟"提交它的进程已死"，
+    # 清句柄 + 拨老租约让 recovery 可接（V16 存活探测的另一面）
+    simulate_worker_exit(trip_id)
     # 模拟上一轮真实观测过报价：flight_quotes 非 NULL（save_flight_quotes 的空→NULL 语义
     # 不许把这份观测在恢复路径上无声抹掉）。直接赋 list——JSON 列由 SQLAlchemy 序列化。
     with db_session.session_scope() as session:

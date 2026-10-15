@@ -97,15 +97,16 @@ def test_revision_refuses_to_rebuild_an_existing_schema(sqlite_db) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_head_is_0015_and_linear() -> None:
-    """条目币种列（V15）接在规划修订号之后，历史链保持单一且完整。"""
+def test_head_is_0016_and_linear() -> None:
+    """规划任务表（V16）接在条目币种列之后，历史链保持单一且完整。"""
     script = ScriptDirectory.from_config(db_migrate.alembic_config())
-    assert script.get_current_head() == "0015_item_cost_currency"
+    assert script.get_current_head() == "0016_planning_task"
     # 从 head 沿 down_revision 走回基线，链路上每个 revision 都必须真实存在
     chain: list[str] = []
     for revision in script.walk_revisions(base="base", head="heads"):
         chain.append(revision.revision)
     assert chain == [
+        "0016_planning_task",
         "0015_item_cost_currency",
         "0014_itinerary_planning_revision",
         "0013_itinerary_requirements_json",

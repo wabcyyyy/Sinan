@@ -18,7 +18,7 @@ from app.common import llm_client
 from app.common.envelope import FAIL_TRIP_NOTE
 from app.common.llm_route import LLMRoute, current_route, use_route
 from app.db import session as db_session
-from app.db.models import Base, ItineraryDay, ItineraryMain
+from app.db.models import Base, ItineraryDay, ItineraryMain, PlanningTask
 from app.schemas.trip import ClarifyResponse
 from app.schemas.trip_requirements import IntakeState
 from app.services import (
@@ -208,7 +208,22 @@ def _seed_stale_generating_trip(user_id: int = 7) -> int:
         session.add(ItineraryDay(itinerary_id=main.id, day_no=1, city="杭州", generation_status="PENDING"))
         session.flush()
         session.execute(update(ItineraryDay).where(ItineraryDay.itinerary_id == main.id).values(updated_at=stale))
-        itinerary_generation.new_task_budget(user_id, main.id)
+        # 任务行：上一个 worker 已经没了（租约过期、身份是别人），但绝对截止还没到——
+        # 这正是"有效任务应当被接管续跑"的形状（V16/T1 的判定口径）。
+        session.add(
+            PlanningTask(
+                itinerary_id=main.id,
+                user_id=user_id,
+                task_id="dead-worker-task",
+                lease_owner="dead-worker",
+                attempt=1,
+                state="QUEUED",
+                submit_at=stale,
+                deadline_at=datetime.now() + timedelta(minutes=4),
+                lease_expires_at=stale,
+                budget_json="{}",
+            )
+        )
         return main.id
 
 

@@ -1,20 +1,40 @@
-"""Public-preview task limits exercise real HTTP attempts, concurrency and durable accounting."""
+"""Public-preview task limits exercise real HTTP attempts, concurrency and durable accounting.
+
+预算与所有权的持久面在 `planning_task`（V16/T1）：本文件盯"账本跨重启不被重置、排队准入
+按持久面判定"，所有权/租约/取消的完整语义见 tests/test_planning_task_lifecycle.py。
+"""
 
 import contextvars
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 import httpx
 import pytest
+from sqlalchemy import create_engine, update
+from sqlalchemy.orm import sessionmaker
 
 from app.agent.runtime.run_limits import RunLimitExceeded, RunLimits, phase_scope, use_task_limits
-from app.agent.runtime.task_budget import load_task_budget, new_task_budget
 from app.agent.runtime.usage_store import UsageStore
 from app.common import llm_client
-from app.common.config import settings
 from app.common.envelope import ApiError
+from app.db import session as db_session
+from app.db.models import Base, PlanningTask
 from app.schemas.trip import DailyPlan
 from app.services import day_persistence, planning_tasks
+
+
+@pytest.fixture
+def task_db(tmp_path):
+    """持久执行面需要业务库（planning_task 行）；离线套件跑临时 SQLite。"""
+    engine = create_engine(f"sqlite:///{tmp_path / 'planning_task.db'}")
+    Base.metadata.create_all(engine)
+    db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
+    planning_tasks.reset()
+    yield
+    planning_tasks.reset()
+    db_session.init_engine(None, None)
+    engine.dispose()
 
 
 def test_failed_attempt_uses_last_call_and_cannot_retry(monkeypatch, tmp_path):
@@ -68,19 +88,42 @@ def test_missing_usage_retains_reservation_and_known_usage_refunds():
     assert limits.llm_calls == 2
 
 
-def test_queue_time_and_durable_resume_share_spend(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "checkpoint_db_path", str(tmp_path / "checkpoints.db"))
-    limits = new_task_budget(9, 4)
+def test_takeover_keeps_spend_and_absolute_deadline(task_db):
+    """重启接管继承已花掉的预算与绝对截止时刻：预算不因重启归零，也不因晚重启而提前过期。"""
+    limits = planning_tasks.acquire(9, 4)
     limits.reserve_llm(10, 20)
     limits.record_retrieval(2)
-    limits.submitted_at -= 40
-    assert limits.persist is not None
-    limits.persist(limits.snapshot())
-    restored = load_task_budget(4)
-    assert restored is not None
-    assert restored.task_id == limits.task_id and restored.llm_calls == 1 and restored.retrievals == 2
-    assert 250 < restored.remaining() < 260
-    assert load_task_budget(5) is None
+    before = planning_tasks.state_of(4)
+    assert before is not None
+
+    # 模拟"提交它的那个进程已经没了"：本地句柄清空，持久行原样留着。
+    planning_tasks.reset()
+    restored = planning_tasks.takeover(9, 4)
+
+    assert restored.llm_calls == 1 and restored.retrievals == 2, "接管后已花掉的调用不清零"
+    assert restored.task_id != limits.task_id, "接管轮换任务令牌，旧 worker 从此写不回"
+    after = planning_tasks.state_of(4)
+    assert after is not None
+    assert after["deadlineAt"] == before["deadlineAt"], "绝对截止沿用，不重开时间窗"
+    assert after["attempt"] == before["attempt"] + 1
+    assert 250 < restored.remaining() < 300, "剩余时间由绝对截止决定（旧口径从提交时刻反推，晚重启会误判过期）"
+    assert after["consumed"]["consumed_llm_calls"] == 1 and after["consumed"]["consumed_retrievals"] == 2
+    with pytest.raises(planning_tasks.TaskWindowExpired):
+        planning_tasks.takeover(9, 5)
+
+
+def test_takeover_refuses_after_absolute_deadline(task_db):
+    """过期任务终态化：过了绝对截止就不给续跑窗口（由调用方收敛终态，见恢复回归）。"""
+    planning_tasks.acquire(9, 6)
+    with db_session.session_scope() as session:
+        session.execute(
+            update(PlanningTask)
+            .where(PlanningTask.itinerary_id == 6)
+            .values(deadline_at=datetime.now() - timedelta(seconds=1))
+        )
+    planning_tasks.reset()
+    with pytest.raises(planning_tasks.TaskWindowExpired):
+        planning_tasks.takeover(9, 6)
 
 
 def test_nested_stage_keeps_root_budget_and_caps_time():
@@ -94,15 +137,20 @@ def test_nested_stage_keeps_root_budget_and_caps_time():
     assert limits.llm_calls == 1 and limits.remaining() > 1
 
 
-def test_user_lease_queue_rejection_and_expired_write(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "checkpoint_db_path", str(tmp_path / "budget.db"))
-    planning_tasks.reset()
+def test_user_lease_queue_rejection_and_expired_write(task_db):
+    """排队准入与期限判定都读持久面：同用户第二个行程 429，期限已过的写路径直接抛。"""
     limits = planning_tasks.acquire(7, 1)
     try:
         with pytest.raises(ApiError) as error:
             planning_tasks.acquire(7, 2)
         assert error.value.status == 429
-        limits.started_at -= 300
+        with db_session.session_scope() as session:
+            session.execute(
+                update(PlanningTask)
+                .where(PlanningTask.itinerary_id == 1)
+                .values(deadline_at=datetime.now() - timedelta(seconds=1))
+            )
+        limits.deadline_at = time.time() - 1
         with use_task_limits(limits), pytest.raises(RunLimitExceeded):
             day_persistence.persist(1, None, 1, DailyPlan(day_no=1, items=[]), "day-1", "fp")
     finally:

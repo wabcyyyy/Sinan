@@ -445,3 +445,51 @@ class ItemFeedback(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class PlanningTask(Base):
+    """规划任务的持久化执行面（V16，上线 v1 T1）：状态/租约/绝对截止/累计预算的单一权威。
+
+    一趟行程同一时刻只有一行（主键就是 itinerary_id）：交付责任随 attempt 延续，
+    接管与显式补齐都在同一行上推进，累计消耗不随行清零——所以反复重启/重试拿不到
+    新的调用与 token 额度。所有权由 (task_id, lease_owner) 的条件更新判定，失权写入
+    rowcount=0 即抛错，不再依赖进程内活跃表。
+
+    **刻意不继承 SoftDelete**：软删过滤钩子会把这张调度表一起过滤掉——用户删行程
+    不等于在途任务可以失权乱写；删除流程必须先收敛任务（T7 的数据删除负责那条）。
+    """
+
+    __tablename__ = "planning_task"
+
+    itinerary_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="提交用户,排队准入按人计数")
+    task_id: Mapped[str] = mapped_column(String(32), nullable=False, comment="当前持有者令牌,acquire 时轮换")
+    lease_owner: Mapped[str] = mapped_column(String(64), nullable=False, comment="持有 worker 身份(pid+随机段)")
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    state: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="QUEUED",
+        server_default="QUEUED",
+        comment="QUEUED|RUNNING|FINISHED|FAILED|CANCELLED|EXPIRED",
+    )
+    submit_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="首次提交(交付责任起点)")
+    deadline_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="当前 attempt 的绝对截止时刻")
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime)
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime, comment="非空=用户已请求取消")
+    consumed_llm_calls: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0", comment="本责任累计模型调用(跨 attempt 只增)"
+    )
+    consumed_prompt_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    consumed_completion_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    consumed_retrievals: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    consumed_research_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    consumed_existence_checks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    consumed_replans: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    budget_json: Mapped[str] = mapped_column(LongText, nullable=False, comment="当前 attempt 的 RunLimits 快照")
+    result_code: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )

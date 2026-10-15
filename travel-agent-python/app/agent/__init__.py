@@ -41,12 +41,14 @@ from app.agent.runtime.observability import metrics, observe_run, scene, use_sce
 from app.agent.runtime.run_limits import (
     RunLimitExceeded,
     RunLimits,
+    TaskCancelled,
+    TaskOwnershipLost,
+    TaskStopped,
     check_task_write,
     current_limits,
     phase_scope,
     use_task_limits,
 )
-from app.agent.runtime.task_budget import load_task_budget, new_task_budget
 from app.agent.runtime.usage_store import usage_store
 from app.agent.tools.flight_quotes import search_live_flight_quotes, shape_quote_for_wire
 from app.agent.tools.hotel_quotes import search_live_hotel_quotes
@@ -59,6 +61,9 @@ __all__ = [
     "DayResume",
     "RunLimitExceeded",
     "RunLimits",
+    "TaskCancelled",
+    "TaskOwnershipLost",
+    "TaskStopped",
     "ToolInvocationError",
     "ToolSpec",
     "check_constraints",
@@ -73,9 +78,7 @@ __all__ = [
     "hard_day_issues",
     "is_authoritative_source",
     "live_quote_quota_exhausted",
-    "load_task_budget",
     "metrics",
-    "new_task_budget",
     "observe_run",
     "optimize_daily_plan",
     "phase_scope",
