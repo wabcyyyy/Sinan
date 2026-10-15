@@ -6,6 +6,7 @@ import json
 import sqlite3
 import time
 import uuid
+from contextlib import closing
 from dataclasses import fields
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from app.common.config import settings
 
 def _save(itinerary_id: int, snapshot: dict) -> None:
     Path(settings.checkpoint_db_path).parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(settings.checkpoint_db_path, timeout=5) as connection:
+    with closing(sqlite3.connect(settings.checkpoint_db_path, timeout=5)) as connection, connection:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS task_budgets (itinerary_id INTEGER PRIMARY KEY, payload TEXT NOT NULL)"
         )
@@ -40,7 +41,7 @@ def new_task_budget(user_id: int, itinerary_id: int) -> RunLimits:
 def load_task_budget(itinerary_id: int) -> RunLimits | None:
     if not Path(settings.checkpoint_db_path).exists():
         return None
-    with sqlite3.connect(settings.checkpoint_db_path, timeout=5) as connection:
+    with closing(sqlite3.connect(settings.checkpoint_db_path, timeout=5)) as connection:
         exists = connection.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='task_budgets'"
         ).fetchone()
