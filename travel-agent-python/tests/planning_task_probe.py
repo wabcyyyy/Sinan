@@ -17,9 +17,13 @@ from app.db.models import PlanningTask
 from app.services import planning_tasks
 
 
-def simulate_worker_exit(*itinerary_ids: int) -> None:
-    """清掉本进程的句柄，并把给定行程的租约拨到已过期（= 那个 worker 不会再回来）。"""
-    planning_tasks.reset()
+def expire_lease(*itinerary_ids: int) -> None:
+    """只把租约拨到已过期，本地句柄不动。
+
+    为什么单独要这一步：`takeover` 现在拒绝抢占仍在续租的租约（`LeaseHeld`），与恢复
+    扫描的口径一致——判据是先 `is_active() == False`。用例要合法地演"被第二个 worker
+    接管"，就得先让租约过期，而不是绕开这条不变式。
+    """
     if not itinerary_ids:
         return
     dead = datetime.now() - timedelta(seconds=1)
@@ -29,3 +33,9 @@ def simulate_worker_exit(*itinerary_ids: int) -> None:
             .where(PlanningTask.itinerary_id.in_(list(itinerary_ids)))
             .values(lease_expires_at=dead, heartbeat_at=dead)
         )
+
+
+def simulate_worker_exit(*itinerary_ids: int) -> None:
+    """清掉本进程的句柄，并把给定行程的租约拨到已过期（= 那个 worker 不会再回来）。"""
+    planning_tasks.reset()
+    expire_lease(*itinerary_ids)

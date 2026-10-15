@@ -126,6 +126,7 @@ def _build_item(itinerary_id: int, day_id: int, item: Any, sort_no: int) -> Itin
 
 def mark_running(day_id: int, action_id: str, fingerprint: str) -> None:
     """开始生成：只动状态三列，不碰 note/metadata（留给落库那一步）。"""
+    check_task_write()
     with session_scope() as session:
         day = _require_day_by_id(session, day_id)
         generation_gate.verify_action(day, action_id, fingerprint)
@@ -136,6 +137,7 @@ def mark_running(day_id: int, action_id: str, fingerprint: str) -> None:
 
 
 def mark_failed(day_id: int, action_id: str, fingerprint: str, error: str | None) -> None:
+    check_task_write()
     with session_scope() as session:
         day = _require_day_by_id(session, day_id)
         generation_gate.verify_action(day, action_id, fingerprint)
@@ -149,6 +151,7 @@ def reset_day_pending(day_id: int, action_id: str, fingerprint: str, reason: str
     只动状态列，不删 items：落库的违规行程仍是当前最新事实，逐日兜底循环重生成时由 `persist` 的清旧写新覆盖；
     若重生成再失败，用户至少还能看到这一版（与 day_patch 覆盖路径的中间态口径一致）。同一动作指纹内重置，过幂等门。
     """
+    check_task_write()
     with session_scope() as session:
         day = _require_day_by_id(session, day_id)
         generation_gate.verify_action(day, action_id, fingerprint)

@@ -22,7 +22,8 @@ import uuid
 from dataclasses import fields
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.agent import RunLimits, TaskCancelled, TaskOwnershipLost
 from app.common.config import settings
@@ -59,12 +60,21 @@ class TaskWindowExpired(Exception):
     """接管请求落在绝对截止之后：调用方应当终态化，而不是重开窗口。"""
 
 
+class LeaseHeld(Exception):
+    """接管落在一个仍然有效的租约上：任务还在别人手里跑，调用方必须让路而不是抢占。"""
+
+
 def now() -> datetime:
     return datetime.now()
 
 
 def lease_until(at: datetime) -> datetime:
     return at + timedelta(seconds=settings.planning_live_seconds)
+
+
+def store_totals(row: PlanningTask) -> dict[str, int]:
+    """行上的累计账本 → 快照计数器键（重开 attempt 时作为新快照的基线）。"""
+    return {key: int(getattr(row, column) or 0) for key, column in LIFETIME_COLUMNS.items()}
 
 
 def counters_of(snapshot: dict) -> dict[str, int]:
@@ -78,7 +88,13 @@ def read(session, itinerary_id: int, *, for_update: bool = False) -> PlanningTas
     return session.execute(statement).scalar_one_or_none()
 
 
+def is_cancel_pending(row: PlanningTask) -> bool:
+    """live 行上已落下取消旗：持有者已死时这条责任只能由恢复扫描收敛，不能再被接管。"""
+    return row.cancel_requested_at is not None and row.state in LIVE_STATES
+
+
 def lease_alive(row: PlanningTask, at: datetime) -> bool:
+    """租约仍在有效期内 = 有 worker 正在跑（准入与接管都以此判断）。"""
     return bool(row.lease_expires_at and row.lease_expires_at > at)
 
 
@@ -220,7 +236,17 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                     budget_json=json.dumps(snapshot),
                 )
             )
+            try:
+                session.flush()
+            except IntegrityError:
+                # 主键就是 itinerary_id：并发首次提交时两条都可能读到"没有行"。
+                # 让先落库的那条赢，另一条按同一口径回 409，而不是抛 500。
+                raise ApiError(409, "该行程已有生成任务在运行，请等它结束") from None
         else:
+            # 累计账本从行上的 consumed_* 接着记：显式补齐/重建重开的是时间窗，不是额度。
+            # 上限（max_*）不动，所以一个已经烧完本轮调用与 token 的责任重来一次也拿不到新配额；
+            # 运营放行的额外修复预算由 T2 显式控制，不在这里悄悄放宽。
+            snapshot.update(store_totals(row))
             session.execute(
                 update(PlanningTask)
                 .where(PlanningTask.itinerary_id == itinerary_id)
@@ -255,6 +281,10 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
             raise ApiError(409, "任务归属与行程用户不一致")
         if row.deadline_at <= at:
             raise TaskWindowExpired(f"行程 {itinerary_id} 已超过绝对截止 {row.deadline_at}")
+        if row.state in LIVE_STATES and lease_alive(row, at):
+            # 调用方的 is_active() 读的是另一个事务，中间可能有 worker 刚续租。
+            # 这里以 FOR UPDATE 锁住的当前行为准：租约还活着就是别人在跑，让路而不是抢占。
+            raise LeaseHeld(f"行程 {itinerary_id} 的租约仍由 {row.lease_owner} 持有")
         snapshot = json.loads(row.budget_json) if row.budget_json else {}
         if not isinstance(snapshot, dict):
             snapshot = {}
@@ -266,9 +296,12 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                 "deadline_at": row.deadline_at.timestamp(),
             }
         )
-        session.execute(
+        result = session.execute(
             update(PlanningTask)
-            .where(PlanningTask.itinerary_id == itinerary_id)
+            .where(
+                PlanningTask.itinerary_id == itinerary_id,
+                or_(PlanningTask.lease_expires_at <= at, PlanningTask.state.notin_(LIVE_STATES)),
+            )
             .values(
                 task_id=task_id,
                 lease_owner=WORKER_ID,
@@ -278,6 +311,8 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                 budget_json=json.dumps(snapshot),
             )
         )
+        if getattr(result, "rowcount", 0) == 0:
+            raise LeaseHeld(f"行程 {itinerary_id} 的租约在接管期间被其它 worker 续上")
         rebuilt = read(session, itinerary_id)
         assert rebuilt is not None
         return build_limits(rebuilt, snapshot), snapshot

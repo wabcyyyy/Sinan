@@ -53,7 +53,7 @@ from app.services import (
     state_and_sessions,
     user_service,
 )
-from tests.planning_task_probe import simulate_worker_exit
+from tests.planning_task_probe import expire_lease, simulate_worker_exit
 
 PASSWORD = "example123"
 CITY = "杭州"
@@ -281,9 +281,14 @@ def test_takeover_resumes_undelivered_days(env, monkeypatch) -> None:
 
 
 def test_taken_over_worker_cannot_call_or_write(env) -> None:
-    """接管后旧 worker：下一次外呼前就被挡下，落库写同样被拒（走的是产品写路径的守卫）。"""
+    """接管后旧 worker：下一次外呼前就被挡下，落库写同样被拒（走的是产品写路径的守卫）。
+
+    接管的前提与恢复扫描一致——原租约已过期（`is_active()` 判 False）。租约还活着时的
+    抢占已被 `LeaseHeld` 拒掉，见 `test_takeover_refuses_a_still_leased_task`。
+    """
     trip_id = _seed_trip()
     old = planning_tasks.acquire(1, trip_id)
+    expire_lease(trip_id)  # 原持有者不再续租（本地句柄留着，专门演"同进程第二份身份接管"）
     fresh = planning_tasks.takeover(1, trip_id)
     assert fresh.task_id != old.task_id
 
@@ -306,6 +311,57 @@ def test_old_worker_cannot_write_terminal_state(env) -> None:
 
     assert _main(trip_id).gen_state == "GENERATING", "失权 worker 不能把产品态写成 PARTIAL/FAILED"
     assert _task_row(trip_id).state == "QUEUED", "执行态同样不被旧 worker 覆盖"
+
+
+def test_takeover_refuses_a_still_leased_task(env) -> None:
+    """租约还在续租时不能抢占：恢复扫描必须让路（旧实现只看进程内表，抢得毫无痕迹）。"""
+    trip_id = _seed_trip()
+    planning_tasks.acquire(1, trip_id)
+    planning_tasks.reset()  # 第二个 worker 的视角：本地没有句柄，但行里的租约仍然新鲜
+
+    with pytest.raises(planning_tasks.LeaseHeld):
+        planning_tasks.takeover(1, trip_id)
+
+    assert _task_row(trip_id).attempt == 1, "被拒的接管不得推进 attempt"
+    assert planning_tasks.state_of(trip_id)["state"] == "QUEUED"
+
+
+def test_cancel_flag_with_dead_holder_converges_once(env) -> None:
+    """取消旗 + 持有者当场死掉：扫描把它收敛成 CANCELLED，且不会被反复接管。
+
+    这条路径原先不存在——恢复只看租约，于是任务每 90s 被接管一次、每次都在 `TaskStopped`
+    上退出，CANCELLED 是不可达状态（PLAN T1 的「取消」与「重启恢复」交叉的洞）。
+    """
+    trip_id = _seed_trip(delivered_days=1)
+    planning_tasks.acquire(1, trip_id)
+    planning_tasks.request_cancel(1, trip_id)
+    expire_lease(trip_id)  # = 持有者没来得及收敛就没了
+
+    assert generation_recovery.recover_one(trip_id, False) is True
+    row = _task_row(trip_id)
+    assert row.state == "CANCELLED" and row.result_code == "CANCELLED_PARTIAL"
+    assert _main(trip_id).gen_state == "PARTIAL", "已交付的那一天不能因为取消被清空"
+
+    planning_tasks.reset()
+    assert generation_recovery.recover_one(trip_id, False) is False, "取消过的责任不由后台复活"
+
+
+def test_resubmit_reopens_window_not_quota(env) -> None:
+    """已结算的责任重新拉起：时间窗重开、累计账本不清零，"重试拿不到新额度"成为可查事实。"""
+    trip_id = _seed_trip(delivered_days=1)
+    first = planning_tasks.acquire(1, trip_id)
+    first.reserve_llm(4, 6)
+    first.record_retrieval(2)
+    first_deadline = first.deadline_at
+    simulate_worker_exit(trip_id)
+    planning_tasks.terminalize_expired(trip_id, completed_days=1)
+
+    second = planning_tasks.resume_or_restart(1, trip_id)
+
+    assert second.llm_calls == 1 and second.retrievals == 2, "新 attempt 必须继承已花掉的账"
+    assert second.deadline_at > first_deadline, "重开的是时间窗，不是额度"
+    row = _task_row(trip_id)
+    assert row.attempt == 2 and row.consumed_llm_calls == 1 and row.state == "QUEUED"
 
 
 def test_budget_write_renews_lease(env) -> None:

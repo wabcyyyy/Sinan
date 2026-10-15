@@ -6,9 +6,9 @@
    `RunLimits`，并把持久面的两根线注入进去——预算写入（CAS + 续租）与纯写路径的所有权
    探针。注入点是 `RunLimits.persist/guard`，agent 层不反向依赖 services。
 2. **停手**：失权或取消后，下一次外呼与落库都会被拒；旧 worker 不再能覆盖新持有者的结论。
-3. **终态收敛**（`finish_success` / `finish_failure` / `terminalize_expired` / `release`）：
-   已交付天保留为 PARTIAL 并同步重算最终预算；执行态（QUEUED/RUNNING →
-   FINISHED/FAILED/CANCELLED/EXPIRED）随句柄脱离一起落，不会只落一半。
+3. **终态收敛**（`finish_success` / `finish_failure` / `terminalize_expired` /
+   `terminalize_cancelled` / `release`）：已交付天保留为 PARTIAL 并同步重算最终预算；
+   执行态（QUEUED/RUNNING → FINISHED/FAILED/CANCELLED/EXPIRED）随句柄脱离一起落，不会只落一半。
 4. **取消**（`request_cancel`）：旗子写在持久面，所以"取消一个不在本进程跑的任务"成立。
 
 进程内 `_held` 只用于取回本地正在跑的 `RunLimits` 与定时器，**不是**所有权依据；
@@ -34,9 +34,12 @@ from app.services import planning_task_store as store
 logger = logging.getLogger(__name__)
 
 TaskWindowExpired = store.TaskWindowExpired
+LeaseHeld = store.LeaseHeld
+FINISHED = store.FINISHED
 state_of = store.state_of
 is_active = store.is_active
 holds_lease = store.holds_lease
+is_cancel_pending = store.is_cancel_pending
 
 
 @dataclass
@@ -98,14 +101,18 @@ def _persist(itinerary_id: int, task_id: str, snapshot: dict) -> None:
     with _lock:
         held = _held.get(itinerary_id)
         base = held.last_counters if held is not None else {}
-        if held is not None:
-            held.last_counters = counters
     deltas = {
         column: counters[key] - int(base.get(key, 0))
         for key, column in store.LIFETIME_COLUMNS.items()
         if counters[key] > int(base.get(key, 0))
     }
+    # 基线只在落库成功后才推进：失权/取消时 apply_budget 抛错，这批增量必须留给下一次
+    # 写入重试，否则账本会比真实花费少（T2 的费用硬顶正是绑在这些列上）。
     store.apply_budget(itinerary_id, task_id, snapshot, deltas)
+    with _lock:
+        held = _held.get(itinerary_id)
+        if held is not None:
+            held.last_counters = counters
 
 
 def _probe(itinerary_id: int, task_id: str) -> None:
@@ -344,7 +351,49 @@ def finish_failure(itinerary_id: int, exc: Exception) -> None:
 
 
 def terminalize_expired(itinerary_id: int, *, completed_days: int) -> None:
-    """无持有者时的过期收敛（恢复扫描用）：产品终态 + 最终预算 + 执行态一次写完。
+    """无持有者时的过期收敛（恢复扫描用），语义见 `_terminalize_without_holder`。"""
+    _terminalize_without_holder(
+        itinerary_id,
+        completed_days=completed_days,
+        outcome=store.EXPIRED,
+        event_code="TIMEOUT",
+        fail_code=None,
+        reason="规划任务已超过总时限，请重新生成",
+        partial_code="EXPIRED_PARTIAL",
+        user_facing=True,
+    )
+
+
+def terminalize_cancelled(itinerary_id: int, *, completed_days: int) -> None:
+    """用户已按取消、持有者却当场死掉的收敛：旗子写在持久面，不认它就没人来收敛。
+
+    恢复扫描原先只看租约，这类任务会被每 90s 接管一次、每次都在 `TaskStopped` 上退出，
+    CANCELLED 因此是不可达状态（PLAN T1「取消停止后续外呼与写入」+「重启恢复」的交叉洞）。
+    """
+    _terminalize_without_holder(
+        itinerary_id,
+        completed_days=completed_days,
+        outcome=store.CANCELLED,
+        event_code="CANCELLED",
+        fail_code="CANCELLED",
+        reason="已取消生成",
+        partial_code="CANCELLED_PARTIAL",
+        user_facing=False,
+    )
+
+
+def _terminalize_without_holder(
+    itinerary_id: int,
+    *,
+    completed_days: int,
+    outcome: str,
+    event_code: str,
+    fail_code: str | None,
+    reason: str,
+    partial_code: str,
+    user_facing: bool,
+) -> None:
+    """无持有者时的终态收敛：产品终态 + 最终预算 + 执行态一次写完（唯一实现）。
 
     与 `finish_failure` 同一套交付语义——已交付天保留为 PARTIAL 且必须带最终预算，
     一天没交付才 FAILED。区别只在资格：这里没有活租约需要 CAS（那个 worker 已经没了）。
@@ -361,12 +410,47 @@ def terminalize_expired(itinerary_id: int, *, completed_days: int) -> None:
         generation_events.complete(
             itinerary_id, "PARTIAL", days, day_persistence.unfinished_day_nos(itinerary_id), None
         )
-        store.force_terminal(itinerary_id, store.EXPIRED, "EXPIRED_PARTIAL")
+        store.force_terminal(itinerary_id, outcome, partial_code)
     else:
-        day_persistence.fail_trip(itinerary_id, "规划任务已超过总时限，请重新生成", user_facing=True)
-        generation_events.error(itinerary_id, "TIMEOUT", "规划任务已超过总时限，请重新生成", True)
-        store.force_terminal(itinerary_id, store.EXPIRED, store.EXPIRED)
+        day_persistence.fail_trip(itinerary_id, reason, user_facing=user_facing, code=fail_code)
+        generation_events.error(itinerary_id, event_code, reason, True)
+        store.force_terminal(itinerary_id, outcome, outcome)
     itinerary_query.evict_detail(user_id, itinerary_id)
+
+
+def resume_or_restart(user_id: int, itinerary_id: int) -> RunLimits:
+    """恢复扫描的"接着跑"：三种责任状态各有口径，不能一律当接管。
+
+    - 行还 live 但租约已过期 = 持有者死了 → `takeover`（沿用绝对截止，继承账本）。
+    - 行已结算（FINISHED/FAILED/EXPIRED）而产品面仍可补齐 = 上一份交付责任已经结束
+      → 开**新 attempt**：重开的是时间窗，`consumed_*` 不清零，所以后台重拉同样拿不到
+      新额度。把它当接管会让执行态停在终态、预算却在继续花——两份状态各自为政。
+    - 行是 CANCELLED = 用户明确取消过 → 后台不自动复活（"取消停止后续外呼"必须是真的）。
+    """
+    with session_scope() as session:
+        row = store.read(session, itinerary_id)
+    if row is None:
+        raise store.TaskWindowExpired(f"行程 {itinerary_id} 没有任务行")
+    if row.state == store.CANCELLED:
+        raise ApiError(409, "该行程已取消，请显式重新生成")
+    if row.state in store.LIVE_STATES:
+        return takeover(user_id, itinerary_id)
+    return acquire(user_id, itinerary_id)
+
+
+def settle_success(itinerary_id: int, task_id: str) -> None:
+    """恢复路径把整趟补完之后落执行终态（本地句柄此时已随 `release` 交还）。
+
+    少这一步就会出现"产品 COMPLETED、执行面还挂着 QUEUED/RUNNING（只是租约过期）"，
+    于是每轮扫描都重进这条已交付完的行程——终态与可见条目必须一起收敛。
+    """
+    if not store.set_terminal(itinerary_id, task_id, store.FINISHED, None):
+        logger.warning("planning task %s FINISHED not written: lease no longer held", itinerary_id)
+
+
+def settle_without_holder(itinerary_id: int, outcome: str, code: str | None) -> None:
+    """没有活持有者时的执行终态（恢复扫描自己判定"已交付完"）：只收 live 行，不做 CAS。"""
+    store.force_terminal(itinerary_id, outcome, code)
 
 
 def request_cancel(user_id: int, itinerary_id: int) -> dict:

@@ -161,6 +161,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
         if days and completed_days == len(days) and len(days) == main.days:
             # 数据其实齐了，只是终态没写上：补终态，不重跑
             _mark_completed(session, itinerary_id, main.city, main.days)
+            # 执行面也要一起收：否则这条已交付完的行程每轮扫描都重进一次
+            # （产品 COMPLETED、执行态还挂 QUEUED/RUNNING）。这里没有活持有者。
+            planning_tasks.settle_without_holder(itinerary_id, planning_tasks.FINISHED, "RECOVERED_COMPLETE")
             logger.info("recovered completed itinerary %s", itinerary_id)
             return True
 
@@ -195,6 +198,13 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # PARTIAL 终态时不清这面旗（否则每轮扫描都重拉，白烧 LLM 成无限补齐）。
             return False
         task = session.get(PlanningTask, itinerary_id)
+        if task is not None and planning_tasks.is_cancel_pending(task):
+            # 取消旗已落下、持有者却当场没了：只能由扫描收敛成 CANCELLED，不能再接管。
+            # 原先这里只看租约，于是每 90s 接管一次、每次都在 TaskStopped 上退出，
+            # CANCELLED 成为不可达状态（PLAN T1「取消」×「重启恢复」的交叉洞）。
+            planning_tasks.terminalize_cancelled(itinerary_id, completed_days=completed_days)
+            logger.info("cancelled planning task converged without holder, itinerary %s", itinerary_id)
+            return True
         if task is None or task.deadline_at <= datetime.now():
             # 绝对截止已过（或从来没有任务行）：终态化，不重开时间窗。
             # 旧口径在这里读 SQLite 预算快照并用「提交时刻反推的剩余时间」判定，
@@ -222,12 +232,22 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # 预算不归零（计数器继承）、时间窗沿用原 deadline_at；attempt +1 记录"这是第几个
     # worker 执行过同一份交付责任"。
     try:
-        limits = planning_tasks.takeover(user_id, itinerary_id)
+        limits = planning_tasks.resume_or_restart(user_id, itinerary_id)
     except planning_tasks.TaskWindowExpired as expired:
         generation_gate.release_resume_lock(itinerary_id)
         _terminalize_expired(itinerary_id, completed_days)
         logger.info("planning task expired before takeover, itinerary %s: %s", itinerary_id, expired)
         return True
+    except planning_tasks.LeaseHeld as held:
+        # 两次读之间有人续租 = 这条任务确实还在跑：放锁让路，绝不承担第二份写权。
+        generation_gate.release_resume_lock(itinerary_id)
+        logger.info("planning task still leased, skip itinerary %s: %s", itinerary_id, held)
+        return False
+    except ApiError as refused:
+        # 用户取消过的交付责任不自动复活（resume_or_restart 的第三条口径）。
+        generation_gate.release_resume_lock(itinerary_id)
+        logger.info("recovery refused for itinerary %s: %s", itinerary_id, refused)
+        return False
     context: dict | None = None
     remaining: list[int] = []
     resumed_any = False
@@ -268,6 +288,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
         # 全部从检查点续完：补终态（与"数据齐了"分支同口径），不整段重排
         with session_scope() as session:
             _mark_completed(session, itinerary_id, command.city, command.days)
+        # 执行态一起收 FINISHED：`finally` 里的 release 只交还租约、不落结论，
+        # 不补这一脚，产品 COMPLETED 与执行 RUNNING 会长期不一致，扫描反复重进。
+        planning_tasks.settle_success(itinerary_id, limits.task_id or "")
         generation_gate.release_resume_lock(itinerary_id)
         return True
 

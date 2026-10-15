@@ -22,6 +22,7 @@ from app.db import session as db_session
 from app.db.models import Base, PlanningTask
 from app.schemas.trip import DailyPlan
 from app.services import day_persistence, planning_tasks
+from tests.planning_task_probe import simulate_worker_exit
 
 
 @pytest.fixture
@@ -96,8 +97,9 @@ def test_takeover_keeps_spend_and_absolute_deadline(task_db):
     before = planning_tasks.state_of(4)
     assert before is not None
 
-    # 模拟"提交它的那个进程已经没了"：本地句柄清空，持久行原样留着。
-    planning_tasks.reset()
+    # 模拟"提交它的那个进程已经没了"：本地句柄清空 **且租约过期**——接管只在这种前提下合法
+    # （租约还在续租时抢占已被 `LeaseHeld` 拒掉，与恢复扫描先判 is_active 的口径一致）。
+    simulate_worker_exit(4)
     restored = planning_tasks.takeover(9, 4)
 
     assert restored.llm_calls == 1 and restored.retrievals == 2, "接管后已花掉的调用不清零"
