@@ -1,0 +1,413 @@
+# ---- 司南生产发布入口（T8a）----
+# 这个文件是**唯一**的对外部署编排；根目录 `docker-compose.yml` 保持本地预览形态，
+# 两者刻意不合并（口径不同：预览面明文 80 + root DB 账号 + 127.0.0.1:8000 直连调试口，
+# 生产面 TLS + 最小权限账号 + 应用面不发布）。改这里不要顺手改那边，反之亦然。
+#
+# 用法（完整步骤见 deploy/README.md）：
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/secrets/prod.env config      # 只做插值校验
+#   deploy/deploy.sh deploy                                                                          # 建镜像 + 迁移 + 起栈 + 深探验收
+#
+# 设计约束（每一条都在下面有对应实现，别放宽）：
+# 1. 只有 caddy 发布宿主机端口（443 + 80 跳转）；后端/前端/MySQL/Redis 一律不发布。
+# 2. 后端只被 `sinan-edge`（Caddy）与 `sinan-data`（MySQL/Redis）两张网 reach；
+#    `sinan-data` 是 internal 网络，数据库与缓存没有任何对外路由。
+# 3. 容器一律非 root（MySQL 例外，理由写在它的注释里）、`read_only` 根文件系统 +
+#    就地可写路径（tmpfs/专用卷）、`cap_drop ALL` 后只补实测必需的能力、
+#    `no-new-privileges`。加任何一个硬化开关前都要先实测能起来。
+# 4. 停止宽限必须盖过应用自己的排空预算（见 agent-python 的 stop_grace_period 注释）。
+# 5. 密钥只来自未入库的 env 文件（`${VAR:?}` 缺失即拒绝启动）；可选的模型/供应商键走
+#    第二份 env_file（deploy/secrets/app.env），且 `environment:` 的安全键优先级更高，
+#    env_file 永远覆盖不了 AUTH_COOKIE_SECURE / TRUSTED_PROXIES / DB_*。
+
+name: sinan-prod
+
+networks:
+  # Caddy ↔ 前端 ↔ 后端。子网固定：TRUSTED_PROXIES 要指名"只有这张网上的代理"，
+  # X-Forwarded-For 归因才成立（app/common/client_ip.py 从右往左取第一个不可信跳）。
+  sinan-edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SINAN_EDGE_SUBNET:?SINAN_EDGE_SUBNET 必填，如 172.28.203.0/24}
+  # 后端 ↔ MySQL ↔ Redis。internal=该网段没有任何对外出口与入口，数据库面只在簇内可达。
+  sinan-data:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${SINAN_DATA_SUBNET:?SINAN_DATA_SUBNET 必填，如 172.28.204.0/24}
+
+volumes:
+  sinan-prod-mysql-data:
+  sinan-prod-redis-data:
+  # 后端运行期数据（封面/上传、PDF 导出、usage SQLite、checkpoint、traces）。
+  # 命名卷而不是宿主 bind：read_only 要求挂载点属主正确，且备份/恢复按卷口径演练。
+  sinan-prod-app-data:
+  sinan-prod-caddy-data:
+
+services:
+  # ---- 一次性初始化：把两个"镜像里不存在该目录"的命名卷属主改成容器 uid ----
+  # 后端容器 uid=1000（travel-agent-python/Dockerfile:26）、Caddy uid=1000。Docker 给
+  # 镜像中**已存在**的目录建卷时会继承属主，/app/data 与 /data 在各自镜像里没有对应
+  # 目录（data/ 被 .dockerignore 排除），新建卷会落到 root:root → 非 root 容器写不进去。
+  # 这一步就是补那一次 chown；卷已有数据时重复 chown 无副作用（幂等）。
+  volume-init:
+    image: alpine:3.20
+    entrypoint: ["sh", "-c", "chown 1000:1000 /appdata /caddydata && chmod 0750 /appdata /caddydata"]
+    volumes:
+      - sinan-prod-app-data:/appdata
+      - sinan-prod-caddy-data:/caddydata
+    # 一次性 chown 不需要任何网络；不给它 default 桥接就少一个可连东西。
+    network_mode: "none"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    logging: &prod-logging
+      driver: json-file
+      options:
+        # 20m×5 = 单容器日志上限 100MB（预览面是 50m×5）。日志不是备份：写满就滚，
+        # 需要留证的日志按 request_id 在滚动前捞走（T8b 负责外送）。
+        max-size: "20m"
+        max-file: "5"
+
+  mysql:
+    image: mysql:8.0
+    # 有意保留 root 起的例外：官方镜像 entrypoint 必须在新数据卷上初始化 datadir
+    # （chown + gosu 降权），非 root 起不来。mysqld 进程本身是 uid 999（mysql）。
+    # 缓解：cap 只留实测必需的 5 项 + no-new-privileges + read_only + 数据卷专用 +
+    # 不发布端口 + 库内只有 root（供人工运维）与两个最小权限业务账号（provision.sql）。
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # 应用与容器统一到 UTC：僵尸续跑的租约窗口比较 app datetime.now() 与 MySQL
+      # updated_at（app/common/timezone_check.py 只在两边一致时不告警）。
+      - --default-time-zone=+00:00
+    environment:
+      # MYSQL_DATABASE 只负责建库（幂等由 provision.sql 的 CREATE DATABASE IF NOT EXISTS
+      # 兜住）；root 口令只给容器初始化、healthcheck 与人工运维用，应用永远用
+      # SINAN_DB_USER / SINAN_MIGRATE_USER 连库，拿不到 root。
+      MYSQL_ROOT_PASSWORD: ${SINAN_MYSQL_ROOT_PASSWORD:?SINAN_MYSQL_ROOT_PASSWORD 缺失}
+      MYSQL_DATABASE: ${SINAN_DB_NAME:?SINAN_DB_NAME 缺失}
+      TZ: Etc/UTC
+    volumes:
+      - sinan-prod-mysql-data:/var/lib/mysql
+    read_only: true
+    tmpfs:
+      - /tmp
+      # mysqld 的 socket/pid 目录（镜像里存在且 mysql 属主，但 read_only 后必须外置）。
+      - /var/run/mysqld
+    cap_drop:
+      - ALL
+    cap_add:
+      # 实测必需：entrypoint 在新卷上 chown、gosu 降权需要 SETUID/SETGID。
+      # 去掉任何一项都要重新实测启动，不要凭想当然保留。
+      - CHOWN
+      - SETUID
+      - SETGID
+      - FOWNER
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 60s
+    healthcheck:
+      # 与 redis 同款 `$$`：口令只在容器内展开，不进 `docker inspect` 的 argv。
+      # `-h 127.0.0.1` + root：这条只服务容器编排的存活判定，应用连的是另两个账号。
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    logging: *prod-logging
+    networks:
+      - sinan-data
+    deploy:
+      resources:
+        limits:
+          # MySQL 是这套栈里唯一的重内存件：buffer pool 之外还有每连接 sort/join 缓冲。
+          # 依据（写在这里而不是"经验值"）：db_pool_max=10（config.py:334）→ 峰值约
+          # 10 条连接；InnoDB 缓冲默认 128M 太小（并发写行程日/条目会打穿），显式给 512M
+          # 再留 ~1G 给连接线程与临时表 → 2G。CPU 限 2 核：单节点生成链路的瓶颈在 LLM
+          # 往返，不在 DB；再高会把后端与 Caddy 的配额挤没（总配额见文件末尾注释）。
+          cpus: "2.0"
+          memory: 2G
+
+  redis:
+    image: redis:7-alpine
+    # 非 root：uid 999（镜像自带 redis 用户），官方 entrypoint 的 gosu 分支在
+    # $(id -u)!=0 时直接 exec redis-server，实测 read_only + tmpfs /tmp 可启动。
+    user: "999:999"
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${SINAN_REDIS_PASSWORD:?SINAN_REDIS_PASSWORD 缺失}
+      - --maxmemory
+      - 256mb
+      # noeviction 是**有意的安全取舍**，不是遗漏：这个库里放着 JWT 吊销黑名单
+      # （app/common/token_revocation.py），LRU 类策略会静默丢掉"已登出"记录，
+      # 让被吊销的票在剩余 TTL 内复活。宁可写满时报 OOM 让应用侧退回进程内兜底表
+      # （token_revocation 既有降级路径），也不能悄悄丢黑名单。
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      REDIS_PASSWORD: ${SINAN_REDIS_PASSWORD:?SINAN_REDIS_PASSWORD 缺失}
+      TZ: Etc/UTC
+    volumes:
+      - sinan-prod-redis-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      # $$ 让口令留给容器内 shell 运行期展开（与 --requirepass 同源），裸 $ 会被
+      # compose 在解析期按宿主环境插值，键缺失时变成 -a "" 永远 unhealthy。
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *prod-logging
+    networks:
+      - sinan-data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          # 与 --maxmemory 256mb 同向：容器上限 384M = 数据 256M + AOF/客户端缓冲余量。
+          # 两者谁先到位都会如实报错，不会静默降级。
+          memory: 384M
+
+  agent-python:
+    build:
+      # 上下文参数化只为让 deploy.sh 能从 `git archive` 的干净 SHA 构建；
+      # 默认值就是工作树（与预览面同一份源码，不另开一套构建）。
+      context: ${SINAN_BACKEND_CTX:-../travel-agent-python}
+      dockerfile: Dockerfile
+      additional_contexts:
+        project: ${SINAN_ROOT_CTX:-..}
+      args:
+        # 镜像 → SHA 溯源（T8a）：deploy.sh 把 SINAN_IMAGE_TAG 设为它实际打包的
+        # commit SHA；查不到出处就留 unknown，绝不猜。
+        SINAN_GIT_REVISION: ${SINAN_IMAGE_TAG:-unknown}
+        SINAN_SOURCE_URL: ${SINAN_SOURCE_URL:-unknown}
+        SINAN_BUILD_CREATED_AT: ${SINAN_BUILD_CREATED_AT:-unknown}
+    image: ${SINAN_IMAGE_REPO:-sinan/backend}:${SINAN_IMAGE_TAG:?SINAN_IMAGE_TAG 缺失（deploy.sh 用 git SHA 设它）}
+    # 模型/供应商等可选键。注意 compose 的优先级：`environment:` 覆盖 env_file，
+    # 所以下面这批安全键不可能被 deploy/secrets/app.env 改掉。
+    env_file:
+      - path: ${SINAN_APP_ENV_FILE:-secrets/app.env}
+        required: false
+    environment:
+      AGENT_HOST: 0.0.0.0
+      # 容器网络内连自己的服务名；不发布端口，公网到不了这个进程。
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: ${SINAN_DB_USER:?SINAN_DB_USER 缺失（deploy/provision.sql 建的最小权限运行账号）}
+      DB_PASSWORD: ${SINAN_DB_PASSWORD:?SINAN_DB_PASSWORD 缺失}
+      DB_NAME: ${SINAN_DB_NAME:?SINAN_DB_NAME 缺失}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${SINAN_REDIS_PASSWORD:?SINAN_REDIS_PASSWORD 缺失}
+      # ---- 公网边界三件套（T8a 的验收点）----
+      # 会话票只经 HTTPS 传输；预览面那句 AUTH_COOKIE_SECURE=false 在这里不适用。
+      AUTH_COOKIE_SECURE: "true"
+      # XFF 归因：只有这条网段里的对端（Caddy）改写过的 XFF 才采信。填的是
+      # sinan-edge 的子网本身——填 0.0.0.0/0 或 172.16.0.0/12 等于把按 IP 的
+      # 登录/注册/分享限速交给请求者自己决定。
+      TRUSTED_PROXIES: ${SINAN_TRUSTED_PROXIES:?SINAN_TRUSTED_PROXIES 缺失，应等于 SINAN_EDGE_SUBNET}
+      # 生产是同源部署（Caddy 同时发 SPA 与 /api），CORS 只是给将来的分离部署留口子；
+      # 默认那份 localhost 清单绝不能留在对外进程里。
+      AGENT_CORS_ORIGINS: https://${SINAN_DOMAIN:?SINAN_DOMAIN 缺失（公网域名占位符）}
+      # 非回环绑定必须配内部令牌，否则生成类端点匿名烧钱（config.py:392 启动期硬闸）。
+      AGENT_INTERNAL_TOKEN: ${SINAN_AGENT_INTERNAL_TOKEN:?SINAN_AGENT_INTERNAL_TOKEN 缺失}
+      JWT_SECRET: ${SINAN_JWT_SECRET:?SINAN_JWT_SECRET 缺失}
+      # 空 = 由 JWT_SECRET 域分隔派生（config.py:244）；轮换 JWT_SECRET 会让存量 BYOK
+      # 密文失效，所以生产建议显式配这第三个密钥。
+      BYOK_ENC_KEY: ${SINAN_BYOK_ENC_KEY:-}
+      # 分享卡取壳走**簇内**地址（share_card.py 服务端抓壳）：填公网域名会要求
+      # 后端解析自己的域名并绕回 Caddy，DNS 未就绪时静默拿到空壳。
+      FRONTEND_SHELL_URL: http://frontend-react/index.html
+      TZ: Etc/UTC
+      # read_only 根文件系统下 HOME（/home/appuser 在 /app 里）不可写：把 HOME 指到
+      # tmpfs /tmp，任何库的缓存写都落到那里（重启即丢，不影响正确性）。
+      HOME: /tmp
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - sinan-prod-app-data:/app/data
+    # /app/data 之外的一切可写需求都收在 tmpfs 里（tmp 与 HOME）。
+    # 命名卷属主由 volume-init 服务改到 uid 1000。
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # ---- 停止宽限：150s 的算术（这条别调小）----
+    # main.py:207 的排空是**逐个池**限时 30s，共四个池（generation/enricher/export/chat，
+    # main.py:196-201），最坏 4×30=120s；再加 lifespan 退出与 uvicorn 关闭在途请求的
+    # 余量。低于 120s 会在池还在排空时收到 SIGKILL，留下成批 GENERATING 行等续跑
+    # （正是 main.py:203-206 注释要避免的事）。150s = 120s 排空 + 30s 退出余量。
+    stop_grace_period: 150s
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # 探活沿用镜像自带的 HEALTHCHECK（travel-agent-python/Dockerfile:28：
+    # /api/agent/health 浅探），这里不重复定义一份，免得两处阈值漂。
+    restart: unless-stopped
+    logging: *prod-logging
+    networks:
+      # 两张网都挂，但**只有 sinan-edge 有默认网关**（internal 网络不配 gateway），
+      # 所以 LLM/OTM/Nominatim 的出网一定走 edge，MySQL/Redis 只在簇内的 data 网可达。
+      # 出网能力是发布前提，验证命令见 deploy/README.md（在后端容器里实测一次 HTTPS 出网）。
+      - sinan-edge
+      - sinan-data
+    deploy:
+      resources:
+        limits:
+          # 后端并发上限由池的槽位决定：生成 4 worker/槽（itinerary_generation.py:126，
+          # _GENERATION_SLOTS=4+20）、富化 2、导出 8、对话 8（export_service.py:38、
+          # itinerary_chat.py:787）。CPU 2 核够用：生成时间几乎全在 LLM 往返上，
+          # 本地只做 JSON/校验/渲染。内存 2G 是"4 路并发整段流 + PDF 字体 + usage
+          # SQLite"的量级；实测 RSS 见 deploy/README.md 的演练记录，T9 拿到容量数据后
+          # 只许往下调（收紧）或给出理由后调。
+          cpus: "2.0"
+          memory: 2G
+
+  frontend-react:
+    build:
+      context: ${SINAN_FRONTEND_CTX:-../travel-frontend-react}
+      dockerfile: Dockerfile
+      additional_contexts:
+        project: ${SINAN_ROOT_CTX:-..}
+      target: web
+      args:
+        SINAN_GIT_REVISION: ${SINAN_IMAGE_TAG:-unknown}
+        SINAN_SOURCE_URL: ${SINAN_SOURCE_URL:-unknown}
+        SINAN_BUILD_CREATED_AT: ${SINAN_BUILD_CREATED_AT:-unknown}
+    image: ${SINAN_IMAGE_REPO_FRONTEND:-sinan/frontend}:${SINAN_IMAGE_TAG:?SINAN_IMAGE_TAG 缺失}
+    # 非 root：nginx:alpine 的 nginx 用户 uid/gid 101。主进程不再 setuid 到 worker
+    # （镜像配置里的 `user nginx;` 在非 root 主进程下被忽略并告警），worker 与 master
+    # 同为 101。/var/cache/nginx 与 /var/run 需要按 uid 可写 → 用 mode 01777 的 tmpfs。
+    user: "101:101"
+    read_only: true
+    volumes:
+      - type: tmpfs
+        target: /var/cache/nginx
+        tmpfs:
+          mode: 01777
+      - type: tmpfs
+        target: /var/run
+        tmpfs:
+          mode: 01777
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      # 绑容器内 80（Caddy 走簇内 http://frontend-react:80 取静态面）。
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      # nginx 在**加载配置时**就要解析 nginx.conf 里的 proxy_pass 主机名
+      # （travel-frontend-react/nginx.conf:40,71），后端没起来时容器直接启动失败；
+      # 所以这里要 service_healthy 而不是普通的 depends_on。
+      agent-python:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *prod-logging
+    networks:
+      - sinan-edge
+    deploy:
+      resources:
+        limits:
+          # 只发静态文件（生产 /api 由 Caddy 直连后端，不经这里的 nginx），0.25 核
+          # 足够；内存 128M 是 nginx 多 worker + 小文件响应的量级。
+          cpus: "0.25"
+          memory: 128M
+
+  caddy:
+    image: ${SINAN_CADDY_IMAGE:-caddy:2.10-alpine}
+    # 非 root + 只补 NET_BIND_SERVICE：容器内绑 80/443，uid 1000 靠这一项能力，
+    # 实测可行（演练记录见 deploy/README.md）。
+    user: "1000:1000"
+    environment:
+      SINAN_DOMAIN: ${SINAN_DOMAIN:?SINAN_DOMAIN 缺失（公网域名占位符）}
+      # 留空 = 自动证书（ACME，需要域名已指向本机）；演练/无 DNS 时填
+      # `tls internal` 走 Caddy 内置 CA。默认值空，所以入库配置就是生产语义。
+      SINAN_TLS_DIRECTIVE: ${SINAN_TLS_DIRECTIVE:-}
+    volumes:
+      - type: bind
+        source: ${SINAN_CADDYFILE:-./Caddyfile}
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      # 证书与内置 CA 的持久化处：丢了它每次重启重签（ACME 有速率限制）。属主由
+      # volume-init 改到 uid 1000。
+      - sinan-prod-caddy-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      # 整个栈对外的**唯一**两个口：443（TLS）与 80（仅跳转到 443 + ACME HTTP-01）。
+      # published 端口参数化只服务于隔离演练（同一份容器配置、换宿主端口），
+      # 默认值 443/80 就是生产语义。
+      - "${SINAN_TLS_PUBLIC_PORT:-443}:443"
+      - "${SINAN_HTTP_PUBLIC_PORT:-80}:80"
+    healthcheck:
+      # 深探**经 Caddy 自己的内部探测面**打后端：一条健康结论同时覆盖
+      # Caddy→后端→MySQL/Redis 全链（/api/agent/health/deep，app/api/agent.py:256）。
+      # 后果要写明：MySQL 或 Redis 挂掉时这个容器会 unhealthy，`up --wait` 与
+      # deploy.sh 的验收随即失败——这是发布门想要的行为，不是误报。容器不会被
+      # unhealthy 自动重启（本栈无 autoheal）。
+      test: ["CMD", "curl", "-fsS", "--max-time", "8", "http://127.0.0.1:8081/api/agent/health/deep"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      agent-python:
+        condition: service_healthy
+      frontend-react:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *prod-logging
+    networks:
+      - sinan-edge
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+# ---- 配额合计（16G/16 核的开发机 VM 口径）----
+# mysql 2.0/2G + agent 2.0/2G + redis 0.5/384M + frontend 0.25/128M + caddy 0.5/256M
+# ≈ 5.25 核 / 4.8G。留的是宿主与日志、页缓存的余量；单机准入上限的最终数字属于 T9，
+# 拿到容量证据前不要往上抬（AGENTS.md：门禁只升不降）。

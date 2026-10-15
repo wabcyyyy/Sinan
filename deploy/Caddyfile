@@ -1,0 +1,165 @@
+# ---- 司南生产 TLS 终结与路由（T8a）----
+# 这个文件是 `main.py:47`、`app/common/config.py:45-47`、`app/api/agent.py:264`、
+# `tests/test_body_size_limit.py:3` 引用的那份边缘配置：它**存在**并且真的被
+# deploy/docker-compose.prod.yml 挂进 Caddy 容器（默认只读 bind 挂载）。
+#
+# 拓扑：Caddy 是唯一的公网监听者。
+#   浏览器 ──TLS──> caddy ─┬─ /api/* 与 /s/* ──> agent-python:8000（后端，不发布端口）
+#                          └─ 其余（SPA/静态）─> frontend-react:80（nginx，不发布端口）
+# 内部面（/api/agent/**、/mcp）在公网监听上直接 403，只留给簇内的内部探测面。
+#
+# 域名与证书：{$SINAN_DOMAIN} 是**入库占位符**（默认口径 travel.example.com 这类
+# 假域名）。证书签发要等真实域名与 DNS：
+#   - SINAN_TLS_DIRECTIVE 留空（生产默认）= Caddy 自动 ACME，需要 80 端口对本域名可达；
+#   - SINAN_TLS_DIRECTIVE="tls internal"     = 用 Caddy 内置 CA 自签（无 DNS 演练、
+#     内网临时联调）。两者都只在 env 里换，不改这份文件。
+# ACME 的证书与内置 CA 落在命名卷 sinan-prod-caddy-data（/data）：删卷 = 重签，
+# 有 ACME 速率限制，别把 /data 当可丢弃目录。
+{
+	# 关管理端点（默认 127.0.0.1:2019）：容器里没有任何东西需要热加载配置，
+	# 留着就多一个可写的运行时 API。代价：`caddy reload` 不可用，改本文件后
+	# 用 `docker compose -f deploy/docker-compose.prod.yml up -d --force-recreate caddy` 重启。
+	admin off
+	# 不往 /config 写 autosave（read_only 根文件系统下少一处写；配置真源就是本文件）。
+	persist_config off
+}
+
+# ================= 公网入口 =================
+{$SINAN_DOMAIN} {
+	# 生产默认为空 = 自动证书；演练时由 env 填 "tls internal"。
+	{$SINAN_TLS_DIRECTIVE}
+
+	# ---- 安全响应头 ----
+	# 四条与 travel-frontend-react/nginx.conf:11-14 同值（Caddy 的 header 是"设定"
+	# 语义，上游同名头在这里被覆盖而不是叠加，两处不会打架）。
+	# HSTS 有意不带 includeSubDomains：v1 只有一个源，子域策略属于运营决定。
+	# CSP 仍缺（app/api/security_headers.py:27 的登记项）：完整 CSP 要拿真实
+	# 瓦片/worker/字体源调，属 T8b，不在这份文件里假装收紧。
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# 产品用到的设备能力只有定位与录音（语音意图）；相机/支付显式拒。
+		Permissions-Policy "camera=(), payment=(), geolocation=(self), microphone=(self)"
+		-header {
+			Server
+		}
+	}
+
+	# ---- 请求体上限（P0-4 边缘侧）----
+	# 三处镜像之一（本文件的 request_body / travel-frontend-react/nginx.conf 的
+	# client_max_body_size / travel-agent-python/main.py 的 *_BODY_MAX_BYTES），
+	# 改档必须同步改三处。分档口径：JSON API 2MB；封面上传与图片意图 6MB
+	# （服务侧 5MB 流式截断 + 1MB multipart 余量）；语音意图 9MB（服务侧 8MB）。
+	request_body {
+		max_size 2MB
+	}
+
+	@internal {
+		path /api/agent/* /api/agent /mcp /mcp/*
+	}
+
+	# Agent 内部面 + MCP：接受调用方自备 user_id，且生成类端点烧真实模型额度，
+	# 绝不能从公网可达（预览面用 nginx.conf:25-33 的 deny all 达成同一目的）。
+	# 这里连"带内部令牌也不行"都是刻意的：令牌保护的是应用层，网络层不该被公网摸到。
+	# 簇内探活/指标走下面的内部监听面。
+	handle @internal {
+		respond "forbidden" 403
+	}
+
+	@upload6 {
+		path /api/image-intent /api/itinerary/*/cover/upload
+	}
+	handle @upload6 {
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy agent-python:8000 {
+			transport http {
+				dial_timeout 10s
+			}
+		}
+	}
+
+	@upload9 {
+		path /api/speech-intent
+	}
+	handle @upload9 {
+		request_body {
+			max_size 9MB
+		}
+		reverse_proxy agent-python:8000 {
+			transport http {
+				dial_timeout 10s
+			}
+		}
+	}
+
+	# ---- 业务面与分享卡外壳 ----
+	# 下面这些 handle 块互斥、按书写顺序命中（Caddy 的 handle 语义），所以两条上传档
+	# 必须在通用 /api 之前——否则 6MB/9MB 档永远不会被选中。
+	# /api/** 与 /s/* 都是后端路由（/s/{token} 由后端注入 og meta 后整页返回，
+	# 与 nginx.conf:83-88 同一命中面）。
+	#
+	# X-Forwarded-For 用 {remote_host} **整体替换**：
+	#   - Caddy 没配 trusted_proxies（它前面没有别的代理），{remote_host} 就是真实 TCP
+	#     对端，替换写法顺带丢掉请求者自带的伪造链；
+	#   - 后端 app/common/client_ip.py:15-17 要求链路上每台可信代理都必须替换而不是追加，
+	#     与 compose 里 TRUSTED_PROXIES=边缘网段配套（两处的网段必须一致）。
+	# `caddy validate` 会提示这句"多余"——不是错误：默认行为是追加客户端自带链，
+	# 我们的口径是替换，照旧显式写。
+	#
+	# SSE 不缓冲：flush_interval -1 让上游每一帧立即下发。预览面靠 nginx 时那句
+	# "Python 侧自带 X-Accel-Buffering: no"（nginx.conf:70）在这里**不适用**——
+	# Caddy 不实现 X-Accel-Buffering，不设 flush_interval 就会把流攒到响应结束。
+	#
+	# 不设上游读/写超时：整段生成可以合法跑到 itinerary_deadline_seconds=300
+	# （app/common/config.py:124）以上，终止权在应用侧的 deadline 与 LLM 超时，
+	# 不在边缘。预览面 nginx 的 proxy_read_timeout 180s 在生产路径上不生效
+	# （/api 不再绕经 nginx），这是一处有意行为差异，写在这里而不是藏着。
+	@backend {
+		path /api/* /api /s/* /s
+	}
+	handle @backend {
+		reverse_proxy agent-python:8000 {
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Real-IP {remote_host}
+			# X-Forwarded-Proto 由 Caddy 默认给（scheme 已经是 https）。
+			flush_interval -1
+			transport http {
+				dial_timeout 10s
+			}
+		}
+	}
+
+	# SPA 与静态产物：nginx 容器只做文件服务与 try_files 回落
+	# （travel-frontend-react/nginx.conf:93-110 的 /assets/ 长缓存与 no-cache 外壳）。
+	handle {
+		reverse_proxy frontend-react:80 {
+			transport http {
+				dial_timeout 10s
+			}
+		}
+	}
+}
+
+# ================= 内部探测面（不发布到宿主机）=================
+# 端口只在 Caddy 容器内回环上监听：宿主与公网都到不了，簇内要打得动探测得
+# `docker compose exec caddy curl http://127.0.0.1:8081/...`（deploy.sh 的验收就是这么做的）。
+# 只放行 /api/agent/*：浅探/深探是匿名的，/v1/metrics、/v1/usage、/v1/metrics/prometheus
+# 在应用侧还要 X-Agent-Token（app/api/agent.py:280-297），这一层不额外发令牌、不注入令牌。
+# 改这个地址要同时改 deploy/docker-compose.prod.yml 里 caddy 的 healthcheck，两处没有变量。
+127.0.0.1:8081 {
+	handle /api/agent/* {
+		reverse_proxy agent-python:8000 {
+			flush_interval -1
+			transport http {
+				dial_timeout 10s
+			}
+		}
+	}
+	handle {
+		respond "not found" 404
+	}
+}

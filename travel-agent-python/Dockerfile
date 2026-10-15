@@ -18,6 +18,17 @@ WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY . .
 COPY --from=project LICENSE THIRD_PARTY_NOTICES.md /app/
+# 镜像溯源（T8a）：这几个 ARG + 下面的 LABEL 让任一镜像都能回指它实际打包的 git SHA。
+# 值由 deploy/docker-compose.prod.yml 的 build.args 传（源头是 deploy/deploy.sh 的
+# git archive），默认 unknown 而不是猜一个——查不到出处的镜像不算可追溯。
+ARG SINAN_GIT_REVISION=unknown
+ARG SINAN_SOURCE_URL=unknown
+ARG SINAN_BUILD_CREATED_AT=unknown
+LABEL org.opencontainers.image.title="sinan-agent-python" \
+    org.opencontainers.image.revision="${SINAN_GIT_REVISION}" \
+    org.opencontainers.image.version="${SINAN_GIT_REVISION}" \
+    org.opencontainers.image.source="${SINAN_SOURCE_URL}" \
+    org.opencontainers.image.created="${SINAN_BUILD_CREATED_AT}"
 ENV PATH="/app/.venv/bin:$PATH" \
     AGENT_HOST=0.0.0.0
 EXPOSE 8000
