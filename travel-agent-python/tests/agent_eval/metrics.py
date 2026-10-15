@@ -277,22 +277,12 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
         for i in plan.items
         if i.item_type == "hotel"
     )
-    # 餐饮期望与生产口径一致（BIZ-5 收拢后）：有价日期按当日选中餐饮条目人均价
-    # 加总，无价日期回落到城市人均餐价×2 餐；此前这里复刻旧「最贵一餐×2」口径，
-    # 与生产的加总口径分裂成第三套，指标会惩罚真实的计价改进。
-    priced_meal = 0.0
-    priced_days = 0
-    for plan in response.daily_plans:
-        day_food = sum(float(i.cost or 0) for i in plan.items if i.item_type == "food" and i.cost is not None)
-        if day_food > 0:
-            priced_meal += day_food
-            priced_days += 1
-    unpriced_days = max(case["days"] - priced_days, 0)
+    # 业务预算按可见餐饮条目人均价加总（budget_engine.recalculate）；未完成天没有
+    # 餐饮条目时不虚构两餐费用。完整图路径也按实际选中项核对。
+    priced_meal = sum(float(item.get("cost") or 0) for item in items if item.get("item_type") == "food")
     expected = {
         "门票": round(selected_ticket * case["persons"], 2),
-        "餐饮": round(
-            priced_meal * case["persons"] + float(cons.get("meal_price", 60)) * 2 * unpriced_days * case["persons"], 2
-        ),
+        "餐饮": round(priced_meal * case["persons"], 2),
         "交通": round(float(cons.get("transport_price", 35)) * case["days"] * case["persons"], 2),
         "酒店": round(selected_hotel * rooms, 2),
     }
@@ -302,13 +292,13 @@ def evaluate_response(response, case: dict, catalog: dict, trace: dict) -> dict:
     #   agent 流根本不产出它（done 事件无预算字段）。所以评测路径只能自己合成一个。
     # - 合成用的是 estimate_plans_total（generation_core.py:308-314），而上面的 expected
     #   复刻的是 prices.recompute_budget（prices.py:134-154）。两者对「无价餐饮」的处理
-    #   不同：estimate 按 0 计，expected 回落城市人均×2 餐。实测一条无价餐饮就能造出
-    #   62.75% 的偏差——那是**公式错配，不是产品问题**。
+    #   不同：曾把无价餐饮虚构为城市人均×2 餐，造成公式错配；现在按可见条目核对。
     # - 结论（graph 路径与 llm_eval）：本指标只能当「合成口径 vs 期望口径」的漂移绊线用，
     #   **不能当产品预算质量**读。
     # - 2026-10-12 起离线默认走产品路径（eval_agent --path stream）：预算取自落库后
     #   budget_engine 重算的 budget 行（budgetList），即用户看到的那个数；整趟 FAILED 时
-    #   _finish 不执行、没有交付预算，偏差按 1.0 计（与 failed_status_rate 成对读）。
+    #   没有交付预算时偏差按 1.0 计；2026-10-13 起后续天失败保留 PARTIAL 并同步重算，
+    #   所以部分交付也必须与其可见条目的预算一致。
     # 5 键形状（含「合计」便捷键）的重复计数是已修的历史 bug：裸 sum(values()) 会把明细
     # 与合计各加一遍，任何预算都恒判 ~100% 偏差（实测一份完全正确的预算得 1.0）。
     budget = response.budget_estimate or {}

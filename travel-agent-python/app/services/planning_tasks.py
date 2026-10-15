@@ -12,7 +12,7 @@ from app.agent import RunLimits, new_task_budget
 from app.common.envelope import ApiError, error_code, user_reason
 from app.db.models import ItineraryDay, ItineraryMain
 from app.db.session import session_scope
-from app.services import day_persistence, generation_events, itinerary_query
+from app.services import budget_engine, day_persistence, generation_events, itinerary_query
 
 
 @dataclass
@@ -87,6 +87,8 @@ def finish_failure(itinerary_id: int, exc: Exception) -> None:
             )
         )
     if delivered:
+        # 部分交付也必须有最终预算；后台队列可能未执行或已满。
+        budget_engine.recalculate(itinerary_id)
         day_persistence.complete_trip(itinerary_id, False)
         generation_events.complete(
             itinerary_id, "PARTIAL", main.days, day_persistence.unfinished_day_nos(itinerary_id), None

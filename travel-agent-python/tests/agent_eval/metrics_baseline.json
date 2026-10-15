@@ -36,8 +36,8 @@
         "note": "景点跨日重复率：越低越好"
       },
       "budget_deviation_rate": {
-        "max": 0.0769,
-        "note": "预算偏差率（生产同口径期望）：越低越好。2026-10-12 改走产品路径后 0.0769 = 三亚 5 日用例整趟 FAILED、_finish 未执行无交付预算（偏差记 1.0）的连带结果；其余 12 例为 0。该例改判后应回到 0"
+        "max": 0.0,
+        "note": "预算偏差率（生产同口径期望）：越低越好。2026-10-13 部分交付也同步重算最终预算，三亚第 5 天失败保留已交付天；撤销 2026-10-12 的 0.0769 豁免，收紧为 0"
       },
       "terminal_reset_day_rate": {
         "max": 0.0154,
@@ -49,14 +49,14 @@
         "note": "产品路径口径（2026-10-12）：gen_state COMPLETED→success / PARTIAL→degraded / FAILED→failed，按落库后读回的终态计。旧 trip 图路径恒 degraded；占比动了 = 状态口径或交付行为变化，都认账"
       },
       "degraded_status_rate": {
-        "min": 0.0,
-        "max": 0.0,
-        "note": "同上：产品路径下 PARTIAL（有天未完成）占比；mock 题集现值 0"
-      },
-      "failed_status_rate": {
         "min": 0.0769,
         "max": 0.0769,
-        "note": "硬失败占比，钉在实测值：0.0769 = 三亚 5 日用例。第 5 天逐日补齐仍过稀 → run_generate_day 抛错 → plan_days 按现行语义（单天失败中止循环，test_day_failure_marks_day_and_trip_failed）判整趟 FAILED。这是产品行为的如实记录；若改为 PARTIAL 交付，此值应降为 0 并 --update 收紧"
+        "note": "2026-10-13 部分交付状态口径：三亚 5 日的最后一天仍不合格，前 4 天保留，FAILED 改为 PARTIAL。成功率下限与终检门禁不变，失败率上限收回 0；登记与复核期限见 AGENTS.md"
+      },
+      "failed_status_rate": {
+        "min": 0.0,
+        "max": 0.0,
+        "note": "2026-10-13 已交付天保留为 PARTIAL，撤销三亚用例整趟 FAILED 的 0.0769 豁免，硬失败占比收紧为 0"
       },
       "fallback_success_rate": {
         "min": 1.0,

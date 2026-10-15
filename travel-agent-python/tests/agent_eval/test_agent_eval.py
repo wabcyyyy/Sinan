@@ -32,6 +32,15 @@ def test_graph_path_remains_available_for_agent_face():
     assert metrics["trace_complete_rate"] == 1.0
 
 
+def test_later_day_failure_preserves_partial_delivery_and_final_budget():
+    report = build_report([{"city": "三亚", "days": 5, "persons": 2, "preferences": ["自然风光"]}])
+    metrics = report["metrics"]
+    assert metrics["success_status_rate"] == 0.0
+    assert metrics["degraded_status_rate"] == 1.0
+    assert metrics["failed_status_rate"] == 0.0
+    assert metrics["budget_deviation_rate"] == 0.0
+
+
 def test_offline_eval_refuses_real_llm_calls(monkeypatch):
     """LLM HTTP 哨兵：有入口漏 mock 时整例报错，不能被生成链的降级吞成一份「正常」报告。
 

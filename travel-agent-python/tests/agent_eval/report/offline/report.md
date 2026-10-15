@@ -14,11 +14,11 @@
 | time_conflict_rate | 0.00% |
 | route_violation_rate | 0.00% |
 | attraction_duplicate_rate | 0.00% |
-| budget_deviation_rate | 7.69% |
+| budget_deviation_rate | 0.00% |
 | terminal_reset_day_rate | 1.54% |
 | success_status_rate | 92.31% |
-| degraded_status_rate | 0.00% |
-| failed_status_rate | 7.69% |
+| degraded_status_rate | 7.69% |
+| failed_status_rate | 0.00% |
 | fallback_success_rate | 100.00% |
 | trace_complete_rate | 100.00% |
 | research_rounds_avg | 3 |
@@ -34,7 +34,7 @@
 | 杭州 | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |
 | 成都 | 4 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 9 |
 | 西安 | 2 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 7 |
-| 三亚 | 5 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 100.00% | 10 |
+| 三亚 | 5 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 10 |
 | 广州 | 2 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 7 |
 | 厦门 | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |
 | Barcelona | 3 | 100.00% | 100.00% | 0.00% | 0.00% | 0.00% | 0.00% | 8 |

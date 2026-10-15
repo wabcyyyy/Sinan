@@ -64,7 +64,7 @@ def test_generation_entries_send_low_thinking_to_provider(monkeypatch, entry):
         monkeypatch.setattr(llm_client, "_get_http_client", lambda: http)
         client = llm_client.LLMClient(base_url="https://api.deepseek.com", api_key="test", model="deepseek-flash")
         for module in (day_prompts, trip_stream, day_stream):
-            monkeypatch.setattr(module, "get_llm_client", lambda: client)
+            monkeypatch.setattr(module, "get_llm_client", lambda role: client)
         req = GenerateDayRequest(city="成都", days=1)
         if entry == "trip":
             day_prompts.llm_open_trip(req)

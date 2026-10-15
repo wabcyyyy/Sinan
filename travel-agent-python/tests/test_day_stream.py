@@ -316,10 +316,13 @@ def test_day_prompt_uses_confirmed_relaxed_policy(monkeypatch):
     monkeypatch.setattr(
         day_stream,
         "get_llm_client",
-        lambda: type(
+        lambda _role="main": type(
             "Client",
             (),
-            {"complete": lambda *args, **kwargs: '{"items":[{"poi_name":"上野公园","item_type":"attraction"}]}'},
+            {
+                "json_response_format": staticmethod(lambda *args, **kwargs: {"type": "json_object"}),
+                "complete": lambda *args, **kwargs: '{"items":[{"poi_name":"上野公园","item_type":"attraction"}]}',
+            },
         )(),
     )
     day_stream.llm_open_day(

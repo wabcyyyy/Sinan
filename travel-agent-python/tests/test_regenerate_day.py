@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from fastapi import FastAPI
@@ -33,10 +34,11 @@ from app.common import cache_store
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.db import session as db_session
-from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain, SysUser
+from app.db.models import Base, BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain, SysUser
 from app.schemas.trip import DailyPlan, TripItem
 from app.services import (
     day_persistence,
+    generation_events,
     generation_gate,
     generation_recovery,
     itinerary_generation,
@@ -226,6 +228,62 @@ def test_regenerate_day_fills_pending_day_and_completes_trip(clients, partial_tr
     main = _main(partial_trip)
     assert main.gen_state == "COMPLETED" and main.status == 2
     assert calls["context"] == 1 and calls["day"] == [2], "研究重跑一次、只生成目标天"
+
+
+# ---------- 终态交付：可见条目的最终预算与终态帧 ----------
+
+
+def _capture_events(monkeypatch) -> list[tuple[str, dict]]:
+    """业务事件捕获（与 test_m5b_core_ready 同手法）：终态是否只有一帧、状态是什么。"""
+    seen: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        generation_events,
+        "publish_event",
+        lambda _itinerary_id, event_type, data, _run_id=None: seen.append((event_type, data)),
+    )
+    return seen
+
+
+def _budget_total(trip_id: int) -> Decimal:
+    with db_session.session_scope() as session:
+        rows = session.execute(select(BudgetDetail).where(BudgetDetail.itinerary_id == trip_id)).scalars().all()
+        return sum((row.amount for row in rows), Decimal("0.00"))
+
+
+def test_exhausted_finish_window_still_delivers_terminal_frame_and_budget(clients, partial_trip, monkeypatch) -> None:
+    """总时限卡在收尾窗口：终态写库后仍要发终态帧与最终预算，否则前端停在「加载中」、
+    用户看不到已交付行程的费用（收尾窗口只做本地事务，不需要剩余额度）。"""
+    _fake_agents(monkeypatch, per_day=[_plan(1, ["保俶塔"]), _plan(2, ["新西溪"])])
+    events = _capture_events(monkeypatch)
+    exhausted = itinerary_generation.RunLimits(deadline_seconds=0.001, task_id="finish-window")
+    monkeypatch.setattr(itinerary_generation, "current_limits", lambda: exhausted)
+
+    response = clients["alice"].post(f"/api/itinerary/{partial_trip}/days/2/regenerate")
+    assert response.status_code == 200, response.json()
+    assert _main(partial_trip).gen_state == "COMPLETED"
+    assert [data["status"] for kind, data in events if kind == "complete"] == ["COMPLETED"], "终态帧恰好一帧"
+    # day1 西湖无价（如实缺省）+ day2 景点 45 + 餐 40 + 交通 35×2 天×1 人
+    assert _budget_total(partial_trip) == Decimal("155.00")
+
+
+def test_finish_failure_keeps_delivered_days_with_final_budget(clients, partial_trip, monkeypatch) -> None:
+    """后续天失败：已交付天保留为 PARTIAL，最终预算同步重算（富化/预算后台队列可能已满或未跑）。"""
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, partial_trip)
+        assert main is not None
+        main.status, main.gen_state = 1, "GENERATING"
+        pending = session.get(ItineraryDay, _days(partial_trip)[1].id)
+        assert pending is not None
+        pending.generation_status = "FAILED"
+    events = _capture_events(monkeypatch)
+
+    itinerary_generation.planning_tasks.finish_failure(partial_trip, ValueError("第 2 天安排过稀"))
+
+    assert _main(partial_trip).gen_state == "PARTIAL"
+    terminal = [(data["status"], data["degradedDays"]) for kind, data in events if kind == "complete"]
+    assert terminal == [("PARTIAL", [2])], "部分交付告知前端哪些天未完成"
+    # 只按可见条目计：无价西湖 + 交通 35×2 天（未完成天不虚构消费）
+    assert _budget_total(partial_trip) == Decimal("70.00")
 
 
 def test_regenerate_day_rejects_succeeded_day(clients, partial_trip, monkeypatch) -> None:

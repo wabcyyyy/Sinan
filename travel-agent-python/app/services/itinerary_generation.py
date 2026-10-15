@@ -1032,8 +1032,17 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         return
     limits = current_limits()
     if limits is not None and limits.remaining() <= 0:
+        # 收尾窗口只做本地事务，仍需发布终态和最终预算。
+        budget_engine.recalculate(itinerary_id)
         all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
         day_persistence.complete_trip(itinerary_id, all_succeeded)
+        generation_events.complete(
+            itinerary_id,
+            "COMPLETED" if all_succeeded else "PARTIAL",
+            main.days,
+            day_persistence.unfinished_day_nos(itinerary_id),
+            None,
+        )
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
     stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
