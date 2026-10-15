@@ -117,7 +117,6 @@ preflight() {
 	need_cmds
 	require_env_file
 	load_env_vars
-	compose config --quiet || die "compose 插值未通过（少必填键就是这个形状）"
 
 	reject_secret SINAN_JWT_SECRET "${SINAN_JWT_SECRET:-}" 32
 	reject_secret SINAN_AGENT_INTERNAL_TOKEN "${SINAN_AGENT_INTERNAL_TOKEN:-}" 32
@@ -152,6 +151,12 @@ preflight() {
 		warn "SINAN_TRUSTED_PROXIES(${SINAN_TRUSTED_PROXIES}) ≠ SINAN_EDGE_SUBNET(${SINAN_EDGE_SUBNET})：Caddy 是唯一代理时两者应相同"
 	fi
 	log "前置通过：domain=${SINAN_DOMAIN} edge=${SINAN_EDGE_SUBNET} data=${SINAN_DATA_SUBNET} db=${SINAN_DB_NAME} app_user=${SINAN_DB_USER} migrate_user=${SINAN_MIGRATE_USER}"
+}
+
+# compose 文件里 image 用了 ${SINAN_IMAGE_TAG:?}，所以插值校验必须在标签定下来之后跑；
+# 这一步同时也是"env 里少给了哪个必填键"的权威检查（单一真源是 compose 文件本身）。
+check_interpolation() {
+	compose config --quiet || die "compose 插值未通过（少 \${VAR:?} 必填键就是这个形状）"
 }
 
 # ---------- git 与构建上下文 ----------
@@ -221,16 +226,23 @@ build_images() {
 		log "溯源标签确认：${img} → revision=${label}"
 	done
 
-	# 入库的 Caddyfile 用同版本 Caddy 校验一次（演练/生产都靠这份文件起边缘）。
-	if docker run --rm \
+	# 入库（且真正挂进容器）的那份 Caddyfile 用同版本 Caddy 校验一次。
+	# 用 stdin 喂文件而不是 --volume：Git-Bash 会把 / 开头的参数改写成 Windows 路径，
+	# 裸挂载在跨平台上不可靠；容器里不落 /data 也不需要它。
+	local caddy_img caddyfile_target out
+	caddy_img="${SINAN_CADDY_IMAGE:-caddy:2.10-alpine}"
+	caddyfile_target="${ARCHIVE_DIR:-${REPO_ROOT}}/deploy/Caddyfile"
+	[ -f "${caddyfile_target}" ] || caddyfile_target="${REPO_ROOT}/deploy/Caddyfile"
+	if out=$(docker run --rm -i \
 		-e SINAN_DOMAIN="${SINAN_DOMAIN}" \
 		-e SINAN_TLS_DIRECTIVE="${SINAN_TLS_DIRECTIVE:-}" \
-		--volume "${SCRIPT_DIR}/Caddyfile:/etc/caddy/Caddyfile:ro" \
-		--entrypoint caddy "${SINAN_CADDY_IMAGE:-caddy:2.10-alpine}" \
-		validate --adapter caddyfile --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
-		log "Caddyfile 校验通过（${SINAN_CADDY_IMAGE:-caddy:2.10-alpine}）"
+		--entrypoint sh "${caddy_img}" \
+		-c 'cat >/tmp/Caddyfile && caddy validate --adapter caddyfile --config /tmp/Caddyfile' \
+		<"${caddyfile_target}" 2>&1); then
+		log "Caddyfile 校验通过：${caddyfile_target#"${REPO_ROOT}/"}（${caddy_img}）"
 	else
-		die "Caddyfile 校验未通过：先 caddy validate 看错误，别把坏配置塞进生产"
+		printf '%s\n' "${out}" >&2
+		die "Caddyfile 校验未通过（上面是 Caddy 自己的报错），别把坏配置塞进生产"
 	fi
 }
 
@@ -292,7 +304,9 @@ run_migrate() {
 	log "以迁移账号跑应用自己的迁移入口（app/db/migrate.py:ensure_schema，即 main.py:252 那一步）"
 	# 本仓没有独立的迁移 CLI，应用的迁移入口就是这个函数；这里用同一个镜像、同一段代码，
 	# 只把 DB_USER/DB_PASSWORD 换成迁移账号——运行账号从头到尾没有 DDL 权限。
-	compose run --rm --no-deps --no-TTY --no-build \
+	# `docker compose run` 没有 --no-build；这里靠上面的镜像存在性检查保证不会
+	# 隐式地从工作树造一个来路不明的镜像（compose 只在镜像缺失时才 build）。
+	compose run --rm --no-deps --no-TTY \
 		-e DB_USER="${SINAN_MIGRATE_USER}" \
 		-e DB_PASSWORD="${SINAN_MIGRATE_PASSWORD}" \
 		agent-python python -c \
@@ -373,8 +387,9 @@ cmd_deploy() {
 	GIT_SHA=$(git_head_sha)
 	dirty_tree_guard
 	preflight
-	prepare_archive_context
 	export_build_identity
+	check_interpolation
+	prepare_archive_context
 	build_images
 	push_or_skip
 	bring_up_infra
@@ -394,6 +409,9 @@ cmd_deploy() {
 
 cmd_provision() {
 	preflight
+	GIT_SHA=$(git_head_sha)
+	export_build_identity
+	check_interpolation
 	bring_up_infra
 	run_provision
 }
@@ -402,11 +420,15 @@ cmd_migrate() {
 	preflight
 	GIT_SHA=$(git_head_sha)
 	export_build_identity
+	check_interpolation
 	run_migrate
 }
 
 cmd_verify() {
 	preflight
+	GIT_SHA=$(git_head_sha)
+	export_build_identity
+	check_interpolation
 	deep_health_check
 	edge_check
 	published_ports
@@ -416,18 +438,16 @@ cmd_rollback() {
 	local target="${1:-}"
 	[ -n "${target}" ] || die "用法：deploy/deploy.sh rollback <完整 40 位 SHA>"
 	[[ "${target}" =~ ^[0-9a-f]{40}$ ]] || die "rollback 只认完整 git SHA（得到 '${target}'）：不接受 latest/分支名"
-	need_cmds
-	require_env_file
-	load_env_vars
-	compose config --quiet || die "compose 插值未通过"
+	preflight
+	GIT_SHA="${target}"
+	export_build_identity
+	check_interpolation
 	docker image inspect "${BACKEND_IMAGE_REPO}:${target}" >/dev/null 2>&1 ||
 		die "本机没有 ${BACKEND_IMAGE_REPO}:${target}。回滚依赖发布时打的 SHA 标签镜像；没有就先把那次发布的镜像取回来（见 SINAN_REGISTRY）"
 	docker image inspect "${FRONTEND_IMAGE_REPO}:${target}" >/dev/null 2>&1 ||
 		die "本机没有 ${FRONTEND_IMAGE_REPO}:${target}"
 	warn "回滚只换应用镜像标签，**不动 schema**：迁移 append-only 且没有 down 路径。"
 	warn "若目标 SHA 早于当前 schema，缺列写入会以运行账号权限错误或 500 现身——那属于备份恢复，不是本命令。"
-	GIT_SHA="${target}"
-	export_build_identity
 	bring_up_all
 	deep_health_check
 	edge_check
@@ -437,6 +457,9 @@ cmd_rollback() {
 
 cmd_status() {
 	preflight
+	GIT_SHA=$(git_head_sha)
+	export_build_identity
+	check_interpolation
 	compose ps
 	published_ports
 }

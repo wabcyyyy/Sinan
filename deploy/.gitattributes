@@ -1,0 +1,5 @@
+# deploy/deploy.sh 是给 bash 执行的发布入口，必须以 LF 入库与检出：
+# 本仓 core.autocrlf=true（见 git 配置），没有这条规则的话在 Windows 上 checkout
+# 会得到 CRLF，脚本第一行就报语法错——而它是本仓唯一的 .sh，没有既有约定可依托。
+# 只覆盖 *.sh；compose/Caddyfile/sql 的换行不影响执行，不动它们以免制造整文件 diff。
+*.sh text eol=lf

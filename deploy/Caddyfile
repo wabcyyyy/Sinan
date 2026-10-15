@@ -150,7 +150,11 @@
 # 只放行 /api/agent/*：浅探/深探是匿名的，/v1/metrics、/v1/usage、/v1/metrics/prometheus
 # 在应用侧还要 X-Agent-Token（app/api/agent.py:280-297），这一层不额外发令牌、不注入令牌。
 # 改这个地址要同时改 deploy/docker-compose.prod.yml 里 caddy 的 healthcheck，两处没有变量。
-127.0.0.1:8081 {
+#
+# 必须显式写 `http://`：光写 `127.0.0.1:8081` 会被 Caddy 当成需要自动 HTTPS 的站点
+# （实测它给 127.0.0.1 也签了一张内置证书并把监听变成 TLS，明文 curl 得到 400
+# "Client sent an HTTP request to an HTTPS server"）。TLS 只属于公网那一个站点。
+http://127.0.0.1:8081 {
 	handle /api/agent/* {
 		reverse_proxy agent-python:8000 {
 			flush_interval -1

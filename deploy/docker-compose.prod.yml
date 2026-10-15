@@ -53,7 +53,9 @@ services:
   # 这一步就是补那一次 chown；卷已有数据时重复 chown 无副作用（幂等）。
   volume-init:
     image: alpine:3.20
-    entrypoint: ["sh", "-c", "chown 1000:1000 /appdata /caddydata && chmod 0750 /appdata /caddydata"]
+    # 顺序：先 chmod（此刻目录仍 root 所有，不需要额外能力）再 chown；
+    # 重跑时目录已属 1000，chmod 就要 FOWNER——两个能力都留着才能幂等重跑。
+    entrypoint: ["sh", "-c", "chmod 0750 /appdata /caddydata && chown 1000:1000 /appdata /caddydata"]
     volumes:
       - sinan-prod-app-data:/appdata
       - sinan-prod-caddy-data:/caddydata
@@ -66,6 +68,7 @@ services:
       - ALL
     cap_add:
       - CHOWN
+      - FOWNER
     security_opt:
       - no-new-privileges:true
     restart: "no"
