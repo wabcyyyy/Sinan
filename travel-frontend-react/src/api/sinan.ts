@@ -229,6 +229,21 @@ export async function waitForItinerary(id: number | string, options: WaitForItin
   }
 }
 
+export interface GenerationCancelResult {
+  itineraryId: number
+  cancelRequested: boolean
+  attempt: number
+  state: string
+  undeliveredDays: number[]
+}
+
+/** 取消本次生成（后端 T1 的持久取消旗）。语义是「置旗，持有者在下一个检查点停手」，
+ * 不是本地 abort——已排好的天会保留为 PARTIAL，所以调用方必须继续对账读回真实终态，
+ * 不能把「按下按钮」当成「已取消」。 */
+export function cancelItineraryGeneration(id: number) {
+  return apiRequest<GenerationCancelResult>(`/itinerary/${String(id)}/generation/cancel`, { method: 'POST' })
+}
+
 export function getSharedItinerary(token: string) {
   return apiRequest<{
     city: string

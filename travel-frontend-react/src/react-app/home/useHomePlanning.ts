@@ -2,6 +2,7 @@ import { intakeEpoch, intakeOwnerIsCurrent } from './intakeStorage'
 import { intakeSessionStorage } from './intakeStorage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  cancelItineraryGeneration,
   generateItinerary,
   getItineraryDetail,
   isOfflineError,
@@ -181,6 +182,10 @@ export function useHomePlanning() {
   const request = useRef<AbortController | null>(null)
   const requestVersion = useRef(0)
   const mounted = useRef(true)
+  // 取消是服务端的持久旗（T1）：按下之后监控照跑，真实终态仍由对账读回来。
+  // ref 而不是 state —— monitor 是空依赖的 useCallback，闭包里读不到后续 state 值。
+  const cancelRequested = useRef(false)
+  const [cancelling, setCancelling] = useState(false)
   const busy = status === 'creating' || status === 'planning'
 
   useEffect(() => {
@@ -243,14 +248,20 @@ export function useHomePlanning() {
         clearGenerationId()
         clearAttempt()
         setStatus('error')
-        setMessage(result.planNote || '行程未能全部生成，已保留当前内容，可稍后重试。')
+        setMessage(
+          cancelRequested.current
+            ? '已取消这次的规划，尚未生成的天不再继续。'
+            : result.planNote || '行程未能全部生成，已保留当前内容，可稍后重试。',
+        )
       } else {
         setProgress(4); setStatus('ready')
         // M6：PARTIAL（有 PENDING/FAILED 天）不得当成"已全部完成"
         setMessage(
-          result.genState === 'PARTIAL'
-            ? '行程主要内容已生成，部分天尚未完成，可在详情页重试未完成的天'
-            : '你的行程已准备好',
+          cancelRequested.current
+            ? '已取消这次的规划，已经排好的天保留在详情页。'
+            : result.genState === 'PARTIAL'
+              ? '行程主要内容已生成，部分天尚未完成，可在详情页重试未完成的天'
+              : '你的行程已准备好',
         )
       }
       controller.abort()
@@ -262,7 +273,13 @@ export function useHomePlanning() {
       }
       setStatus(lastStatus === 3 ? 'error' : 'pending')
       setPreviewState(emptyPreviewState()); setCoreReady(false)
-      setMessage(error instanceof Error ? error.message : '进度暂时不可用，已保留当前行程。')
+      setMessage(
+        cancelRequested.current && lastStatus === 3
+          ? '已取消这次的规划，尚未生成的天不再继续。'
+          : error instanceof Error
+            ? error.message
+            : '进度暂时不可用，已保留当前行程。',
+      )
       controller.abort()
     }
     await sse
@@ -275,6 +292,8 @@ export function useHomePlanning() {
     request.current = controller
     setStatus('creating'); setMessage('正在创建你的行程'); setProgress(0); setDraft(null)
     setPreviewState(emptyPreviewState()); setCoreReady(false)
+    // 新的尝试：上一次的取消旗不跨尝试继承（服务端同口径——重开的是新责任）
+    cancelRequested.current = false; setCancelling(false)
     // M6（spec §12）：POST **前**认领并持久化 attempt——之后的网络失败/丢响应/刷新重试
     // 复用同一键（后端回放同一行程）；请求实质变化才换新键。只提交一次的责任由
     // 后端同键回放兜底，这里不靠按钮禁用。
@@ -362,12 +381,39 @@ export function useHomePlanning() {
    * generationId 在这里清——重置后的刷新不会被 resume 拉回旧行程，下次生成必是新行程。
    * 生成态与草稿一并归零，重置解锁后右栏不残留旧预览板；abort 兜底在位请求
    * （当前 reset 只在非 busy 态可达，正常为空）。 */
+  /** 取消这次的规划：只向后端落持久旗，**不**本地 abort，也不在这里写终态——
+   * 持有者在下一个检查点停手，已交付的天保留为 PARTIAL，真实终态仍由既有对账读回。
+   * 后端拒绝（409 = 已无进行中任务、401/404）时如实把旗子收回并显示原因，
+   * 不能让用户以为"点了就停了"。 */
+  const cancel = useCallback(async () => {
+    const id = draft?.id ?? readGenerationId()
+    if (!id) return
+    cancelRequested.current = true
+    setCancelling(true)
+    setMessage('正在停止这次的规划，已经排好的天会保留')
+    try {
+      await cancelItineraryGeneration(id)
+    } catch (error) {
+      cancelRequested.current = false
+      setCancelling(false)
+      setMessage(
+        isUnauthorized(error)
+          ? '登录后才能取消这次的规划。'
+          : error instanceof Error && error.message
+            ? error.message
+            : '这次取消没有被接受，规划仍在进行。',
+      )
+    }
+  }, [draft])
+
   const reset = useCallback(() => {
     requestVersion.current += 1
     request.current?.abort()
     request.current = null
     clearGenerationId()
     clearAttempt()
+    cancelRequested.current = false
+    setCancelling(false)
     setDraft(null); setProgress(0); setMessage(''); setStatus('idle')
     setPreviewState(emptyPreviewState()); setCoreReady(false)
   }, [])
@@ -379,5 +425,7 @@ export function useHomePlanning() {
     /** M5b：主行程已可查看、备选仍在完善的非阻断提示态 */
     coreReady,
     busy, submit, reset, resumeGeneration,
+    /** T1 持久取消旗的产品入口与在途标记（TripPanel 生成态用） */
+    cancelling, cancel,
   }
 }

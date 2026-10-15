@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { generateItinerary, getItineraryDetail, streamItineraryEvents, waitForItinerary } from '../../api/sinan'
+import { cancelItineraryGeneration, generateItinerary, getItineraryDetail, streamItineraryEvents, waitForItinerary } from '../../api/sinan'
 import type { ItineraryStreamEvent, StreamHandlers, WaitForItineraryOptions } from '../../api/sinan'
 import type { ItineraryDetail } from '../../types/itinerary'
 import { candidatesForDay, emptyPreviewState, prunePreviewsByDraft, reduceItemPreviewEvent } from './itemPreviews'
@@ -33,6 +33,7 @@ vi.mock('../../api/sinan', async (importOriginal) => {
     getItineraryDetail: vi.fn(),
     waitForItinerary: vi.fn(),
     streamItineraryEvents: vi.fn(),
+    cancelItineraryGeneration: vi.fn(),
   }
 })
 
@@ -40,6 +41,7 @@ const generateMock = vi.mocked(generateItinerary)
 const getDetailMock = vi.mocked(getItineraryDetail)
 const waitForMock = vi.mocked(waitForItinerary)
 const streamMock = vi.mocked(streamItineraryEvents)
+const cancelMock = vi.mocked(cancelItineraryGeneration)
 
 // ===== 帧构造（业务面信封五键，data 开放 dict 按消费键给值）=====
 
@@ -195,9 +197,16 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
         className: 'probe-start',
         onClick: () => void planning.submit(planningInput),
       }, 'start'),
+      createElement('button', {
+        type: 'button',
+        className: 'probe-cancel',
+        onClick: () => void planning.cancel(),
+      }, 'cancel'),
       createElement('output', { className: 'probe-state' }, JSON.stringify({
         status: planning.status,
         coreReady: planning.coreReady,
+        message: planning.message,
+        cancelling: planning.cancelling,
         previews: planning.previews.map((candidate) => `${candidate.dayNo}:${String(candidate.item.poiName)}`),
       })),
     )
@@ -235,8 +244,47 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
     JSON.parse(container.querySelector('.probe-state')!.textContent ?? '{}') as {
       status: string
       coreReady: boolean
+      message: string
+      cancelling: boolean
       previews: string[]
     }
+
+  it('取消：只向服务端落持久旗，监控继续对账，终态如实写成"已取消"而不是"已准备好"', async () => {
+    cancelMock.mockResolvedValue({
+      itineraryId: 7, cancelRequested: true, attempt: 1, state: 'RUNNING', undeliveredDays: [2, 3],
+    })
+    const container = await mountProbe()
+    await startGeneration(container)
+
+    await act(async () => { (container.querySelector('.probe-cancel') as HTMLButtonElement).click() })
+    await flush()
+    expect(cancelMock).toHaveBeenCalledWith(7)
+    // 取消 ≠ 本地中止：状态仍是 planning，SSE/轮询继续跑，真实终态由服务端裁决
+    expect(stateOf(container).status).toBe('planning')
+    expect(stateOf(container).cancelling).toBe(true)
+
+    // 服务端把已交付的一天收敛成 PARTIAL 终态
+    await act(async () => { waitCapture!.resolve({ ...readyDetail, genState: 'PARTIAL' } as ItineraryDetail) })
+    await flush()
+    const state = stateOf(container)
+    expect(state.status).toBe('ready')
+    expect(state.message).toContain('已取消这次的规划')
+  })
+
+  it('取消被拒（后端 409：已无进行中任务）时收回在途标记并如实报错，不假装已取消', async () => {
+    cancelMock.mockRejectedValue(new Error('该行程当前没有正在进行的生成任务'))
+    const container = await mountProbe()
+    await startGeneration(container)
+
+    await act(async () => { (container.querySelector('.probe-cancel') as HTMLButtonElement).click() })
+    await flush()
+    expect(stateOf(container).cancelling).toBe(false)
+    expect(stateOf(container).message).toContain('该行程当前没有正在进行的生成任务')
+
+    await act(async () => { waitCapture!.resolve({ ...readyDetail, genState: 'COMPLETED' } as ItineraryDetail) })
+    await flush()
+    expect(stateOf(container).message).toBe('你的行程已准备好')
+  })
 
   beforeEach(() => {
     ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
