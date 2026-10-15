@@ -184,7 +184,7 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
     饮食依据挂不上）；景点仍用中文名（经存在性解析补坐标与类别证据）；②删去
     「3-5 景 + 2-3 餐」密度示例（与结构化景点上限冲突，实测排出 3 景）；③「优先一午一晚」
     改为每天午、晚餐各一；④合并重复的主题/顺路/跨天去重条款，删掉自身就是路径串的
-    theme 示例。输出字段契约不变。量测见 docs/public/generation-low-thinking-2026-10-12.md。
+    theme 示例。输出字段契约不变。量测见 docs/evidence/generation-low-thinking-2026-10-12.md。
     """
     return (
         "你是资深当地导游。基于目的地常识一次安排完整多日行程。只输出 JSON："

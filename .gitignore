@@ -57,11 +57,14 @@ travel-agent-python/.pytest-tmp*/
 .dsh_tmp/
 
 # 内部工作文档（不入库，本地保留）
+# 入库白名单：docs/public（面向用户的文档）与 docs/evidence（上线验收证据）
 docs/
 !/docs/
 /docs/*
 !/docs/public/
 !/docs/public/**
+!/docs/evidence/
+!/docs/evidence/**
 
 # 本地侦察/探针临时物（TREK 稀疏克隆、无头截图与 stub 等，不入库）
 .tmp-*

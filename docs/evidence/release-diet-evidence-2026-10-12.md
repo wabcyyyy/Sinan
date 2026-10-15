@@ -37,9 +37,9 @@
 | 候选 id=20 | 修复后 | COMPLETED / READY_WITH_WARNINGS | 43.75s | 4 餐全部 0 据，且 `poiId` 全为 None（food 研究超时所致） |
 | 严格 id=21 | 修复后 | FAILED / BLOCKED | 63.78s | **2 餐各有据**：`Délifrance` = node 1511441588 `diet:vegetarian`；`くら寿司` = node 1174641596 `diet:vegan`+`vegetarian` |
 
-21 号的两个 `osm:node` 与[实时 Overpass 探针](overpass-live-probe.json)返回的实体一致，因此"池→票→字段证据→交付"这条链已被外部数据独立佐证。
+21 号的两个 `osm:node` 与[实时 Overpass 探针](release-diet-evidence-2026-10-12/overpass-live-probe.json)返回的实体一致，因此"池→票→字段证据→交付"这条链已被外部数据独立佐证。
 
-但 21 号仍失败，且**失败原因已不是证据管道**：DB 逐日阻断原文见 [blockers-from-db.json](blockers-from-db.json)，day-1 写的是「**Délifrance 新宿店**」尚无依据，而交付项名为 `Délifrance` 且已带 `diet:vegetarian`——模型写的分店后缀名与锚定后的权威名，在交付检查的时点上不是同一个键。这是下一个待确认根因（怀疑证据字段挂载晚于该次判定），本轮未改。
+但 21 号仍失败，且**失败原因已不是证据管道**：DB 逐日阻断原文见 [blockers-from-db.json](release-diet-evidence-2026-10-12/blockers-from-db.json)，day-1 写的是「**Délifrance 新宿店**」尚无依据，而交付项名为 `Délifrance` 且已带 `diet:vegetarian`——模型写的分店后缀名与锚定后的权威名，在交付检查的时点上不是同一个键。这是下一个待确认根因（怀疑证据字段挂载晚于该次判定），本轮未改。
 
 严格模式累计 5 次真实尝试（12、15、17、18、21）0 次完成。结论只能写成：严格模式**不再结构性不可能**，但**仍不可靠**。
 
@@ -54,7 +54,7 @@
 3. 去重重试修复只有路由单测覆盖，评测指标一字未动，因此其真实效果仅在真实模型上可见。
 4. 本轮**没有浏览器像素级验证**：应用内浏览器无可用视口（viewport 0×0 / `visibilityState=hidden`），指针与截图动作不可执行。已完成的只是**结构型证据**——在同源页面内注册合成账号 `p1fix2_browser_qa`、经 HttpOnly Cookie 建立真实会话、创建行程 19 并读回逐日状态。这证明会话与数据面贯通，不证明界面渲染与告警可见，不能替代上一轮的截图验收。
 5. 外部服务抖动真实存在：本轮观察到 Nominatim `SSL: UNEXPECTED_EOF` 连串失败、Overpass 一次 504（清缓存后重试即成功 8 行）。负缓存 TTL 600s 意味着一次 504 会让后续 10 分钟内的严格模式样本零证据。
-6. 一次 `/clarify` 对同一句话返回全空槽位，紧邻 3 次重跑均稳定抽出 `maxAttractionsPerDay=2`、`dietaryRequirement=vegetarian`、`temple` 排除，见 [clarify-extraction-variance.json](clarify-extraction-variance.json)：偶发而非系统性的抽取不稳。
+6. 一次 `/clarify` 对同一句话返回全空槽位，紧邻 3 次重跑均稳定抽出 `maxAttractionsPerDay=2`、`dietaryRequirement=vegetarian`、`temple` 排除，见 [clarify-extraction-variance.json](release-diet-evidence-2026-10-12/clarify-extraction-variance.json)：偶发而非系统性的抽取不稳。
 
 ## 环境故障曾伪装成产品故障
 
@@ -85,4 +85,4 @@
 
 **若今天公开给真实用户，仍建议 NO。**
 
-证据：[候选 20](live-candidate-trip20.json)、[严格 21](live-strict-trip21.json)、[候选 16](live-candidate-trip16.json)、[严格 17](live-strict-trip17.json)、[严格 18](live-strict-trip18.json)、[逐日阻断原文](blockers-from-db.json)、[Overpass 实时探针](overpass-live-probe.json)、[clarify 抽取波动](clarify-extraction-variance.json)。
+证据：[候选 20](release-diet-evidence-2026-10-12/live-candidate-trip20.json)、[严格 21](release-diet-evidence-2026-10-12/live-strict-trip21.json)、[候选 16](release-diet-evidence-2026-10-12/live-candidate-trip16.json)、[严格 17](release-diet-evidence-2026-10-12/live-strict-trip17.json)、[严格 18](release-diet-evidence-2026-10-12/live-strict-trip18.json)、[逐日阻断原文](release-diet-evidence-2026-10-12/blockers-from-db.json)、[Overpass 实时探针](release-diet-evidence-2026-10-12/overpass-live-probe.json)、[clarify 抽取波动](release-diet-evidence-2026-10-12/clarify-extraction-variance.json)。
