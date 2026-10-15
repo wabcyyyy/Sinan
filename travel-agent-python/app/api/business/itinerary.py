@@ -42,6 +42,7 @@ from app.services import (
     itinerary_plan_apply,
     itinerary_query,
     itinerary_version,
+    planning_tasks,
     preferences,
     quota_service,
     share_service,
@@ -208,6 +209,20 @@ def patch_day(
 ) -> dict:
     """编辑日副标题（复用 metadata_json.theme；空串 = 清空回退派生标题）。"""
     return ok(itinerary_command.update_day(user.id, id, dayId, body.theme))
+
+
+@router.post("/{id}/generation/cancel")
+def post_cancel_generation(
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """取消这趟行程的生成任务（T1 持久化执行面）。
+
+    只置取消旗（持久面 `planning_task.cancel_requested_at`），实际停手由持有者在下一次
+    预算写入/落库探针处完成——所以已交付的天不会被删，交付到哪一步就停在哪一步。
+    任务不在跑（或已结束）返回 409；他人行程 404。
+    """
+    return ok(planning_tasks.request_cancel(user.id, id))
 
 
 @router.post("/{id}/days/{dayNo}/regenerate")

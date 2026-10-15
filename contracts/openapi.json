@@ -2120,6 +2120,51 @@
         }
       }
     },
+    "/api/itinerary/{id}/generation/cancel": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Post Cancel Generation",
+        "description": "取消这趟行程的生成任务（T1 持久化执行面）。\n\n只置取消旗（持久面 `planning_task.cancel_requested_at`），实际停手由持有者在下一次\n预算写入/落库探针处完成——所以已交付的天不会被删，交付到哪一步就停在哪一步。\n任务不在跑（或已结束）返回 409；他人行程 404。",
+        "operationId": "post_cancel_generation_api_itinerary__id__generation_cancel_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Post Cancel Generation Api Itinerary  Id  Generation Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/itinerary/{id}/days/{dayNo}/regenerate": {
       "post": {
         "tags": [
