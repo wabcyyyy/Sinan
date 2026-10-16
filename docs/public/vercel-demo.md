@@ -26,26 +26,20 @@ npm run preview
 
 ## 发布到 Vercel
 
-当前个人展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)，项目 `wabcy/sinan-demo`，使用 Hobby 套餐。2026-10-16 展示适配迁移到远端 master `eb151681d71c3addacf620b1283faa4f07078a04`，保留该版本的首页照片拼贴、Motion 动效和详情页重排。Git 自动部署已连接 `wabcyyyy/Sinan`，生产分支为 `codex/vercel-latest-frontend`。`master` 不作为本展示站的生产分支。
+当前个人展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)，项目 `wabcy/sinan-demo`，使用 Hobby 套餐。2026-10-16 展示适配迁移到远端 master `eb151681d71c3addacf620b1283faa4f07078a04`，保留该版本的首页照片拼贴、Motion 动效和详情页重排。Git 自动部署已连接 `wabcyyyy/Sinan`，生产分支为 `master`；完整展示适配已从 `codex/vercel-latest-frontend` 合并到该分支。
 
 ### 自动发布更新
 
-在整合分支的独立工作区提交并推送修改：
+将通过验证的修改合并并推送到 GitHub 的 `master` 分支，Vercel 会自动构建，成功后更新 `sinan-demo.vercel.app`。其他分支的推送用于预览；要更新公开展示站，需合并到 `master`。没有推送的本地修改不会上线。
 
-```bash
-git add <本次修改的文件>
-git commit -m "Describe the showcase change"
-git push origin codex/vercel-latest-frontend
-```
-
-Vercel 接收 GitHub 推送，使用仓库中的代码构建，成功后自动更新 `sinan-demo.vercel.app`。没有推送的本地修改不会上线。当前整合工作区为 `C:/Users/25924/.codex/worktrees/vercel-latest-frontend/Sinan`；原 `D:/wcy/project/Sinan` 的未提交工作保留，不要在旧工作区直接拉取或覆盖。
+本次整合工作区为 `C:/Users/25924/.codex/worktrees/vercel-latest-frontend/Sinan`，后续可从独立分支提交并通过 Pull Request 合并到 `master`。原 `D:/wcy/project/Sinan` 的未提交工作保留，本地 `master` 尚未更新；不要在旧工作区强行拉取或覆盖。
 
 Vercel 项目设置：
 
 | 设置 | 值 |
 | --- | --- |
 | Git repository | `wabcyyyy/Sinan` |
-| Production branch | `codex/vercel-latest-frontend` |
+| Production branch | `master` |
 | Root Directory | `travel-frontend-react` |
 | Framework | Vite |
 | Build Command | `npm run build:demo` |

@@ -4,7 +4,7 @@ React 19 + Vite + TypeScript 壳（入口 `src/react-app/`，`main.tsx` 挂载 `
 
 ## 免费展示站
 
-[sinan-demo.vercel.app](https://sinan-demo.vercel.app) 使用本目录的真实页面和固定样例，免登录，不调用模型。Vercel 自动构建 GitHub 上 `codex/vercel-latest-frontend` 分支的推送，运行 `npm run build:demo`，产物为 `dist`。本地修改须提交并推送到该分支才会上线；详见 [部署说明](../docs/public/vercel-demo.md)。
+[sinan-demo.vercel.app](https://sinan-demo.vercel.app) 使用本目录的真实页面和固定样例，免登录，不调用模型。Vercel 自动构建 GitHub 上 `master` 分支的推送，运行 `npm run build:demo`，产物为 `dist`。本地修改须通过验证并合并到 GitHub 的 `master` 才会上线；详见 [部署说明](../docs/public/vercel-demo.md)。
 
 ## 技术栈
 
