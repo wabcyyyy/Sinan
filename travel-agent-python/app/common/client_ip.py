@@ -25,7 +25,8 @@ from functools import lru_cache
 
 from fastapi import Request
 
-from app.common.config import parse_trusted_proxy, settings
+from app.common.config import settings
+from app.common.config_primitives import parse_trusted_proxy
 
 logger = logging.getLogger(__name__)
 
