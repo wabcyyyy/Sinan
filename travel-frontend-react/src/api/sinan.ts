@@ -110,6 +110,12 @@ export function logout() {
   return apiRequest<void>('/auth/logout', { method: 'POST' })
 }
 
+/** 多端下线：撤销本账号全部已登记会话——**包括当前这台设备**（后端同时清 TA_AUTH）。
+ *  返回的 `revoked` 是被撤销的会话数，只用于告知与排障，不作为成功判定条件。 */
+export function logoutAll() {
+  return apiRequest<{ revoked: number }>('/auth/logout-all', { method: 'POST' })
+}
+
 export function getUserInfo() {
   return apiRequest<Contracts.UserInfoVO>('/user/info')
 }

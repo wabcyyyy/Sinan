@@ -111,6 +111,16 @@ def login_fail_key(ip: str, username: str) -> str:
     return f"auth:login:fail:{ip}|{username}"
 
 
+def password_fail_key(ip: str, username: str) -> str:
+    """改密时「原密码错误」的失败锁：`auth:pwd:fail:{ip}|{username}`。
+
+    与 `login_fail_key` 同粒度（IP + 用户名）、同 15 分钟窗与 5 次阈值，但**刻意不同键**：
+    复用登录那条的话，一次失败的改密就会把真用户挡在登录门外——而改密请求只需要一张
+    偷来的会话票就能发出，等于给持有被盗 Cookie 的人送了一个「让对方登不上」的按钮。
+    """
+    return f"auth:pwd:fail:{ip}|{username}"
+
+
 def login_ip_key(ip: str) -> str:
     """按 IP 的登录总量窗（审计 §3.3.3）：`auth:login:ip:{ip}`。
 

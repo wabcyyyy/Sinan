@@ -3,9 +3,9 @@ import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createLlmGateway, listLlmGateways, ReactApiError } from '../../api/sinan'
+import { createLlmGateway, listLlmGateways, logoutAll, ReactApiError } from '../../api/sinan'
 import type * as Contracts from '../../types/generated/contracts'
-import { ChannelBanner, GatewayCard, GatewayForm, SettingsPage } from './SettingsPage'
+import { AccountSecurityCard, ChannelBanner, GatewayCard, GatewayForm, SettingsPage } from './SettingsPage'
 import {
   activeChannel,
   applyEnabledFlag,
@@ -25,11 +25,12 @@ import {
 
 vi.mock('../../api/sinan', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/sinan')>()
-  return { ...actual, listLlmGateways: vi.fn(), createLlmGateway: vi.fn() }
+  return { ...actual, listLlmGateways: vi.fn(), createLlmGateway: vi.fn(), logoutAll: vi.fn() }
 })
 
 const listMock = vi.mocked(listLlmGateways)
 const createMock = vi.mocked(createLlmGateway)
+const logoutAllMock = vi.mocked(logoutAll)
 
 const sampleGateway: Contracts.LlmGatewayVO = {
   id: 7,
@@ -275,5 +276,55 @@ describe('SettingsPage 保存链路（mock api）', () => {
     const container = await mountSettings()
     expect(container.querySelector('.channel-banner')?.textContent).toContain('自有通道 · 我的通义（qwen-plus）')
     expect(container.querySelectorAll('.gateway-card')).toHaveLength(2)
+  })
+})
+
+/** 账号安全块（T7a）：`POST /api/auth/logout-all` 的后端一直在，缺的是产品入口。
+ * 这里钉三件事：后果文案在场、第一次点击**不**发请求、失败给出可读反馈。
+ * 成功分支不钉：它整页跳去登录页（`window.location.assign`），断言导航等于在测 happy-dom。 */
+describe('账号安全：退出所有设备', () => {
+  beforeEach(() => {
+    ;(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+  })
+
+  afterEach(async () => {
+    for (const { root, container } of roots.splice(0)) {
+      await act(async () => { root.unmount() })
+      container.remove()
+    }
+    vi.clearAllMocks()
+  })
+
+  it('静态渲染：后果与范围写清楚（含"本机也会退出"）', () => {
+    const html = renderToStaticMarkup(createElement(AccountSecurityCard))
+    expect(html).toContain('账号安全')
+    expect(html).toContain('当前这台设备也会退出')
+    expect(html).toContain('退出所有设备')
+  })
+
+  it('第一次点击只落确认态，第二次才发请求；失败时就地反馈且不吞错', async () => {
+    listMock.mockResolvedValue([])
+    logoutAllMock.mockRejectedValue(new ReactApiError('暂时无法退出其它设备，请稍后再试', 503))
+    const container = await mountSettings()
+    const button = () => container.querySelector('.account-security button') as HTMLButtonElement
+    await act(async () => { button().click() })
+    expect(logoutAllMock).not.toHaveBeenCalled()
+    expect(button().textContent).toContain('确认退出所有设备')
+    await act(async () => { button().click() })
+    expect(logoutAllMock).toHaveBeenCalledTimes(1)
+    const note = container.querySelector('.settings-note.error')
+    expect(note?.getAttribute('role')).toBe('alert')
+    expect(note?.textContent).toContain('暂时无法退出其它设备')
+    expect((container.querySelector('.account-security button') as HTMLButtonElement).textContent).toContain('退出所有设备')
+  })
+
+  it('未登录（401）：不报"已退出"，改给重新登录口径', async () => {
+    listMock.mockResolvedValue([])
+    logoutAllMock.mockRejectedValue(new ReactApiError('未登录', 401))
+    const container = await mountSettings()
+    const button = () => container.querySelector('.account-security button') as HTMLButtonElement
+    await act(async () => { button().click() })
+    await act(async () => { button().click() })
+    expect(container.textContent).toContain('请重新登录后再用这里')
   })
 })

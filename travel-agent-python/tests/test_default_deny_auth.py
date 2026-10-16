@@ -41,6 +41,8 @@ _UNGUARDED_BUSINESS = frozenset(
 # 登录页自身的崩溃恰恰发生在拿不到会话时。滥用面有界：只写结构化日志不落库、
 # 全字段上限、按 IP 分钟窗 30 次超限 429（见 business/client_errors.py）。
 # 复核条件：日志面出现灌水即收回匿名性（改走强制会话），见 AGENTS.md 哲学 #2 注记。
+# 反向登记：改密（POST /api/user/password）**不**在本清单上，也**不得**加进来——
+# 它写凭据。判据见本文件末尾的 test_password_change_stays_on_the_guarded_surface。
 _ANONYMOUS_WRITES = _UNGUARDED_BUSINESS | frozenset({("POST", "/api/auth/logout-all"), ("POST", "/api/client-errors")})
 
 # agent 面走 X-Agent-Token 内部令牌，不是用户会话；探活端点必须匿名，否则
@@ -144,3 +146,23 @@ def test_no_anonymous_writes_under_public_prefixes() -> None:
         f"这些写端点因 PUBLIC_PATHS 前缀匹配而匿名可达：{sorted(anonymous_writes - _ANONYMOUS_WRITES)}。"
         "把路径挪出公开前缀，或收窄 app/api/security.py 里的前缀。"
     )
+
+
+def test_password_change_stays_on_the_guarded_surface() -> None:
+    """改密（`POST /api/user/password`）正向钉死在守卫面上——它写凭据，不配匿名。
+
+    为什么上面三条还不够：`_ANONYMOUS_WRITES` 只准变短，改密不进去就没人报警。但它
+    还有一个静默失效路径——**路径搬家**。若哪天把它挪到 `/api/auth/**`（那条前缀在
+    `PUBLIC_PATHS` 里，因为登录/注册必须匿名可达），带 `enforce_business_auth` 的路由
+    照样收得到无票请求（permitAll 仍会尝试认人，认不出也放行），上面三条断言全绿：
+    依赖在（第 1 条）、清单没变短（第 2、3 条），而实际行为变成"没有票也能改密码"。
+    所以这里同时钉两件事：路径不在公开前缀里，以及它带着业务闸门。
+    """
+    from app.api.security import is_public_path
+
+    rows = {(method, path): names for method, path, names in _guarded_routes()}
+    key = ("POST", "/api/user/password")
+    assert key in rows, "改密端点没装配上（改名/搬家请同步本用例与前端调用点）"
+    assert not is_public_path(key[1]), "改密落在 PUBLIC_PATHS 前缀里 = 无票也能发，必须换到默认拒绝面"
+    assert rows[key] & _BUSINESS_GUARDS, f"改密端点丢了鉴权依赖：{sorted(rows[key])}"
+    assert key not in _ANONYMOUS_WRITES, "改密被登记成匿名可写：这是权限回归，不是清单更新"

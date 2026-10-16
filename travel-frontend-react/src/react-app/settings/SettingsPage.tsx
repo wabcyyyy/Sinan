@@ -7,6 +7,7 @@ import {
   enableLlmGateway,
   isUnauthorized,
   listLlmGateways,
+  logoutAll,
   testLlmGateway,
   updateLlmGateway,
 } from '../../api/sinan'
@@ -32,7 +33,10 @@ import {
 
 /** 模型接入设置页（BYOK）：页面组件只做编排，可静态渲染的展示块（ChannelBanner /
  * GatewayCard / GatewayForm）单独导出并配 llmGateway.test.ts。
- * 密钥红线：输入框用密码型，列表只显示后端回显的尾 4 位（maskDisplay），全页不出现明文。 */
+ * 密钥红线：输入框用密码型，列表只显示后端回显的尾 4 位（maskDisplay），全页不出现明文。
+ *
+ * 页顶另挂一块「账号安全」（AccountSecurityCard）：它不依赖 BYOK 列表的读取结果，
+ * 所以放在 loading/error 分支**之外**——正是读不到配置的时候，用户才需要下线其它设备。 */
 
 type FormState = { id: number | null; values: GatewayFormValues }
 type Note = { kind: 'ok' | 'error'; text: string }
@@ -130,6 +134,7 @@ export function SettingsPage() {
 
   return <div className="page-content settings-page">
     <PageHeader eyebrow="Model access" title="模型接入" description="接入你的 OpenAI 兼容 API：生成与对话可走你自己的通道与额度。密钥加密保存在你的账号下，任何页面只显示尾 4 位。" />
+    <AccountSecurityCard />
     {loading ? <LoadingBlock label="正在读取配置…" />
       : error ? <ErrorBlock message={error} onRetry={load} onLogin={authExpired ? () => navigate(loginRedirect()) : undefined} />
         : <>
@@ -167,6 +172,51 @@ export function SettingsPage() {
             </div>}
         </>}
   </div>
+}
+
+/** 账号安全：把后端早就存在的「多端下线」（`POST /api/auth/logout-all`）接进产品。
+ *
+ * 为什么单独一块、且挂在 BYOK 的 loading/error 分支**之外**：会话撤销不依赖模型配置的
+ * 读取结果，而「读不到配置」的时候恰恰是用户最想确认自己还登录在哪些设备上、并把它们
+ * 关掉的时候。诚实口径三条：① 后果写在按钮旁边（**当前这台设备也会退出**）；② 二次确认
+ * 才真发请求（与网关删除同一套 arm 纪律，不做点击即生效的破坏性操作）；③ 成功后整页跳去
+ * 登录页，让 App 重新校验会话——不把顶栏那个还亮着的用户名留在屏幕上冒充登录态。
+ * 样式只复用既有类（`.settings-section-head` / `.state-hint` / `.settings-note` /
+ * `.button-secondary`）：本期不为一个按钮新开 CSS 面。 */
+export function AccountSecurityCard() {
+  const [armed, setArmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<Note | null>(null)
+
+  const revokeEverySession = async () => {
+    if (!armed) { setArmed(true); setNote(null); return }
+    setBusy(true); setNote(null)
+    try {
+      await logoutAll()
+      window.location.assign(loginRedirect('/'))
+    } catch (err: unknown) {
+      setBusy(false); setArmed(false)
+      setNote({
+        kind: 'error',
+        text: isUnauthorized(err)
+          ? '这台设备的登录已经不在了，其它设备没能确认退出。请重新登录后再用这里。'
+          : err instanceof Error && err.message ? err.message : '退出未完成，请稍后再试',
+      })
+    }
+  }
+
+  return <section className="account-security">
+    <div className="settings-section-head"><h2>账号安全</h2></div>
+    <p className="state-hint">退出所有设备：让这台账号在其它浏览器与其它手机上的登录状态全部失效。<strong>当前这台设备也会退出</strong>，需要重新登录。换过共用设备、或怀疑自己的登录被人用过时用这里。</p>
+    {note && <p className="settings-note error" role="alert">{note.text}</p>}
+    {armed && !busy && !note && <p className="settings-note ok" role="status">这会退出包括本机在内的全部设备，再点一次确认。</p>}
+    <div className="gateway-form-actions">
+      <button className="button button-secondary" type="button" disabled={busy} onClick={() => { void revokeEverySession() }}>
+        {busy ? '正在退出…' : armed ? '确认退出所有设备' : '退出所有设备'}
+      </button>
+      {armed && !busy && <button className="button button-secondary" type="button" onClick={() => { setArmed(false); setNote(null) }}>取消</button>}
+    </div>
+  </section>
 }
 
 export function ChannelBanner({ status }: { status: ChannelStatus }) {

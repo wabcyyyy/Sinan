@@ -4,12 +4,16 @@
 `$2a$` 格式跨实现兼容，因此这里校验必须接受存量哈希、签发用 `$2a$`，否则
 迁移后老账号全部登录不上。
 
-登录响应**不回传 JWT**（`LoginResponse(user)`）：凭据只走 HttpOnly Cookie，
-降低 XSS 直接读 body 偷 token 的面。Bearer 头仍被接受，供脚本/联调。
-
 校验文案逐字保留 Java 的：
 - 注册重名 → 「注册失败，请检查用户名或稍后重试」（刻意模糊，不告诉调用者哪一半失败）
 - 口令错误 → 「用户名或密码错误」（不区分用户不存在/密码错，避免账号枚举）
+
+改密（`change_password`）的文案不受反枚举约束：身份已由会话票确认，"原密码对不对"
+不是攻击者不知道的信息，所以可以直说「原密码错误」——含混反而会让真人以为账号出问题。
+
+登录响应**不回传 JWT**（`LoginResponse(user)`）：凭据只走 HttpOnly Cookie，
+降低 XSS 直接读 body 偷 token 的面。Bearer 头仍被接受，供脚本/联调。
+改密成功后同样只把新票写进 Cookie：响应体里没有任何凭据。
 """
 
 from __future__ import annotations
@@ -129,15 +133,24 @@ def login(username: str, password: str, ip: str) -> LoginResult:
         raise ApiError(403, "账号已禁用")
 
     sessions.reset_counter(throttle_key)
+    return LoginResult(token=_issue_session(username), user=to_vo(user))
+
+
+def _issue_session(username: str) -> str:
+    """签发会话票并登记到会话注册表；返回票本身（调用方只把它写进 Cookie）。
+
+    登录与改密共用这一条登记路径：注册表（`state_and_sessions` 的 jti→token）是
+    「撤销全部会话」唯一的取数来源，少登记一次就少杀一张票。登记失败不影响登录，
+    Cookie 仍然可用（那张票只是不在「登出所有设备」的射程里，24h 后自然过期）。
+    """
     ttl = settings.jwt_expire_hours * 3600
-    token = jwt_tokens.encode_token(user.username, settings.jwt_secret, ttl)
+    token = jwt_tokens.encode_token(username, settings.jwt_secret, ttl)
     try:
         claims = jwt_tokens.decode_token(token, settings.jwt_secret)
-        sessions.register_session(user.username, claims["jti"], token, jwt_tokens.remaining_seconds(claims))
+        sessions.register_session(username, claims["jti"], token, jwt_tokens.remaining_seconds(claims))
     except Exception as exc:
-        # 会话登记失败不影响登录：Cookie 仍然可用
         logger.warning("session register failed: %s", exc)
-    return LoginResult(token=token, user=to_vo(user))
+    return token
 
 
 def logout(raw_token: str | None) -> None:
@@ -157,6 +170,45 @@ def logout_all(username: str) -> int:
     if not username:
         return 0
     return sessions.revoke_all(username)
+
+
+def change_password(username: str, old_password: str, new_password: str, ip: str) -> str:
+    """改密：验原口令 → 重新哈希落库 → 杀掉该账号全部已登记会话 → 给当前设备签一张新票。
+
+    身份只取**认证主体**：`username` 由路由从 JWT 的 sub 传入，请求体里没有用户名字段，
+    所以「A 改 B 的密码」在这份签名上无法表达——没有可以填别人用户名的地方。
+    返回值只准进 HttpOnly Cookie（同 `login`）：不进响应体，也不进日志。
+
+    新口令的门槛与注册**同一份规则、同一个切分**（哲学 #1，阈值不重写第二遍）：
+    长度/字符集/非空由请求体校验器借用 `RegisterBody` 的校验器把关（见
+    `app/api/business/auth.py` 的 `ChangePasswordBody`，400 文案走既有的信封映射），
+    这里只补注册同样落在服务层的那半条：字母+数字。
+    """
+    throttle_key = sessions.password_fail_key(ip, username)
+    if sessions.sliding_count(throttle_key, sessions.LOGIN_WINDOW_SECONDS) >= sessions.MAX_LOGIN_FAILURES:
+        raise ApiError(429, "原密码错误次数过多，请稍后再试")
+    user = _find_user(username)
+    if user is None:
+        # 票还有效但账号已查不到（软删等）：与 info() 同口径按未登录处理，不解释原因
+        raise ApiError(401, "用户不存在")
+    if not verify_password(old_password, user.password):
+        sessions.sliding_hit(throttle_key, sessions.LOGIN_WINDOW_SECONDS)
+        raise ApiError(400, "原密码错误")
+    if not _complex_enough(new_password):
+        raise ApiError(400, "密码需同时包含字母和数字")
+
+    with session_scope() as session:
+        target = session.get(SysUser, user.id)
+        if target is None:
+            raise ApiError(401, "用户不存在")
+        # 重新哈希（bcrypt $2a$，与注册同一条 `hash_password`）：存量哈希不因改密换形态
+        target.password = hash_password(new_password)
+    # 落库成功之后才撤销：反过来的话，一次改密失败会先把整账号的会话打死
+    revoked = sessions.revoke_all(username)
+    token = _issue_session(username)
+    # 只记「撤销了几张票」这件事本身：用户名、口令、新旧 token 一律不落日志
+    logger.info("password changed; revoked_sessions=%d", revoked)
+    return token
 
 
 def _normalize(raw_token: str | None) -> str | None:
