@@ -348,6 +348,37 @@ def test_cancel_flag_with_dead_holder_converges_once(env) -> None:
     assert generation_recovery.recover_one(trip_id, False) is False, "取消过的责任不由后台复活"
 
 
+def test_stale_worker_cannot_write_trip_terminal_primitive(env) -> None:
+    """产品终态也认所有权：绕过编排层直接调终态原语，被接管的旧 worker 照样写不动。
+
+    以前只有 `_finish`/`finish_failure` 里的 `holds_task` 挡它——那等于"守规矩的调用方才被拦"，
+    将来任何新调用点或异常路径都能把接管者判的 PARTIAL 覆盖成 COMPLETED。
+    取消不在拦阻之列：那是当前持有者自己的交付责任，必须能落终态。
+    """
+    trip_id = _seed_trip(delivered_days=1)
+    stale = planning_tasks.acquire(1, trip_id)
+    expire_lease(trip_id)
+    fresh = planning_tasks.takeover(1, trip_id)
+    assert fresh.task_id is not None and stale.task_id != fresh.task_id
+
+    with use_task_limits(stale):
+        day_persistence.complete_trip(trip_id, True)
+        day_persistence.fail_trip(trip_id, "旧 worker 想覆盖结论", user_facing=True)
+
+    assert _main(trip_id).gen_state != "COMPLETED", "旧 worker 不得把行程写成 COMPLETED"
+    assert _main(trip_id).gen_state != "FAILED", "旧 worker 也不得把行程写成 FAILED"
+
+    planning_tasks.request_cancel(1, trip_id)
+    with use_task_limits(fresh):
+        planning_tasks.finish_failure(trip_id, planning_tasks.TaskCancelled("用户取消"))
+
+    assert _main(trip_id).gen_state == "PARTIAL", "当前持有者的取消收敛必须还能写终态"
+    # 执行态随句柄脱离一起落（finish_failure 只登记结论，release 才写行）：
+    # 这一段同时证明"取消的持有者"没被所有权守卫误伤。
+    planning_tasks.release(trip_id, fresh.task_id)
+    assert _task_row(trip_id).state == "CANCELLED"
+
+
 def test_resubmit_reopens_window_not_quota(env) -> None:
     """已结算的责任重新拉起：时间窗重开、累计账本不清零，"重试拿不到新额度"成为可查事实。"""
     trip_id = _seed_trip(delivered_days=1)

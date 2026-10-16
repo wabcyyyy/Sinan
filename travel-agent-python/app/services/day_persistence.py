@@ -22,13 +22,14 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.agent import check_task_write, sync_schedule_summary
+from app.agent import check_task_write, current_limits, sync_schedule_summary
 from app.common.envelope import FAIL_TRIP_NOTE, ApiError
 from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.trip import DailyPlan, FactEvidence
 from app.services import generation_gate, itinerary_version, stay_hotels
+from app.services import planning_task_rows as rows
 from app.services.day_delivery_gate import hard_delivery_blockers
 
 logger = logging.getLogger(__name__)
@@ -197,8 +198,18 @@ def existing_hotel(day_id: int) -> str | None:
         )
 
 
+def _trip_terminal_writable(itinerary_id: int) -> bool:
+    """行程终态是"这趟的结论"：活租约不在我手上时不得写（所有权判定，取消不拦）。"""
+    limits = current_limits()
+    task_id = limits.task_id if limits is not None else None
+    return rows.owns_trip_terminal(itinerary_id, task_id)
+
+
 def complete_trip(itinerary_id: int, all_succeeded: bool) -> None:
     """按天状态汇总写终态；`status` 仍是 2（用户可见语义不变）。"""
+    if not _trip_terminal_writable(itinerary_id):
+        logger.warning("complete_trip refused for itinerary %s: lease held by another worker", itinerary_id)
+        return
     with session_scope() as session:
         main = session.get(ItineraryMain, itinerary_id)
         if main is None:
@@ -227,6 +238,9 @@ def fail_trip(itinerary_id: int, message: str | None, *, user_facing: bool = Fal
     code 来自 envelope.error_code，只透出异常类别，供用户与运维关联，不透出原始异常。
     """
     text = (message or "").strip()
+    if not _trip_terminal_writable(itinerary_id):
+        logger.warning("fail_trip refused for itinerary %s: lease held by another worker", itinerary_id)
+        return
     logger.warning("itinerary %s failed: %s", itinerary_id, text[:MAX_ERROR_LENGTH])
     note = f"生成失败：{text}" if user_facing and text else FAIL_TRIP_NOTE
     note = f"{note}（错误码 {code}）" if code else note
@@ -248,6 +262,9 @@ def set_trip_theme(itinerary_id: int, theme: str | None) -> None:
 
 
 def mark_generating(itinerary_id: int) -> None:
+    if not _trip_terminal_writable(itinerary_id):
+        logger.warning("mark_generating refused for itinerary %s: lease held by another worker", itinerary_id)
+        return
     with session_scope() as session:
         session.execute(
             update(ItineraryMain)

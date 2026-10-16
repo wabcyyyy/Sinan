@@ -125,6 +125,25 @@ def state_of(itinerary_id: int) -> dict | None:
         }
 
 
+def owns_trip_terminal(itinerary_id: int, task_id: str | None) -> bool:
+    """行程终态写入的资格：**只判所有权，不判取消**。
+
+    取消、过期、终检没跑完这三种收敛本身必须能写产品终态——用 `check_task_write()`
+    守卫会被"取消旗已落下"一起拒掉，PARTIAL/FAILED 就永远落不了地。这里只问一件事：
+    这趟是不是有一个**活租约不在我手上**。是 → 结论归当前持有者，本次写作废。
+
+    `task_id` 为 None 表示调用方根本不在任务上下文里（恢复扫描的无持有者收敛）→ 放行；
+    给了 `task_id` 就必须与行内令牌一致，同进程被接管的旧 worker 也因此照样被拒。
+    """
+    with session_scope() as session:
+        row = read(session, itinerary_id)
+    if row is None or row.state not in LIVE_STATES:
+        return True
+    if row.lease_owner != WORKER_ID:
+        return False
+    return task_id is None or row.task_id == task_id
+
+
 def is_active(itinerary_id: int) -> bool:
     """所有权判据：状态 live 且租约未过期才算有人在跑（重启后同样问得出答案）。"""
     with session_scope() as session:
