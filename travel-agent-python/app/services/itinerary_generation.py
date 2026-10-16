@@ -61,7 +61,7 @@ from app.schemas.trip_requirements import (
 )
 from app.services import (
     budget_engine,
-    cost_ledger,
+    cost_admission,
     day_persistence,
     generation_events,
     generation_gate,
@@ -69,6 +69,7 @@ from app.services import (
     itinerary_query,
     itinerary_version,
     llm_gateway_service,
+    planning_task_runs,
     planning_tasks,
     stay_hotels,
 )
@@ -245,7 +246,7 @@ def plan_days(
     limits = (
         limits
         if limits is not None
-        else planning_tasks.task_limits(itinerary_id) or planning_tasks.acquire(user_id, itinerary_id)
+        else planning_task_runs.task_limits(itinerary_id) or planning_tasks.acquire(user_id, itinerary_id)
     )
     timing = _StageClock(itinerary_id, limits.started_at)
     try:
@@ -494,7 +495,7 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
     # 补齐额度（V17/T2）：前置校验都过了、真的要用 LLM 重补这一天，才扣行程的一格补齐额度。
     # 顺序是刻意的——400/404/409 这些"这次根本没动手"的请求不允许消耗额度；
     # 免扣的用户「今日生成次数」保持在端点侧（quota_service.enforce_llm_rate_only）。
-    cost_ledger.admit_repair(user_id, itinerary_id)
+    cost_admission.admit_repair(user_id, itinerary_id)
     limits = planning_tasks.acquire(user_id, itinerary_id)
     locked = False
     repaired = False
@@ -523,7 +524,7 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
     finally:
         # 退避状态（V17/T2）：失败一次就把下一次补齐推后（指数、封顶），成功即清零。
         # 挡的是"反复点补齐把额度与线程池磨穿"，不是挡真实用户的第二次尝试。
-        cost_ledger.record_repair_result(itinerary_id, succeeded=repaired)
+        cost_admission.record_repair_result(itinerary_id, succeeded=repaired)
         planning_tasks.release(itinerary_id, limits.task_id, core_only=True)
         if locked:
             generation_gate.release_day_lock(itinerary_id, day_no)
@@ -1062,7 +1063,7 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
     if main is None:
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
-    if not planning_tasks.holds_task(itinerary_id):
+    if not planning_task_runs.holds_task(itinerary_id):
         # 失权（被接管/定时器已收/进程身份已换）的 worker 不再拥有这趟行程的结论：
         # 照常写会把接管者判的 PARTIAL 覆盖成 COMPLETED，还会重复发终帧。
         logger.warning("finish skipped for itinerary %s: lease no longer held", itinerary_id)

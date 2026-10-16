@@ -35,6 +35,7 @@ from app.services import (
     llm_gateway_service,
     planning_tasks,
 )
+from app.services import planning_task_convergence as convergence
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +164,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             _mark_completed(session, itinerary_id, main.city, main.days)
             # 执行面也要一起收：否则这条已交付完的行程每轮扫描都重进一次
             # （产品 COMPLETED、执行态还挂 QUEUED/RUNNING）。这里没有活持有者。
-            planning_tasks.settle_without_holder(itinerary_id, planning_tasks.FINISHED, "RECOVERED_COMPLETE")
+            convergence.settle_without_holder(itinerary_id, planning_tasks.FINISHED, "RECOVERED_COMPLETE")
             logger.info("recovered completed itinerary %s", itinerary_id)
             return True
 
@@ -202,7 +203,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 取消旗已落下、持有者却当场没了：只能由扫描收敛成 CANCELLED，不能再接管。
             # 原先这里只看租约，于是每 90s 接管一次、每次都在 TaskStopped 上退出，
             # CANCELLED 成为不可达状态（PLAN T1「取消」×「重启恢复」的交叉洞）。
-            planning_tasks.terminalize_cancelled(itinerary_id, completed_days=completed_days)
+            convergence.terminalize_cancelled(itinerary_id, completed_days=completed_days)
             logger.info("cancelled planning task converged without holder, itinerary %s", itinerary_id)
             return True
         if task is None or task.deadline_at <= datetime.now():
@@ -290,7 +291,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             _mark_completed(session, itinerary_id, command.city, command.days)
         # 执行态一起收 FINISHED：`finally` 里的 release 只交还租约、不落结论，
         # 不补这一脚，产品 COMPLETED 与执行 RUNNING 会长期不一致，扫描反复重进。
-        planning_tasks.settle_success(itinerary_id, limits.task_id or "")
+        convergence.settle_success(itinerary_id, limits.task_id or "")
         generation_gate.release_resume_lock(itinerary_id)
         return True
 
@@ -332,8 +333,8 @@ def _mark_completed(session, itinerary_id: int, city: str, days: int) -> None:
 
 
 def _terminalize_expired(itinerary_id: int, completed_days: int) -> None:
-    """过期收敛委托给 `planning_tasks.terminalize_expired`（产品终态 + 最终预算 + 执行态一处实现）。"""
-    planning_tasks.terminalize_expired(itinerary_id, completed_days=completed_days)
+    """过期收敛委托给 `planning_task_convergence.terminalize_expired`（产品终态 + 最终预算 + 执行态一处实现）。"""
+    convergence.terminalize_expired(itinerary_id, completed_days=completed_days)
 
 
 # 周期调度统一走 app.common.cron（G-3.3）：本模块只负责"扫什么"，不负责

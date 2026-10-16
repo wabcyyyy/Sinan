@@ -11,11 +11,15 @@
 于是「每一次消耗平台模型额度的请求」都必然经过 `reserve_llm` → `apply_events`：
 准入不是入口自觉调用的闸门，而是外呼接缝本身的性质（忘调 `quota_service` 也照样被挡）。
 
-事务边界刻意用 `_own_session()` 而不是 `session_scope()`：预留必须在**请求发出之前**落定，
+事务边界刻意用 `own_session()` 而不是 `session_scope()`：预留必须在**请求发出之前**落定，
 调用方业务事务的回滚不能把已经发生的成本退掉（否则"失败了所以不算花钱"就是无界重试的门）。
 判定的算式全在 `app/common/cost_policy.py`（纯函数、可单测）；本模块只负责把它们写成
 一条带守卫的条件更新——**上限比较在 WHERE 里**，所以并发预留落在同一行的 X 锁上排队，
 不可能超卖。
+
+本模块只留**账本行的写原语**（预留 / 结算 / 崩溃收口）；入口侧的准入判定（`enforce_windows` /
+`admit_repair` / `repair_state` / `record_repair_result`）在同目录 `cost_admission`，它复用这里的
+`own_session` / `ensure_row` / `cap_error` / `breaker_error`，不再各写一份事务边界。
 
 权威分工（别处只读、不复制）：账本总额 = `cost_ledger`；单笔预留的生命周期与归属 =
 `llm_reservation`；一次交付责任的运行消耗 = `planning_task.consumed_*`（V16）；
@@ -27,7 +31,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
@@ -49,7 +53,7 @@ ABANDONED = policy.ABANDONED
 
 
 @contextmanager
-def _own_session() -> Iterator[Session]:
+def own_session() -> Iterator[Session]:
     """成本写自己的事务：提交与否不由调用方的业务事务决定（见模块 docstring 那条取舍）。"""
     session = get_session_factory()()
     try:
@@ -82,7 +86,7 @@ def apply_events(events: list[dict]) -> None:
 # ---------------------------------------------------------------------- 预留 ----
 
 
-def _ensure_row(session: Session, scope: policy.Scope) -> None:
+def ensure_row(session: Session, scope: policy.Scope) -> None:
     """账本行按需建（并发下让先落库的那条赢，输的继续用同一行——守卫更新才是判据）。"""
     if session.get(CostLedger, scope.key) is not None:
         return
@@ -129,7 +133,7 @@ def _guard_reserve(session: Session, scope: policy.Scope, prompt: int, completio
 def _rejection(scope: policy.Scope, row: CostLedger | None, prompt: int, completion: int) -> CostCeilingError:
     """把"为什么被挡"说准：熔断 / 预留位满 / token 顶 / 次数顶各给各的稳定码。"""
     if row is not None and row.breaker_tripped_at is not None:
-        return _breaker_error(scope)
+        return breaker_error(scope)
     if row is not None and policy.open_reservations_full(int(row.open_reservations)):
         return CostCeilingError(
             policy.CODE_RESERVATION_FLOOD,
@@ -140,14 +144,14 @@ def _rejection(scope: policy.Scope, row: CostLedger | None, prompt: int, complet
     tokens = policy.tokens_of(int(row.charge_prompt_tokens), int(row.charge_completion_tokens)) if row else 0
     calls = int(row.charged_calls) if row else 0
     if ceiling.token_cap > 0 and policy.tokens_of(prompt, completion) + tokens > ceiling.token_cap:
-        return _cap_error(scope, "token")
+        return cap_error(scope, "token")
     if ceiling.call_cap > 0 and calls + 1 > ceiling.call_cap:
-        return _cap_error(scope, "call")
+        return cap_error(scope, "call")
     # 两个维度都没超却被守卫拒绝 = 并发里别人刚把窗口填满（或预留位刚被占满），按最贴近的原因回
-    return _cap_error(scope, "token" if ceiling.token_cap > 0 else "call")
+    return cap_error(scope, "token" if ceiling.token_cap > 0 else "call")
 
 
-def _cap_error(scope: policy.Scope, dimension: str) -> CostCeilingError:
+def cap_error(scope: policy.Scope, dimension: str) -> CostCeilingError:
     if scope.kind == policy.PLATFORM:
         return CostCeilingError(
             policy.CODE_PLATFORM_LIMIT,
@@ -161,7 +165,7 @@ def _cap_error(scope: policy.Scope, dimension: str) -> CostCeilingError:
     )
 
 
-def _breaker_error(scope: policy.Scope) -> CostCeilingError:
+def breaker_error(scope: policy.Scope) -> CostCeilingError:
     if scope.kind == policy.PLATFORM:
         return CostCeilingError(
             policy.CODE_PLATFORM_LIMIT,
@@ -177,7 +181,7 @@ def _breaker_error(scope: policy.Scope) -> CostCeilingError:
 
 def _trip_breaker(scope: policy.Scope) -> None:
     """触顶即熔断：写进行里，于是"停止发新请求"跨进程、跨重启成立（不是内存标志位）。"""
-    with _own_session() as session:
+    with own_session() as session:
         session.execute(
             update(CostLedger)
             .where(CostLedger.scope_key == scope.key, CostLedger.breaker_tripped_at.is_(None))
@@ -198,11 +202,11 @@ def _reserve(event: dict) -> None:
     completion = max(0, int(event.get("completion") or 0))
     created_at = datetime.now()
     rejection: tuple[policy.Scope, CostLedger | None] | None = None
-    with _own_session() as session:
+    with own_session() as session:
         if session.get(LlmReservation, reservation_id) is not None:
             return
         for scope in scopes:
-            _ensure_row(session, scope)
+            ensure_row(session, scope)
         for scope in scopes:
             if not _guard_reserve(session, scope, prompt, completion):
                 rejection = (scope, session.get(CostLedger, scope.key))
@@ -246,7 +250,7 @@ def _settle(event: dict) -> None:
     """
     charged_prompt = max(0, int(event.get("prompt") or 0))
     charged_completion = max(0, int(event.get("completion") or 0))
-    with _own_session() as session:
+    with own_session() as session:
         row = session.get(LlmReservation, str(event["id"]))
         if row is None or row.state != OPEN:
             return
@@ -296,7 +300,7 @@ def sweep_expired_reservations(limit: int = 200) -> int:
     而保留的保守额度让崩溃循环只会更快撞顶，不会变成免费重试。
     """
     now = datetime.now()
-    with _own_session() as session:
+    with own_session() as session:
         pending = (
             session.execute(
                 select(LlmReservation)
@@ -309,7 +313,7 @@ def sweep_expired_reservations(limit: int = 200) -> int:
         targets = [(row.reservation_id, row.charged_scopes) for row in pending]
     swept = 0
     for reservation_id, scopes in targets:
-        with _own_session() as session:
+        with own_session() as session:
             result = session.execute(
                 update(LlmReservation)
                 .where(LlmReservation.reservation_id == reservation_id, LlmReservation.state == OPEN)
@@ -327,134 +331,3 @@ def sweep_expired_reservations(limit: int = 200) -> int:
     if swept:
         logger.warning("abandoned %d unsettled llm reservations (charged conservatively, not refundable)", swept)
     return swept
-
-
-# ------------------------------------------------------------------ 入口侧检查 ----
-
-
-def _read_row(session: Session, key: str) -> CostLedger | None:
-    return session.get(CostLedger, key)
-
-
-def enforce_windows(user_id: int) -> None:
-    """烧模型额度入口的**持久**硬顶检查（只读，不预留）。
-
-    与 `quota_service` 的滑动窗分工：滑动窗管"每分钟点几次"（速率，Redis 可降级、丢了只是
-    放松速率），本函数管"今天到底花了多少"（钱，MySQL 账本，Redis 熔断或切回都动不了它）。
-    真预留仍在 `reserve_llm` 里逐笔做——这里是让入口能干净地回 429，而不是等外呼中途炸。
-    """
-    at = datetime.now()
-    platform = policy.platform_window(at)
-    with _own_session() as session:
-        row = _read_row(session, platform.key)
-        if row is not None and row.breaker_tripped_at is not None:
-            raise _breaker_error(platform)
-        for attribution in (policy.ATTR_PLATFORM, policy.ATTR_BYOK):
-            scope = policy.user_window(user_id, at, attribution)
-            user_row = _read_row(session, scope.key)
-            if user_row is None:
-                continue
-            if user_row.breaker_tripped_at is not None:
-                raise _breaker_error(scope)
-            ceiling = policy.ceiling_for(scope.kind, attribution)
-            tokens = policy.tokens_of(int(user_row.charge_prompt_tokens), int(user_row.charge_completion_tokens))
-            if ceiling.token_cap > 0 and tokens >= ceiling.token_cap:
-                raise _cap_error(scope, "token")
-            if ceiling.call_cap > 0 and int(user_row.charged_calls) >= ceiling.call_cap:
-                raise _cap_error(scope, "call")
-
-
-def repair_state(itinerary_id: int) -> dict:
-    """行程补齐额度现状（端点/运营读取；不含任何人民币）。"""
-    scope = policy.repair_window(itinerary_id)
-    with _own_session() as session:
-        row = _read_row(session, scope.key)
-        if row is None:
-            return {
-                "repairs": 0,
-                "allowance": settings.trip_repair_allowance,
-                "repairFailures": 0,
-                "backoffUntil": None,
-            }
-        return {
-            "repairs": int(row.repairs),
-            "allowance": settings.trip_repair_allowance,
-            "repairFailures": int(row.repair_failures),
-            "backoffUntil": row.backoff_until.isoformat() if row.backoff_until else None,
-        }
-
-
-def admit_repair(user_id: int, itinerary_id: int) -> None:
-    """补齐准入：行程累计额度 + 连续失败退避（持久、原子），并先过窗口硬顶。
-
-    免扣的是用户「每日生成次数」（P0-3 产品硬线，`quota_service.enforce_llm_rate_only`
-    原样保留），**不免扣**补齐额度与窗口成本——这就是 PLAN §5 T2 要的
-    「保留失败天补齐免扣日配额，但增加行程累计补齐额度、失败退避、平台日总额及熔断」。
-    """
-    enforce_windows(user_id)
-    at = datetime.now()
-    scope = policy.repair_window(itinerary_id)
-    rejected: CostLedger | None = None
-    with _own_session() as session:
-        _ensure_row(session, scope)
-        row = _read_row(session, scope.key)
-        assert row is not None
-        problem = policy.repair_problem(int(row.repairs), row.backoff_until, at)
-        if problem is None:
-            conditions = [
-                CostLedger.scope_key == scope.key,
-                (CostLedger.backoff_until.is_(None)) | (CostLedger.backoff_until <= at),
-            ]
-            if settings.trip_repair_allowance > 0:
-                conditions.append(CostLedger.repairs < settings.trip_repair_allowance)
-            result = session.execute(
-                update(CostLedger).where(*conditions).values(repairs=CostLedger.repairs + 1, updated_at=at)
-            )
-            if int(getattr(result, "rowcount", 0) or 0) > 0:
-                return
-            rejected = _read_row(session, scope.key)
-        else:
-            rejected = row
-    raise _repair_error(rejected, at)
-
-
-def _repair_error(row: CostLedger | None, at: datetime) -> CostCeilingError:
-    """把补齐被挡的原因说准：额度用尽 vs 退避未到，用户文案与等待秒数都不同。"""
-    backoff_until = row.backoff_until if row is not None else None
-    failures = int(row.repair_failures) if row is not None else 0
-    if backoff_until is not None and at < backoff_until:
-        wait = int((backoff_until - at).total_seconds()) + 1
-        return CostCeilingError(
-            policy.CODE_REPAIR_BACKOFF,
-            429,
-            f"这一趟行程已连续 {failures} 次补齐失败，请 {wait} 秒后再试（{policy.CODE_REPAIR_BACKOFF}）",
-        )
-    allowance = settings.trip_repair_allowance
-    return CostCeilingError(
-        policy.CODE_REPAIR_LIMIT,
-        429,
-        f"这一趟行程的补齐次数已达上限 {allowance} 次，请用对话调整或重新生成整趟行程（{policy.CODE_REPAIR_LIMIT}）",
-    )
-
-
-def record_repair_result(itinerary_id: int, *, succeeded: bool) -> None:
-    """补齐结果登记：成功清零连续失败（退避随之解除），失败按指数退避推后下一次。"""
-    scope = policy.repair_window(itinerary_id)
-    at = datetime.now()
-    with _own_session() as session:
-        _ensure_row(session, scope)
-        if succeeded:
-            session.execute(
-                update(CostLedger)
-                .where(CostLedger.scope_key == scope.key)
-                .values(repair_failures=0, backoff_until=None, updated_at=at)
-            )
-            return
-        row = _read_row(session, scope.key)
-        failures = int(row.repair_failures if row is not None else 0) + 1
-        delay = policy.backoff_seconds(failures)
-        session.execute(
-            update(CostLedger)
-            .where(CostLedger.scope_key == scope.key)
-            .values(repair_failures=failures, backoff_until=at + timedelta(seconds=delay), updated_at=at)
-        )

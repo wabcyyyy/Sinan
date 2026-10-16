@@ -5,11 +5,12 @@
 1. **速率**（本文件，Redis 滑动窗 + 进程内兜底）：每分钟点几次、今天点了几"次"。
    Redis 熔断期退回进程内表、恢复后又从空计数重新开始（见 `state_and_sessions._bound_windows`
    自己写明的方向）——那是**放松速率**，可以接受。
-2. **钱与额度**（`app/services/cost_ledger.py`，MySQL `cost_ledger`）：今天到底花了多少
+2. **钱与额度**（`app/services/cost_ledger.py` 写账、`cost_admission.py` 判准入，MySQL
+   `cost_ledger`）：今天到底花了多少
    token / 调用数，行程还能补几次，平台日总额有没有触顶熔断。这一层**不能**被 Redis 故障
    或切回清零，所以账不在 Redis（PLAN §5 T2）。逐笔的持久预留与结算在
    `RunLimits.reserve_llm/settle_llm` 里做（`app/agent/runtime/run_limits.py`），
-   本文件调的 `cost_ledger.enforce_windows` 只是让入口能干净地回 429，
+   本文件调的 `cost_admission.enforce_windows` 只是让入口能干净地回 429，
    而不是等外呼打到一半才发现账本已经顶到头。
 
 为什么只有本文件不够（历史口径，保留以便读懂旧注释）：`app/agent/runtime/run_limits.py`
@@ -29,7 +30,7 @@ from __future__ import annotations
 
 from app.common.config import settings
 from app.common.envelope import ApiError
-from app.services import cost_ledger, state_and_sessions
+from app.services import cost_admission, state_and_sessions
 
 _MINUTE_WINDOW_SECONDS = 60
 _DAY_WINDOW_SECONDS = 86400
@@ -39,9 +40,9 @@ def enforce_llm_budget(user_id: int) -> None:
     """消耗 LLM 的入口在动手之前调它：先过持久硬顶，再记一次并判分钟窗与日窗。
 
     日窗判的是"今日生成**次数**"（产品配额），不是金额；金额/用量硬顶由
-    `cost_ledger.enforce_windows` 按 token 与调用数判（没有可信定价，所以不编造人民币）。
+    `cost_admission.enforce_windows` 按 token 与调用数判（没有可信定价，所以不编造人民币）。
     """
-    cost_ledger.enforce_windows(user_id)
+    cost_admission.enforce_windows(user_id)
     minute_key = f"quota:llm:min:{user_id}"
     day_key = f"quota:llm:day:{user_id}"
     per_minute = state_and_sessions.sliding_hit(minute_key, _MINUTE_WINDOW_SECONDS)
@@ -69,7 +70,7 @@ def enforce_llm_rate_only(user_id: int) -> None:
 
     免扣的**只是**用户日次数。V17/T2 在上面这条线之外补了三层它管不到的东西：
     行程累计补齐额度、连续失败退避、用户/平台窗口硬顶——判定在
-    `app/services/cost_ledger.py:admit_repair`，调用点在
+    `app/services/cost_admission.py:admit_repair`，调用点在
     `itinerary_generation.regenerate_day` 的前置校验之后（真动手补才扣一格，
     400/404/409 不消耗额度）。也就是说"补齐不重复收你的次数"这句话仍然为真，
     但它不再是"补齐不花钱、可以无限补"的借口。

@@ -14,13 +14,12 @@
 - validate_boot 由 main.py lifespan 调用，坏配置 RuntimeError -> 进程退出码非 0；
   不放在 import 期，保证测试与脚本 import 不受真实密钥约束。
 
-依赖：python-dotenv、pydantic-settings；内部仅 app.common.config_rules
-（数值范围规则表，本文件拆出的纯数据面）。
+依赖：python-dotenv、pydantic-settings；内部仅 app.common.config_rules（数值范围规则表）
+与 app.common.config_primitives（回环/占位符/代理网段的形态判定），两者都是本文件拆出的纯判定面。
 """
 
 import base64
 import binascii
-import ipaddress
 import logging
 import os
 from pathlib import Path
@@ -30,52 +29,13 @@ from dotenv import load_dotenv
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.common.config_primitives import LOCAL_HOSTS, proxy_ok, secret_placeholder_mark
 from app.common.config_rules import NUMERIC_RULES, numeric_ok
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # 先加载仓库根目录共享 .env，再加载本模块 .env（同名变量后者优先）
 load_dotenv(BASE_DIR.parent / ".env")
 load_dotenv(BASE_DIR / ".env")
-
-LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "0:0:0:0:0:0:0:1"})
-
-# 已知占位符前缀（小写匹配，审计 §3.4.2 / P0-5 应用侧）：.env.example 是公开仓库里的
-# 文件，其中的示例串人尽皆知——JWT_SECRET 的 replace-with-…-at-least-32-chars 恰好
-# 51 字符，能穿过下文 ≥32 的长度校验直上生产（误配 = 任何人可离线伪造含 admin 的
-# 会话票）。deploy.sh 在部署侧拦一道，validate_boot 在应用侧再拦一道（两层口径见
-# deploy/deploy.sh 的 reject_secret）。真实随机串（openssl rand -hex 32）不会命中
-# 任何前缀；空串不在此判（走各自的既有校验）。
-_SECRET_PLACEHOLDER_PREFIXES: tuple[str, ...] = ("replace-with", "your-", "changeme")
-
-
-def _secret_placeholder_mark(value: str) -> str | None:
-    """返回命中的占位符前缀原样（如 ``your-``）；非占位串返回 None。"""
-    text = value.strip().lower()
-    for prefix in _SECRET_PLACEHOLDER_PREFIXES:
-        if text.startswith(prefix):
-            return prefix
-    return None
-
-
-def parse_trusted_proxy(item: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
-    """把 `TRUSTED_PROXIES` 的一项解析成网段：裸地址按单主机（/32 或 /128）。
-
-    同一解析器供启动期校验与请求期归因（app.common.client_ip）共用——各写一份，
-    "配置里写错的代理"会在一边报错、另一边静默不信任。
-    """
-    text = item.strip()
-    if "/" not in text:
-        text = f"{text}/32" if ":" not in text else f"{text}/128"
-    return ipaddress.ip_network(text)
-
-
-def _proxy_ok(item: str) -> bool:
-    try:
-        parse_trusted_proxy(item)
-    except ValueError:
-        return False
-    return True
-
 
 logger = logging.getLogger(__name__)
 
@@ -381,7 +341,7 @@ class Settings(BaseSettings):
         # 校验拒绝，错误信息直指生成方式。空值不在此判：JWT_SECRET 空串由下面的长度
         # 校验拦，AGENT_INTERNAL_TOKEN 空串对本地回环开发是合法形态。
         for name, value in (("JWT_SECRET", self.jwt_secret), ("AGENT_INTERNAL_TOKEN", self.agent_internal_token)):
-            mark = _secret_placeholder_mark(value)
+            mark = secret_placeholder_mark(value)
             if mark is not None:
                 raise RuntimeError(
                     f"{name} 仍是占位符串（{mark}…，来自 .env.example 的公开示例值）："
@@ -399,7 +359,7 @@ class Settings(BaseSettings):
                 "JWT_SECRET 未配置或短于 32 字符：本服务负责签发会话票，弱密钥可被伪造登录；"
                 "请在 .env 里配置与（双跑期）Java 侧一致的密钥"
             )
-        unparsable = [item.strip() for item in self.trusted_proxies.split(",") if item.strip() and not _proxy_ok(item)]
+        unparsable = [item.strip() for item in self.trusted_proxies.split(",") if item.strip() and not proxy_ok(item)]
         if unparsable:
             raise RuntimeError(f"TRUSTED_PROXIES 含无法解析的条目：{unparsable}（支持 IP 或 CIDR，如 172.16.0.0/12）")
         raw_byok = self.byok_enc_key.strip()

@@ -49,6 +49,7 @@ from app.services import (
     day_persistence,
     generation_recovery,
     itinerary_generation,
+    planning_task_convergence,
     planning_tasks,
     state_and_sessions,
     user_service,
@@ -355,7 +356,7 @@ def test_resubmit_reopens_window_not_quota(env) -> None:
     first.record_retrieval(2)
     first_deadline = first.deadline_at
     simulate_worker_exit(trip_id)
-    planning_tasks.terminalize_expired(trip_id, completed_days=1)
+    planning_task_convergence.terminalize_expired(trip_id, completed_days=1)
 
     second = planning_tasks.resume_or_restart(1, trip_id)
 

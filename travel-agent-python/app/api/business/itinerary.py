@@ -245,7 +245,7 @@ def post_regenerate_day(
     - **不扣**用户「今日生成次数」——用户不为从未交付的天再付一次配额（P0-3，保持原样），
       这里只过分钟速率窗；
     - 行程累计补齐额度、连续失败退避与用户/平台窗口硬顶是 V17/T2 的持久判定，落在
-      `itinerary_generation.regenerate_day` 的前置校验**之后**（`cost_ledger.admit_repair`）：
+      `itinerary_generation.regenerate_day` 的前置校验**之后**（`cost_admission.admit_repair`）：
       前置 400/404/409 不消耗额度，真动手补才扣一格。超限回带稳定码的 429
       （TRIP_REPAIR_LIMIT / TRIP_REPAIR_BACKOFF / *_COST_LIMIT）。
     """

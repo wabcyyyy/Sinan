@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.common.config import _secret_placeholder_mark, settings
+from app.common.config import settings
+from app.common.config_primitives import secret_placeholder_mark
 
 # 合法形态（≥32 字符的真实随机串）：本地开发不受影响
 _REAL_JWT = "".join(["a2m3i8ku", "xjnq4fvs", "0dlq7wye", "9tzu3hbr", "6mce"])  # 运行时拼接
@@ -55,9 +56,9 @@ def test_placeholder_jwt_is_rejected_before_length_check_passes() -> None:
     """占位串 51 字符 > 32：若没有占位符判断，长度校验会放行——本用例钉住拦截者是谁。"""
     placeholder = "replace-with-a-long-random-secret-at-least-32-chars"
     assert len(placeholder) >= 32
-    assert _secret_placeholder_mark(placeholder) == "replace-with"
-    assert _secret_placeholder_mark("") is None  # 空串不在此判（走各自的既有校验）
-    assert _secret_placeholder_mark(_REAL_JWT) is None
+    assert secret_placeholder_mark(placeholder) == "replace-with"
+    assert secret_placeholder_mark("") is None  # 空串不在此判（走各自的既有校验）
+    assert secret_placeholder_mark(_REAL_JWT) is None
 
 
 def test_real_random_secret_still_boots() -> None:

@@ -52,6 +52,65 @@ def scene(name: str) -> Callable:
     return decorator
 
 
+def _run_status_of(events: list[dict]) -> str | None:
+    """最后一次 `run_status` decision 的状态（degraded / cancelled / failed；无事件则 None）。"""
+    status_events = [e for e in events if e.get("kind") == "decision" and e.get("name") == "run_status"]
+    return (status_events[-1].get("metadata") or {}).get("status") if status_events else None
+
+
+def _event_counts(events: list[dict]) -> dict[str, int]:
+    """纯粹从事件流数出来的增量（与本次 success 标志无关的那一半）。
+
+    llm_calls / token 用量不在这里：由 `llm_client.record_llm_call` 直接上报，
+    避免遗漏未包 trace 的调用（clarify/city-guide 等）造成双算或漏算。
+    """
+    return {
+        "tool_calls": sum(e.get("kind") == "tool" for e in events),
+        "validation_retries": sum(e.get("kind") == "route" and e.get("name") in ("fix", "retry") for e in events),
+        "fallback_runs": sum(e.get("kind") == "route" and e.get("name") == "fallback" for e in events),
+        "route_violations": sum(
+            e.get("kind") == "decision"
+            and e.get("name") in ("reflect_result", "day.reflect_result")
+            and (e.get("metadata") or {}).get("needs_fix") is True
+            for e in events
+        ),
+        "mcp_calls": sum(e.get("kind") == "mcp" for e in events),
+        "mcp_failures": sum(e.get("kind") == "mcp" and e.get("status") == "error" for e in events),
+        "retrieval_calls": sum(e.get("kind") == "retrieval" for e in events),
+        "retrieval_fallbacks": sum(
+            e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("fallback") is True for e in events
+        ),
+        # P2 检索路由/缓存：命中率与路由分布，供缓存调优与回归对比。
+        "retrieval_cache_hits": sum(e.get("kind") == "retrieval" and e.get("name") == "cache_hit" for e in events),
+        "route_enumerate": sum(
+            e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "enumerate" for e in events
+        ),
+        "route_lexical": sum(
+            e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "lexical" for e in events
+        ),
+        "route_hybrid": sum(
+            e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "hybrid" for e in events
+        ),
+        "tool_budget_exhausted": sum(
+            e.get("kind") == "tool" and (e.get("metadata") or {}).get("budget_exhausted") is True for e in events
+        ),
+    }
+
+
+def _error_events(events: list[dict]) -> list[dict]:
+    """失败快照里保留的出错事件（只留四个字段，绝不带 Prompt 或用户原文）。"""
+    return [
+        {
+            "kind": e.get("kind"),
+            "name": e.get("name"),
+            "status": e.get("status"),
+            "error": e.get("error"),
+        }
+        for e in events
+        if e.get("status") == "error"
+    ]
+
+
 class MetricsRegistry:
     def __init__(self) -> None:
         self._lock = Lock()
@@ -145,51 +204,22 @@ class MetricsRegistry:
     def record(self, trace: dict, *, success: bool) -> None:
         events = trace.get("events") or []
         durations = [float(e.get("duration_ms") or 0) for e in events]
-        status_events = [e for e in events if e.get("kind") == "decision" and e.get("name") == "run_status"]
-        run_status = (status_events[-1].get("metadata") or {}).get("status") if status_events else None
+        run_status = _run_status_of(events)
         is_degraded = run_status == "degraded"
         is_cancelled = run_status == "cancelled"
         is_failed = not success or run_status == "failed"
-        delta = {
-            "runs": 1,
-            # 三态互斥：fallback 完成属于 degraded，不计入 successes；
-            # cancelled（客户端断开）单列，不计成功也不计失败。
-            "successes": int(success and not is_degraded and not is_failed and not is_cancelled),
-            "failures": int(is_failed),
-            "cancelled_runs": int(is_cancelled),
-            # llm_calls / token 用量由 llm_client.record_llm_call 直接上报，
-            # 避免遗漏未包 trace 的调用（clarify/city-guide 等）造成双算或漏算。
-            "tool_calls": sum(e.get("kind") == "tool" for e in events),
-            "validation_retries": sum(e.get("kind") == "route" and e.get("name") in ("fix", "retry") for e in events),
-            "fallback_runs": sum(e.get("kind") == "route" and e.get("name") == "fallback" for e in events),
-            "route_violations": sum(
-                e.get("kind") == "decision"
-                and e.get("name") in ("reflect_result", "day.reflect_result")
-                and (e.get("metadata") or {}).get("needs_fix") is True
-                for e in events
-            ),
-            "mcp_calls": sum(e.get("kind") == "mcp" for e in events),
-            "mcp_failures": sum(e.get("kind") == "mcp" and e.get("status") == "error" for e in events),
-            "retrieval_calls": sum(e.get("kind") == "retrieval" for e in events),
-            "retrieval_fallbacks": sum(
-                e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("fallback") is True for e in events
-            ),
-            # P2 检索路由/缓存：命中率与路由分布，供缓存调优与回归对比。
-            "retrieval_cache_hits": sum(e.get("kind") == "retrieval" and e.get("name") == "cache_hit" for e in events),
-            "route_enumerate": sum(
-                e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "enumerate" for e in events
-            ),
-            "route_lexical": sum(
-                e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "lexical" for e in events
-            ),
-            "route_hybrid": sum(
-                e.get("kind") == "retrieval" and (e.get("metadata") or {}).get("route") == "hybrid" for e in events
-            ),
-            "tool_budget_exhausted": sum(
-                e.get("kind") == "tool" and (e.get("metadata") or {}).get("budget_exhausted") is True for e in events
-            ),
-            "degraded_runs": int(is_degraded),
-        }
+        delta = _event_counts(events)
+        # 三态互斥：fallback 完成属于 degraded，不计入 successes；
+        # cancelled（客户端断开）单列，不计成功也不计失败。
+        delta.update(
+            {
+                "runs": 1,
+                "successes": int(success and not is_degraded and not is_failed and not is_cancelled),
+                "failures": int(is_failed),
+                "cancelled_runs": int(is_cancelled),
+                "degraded_runs": int(is_degraded),
+            }
+        )
         with self._lock:
             for key, value in delta.items():
                 self._counts[key] += value
@@ -208,21 +238,7 @@ class MetricsRegistry:
                 if self._store is not None:
                     self._store.append(trace)
             if is_failed:
-                self._last_failures.append(
-                    {
-                        "run_id": trace.get("run_id"),
-                        "events": [
-                            {
-                                "kind": e.get("kind"),
-                                "name": e.get("name"),
-                                "status": e.get("status"),
-                                "error": e.get("error"),
-                            }
-                            for e in events
-                            if e.get("status") == "error"
-                        ],
-                    }
-                )
+                self._last_failures.append({"run_id": trace.get("run_id"), "events": _error_events(events)})
                 self._last_failures = self._last_failures[-20:]
 
     def snapshot(self) -> dict:
