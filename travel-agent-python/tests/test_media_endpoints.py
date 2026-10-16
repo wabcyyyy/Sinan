@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from app.api import security
 from app.api.business import media
 from app.api.business.media import router as media_router
-from app.common import cache_store, redis_client
+from app.common import cache_store, egress_guard, redis_client
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.common.http_client import configure_clients
@@ -67,6 +67,9 @@ def env(monkeypatch):
     recorder = Recorder(default_handler)
     client = httpx.Client(transport=recorder.transport(), follow_redirects=False)
     configure_clients(image=client, api=client)
+    # 出网守卫（T3）：图片通道的目的地解析在此打桩成公网地址（零真实 DNS）；
+    # 专项用例把它覆盖成私网答案来验"白名单主机名改绑内网也发不出去"。
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["93.184.216.34"])
     cache_store.reset_for_tests()
     poi_photo.reset_state_for_tests()
 
@@ -121,6 +124,20 @@ def test_image_proxy_rejects_without_touching_upstream(env):
     response = _client(app).get("/api/image-proxy", params={"url": "http://169.254.169.254/x"})
     assert response.status_code == 400
     assert recorder.calls == []
+
+
+def test_image_proxy_rejects_allowlisted_host_that_rebinds_to_private(env, monkeypatch):
+    """白名单主机名的 DNS 答案被改绑到内网：同样 400，且上游一个请求都不发（T3 复用同一原语）。
+
+    口径与 egress_guard 的注释一致：图片腿的连接由共享通道建立，这里是逐请求校验，
+    "查询与建连之间再改绑"的竞态由连接边界钉 IP 的那条腿（BYOK）负责关闭。
+    """
+    app, recorder, _ = env
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["169.254.169.254"])
+    response = _client(app).get("/api/image-proxy", params={"url": "https://images.unsplash.com/a.jpg"})
+    assert response.status_code == 400
+    assert recorder.calls == [], "内网地址没有被打到"
+    assert "169.254" not in response.text, "拒绝不回显解析结果"
 
 
 def test_image_proxy_maps_empty_non_image_and_oversized(env):

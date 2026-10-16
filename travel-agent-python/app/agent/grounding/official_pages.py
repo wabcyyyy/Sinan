@@ -8,7 +8,8 @@
   旧收费话术与新证据冲突时记冲突并把该字段核验状态降级（值撤回为 unknown，
   不自动改成新值：日期适用性/页面时效未经二次核实，宁付一次人工确认）；
 - ``fetch_official_page``：经 ExternalClient 的受限抓取——仅 http(s)、拒绝私网/
-  回环/链路本地地址、响应上限 2MB、超时 10s、单跳重定向且重定向目标同样禁私网；
+  回环/链路本地地址、响应上限 2MB、超时 10s、单跳重定向且重定向目标同样禁私网
+  （段判定与解析器复用 app/common/egress_guard 那一份原语，不在此另写一套，T3）；
   网页文本只作数据不作指令（本模块无任何执行面：提取是正则匹配，不 eval、
   不拼接执行、不跟随页面内的任何"提示"）。
 
@@ -21,7 +22,7 @@
 - 坐标证据不传染票价：本模块只触碰 ``evidence.fields`` 里出现的字段键，
   ``fact_evidence`` 的其余键（coordinates 等）原样不动。
 
-依赖：app.common（ExternalClient/api_client/contact_user_agent）、app.schemas（FactEvidence
+依赖：app.common（egress_guard/ExternalClient/api_client/contact_user_agent）、app.schemas（FactEvidence
 复用——单一真源；只有当前字段无法表达时才扩 schema，本模块零契约扩展：冲突的
 "待复核"语义由 verification_status="unverified" + review_requirement="before_departure"
 + 返回的 FieldConflict 明细共同表达， FactEvidence 现有值域足够）。
@@ -30,9 +31,7 @@
 from __future__ import annotations
 
 import html as _html
-import ipaddress
 import re
-import socket
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -41,6 +40,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
+from app.common import egress_guard
 from app.common.external_client import ExternalClient
 from app.common.http_client import api_client, contact_user_agent
 from app.schemas.trip import FactEvidence
@@ -174,7 +174,6 @@ def _applicable_article(html: str, fetched_at: str) -> tuple[str, str, str] | No
 
 # ---- 抓取守卫（限域 / 禁私网 / 大小 / 超时 / 单跳重定向） -----------------------
 
-_ALLOWED_SCHEMES = ("http", "https")
 _MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 _FETCH_TIMEOUT_SECONDS = 10.0
 
@@ -191,46 +190,19 @@ OFFICIAL_PAGE_CLIENT: ExternalClient = ExternalClient(
 )
 
 
-def _host_addresses(host: str) -> list[str]:
-    """主机名 → 全部解析地址；字面 IP 直接返回。解析失败按拒绝处理（fail closed）。
+def validate_public_http_url(url: str) -> str:
+    """守卫：仅 http(s)、有主机名、**全部**解析地址均非私网；不合规一律 OfficialPageError。
 
-    模块级函数（非内联）是给测试的接缝：守卫单测 monkeypatch 它来离线模拟
-    "公网域名解析成功"，不触真实 DNS。
+    段判定与解析器不在这里重复实现（T3）：复用 app/common/egress_guard 那一份原语，
+    本模块只把它的"拒绝出网"换成本域的 OfficialPageError 语义（抓取失败一律降级
+    unknown，不冒充结论、也不炸掉生成）。真正的连接边界守卫在 egress_guard 里；
+    这一层的价值是让"这一跳不该发出去"在进入取数通道之前就响亮可闻。
     """
     try:
-        return [str(ipaddress.ip_address(host))]
-    except ValueError:
-        pass
-    try:
-        infos = socket.getaddrinfo(host.strip("[]"), None)
-    except OSError:
-        return []
-    return [str(info[4][0]) for info in infos]
-
-
-def _is_forbidden_address(address: str) -> bool:
-    """私网/回环/链路本地/未指定/组播一律拒绝（127/8、10/8、172.16/12、192.168/16、
-    169.254/16、::1 等均被 is_private/is_loopback/is_link_local 覆盖）。"""
-    try:
-        parsed = ipaddress.ip_address(address)
-    except ValueError:
-        return True
-    return (
-        parsed.is_private or parsed.is_loopback or parsed.is_link_local or parsed.is_unspecified or parsed.is_multicast
-    )
-
-
-def validate_public_http_url(url: str) -> str:
-    """守卫：仅 http(s)、有主机名、全部解析地址均非私网；返回归一后的跳转目标。"""
-    parsed = urlparse(url)
-    if parsed.scheme not in _ALLOWED_SCHEMES:
-        raise OfficialPageError(f"官方页面仅允许 http(s) 抓取，收到 scheme：{parsed.scheme or '(空)'}")
-    host = parsed.hostname or ""
-    if not host:
-        raise OfficialPageError("官方页面 URL 缺少主机名")
-    addresses = _host_addresses(host)
-    if not addresses or any(_is_forbidden_address(address) for address in addresses):
-        raise OfficialPageError(f"官方页面抓取拒绝私网/回环/不可解析地址：{host}")
+        egress_guard.assert_public_url(url)
+    except egress_guard.EgressRefused as exc:
+        host = urlparse(url).hostname or "(空主机名)"
+        raise OfficialPageError(f"官方页面抓取拒绝该地址：{host}（原因：{exc.code}）") from exc
     return url
 
 

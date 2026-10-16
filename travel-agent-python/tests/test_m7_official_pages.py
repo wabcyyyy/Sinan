@@ -29,6 +29,7 @@ from app.agent.grounding.official_pages import (
     extract_evidence,
     fetch_official_page,
 )
+from app.common import egress_guard
 from app.common.http_client import configure_clients, contact_user_agent
 from app.schemas.trip import FactEvidence
 
@@ -147,6 +148,22 @@ def test_unparseable_fetch_result_keeps_fields_unknown(monkeypatch) -> None:
 # ---- 抓取守卫 ------------------------------------------------------------------
 
 
+def _stub_public_dns(monkeypatch) -> None:
+    """离线打桩：`*example.com` 解析到公网地址，其余仍走真实解析器（字面 IP 不查 DNS）。
+
+    T3 起段判定与解析器只在 app/common/egress_guard 有一份（official_pages 复用同一
+    原语，不再自己实现），所以接缝也只剩这一处。
+    """
+    real_lookup = egress_guard._lookup
+
+    def _lookup(host: str, port: int | None) -> list[str]:
+        if host.endswith("example.com"):
+            return ["93.184.216.34"]
+        return real_lookup(host, port)
+
+    monkeypatch.setattr(egress_guard, "_lookup", _lookup)
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -171,19 +188,12 @@ def test_guard_rejects_private_and_non_http_targets(url: str) -> None:
 def test_guard_rejects_redirect_to_private_and_multi_hop(monkeypatch, caplog) -> None:
     """单跳重定向允许（公网目标）；重定向到私网、二跳重定向一律拒绝（降级 None）。
 
-    公网域名经 _host_addresses 接缝离线解析（不触真实 DNS）；私网目标走真实
+    公网域名经 egress_guard._lookup 接缝离线解析（不触真实 DNS）；私网目标走真实
     字面 IP 判定。"私网目标从未被 HTTP 请求到"证明守卫在网络层之前拦下。
     """
     import logging
 
-    from app.agent.grounding import official_pages
-
-    real_addresses = official_pages._host_addresses
-    monkeypatch.setattr(
-        official_pages,
-        "_host_addresses",
-        lambda host: ["93.184.216.34"] if host.endswith("example.com") else real_addresses(host),
-    )
+    _stub_public_dns(monkeypatch)
     requested: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -213,14 +223,7 @@ def test_guard_rejects_oversized_response(monkeypatch, caplog) -> None:
     """响应超过 2MB 上限：拒收降级 None（不截断后当成功）。"""
     import logging
 
-    from app.agent.grounding import official_pages
-
-    real_addresses = official_pages._host_addresses
-    monkeypatch.setattr(
-        official_pages,
-        "_host_addresses",
-        lambda host: ["93.184.216.34"] if host.endswith("example.com") else real_addresses(host),
-    )
+    _stub_public_dns(monkeypatch)
     big = "x" * (OFFICIAL_PAGE_CLIENT.max_response_bytes + 1)
     handler = lambda request: httpx.Response(200, text=big)  # noqa: E731
     client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -231,14 +234,7 @@ def test_guard_rejects_oversized_response(monkeypatch, caplog) -> None:
 
 def test_guard_sends_identifiable_user_agent(monkeypatch) -> None:
     """外呼带可识别 UA（与全仓 contact_user_agent 同源）。"""
-    from app.agent.grounding import official_pages
-
-    real_addresses = official_pages._host_addresses
-    monkeypatch.setattr(
-        official_pages,
-        "_host_addresses",
-        lambda host: ["93.184.216.34"] if host.endswith("example.com") else real_addresses(host),
-    )
+    _stub_public_dns(monkeypatch)
     seen: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:

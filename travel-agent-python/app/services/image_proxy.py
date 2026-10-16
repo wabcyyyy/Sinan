@@ -1,8 +1,15 @@
-"""同源图片代理：SSRF 白名单 + 类型校验。
+"""同源图片代理：SSRF 白名单 + 出网原语 + 类型校验。
 
 存在的意义：把 Unsplash/Wikimedia/Pexels 的图片转成同源响应，避免浏览器被热链
 策略、防盗链或混合内容拦截；同时保证**只有白名单图床**能被服务端代取，防止
 `?url=http://169.254.169.254/...` 这类内网探测。
+
+白名单管"准取哪个主机名"，app/common/egress_guard 管"这个名字此刻解析到哪里"
+（T3 复用同一原语）：白名单主机名的 A/AAAA 被改绑/污染到内网时，请求同样发不出去。
+口径要说清：这一腿的连接由共享图片通道（app/common/http_client.py，T3 围栏外）建立，
+所以这里是**逐请求校验**而非把 socket 钉到校验过的 IP——"查询与建连之间再改绑"的
+竞态在白名单路径上仍然敞着（攻击者需要控制解析器，且改不了目的地主机名）。
+BYOK 那条腿（携带用户密钥、目的地完全由用户选）才做连接边界钉 IP。
 
 高德/autonavi 图床已从白名单移除（2026-09-15 去高德）：存量行里可能仍存着
 `store.is.autonavi.com` 的旧 URL，代理会 400，前端按既有降级链落到占位图。
@@ -24,6 +31,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import Response
 
+from app.common import egress_guard
 from app.common.http_client import IMAGE_USER_AGENT, image_client
 
 logger = logging.getLogger(__name__)
@@ -92,9 +100,23 @@ def _carries_svg_markup(body: bytes) -> bool:
     return head.startswith(b"<?xml") or b"<svg" in head
 
 
+def _resolves_public(url: str) -> bool:
+    """白名单主机名的解析答案必须**全部**是公网地址（复用 egress_guard 原语，T3）。
+
+    拒绝一律回同样的 400，不回显解析到的地址：这个端点匿名可达，任何差异化结论
+    （"这个名字解析到内网"vs"这个名字解析不出来"）都是别人用来摸内网的探测面。
+    """
+    try:
+        egress_guard.assert_public_url(url)
+    except egress_guard.EgressRefused:
+        logger.warning("image proxy refused non-public resolution: host=%s", urlsplit(url).hostname)
+        return False
+    return True
+
+
 def proxy_image(url: str) -> Response:
     """非白名单/非法 400、空 404、超限 413、非图片（含 SVG）或上游异常 502。"""
-    if not is_safe_image_url(url):
+    if not is_safe_image_url(url) or not _resolves_public(url):
         return Response(status_code=400)
     declared = ""
     chunks: list[bytes] = []

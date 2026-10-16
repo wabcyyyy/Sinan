@@ -5,6 +5,9 @@
 
 实现要点：
 - 进程内共享 httpx.Client（连接池 + keep-alive），避免每次请求新建 TCP；
+  用户自带网关（BYOK）走**另一个**池：`_get_guarded_http_client()`，出网目的地在
+  socket 前一刻受 `app.common.egress_guard` 守卫（逐地址校验 + 钉 IP + 不复用保活
+  + 不读环境代理），运营方通道不受影响（口径见该模块 docstring）；
 - connect/read 超时分层：连接超时短、读超时对齐 LLM_TIMEOUT / run deadline；
 - LLMClient.chat 支持 system/user 消息、temperature、max_tokens、
   enable_search（联网搜索，只有百炼兼容层支持：其余通道要求它即抛错，
@@ -26,7 +29,7 @@
 - stream_chat 支持流式输出，适用于多日整段生成场景。
 
 依赖：
-- app.common.config.settings；httpx；外部 LLM 服务。
+- app.common.config.settings；app.common.egress_guard；httpx；外部 LLM 服务。
 """
 
 import contextlib
@@ -44,7 +47,7 @@ from app.agent.runtime.observability import current_scene, metrics
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.agent.runtime.trace import current_run_id, record_event
 from app.agent.runtime.usage_store import usage_store
-from app.common import llm_breaker, model_registry
+from app.common import egress_guard, llm_breaker, model_registry
 from app.common.config import settings
 from app.common.http_deadline import bounded_chunks, bounded_lines
 from app.common.llm_route import LLMRoute, current_route
@@ -52,6 +55,8 @@ from app.common.llm_route import LLMRoute, current_route
 logger = logging.getLogger(__name__)
 
 _http_client: httpx.Client | None = None
+# 受守卫通道（BYOK/用户可控目的地）单独一个池：不与运营方通道共用保活连接。
+_guarded_http_client: httpx.Client | None = None
 _http_lock = threading.Lock()
 
 
@@ -83,13 +88,34 @@ def _get_http_client() -> httpx.Client:
     return _http_client
 
 
+def _get_guarded_http_client() -> httpx.Client:
+    """用户自带网关（BYOK）专用通道：出网在 socket 前一刻受守卫（app.common.egress_guard）。
+
+    与共享通道的差别都在守卫里定死，不在这里重复：目的地逐地址校验并钉到校验过的 IP、
+    不复用保活连接、不跟随重定向、不读环境代理。共享通道（运营方 key）不受本函数影响
+    ——它的地址来自 .env，属可信运营配置（口径见 egress_guard 模块 docstring）。
+    """
+    global _guarded_http_client
+    if _guarded_http_client is None or _guarded_http_client.is_closed:
+        with _http_lock:
+            if _guarded_http_client is None or _guarded_http_client.is_closed:
+                _guarded_http_client = egress_guard.guarded_client(
+                    max_connections=settings.llm_pool_max_connections,
+                    timeout=_build_timeout(settings.llm_timeout),
+                )
+    return _guarded_http_client
+
+
 def close_http_client() -> None:
-    """测试/进程退出：关闭共享客户端。"""
-    global _http_client
+    """测试/进程退出：关闭共享客户端（含受守卫通道）。"""
+    global _http_client, _guarded_http_client
     with _http_lock:
         if _http_client is not None and not _http_client.is_closed:
             _http_client.close()
         _http_client = None
+        if _guarded_http_client is not None and not _guarded_http_client.is_closed:
+            _guarded_http_client.close()
+        _guarded_http_client = None
 
 
 def _record_usage(
@@ -312,6 +338,7 @@ class LLMClient:
         timeout: float | None = None,
         max_attempts: int | None = None,
         follow_redirects: bool | None = None,
+        guarded_egress: bool = False,
         capabilities: frozenset[str] | None = None,
     ) -> None:
         # 显式传入即覆盖（角色 client / BYOK 路由走这里），缺省 = main 角色（见 model_registry）；
@@ -336,6 +363,14 @@ class LLMClient:
         # （SSRF 面），路由专属 client 与连通性探测一律不跟随（2026-10-02 终审）；
         # None = 沿用共享 httpx client 的默认（跟随）。
         self._follow_redirects = True if follow_redirects is None else follow_redirects
+        # T3 守卫开关：True = 目的地是用户填写的地址（BYOK），这一腿走受守卫的出网通道
+        # ——目的地在 socket 前一刻逐地址校验并钉到校验过的公网 IP（app.common.egress_guard）；
+        # False = 运营方 .env 里的固定通道（可信配置，不套同一拒绝规则，见该模块口径）。
+        self._guarded_egress = guarded_egress
+
+    def _http(self) -> httpx.Client:
+        """本次调用使用的 httpx 通道（受守卫 / 共享）。测试打桩点：两个 getter 都是模块级函数。"""
+        return _get_guarded_http_client() if self._guarded_egress else _get_http_client()
 
     @property
     def base_url(self) -> str:
@@ -415,7 +450,7 @@ class LLMClient:
                         "inflight",
                         provider=self._base_url,
                     )
-                    with _get_http_client().stream(
+                    with self._http().stream(
                         "POST",
                         url,
                         json=payload,
@@ -579,7 +614,7 @@ class LLMClient:
         finish_reason = None
         content_length = 0
         try:
-            with _get_http_client().stream(
+            with self._http().stream(
                 "POST",
                 url,
                 json=payload,
@@ -794,7 +829,7 @@ _llm_client_key: tuple[str, str, str, str] | None = None
 # BYOK 路由专属 client 缓存：键 = (base_url, model, sha256(api_key)[:16])——api_key 只以
 # 摘要形式进键，缓存本身不构成第二份明文落点。容量到顶整体清空重建：BYOK 是低频
 # 配置面（单用户至多一条启用），LRU 精细化没有收益；LLMClient 不持有连接（共用
-# _get_http_client 池），清空无资源泄漏。
+# _get_guarded_http_client 的受守卫池），清空无资源泄漏。
 _route_clients: dict[tuple[str, str, str], LLMClient] = {}
 _route_clients_lock = threading.Lock()
 _ROUTE_CLIENT_CAPACITY = 8
@@ -808,9 +843,16 @@ def _routed_client(route: LLMRoute) -> LLMClient:
         if client is None:
             if len(_route_clients) >= _ROUTE_CLIENT_CAPACITY:
                 _route_clients.clear()
-            # follow_redirects=False：用户网关不可信，30x 不得把 POST 引向别处（SSRF）
+            # 用户网关不可信，两条防线各管一段：
+            # - follow_redirects=False：30x 不得把携带用户密钥的 POST 引向别处（2026-10-02 终审）；
+            # - guarded_egress=True：目的地在 socket 前一刻逐地址校验并钉到校验过的公网 IP
+            #   ——保存时公网、连接时改绑私网也过不去（T3，app.common.egress_guard）。
             client = LLMClient(
-                base_url=route.base_url, api_key=route.api_key, model=route.model, follow_redirects=False
+                base_url=route.base_url,
+                api_key=route.api_key,
+                model=route.model,
+                follow_redirects=False,
+                guarded_egress=True,
             )
             _route_clients[key] = client
         return client

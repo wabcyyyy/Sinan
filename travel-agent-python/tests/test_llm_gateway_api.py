@@ -1,10 +1,10 @@
 """BYOK 网关管理端点（/api/llm-gateway）单测：CRUD 全链 / 脱敏 / 互斥启用 / 归属 404 /
-SSRF 防线 / 探测紧约束与限频 / 密文解不开的响亮语义。
+公网 HTTPS 约束 / 探测紧约束与限频 / 密文解不开的响亮语义 / 连接边界的 DNS 改绑防护。
 
 夹具抄 tests/test_cover_api.py（TestClient + sqlite + Bearer 头）；上游连通性测试
-mock 掉 llm_gateway_service.LLMClient（探测 client 在 service 内构造）、SSRF 的
-DNS 解析打桩 _resolve_host_ips——全部用例零外网。假密钥保持 <32 字符
-（secret scan 熵模式口径）。
+mock 掉 llm_gateway_service.LLMClient（探测 client 在 service 内构造），DNS 解析在
+唯一接缝 app.common.egress_guard._lookup 上打桩（T3 起段判定与解析器只有那一份）——
+全部用例零外网。假密钥保持 <32 字符（secret scan 熵模式口径）。
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.api import deps
 from app.api.business.llm_gateway import router as gateway_router
+from app.common import egress_guard
 from app.common.envelope import ApiError, install_exception_handlers
 from app.common.jwt_tokens import encode_token
 from app.db import session as db_session
@@ -50,7 +51,7 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
         lambda _u: {"id": 42, "username": "alice", "role": "user", "status": 1},
     )
     # SSRF 校验的 DNS 解析一律打桩为公网地址（专项用例自行覆盖成私网/解析失败）
-    monkeypatch.setattr(llm_gateway_service, "_resolve_host_ips", lambda _host: ["93.184.216.34"])
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["93.184.216.34"])
     # /test 分钟窗是进程内滑动窗：逐用例清零，防止 wall-clock 60s 窗跨用例串味出 429
     state_and_sessions.reset_for_tests()
 
@@ -258,6 +259,7 @@ def test_test_connection_builds_tight_probe(client: TestClient, monkeypatch) -> 
     assert seen["timeout"] == llm_gateway_service._TEST_TIMEOUT_SECONDS
     assert seen["max_attempts"] == 1
     assert seen["follow_redirects"] is False
+    assert seen["guarded_egress"] is True, "探测腿必须走受守卫的出网通道（T3）"
     assert seen["base_url"] == CREATE_BODY["baseUrl"]
 
 
@@ -349,20 +351,20 @@ def test_resolve_route_raises_loudly_on_undecryptable_cipher(client: TestClient)
     assert excinfo.value.status == 409
 
 
-# ---------- SSRF 防线：base_url 只准公网（2026-10-02 终审） ----------
+# ---------- 公网 HTTPS 约束（入口校验；连接边界见 tests/test_egress_guard.py） ----------
 
 
 def test_create_rejects_private_base_urls(client: TestClient) -> None:
     for index, bad in enumerate(
         (
-            "http://127.0.0.1:8080/v1",
-            "http://10.0.0.5:8080/v1",
-            "http://172.16.1.9/v1",
-            "http://192.168.1.4/v1",
-            "http://169.254.169.254/v1",  # 云 metadata 段（link-local）
-            "http://[fd00::1]/v1",  # IPv6 ULA
-            "http://[::ffff:127.0.0.1]:8080/v1",  # IPv4-mapped IPv6
-            "http://localhost:11434/v1",  # 回环域名
+            "https://127.0.0.1:8080/v1",
+            "https://10.0.0.5:8080/v1",
+            "https://172.16.1.9/v1",
+            "https://192.168.1.4/v1",
+            "https://169.254.169.254/v1",  # 云 metadata 段（link-local）
+            "https://[fd00::1]/v1",  # IPv6 ULA
+            "https://[::ffff:127.0.0.1]:8080/v1",  # IPv4-mapped IPv6
+            "https://localhost:11434/v1",  # 回环域名
         )
     ):
         response = client.post(
@@ -373,40 +375,163 @@ def test_create_rejects_private_base_urls(client: TestClient) -> None:
         assert response.status_code == 400, (bad, response.text)
 
 
+def test_create_rejects_plaintext_http_gateway(client: TestClient) -> None:
+    """公网但明文 http：这一腿携带用户密钥，明文等于把密钥交给路径上任何一跳（T3）。"""
+    response = client.post(
+        "/api/llm-gateway",
+        json={**CREATE_BODY, "baseUrl": "http://93.184.216.34:8080/v1", "name": "明文网关"},
+        headers=_headers(),
+    )
+    assert response.status_code == 400
+    assert "HTTPS" in response.json()["message"]
+
+
 def test_create_rejects_private_dns_resolution(client: TestClient, monkeypatch) -> None:
-    monkeypatch.setattr(llm_gateway_service, "_resolve_host_ips", lambda _host: ["203.0.113.7", "10.1.2.3"])
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["93.184.216.34", "10.1.2.3"])
     response = client.post("/api/llm-gateway", json=CREATE_BODY, headers=_headers())
     assert response.status_code == 400, "解析出任一私网地址即拒绝（多 A 记录混排也不能漏）"
 
 
 def test_create_rejects_unresolvable_host(client: TestClient, monkeypatch) -> None:
-    def _gaierror(_host: str) -> list[str]:
+    def _gaierror(_host: str, _port: int | None) -> list[str]:
         raise socket.gaierror(8, "nodename nor servname provided")
 
-    monkeypatch.setattr(llm_gateway_service, "_resolve_host_ips", _gaierror)
+    monkeypatch.setattr(egress_guard, "_lookup", _gaierror)
     response = client.post("/api/llm-gateway", json=CREATE_BODY, headers=_headers())
     assert response.status_code == 400
 
 
-def test_update_rejects_private_base_url(client: TestClient) -> None:
+def test_update_rejects_private_base_url(client: TestClient, monkeypatch) -> None:
     created = _create(client)
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["10.0.0.9"])
     response = client.put(
         f"/api/llm-gateway/{created['id']}",
-        json={"baseUrl": "http://172.16.0.9/v1"},
+        json={"baseUrl": "https://rebind.example/v1"},
         headers=_headers(),
     )
     assert response.status_code == 400
 
 
+def _make_base_url_private(gateway_id: int, base_url: str) -> None:
+    """绕过保存口直接改库（模拟存量脏行 / 运维手改）。"""
+    with db_session.session_scope() as session:
+        row = session.get(UserLlmGateway, gateway_id)
+        assert row is not None
+        row.base_url = base_url
+
+
 def test_test_connection_rejects_private_base_url_of_stale_row(client: TestClient) -> None:
     """绕过保存口的存量脏行（直接改库）：/test 侧也校验，且不发探测请求。"""
     created = _create(client)
-    with db_session.session_scope() as session:
-        row = session.get(UserLlmGateway, created["id"])
-        assert row is not None
-        row.base_url = "http://10.9.9.9/v1"
+    _make_base_url_private(created["id"], "https://10.9.9.9/v1")
     response = client.post(f"/api/llm-gateway/{created['id']}/test", headers=_headers())
     assert response.status_code == 400
+
+
+def test_enable_rejects_private_base_url_of_stale_row(client: TestClient) -> None:
+    """启用位曾经是校验空白（T3 补上）：脏行的内网地址不得占用启用位。"""
+    created = _create(client)
+    _make_base_url_private(created["id"], "https://169.254.169.254/latest/meta-data")
+    response = client.post(f"/api/llm-gateway/{created['id']}/enable", headers=_headers())
+    assert response.status_code == 400, "启用路径同样过公网校验"
+    listed = client.get("/api/llm-gateway", headers=_headers()).json()["data"]
+    assert listed[0]["enabled"] is False, "被拒的启用不能留下半生效状态"
+
+
+def test_enable_rejects_plaintext_http_base_url(client: TestClient) -> None:
+    created = _create(client)
+    _make_base_url_private(created["id"], "http://93.184.216.34/v1")
+    response = client.post(f"/api/llm-gateway/{created['id']}/enable", headers=_headers())
+    assert response.status_code == 400
+
+
+def test_enable_and_resolve_route_accept_public_https(client: TestClient) -> None:
+    """公网 HTTPS 网关照常能启用并解出路由——守卫不是"谁都不许用"。"""
+    created = _create(client)
+    assert client.post(f"/api/llm-gateway/{created['id']}/enable", headers=_headers()).status_code == 200
+    route = llm_gateway_service.resolve_route(42)
+    assert route is not None and route.base_url == CREATE_BODY["baseUrl"]
+
+
+# ---------- 连接边界的 DNS 改绑（T3 核心：守卫查的是拨号那一刻的解析器） ----------
+
+
+class _NoDial(Exception):
+    """拨号层被打断：证明"被拒绝的尝试没有发出任何包"，以及"放行时拨的是哪个地址"。"""
+
+
+def _stub_dialer(monkeypatch, sink: list) -> None:
+    def _create_connection(address, *_args, **_kwargs):
+        sink.append(address)
+        raise _NoDial(str(address))
+
+    # httpcore 的同步后端按 socket.create_connection 拨号（模块属性在调用时解析）。
+    monkeypatch.setattr(socket, "create_connection", _create_connection)
+
+
+def _rebind_after_entry(monkeypatch, connect_time_answer: str) -> None:
+    """假解析器：第 1 次查询（/test 的入口校验）给公网，此后（连接边界）给指定答案。
+
+    两次问的是同一个解析器——差别只在"什么时候问"。这正是 DNS 改绑的形状：
+    保存/入口时地址是公网，真正拨号那一刻已经改成内网。
+    """
+    state = {"calls": 0}
+
+    def _lookup(_host: str, _port: int | None) -> list[str]:
+        state["calls"] += 1
+        return ["93.184.216.34"] if state["calls"] == 1 else [connect_time_answer]
+
+    monkeypatch.setattr(egress_guard, "_lookup", _lookup)
+
+
+def test_test_connection_blocked_when_dns_rebinds_at_connect_time(client: TestClient, monkeypatch) -> None:
+    """入口校验放行后改绑：/test 仍失败，且**一个字节都没拨出去**。
+
+    打桩面只有解析器与 socket 拨号层（受控假答案，不触真实 DNS、不扫描任何真实网段）；
+    LLMClient 与 httpx 通道全程真实——这条用例只有在守卫真的落在连接边界时才会绿。
+    """
+    created = _create(client)  # 夹具解析桩：公网地址
+    dialed: list = []
+    _stub_dialer(monkeypatch, dialed)
+    _rebind_after_entry(monkeypatch, "169.254.169.254")
+
+    response = client.post(f"/api/llm-gateway/{created['id']}/test", headers=_headers())
+    assert response.status_code == 200, "连通性失败是结果字段，不是 HTTP 错"
+    data = response.json()["data"]
+    assert data["ok"] is False, "保存时公网、连接时私网必须失败，而不是把探测打到内网"
+    assert dialed == [], "改绑后的链路本地地址一次都没被拨号"
+    assert data["message"] == "网关地址被出网策略拒绝（不允许指向回环或内网地址）"
+
+
+def test_test_connection_refusal_does_not_leak_internal_detail(client: TestClient, monkeypatch) -> None:
+    """被拒绝的尝试不提供内网探测结果：不回显改绑后的地址、主机名，也不带密钥。"""
+    created = _create(client)
+    _stub_dialer(monkeypatch, [])
+    _rebind_after_entry(monkeypatch, "10.1.2.3")
+    body = client.post(f"/api/llm-gateway/{created['id']}/test", headers=_headers()).json()
+    rendered = str(body)
+    for secret in ("10.1.2.3", "dashscope.example", KEY_A, "169.254", "93.184"):
+        assert secret not in rendered, (secret, rendered)
+
+
+def test_guarded_channel_reconsults_resolver_at_each_connection(client: TestClient, monkeypatch) -> None:
+    """改绑是双向的：同一 client、同一 URL，只换解析答案——私网被挡、公网放行且钉到该 IP。
+
+    把"缓存了保存时的地址"这条退路钉死：连接层每次建连都重新问解析器，
+    放行的那一腿拨的是**刚校验过的 IP 字面量**（不是主机名，也不是环境代理）。
+    """
+    created = _create(client)
+    dialed: list = []
+    _stub_dialer(monkeypatch, dialed)
+
+    _rebind_after_entry(monkeypatch, "10.0.0.5")
+    assert client.post(f"/api/llm-gateway/{created['id']}/test", headers=_headers()).json()["data"]["ok"] is False
+    assert dialed == [], "私网答案被挡在建连之前"
+
+    # 全部答案回到公网：同一进程、同一受守卫池，这次必须真的拨到那个 IP。
+    monkeypatch.setattr(egress_guard, "_lookup", lambda _host, _port: ["93.184.216.34"])
+    assert client.post(f"/api/llm-gateway/{created['id']}/test", headers=_headers()).json()["data"]["ok"] is False
+    assert dialed == [("93.184.216.34", 443)], "放行时拨的是刚校验过的公网 IP"
 
 
 def test_routers_mounted_on_real_app() -> None:

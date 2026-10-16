@@ -36,7 +36,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from app.common.config import LOCAL_HOSTS, settings
+from app.common.config import settings
+from app.common.config_primitives import LOCAL_HOSTS
 from app.common.llm_route import current_route
 
 logger = logging.getLogger(__name__)

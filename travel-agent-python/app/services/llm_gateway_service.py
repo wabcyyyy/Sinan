@@ -4,10 +4,16 @@
 - api_key 明文只进 encrypt_secret 之前的内存与上游请求头构造瞬间；落库只存
   Fernet 密文 + 尾 4 位提示；任何 VO/日志/异常文案都不回显明文；
 - 归属校验一律 404（不用 403 暴露资源是否存在），与 envelope.py 的既有约定一致；
-- base_url 只准指向公网地址（SSRF 防线，2026-10-02 终审）：保存/启用/测试时
-  解析主机名并拒绝 loopback/private/link-local/ULA/组播等保留段；残余风险 =
-    保存后 DNS 改绑（TOCTOU/rebinding），已由"BYOK 路由不跟随 30x 重定向 +
-  生成热路径不重复解析"收窄到需攻击者自控 DNS 才可利用。
+- base_url 只准指向**公网 HTTPS** 地址：保存/启用/测试时先做 URL 级校验（快反馈、
+  可解释的 400），**真正的约束在连接层**——带用户密钥的每一腿由 `guarded_egress`
+  走 app/common/egress_guard 的受守卫通道：目的地在 socket 前一刻重新解析、逐个答案
+  判段、并钉到校验过的 IP（SNI/证书校验仍按原主机名），不复用保活连接、不跟随重定向、
+  不读环境代理（T3，2026-10-17）。旧口径"保存时解析一次 + 不跟随 30x"关不掉
+  DNS 改绑竞态，已被这条取代；被拒绝的尝试只回"不允许指向内网"，不回显内网探测结果。
+
+统一口径：create / update / enable / test 走同一个 `_assert_public_base_url`，
+generate 与 resume（resolve_route → route_scope → _routed_client）走同一个受守卫通道，
+没有"某条路径忘了校验"这种缝。
 
 路由语义（失败回退拍板，2026-10-02）：**网关调用失败响亮报错、不静默回退默认通道**
 ——静默回退会把用户自愿承担的成本转嫁给运营方 key，且同一段生成中途换模型家族会
@@ -20,20 +26,17 @@ ERROR 日志、指标计数——"静默把用户的成本转给平台" 从此�
 
 from __future__ import annotations
 
-import ipaddress
 import logging
-import socket
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from urllib.parse import urlsplit
 
 import httpx
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.agent import metrics
-from app.common import cost_policy, gateway_crypto, llm_route
+from app.common import cost_policy, egress_guard, gateway_crypto, llm_route
 from app.common.envelope import ApiError
 from app.common.llm_client import LLMClient
 from app.common.llm_route import LLMRoute, use_route
@@ -71,58 +74,29 @@ def _require_row(session, user_id: int, gateway_id: int) -> UserLlmGateway:
     return row
 
 
-# ---------- SSRF 防线：base_url 只准公网（2026-10-02 终审） ----------
+# ---------- 公网 HTTPS 约束：入口校验（连接层的硬约束在 app/common/egress_guard） ----------
 
-
-def _resolve_host_ips(host: str) -> list[str]:
-    """DNS 解析出主机名的全部地址（薄封装，测试在此打桩避免外网）。"""
-    return [str(info[4][0]) for info in socket.getaddrinfo(host, None)]
-
-
-def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    """保留段判定：回环/私网/链路本地（含 169.254.169.254 云 metadata）/ULA/未指定/组播/保留。"""
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped  # ::ffff:10.0.0.5 之类按内嵌 IPv4 判
-    return bool(
-        ip.is_loopback
-        or ip.is_private
-        or ip.is_link_local
-        or ip.is_unspecified
-        or ip.is_multicast
-        or ip.is_reserved
-        or getattr(ip, "is_unique_local", False)
-    )
+_REFUSED_MESSAGES = {
+    egress_guard.REFUSED_SCHEME: "网关地址必须是 http(s) URL",
+    egress_guard.REFUSED_HTTPS_REQUIRED: "网关地址必须使用 HTTPS：这一腿携带你的 API 密钥，明文 http 不放行",
+    egress_guard.REFUSED_HOST: "网关地址缺少主机名",
+    egress_guard.REFUSED_UNRESOLVED: "网关主机名无法解析，请检查地址",
+    egress_guard.REFUSED_BLOCKED: "网关地址不允许指向回环或内网地址",
+}
 
 
 def _assert_public_base_url(base_url: str) -> None:
-    """服务端会向 base_url POST（携带用户密钥），内网/保留段地址一律 400。
+    """入口校验：主机名可解析且**全部**解析地址均为公网、且必须是 HTTPS，否则 400。
 
-    判定口径：主机名是 IP 字面量则直接判段；否则 DNS 解析后逐地址判段
-    （覆盖 `internal-svc` 这类内网域名与改 A 记录指私网的域名）。
+    这是给用户快反馈的一道，**不是**防线本身——防线在连接边界（`guarded_egress`，
+    见 app/common/egress_guard）：那里才是"保存时公网、连接时私网"过不去的地方。
+    两处共用同一份段判定与解析器，不各写一套（单一真源）。
     """
-    host = urlsplit(base_url).hostname
-    if not host:
-        raise ApiError(400, "网关地址缺少主机名")
-    lowered = host.lower()
     try:
-        ipaddress.ip_address(host)  # 字面量（urlsplit 已剥 [::1] 的方括号）
-        candidates: list[str] = [host]
-    except ValueError:
-        if lowered == "localhost" or lowered.endswith(".localhost"):
-            raise ApiError(400, "网关地址不允许指向回环或内网地址") from None
-        try:
-            candidates = _resolve_host_ips(host)
-        except socket.gaierror as exc:
-            raise ApiError(400, "网关主机名无法解析，请检查地址") from exc
-        if not candidates:
-            raise ApiError(400, "网关主机名无法解析，请检查地址") from None
-    for candidate in candidates:
-        try:
-            ip = ipaddress.ip_address(candidate.split("%", 1)[0])  # 剥 IPv6 zone id
-        except ValueError:
-            continue  # 解析器给出怪形状：不让单个坏结果放行整串地址（空串已挡）
-        if _is_blocked_ip(ip):
-            raise ApiError(400, "网关地址不允许指向回环或内网地址")
+        egress_guard.assert_public_url(base_url, require_https=True)
+    except egress_guard.EgressRefused as exc:
+        # 不回显解析到的地址：拒绝就是拒绝，不给"内网哪台活着"的探测面。
+        raise ApiError(400, _REFUSED_MESSAGES.get(exc.code, _REFUSED_MESSAGES[egress_guard.REFUSED_BLOCKED])) from None
 
 
 def list_configs(user_id: int) -> list[dict]:
@@ -191,9 +165,13 @@ def enable_config(user_id: int, gateway_id: int) -> dict:
 
     启用即校验密文可解密：解不开（加密 key 轮换过）的配置不允许持有启用位，
     用户当场拿到 409 重录，而不是启用后每次生成才炸（2026-10-02 终审）。
+    启用同样复核公网 HTTPS 地址（T3）：绕过保存口的存量脏行（直接改库、旧版留的
+    http:// 明文地址）不得占用启用位——生成/恢复路径另有连接层守卫，这里先把
+    "配置面"这条路堵上，用户当场拿到 400 而不是每次生成都失败。
     """
     with session_scope() as session:
         row = _require_row(session, user_id, gateway_id)
+        _assert_public_base_url(row.base_url)
         _route_of(row)
         session.execute(update(UserLlmGateway).where(UserLlmGateway.user_id == user_id).values(enabled=False))
         row.enabled = True
@@ -223,7 +201,13 @@ def _describe_test_failure(exc: Exception) -> str:
     httpx 异常的 str() 内嵌完整请求 URL（含网关地址/端口），直接回显等于把
     "这个内网地址通不通、返回什么状态"递给用户当探测结果（2026-10-02 终审）——
     一律不透传 str(exc)，只给类型化的结论。
+
+    出网守卫的拒绝（T3）走**同一句**文案，不按原因码分叉：连接时"改绑到私网被挡"与
+    "解析失败/地址不可达"对用户必须是同一个结论，否则 /test 就成了"内网哪台活着"的
+    探测口。运维侧要区分请读日志（守卫层与被拒绝的地址在 logger 里可见）。
     """
+    if isinstance(exc, egress_guard.EgressRefused):
+        return "网关地址被出网策略拒绝（不允许指向回环或内网地址）"
     if isinstance(exc, httpx.HTTPStatusError):
         return f"上游返回 HTTP {exc.response.status_code}"
     if isinstance(exc, httpx.TimeoutException):
@@ -238,9 +222,10 @@ def _describe_test_failure(exc: Exception) -> str:
 def test_connection(user_id: int, gateway_id: int) -> dict:
     """发一条 1-token 消息探测连通性。
 
-    探测走运行时同一 LLMClient 类与共享连接池，但配**专属紧约束**：15s 读超时 +
-    不重试 + 不跟随重定向——/test 是同步端点，默认 240s×2 的黑洞地址会占满业务
-    线程池（2026-10-02 终审）；另有分钟窗限频（quota_service）。
+    探测与生成走**同一条受守卫通道**（`guarded_egress=True` → app/common/egress_guard：
+    目的地在 socket 前逐地址校验并钉 IP、不跟随重定向、不复用保活连接、不读环境代理），
+    但配**专属紧约束**：15s 读超时 + 不重试——/test 是同步端点，默认 240s×2 的黑洞地址
+    会占满业务线程池（2026-10-02 终审）；另有分钟窗限频（quota_service）。
     """
     quota_service.enforce_gateway_test_budget(user_id)
     with session_scope() as session:
@@ -254,6 +239,7 @@ def test_connection(user_id: int, gateway_id: int) -> dict:
         timeout=_TEST_TIMEOUT_SECONDS,
         max_attempts=_TEST_MAX_ATTEMPTS,
         follow_redirects=False,
+        guarded_egress=True,
     )
     started = time.monotonic()
     try:
@@ -321,6 +307,11 @@ def route_scope(user_id: int) -> Iterator[LLMRoute | None]:
 
     注入点纪律见 app/common/llm_route.py：contextvars 不跨线程池传播，必须在
     显式持有 user_id 的 worker 入口内部进入。
+
+    出网口径（T3）：路由生效期间 `get_llm_client()` 返回的是受守卫 client
+    （llm_client._routed_client → guarded_egress=True），所以生成与恢复这两条
+    不在配置面上的路径，目的地同样在连接边界被逐地址校验——不在这里重复解析 DNS，
+    免得每条腿多付一次查询、还给人"这里才是防线"的错觉。
     """
     with use_route(resolve_route(user_id)):
         yield
