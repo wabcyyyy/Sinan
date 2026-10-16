@@ -279,6 +279,19 @@ def normalize_item_cost(item: dict, city: str | None) -> str | None:
     """
     code = declared_cost_currency(item)
     if code is None:
+        declared = str(item.get("cost_currency") or "").strip()
+        if declared:
+            # 声明过币种但我们认不出＝**证据不足**，不是「没声明」。
+            # 旧口径把这种条目当未声明、退回按金额阈值猜币种：那等于用一个猜出来的
+            # 数字替用户判定预算是否达标（PLAN §5 T5c 明令禁止）。现在不换算、
+            # 按原数字**面值**计入（宁可高估也不低估，猜测值永远不会帮 hard_cap 通过），
+            # 币种记为未知并把原声明留在 remark 里可追溯。
+            item["cost_currency"] = None
+            try:
+                raw_cost = float(item.get("cost"))  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                return None
+            return f"条目声明的币种 {declared} 无法识别，未按汇率换算，按原数字 {raw_cost:g} 计入，出发前请核实"
         item["cost_currency"] = None
         return backstop_item_cost(item, city)
     try:

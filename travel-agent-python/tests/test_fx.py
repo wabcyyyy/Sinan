@@ -107,10 +107,18 @@ def test_declared_currency_normalization_is_idempotent() -> None:
     assert row[0]["remark"].count("原估价") == 1
 
 
-def test_unknown_or_missing_currency_falls_back_to_magnitude_backstop() -> None:
+def test_unrecognized_declared_currency_is_never_guessed_by_magnitude() -> None:
+    """声明过但认不出的币种＝证据不足：不得按金额阈值猜换算（PLAN §5 T5c）。
+
+    猜出来的 192 会直接喂给 hard_cap 判定——一个猜测数字替用户"证明"了预算达标。
+    现在原数字按面值留着（只会让超支更容易被发现，不会更难得被发现），
+    币种为未知，原始声明留在 remark 里可追溯。
+    """
     unknown = [{"item_type": "food", "cost": 4000, "cost_currency": "XYZ"}]
     fx.normalize_item_costs(unknown, "东京")
-    assert unknown[0]["cost"] == 192.0 and unknown[0]["cost_currency"] is None, "认不出的币种当未声明"
+    assert unknown[0]["cost"] == 4000, "认不出的声明币种不再按金额阈值强转"
+    assert unknown[0]["cost_currency"] is None, "币种不可信就是未知，不冒充 CNY"
+    assert "XYZ" in (unknown[0].get("remark") or ""), "原声明必须留在 remark 里可追溯"
     no_cost = [{"item_type": "attraction", "cost": None, "cost_currency": "JPY"}]
     fx.normalize_item_costs(no_cost, "东京")
     assert no_cost[0]["cost"] is None and no_cost[0]["cost_currency"] is None
