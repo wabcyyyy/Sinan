@@ -146,6 +146,18 @@ def _cleanup_checkpoints() -> None:
         logger.info("[checkpoint] cleaned %d threads older than 7d", removed)
 
 
+def _sweep_cost_reservations() -> None:
+    """崩溃收口：到期仍 OPEN 的模型预留转 ABANDONED（V17/T2）。
+
+    没有这一步，"进程死在半路的那笔预留"会永久占着 `cost_max_open_reservations` 的格子，
+    预留生命周期只剩一半——PLAN §5 T2 要的"崩溃后未结算请求有界"落不了地。
+    间隔刻意小于 `cost_reservation_ttl_seconds`（270s）：结算不回来时格子要按时腾出来。
+    """
+    abandoned = cost_ledger.sweep_expired_reservations()
+    if abandoned:
+        logger.info("[cost] abandoned %d expired reservation(s)", abandoned)
+
+
 def _cleanup_traces() -> None:
     """轨迹文件按日归档 + 删过期归档（审查 P2-2：此前纯追加无上限）。"""
     removed = retention.rotate_trace_store(settings.trace_storage_path)
@@ -177,6 +189,7 @@ async def lifespan(app: FastAPI):
     # 两个任务都经 app.common.cron——pytest 环境自动 no-op，不再各写各的线程。
     cron.register("usage-cleanup", 86400, _cleanup_usage)
     cron.register("checkpoint-cleanup", 86400, _cleanup_checkpoints)
+    cron.register("cost-reservation-sweep", 120, _sweep_cost_reservations, startup_delay_seconds=5)
     # 成本账本后端（V17/T2）：RunLimits 的 reserve/settle 事件要落 MySQL 的 cost_ledger。
     # 这一步原先只写在 cost_ledger 的 docstring 里、无人调用——不接上就是"账本实现了但
     # 线上根本不记"，费用硬顶永远读到空账。放启动期并且不吞异常：装不上就不要装作在服务。
