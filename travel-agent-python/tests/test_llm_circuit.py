@@ -25,7 +25,7 @@ import pytest
 from _fake_clock import FakeClock
 
 import app.agent  # noqa: F401  先完成 agent 门面导入：存量导入环 llm_client→facade→web_search→llm_client（同 test_llm_backoff.py 的口径）。
-from app.common import alerting, llm_breaker, llm_client, model_registry
+from app.common import llm_breaker, llm_client, model_registry
 from app.common.config import settings
 
 MAIN_URL = "https://main.example/v1"
@@ -432,7 +432,7 @@ def alert_webhook(monkeypatch):
     """配置 webhook 并捕获 POST；返回 sink。"""
     monkeypatch.setattr(settings, "llm_alert_webhook_url", "https://alerts.example/hook")
     sink = _AlertSink()
-    monkeypatch.setattr(alerting, "api_client", lambda: sink)
+    monkeypatch.setattr(llm_breaker, "api_client", lambda: sink)
     return sink
 
 
@@ -465,7 +465,7 @@ def test_no_webhook_when_unconfigured(monkeypatch):
     """默认（webhook 留空）：整轮开窗-恢复都不发——只留本地 warning 日志。"""
     assert settings.llm_alert_webhook_url == ""
     sink = _AlertSink()
-    monkeypatch.setattr(alerting, "api_client", lambda: sink)
+    monkeypatch.setattr(llm_breaker, "api_client", lambda: sink)
     _open_main(monkeypatch)
     assert sink.posts == []
 
@@ -493,7 +493,7 @@ def test_error_rate_alert_fires_and_throttles(monkeypatch, fake_clock, alert_web
 def test_webhook_send_failure_never_breaks_llm_flow(monkeypatch, fake_clock):
     """webhook 抛错只记日志：熔断照常开、后续调用照常快速失败（告警是旁路）。"""
     monkeypatch.setattr(settings, "llm_alert_webhook_url", "https://alerts.example/hook")
-    monkeypatch.setattr(alerting, "api_client", lambda: _AlertSink(exc=RuntimeError("hook dead")))
+    monkeypatch.setattr(llm_breaker, "api_client", lambda: _AlertSink(exc=RuntimeError("hook dead")))
     _open_main(monkeypatch)
     with pytest.raises(llm_breaker.LLMCircuitOpen):
         _client().chat_response(_messages())

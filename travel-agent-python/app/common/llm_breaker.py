@@ -34,7 +34,9 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
-from app.common import alerting
+from app.common.config import settings
+from app.common.external_client import redact_secrets
+from app.common.http_client import api_client
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,7 @@ class _ChannelHealth:
 
 
 _states: dict[str, _ChannelHealth] = {}
+_alert_last_sent: dict[tuple[str, str], float] = {}
 _lock = threading.Lock()
 
 
@@ -165,7 +168,7 @@ def reset_for_tests() -> None:
     """测试用：清空通道熔断与告警节流状态（conftest 逐用例调用，防跨用例串味）。"""
     with _lock:
         _states.clear()
-    alerting.reset_state()
+        _alert_last_sent.clear()
 
 
 def _prune_window(state: _ChannelHealth, now: float) -> None:
@@ -193,9 +196,25 @@ def _error_rate_detail(state: _ChannelHealth) -> dict | None:
 
 
 def _fire_alert(event: str, base_url: str, detail: dict) -> None:
-    """通道健康告警：发送实现只有 `app.common.alerting` 一份。
+    """POST 一条 JSON 到 settings.llm_alert_webhook_url；未配置 = 不发。
 
-    冷却/脱敏/失败静默都在那边——这里原先自带一份发送器和冷却字典，两条通道各自漂移
-    （谁静默、冷却多久、是否脱敏都不一样），T8b 收到一处。
+    节流按"发起即占位"记（发送失败也占冷却位）：告警是低频事件，反过来会让
+    死 webhook 被每次事件重试刷屏。网络 I/O 在锁外（同 external_client 的
+    "睡眠永远在锁外"纪律）；任何失败只记 warning（异常经 redact_secrets）。
     """
-    alerting.send(f"llm.{event}", detail, scope=base_url, cooldown_seconds=ALERT_COOLDOWN_SECONDS)
+    hook = settings.llm_alert_webhook_url.strip()
+    if not hook:
+        return
+    key = (event, base_url)
+    now = time.monotonic()
+    with _lock:
+        if now - _alert_last_sent.get(key, 0.0) < ALERT_COOLDOWN_SECONDS:
+            return
+        _alert_last_sent[key] = now
+    payload = {"event": f"llm.{event}", "channel": base_url, "detail": detail, "ts": int(time.time())}
+    try:
+        response = api_client().post(hook, json=payload)
+        if response.status_code >= 400:
+            logger.warning("llm alert webhook (%s) returned HTTP %s", event, response.status_code)
+    except Exception as exc:
+        logger.warning("llm alert webhook (%s) send failed: %s", event, redact_secrets(exc))
