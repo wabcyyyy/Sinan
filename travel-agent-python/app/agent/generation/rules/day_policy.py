@@ -37,6 +37,29 @@ _MIN_PLAYABLE_MINUTES = 120
 #: 慢游日的景点数上限（给休息与步行策略留白；不降时长阈值）
 _RELAXED_MAX_ATTRACTIONS = 4
 
+#: 餐饮点位离当天锚点的最远距离：超过就不再当作"这一天能顺路去的那家"。
+#: 连锁店全城几十家分店：按名解析回的是 OSM 排序最前的那家，城市级检索池（Overpass
+#: ±0.13°）里也混着远处分店，模型照抄池内店名时并不知道它在哪（实测 2026-10-12：
+#: 「くら寿司」落到约 19 km 外、「日高屋」「Délifrance」落到约 6 km 外的秋叶原）。
+#: 5 km 放过同片区内正常的跨街区用餐，拦下跨区分店。
+#: 两道规则共用这一个数：排程前的选池资格（content/reference_pool）与落地后的
+#: 就近校正（content/landing.relocate_far_meals）——一处放宽另一处也得跟着放宽，
+#: 分家只会让"能不能吃到这家"取决于它先被哪道规则看见。
+MEAL_BRANCH_MAX_DISTANCE_M = 5000.0
+
+
+def diet_gate_blocking(requirements: TripRequirements | None) -> bool:
+    """饮食要求是否构成阻断交付的硬约束（唯一口径，T5a/T5b 共用）。
+
+    只有用户**明确选择**过"先给餐饮候选、我出发前自己核实"才不阻断；未选、
+    选了 `verified_only` 都按阻断算。交付闸（rules/constraint_checks）与排程前
+    的选池资格（content/reference_pool）必须读同一个判据——一边松一边紧就等于
+    "换一条链路决定硬约束是否生效"。
+    """
+    if not requirements or not requirements.dietary_requirement:
+        return False
+    return requirements.dining_evidence_policy != "review_candidates"
+
 
 @dataclass(frozen=True)
 class DayPolicy:

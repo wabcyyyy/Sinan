@@ -3,7 +3,9 @@
 状态语义（spec 2026-10-08 §5.2/M2 §7）：ClarifyRequest.state 是服务端权威累计
 状态，模型输出解析成有类型 patch（set/unset/add/remove）后确定性应用；出口
 策略（目标计算/协商闸/自然回复采用）是纯规则，在 clarify_policy.respond——
-本模块只做 LLM 调用、解析与状态搬运，每轮恰好一次 complete（无第二次润色）。
+本模块只做 LLM 调用、解析与状态搬运。正常轮恰好一次 `complete`；输出不可用时
+**有界修复一次**（复用生成链 `json_output.parse_llm_json_with_repair` 的同一实现），
+再失败按降级轮如实透出，已确认槽位不动。
 
 老前端兼容：ClarifyResponse.slots 继续携带基础槽位投影（含一次性协商标记），
 老客户端随轮回传 slots 的行为不破坏；state 传入时以 state 为准。
@@ -13,7 +15,9 @@
 import json
 import logging
 from datetime import date
+from typing import get_args
 
+from app.agent.core.json_utils import parse_llm_json_or_none
 from app.agent.editing.clarify_policy import (
     BUDGET_WARN_SLOT,
     DINING_CHOICES,
@@ -22,8 +26,9 @@ from app.agent.editing.clarify_policy import (
     apply_acceptance,
     respond,
 )
+from app.agent.generation.content.json_output import parse_llm_json_with_repair
 from app.common.llm_client import get_llm_client
-from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
+from app.schemas.requirement_patches import PatchTarget, RequirementPatch, apply_intake_patches
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
 from app.schemas.trip_requirements import IntakeState
 
@@ -169,22 +174,86 @@ def _sync_base_from_slots(state: IntakeState, slots: dict) -> None:
         state.preferences = [str(p) for p in prefs if str(p).strip()][:10]
 
 
+#: 抽取出口的 token 预算：思考（全局 low）计入 completion，2026-10-12 同一原话 5 次
+#: 实测 completion 416-1856（reasoning 185-1617），旧默认 2048 最高用到 91%，与此前
+#: 空串/JSON 解析失败一致。4096 ≈ 实测上沿 2.2 倍；正文本身只有 ~650 字。
+_EXTRACT_MAX_TOKENS = 4096
+
+
+def _closed(properties: dict) -> dict:
+    """闭合对象：strict json_schema 要求每个键都在 required 里且不许额外键。"""
+    return {"type": "object", "properties": properties, "required": sorted(properties), "additionalProperties": False}
+
+
+#: 抽取出口的形状（与 `_EXTRACT_SPEC` 同一份契约：那边是给模型看的自然语言说明，
+#: 这边是给守约网关执行的机器约束；改一处必须同时改另一处，如同 day_prompts 里
+#: `open_day_output_schema` 与生成提示词的分工）。patch 的 target 枚举直接从
+#: `app.schemas.requirement_patches` 取，不在这里抄第二份词表。
+_OUTPUT_SCHEMA = _closed(
+    {
+        "city": {"type": ["string", "null"]},
+        "origin_city": {"type": ["string", "null"]},
+        "start_date": {"type": ["string", "null"], "description": "YYYY-MM-DD"},
+        "days": {"type": ["integer", "null"]},
+        "stay_nights": {"type": ["integer", "null"]},
+        "persons": {"type": ["integer", "null"]},
+        "budget": {"type": ["number", "null"]},
+        "hotel_tier": {"type": ["string", "null"]},
+        "preferences": {"type": ["array", "null"], "items": {"type": "string"}},
+        "patches": {
+            "type": ["array", "null"],
+            "items": _closed(
+                {
+                    "op": {"type": "string", "enum": ["set", "unset", "add", "remove"]},
+                    "target": {"type": "string", "enum": sorted(get_args(PatchTarget))},
+                    "value": {
+                        "anyOf": [
+                            {"type": ["string", "number", "boolean", "null"]},
+                            {"type": "array", "items": {"type": "string"}},
+                        ]
+                    },
+                    "name": {"type": ["string", "null"]},
+                    "day_no": {"type": ["integer", "null"]},
+                }
+            ),
+        },
+        "ack": {"type": ["string", "null"]},
+        "reply": {"type": ["string", "null"]},
+        "reply_for": {"type": ["string", "null"]},
+        "accepted": {"type": ["string", "null"]},
+        "question": {"type": ["string", "null"]},
+        "options": {"type": ["array", "null"], "items": {"type": "string"}},
+    }
+)
+
+
+def _user_line(req: ClarifyRequest, slots: dict, state: IntakeState) -> str:
+    """抽取请求的用户侧文本（唯一构造点：正调与有界修复共用，两处不能分叉）。"""
+    requirements = state.requirements.model_dump(mode="json", by_alias=True, exclude_defaults=True, exclude_none=True)
+    return (
+        f"今天是 {date.today().isoformat()}。\n"
+        f"已有槽位：{json.dumps(slots, ensure_ascii=False)}\n"
+        f"已有需求约束：{json.dumps(requirements, ensure_ascii=False)}\n"
+        f"已问过的可选问题：{json.dumps(state.optional_asked, ensure_ascii=False)}\n用户说：{req.message}"
+    )
+
+
+def _response_format(client) -> dict:
+    """能力位由 client 自己判（`json_response_format`）：守约网关给 json_schema 强约束，
+    不支持的降级 json_object——与生成链同一口径，不在这里猜模型能力。"""
+    return client.json_response_format("clarify_extract", _OUTPUT_SCHEMA)
+
+
 def _ask(req: ClarifyRequest, slots: dict, state: IntakeState) -> str | None:
     """LLM 抽取；通道挂了返回 None（调用方据此带降级标记），对话不得因追问失败而卡死。"""
     client = get_llm_client()
-    requirements = state.requirements.model_dump(mode="json", by_alias=True, exclude_defaults=True, exclude_none=True)
     try:
         return client.complete(
-            f"今天是 {date.today().isoformat()}。\n"
-            f"已有槽位：{json.dumps(slots, ensure_ascii=False)}\n"
-            f"已有需求约束：{json.dumps(requirements, ensure_ascii=False)}\n"
-            f"已问过的可选问题：{json.dumps(state.optional_asked, ensure_ascii=False)}\n用户说：{req.message}",
+            _user_line(req, slots, state),
             system_prompt=_SYSTEM_PROMPT,
             temperature=0,
-            # 思考（全局 low）计入 completion：2026-10-12 同一原话 5 次实测 completion
-            # 416-1856（reasoning 185-1617），旧默认 2048 最高用到 91%，与此前空串/JSON
-            # 解析失败一致。4096 ≈ 实测上沿 2.2 倍；正文本身只有 ~650 字。
-            max_tokens=4096,
+            max_tokens=_EXTRACT_MAX_TOKENS,
+            response_format=_response_format(client),
         )
     except Exception as e:
         # AILIVE-2：只记 str(e) 会丢类型名（连接层异常甚至可能是空串），排障困难
@@ -192,60 +261,83 @@ def _ask(req: ClarifyRequest, slots: dict, state: IntakeState) -> str | None:
         return None
 
 
-def _extract(
-    raw: str, slots: dict
-) -> tuple[str | None, list[str] | None, bool, list[RequirementPatch], str | None, str | None, str | None, str | None]:
-    """解析 LLM 输出：槽位并入 slots、patch/reply/reply_for/accepted/ack 结构化。
+def _repair(req: ClarifyRequest, slots: dict, state: IntakeState, raw: str) -> dict | None:
+    """输出不可用时的**有界**修复：携原请求 + 上一轮原输出重问恰好一次。
 
-    返回 (question, options, 解析是否成功, patches, reply, reply_for, accepted, ack)；
-    解析失败等同没抽到；单条 patch 形状非法只跳过该条（记日志），不否定整轮。
+    复用生成链的同一实现（`json_output.parse_llm_json_with_repair`：一次修复、
+    遥测 `llm_json_repair`、再失败上抛），这里不重写第二套修复循环。修复通道自己
+    挂了或二次仍不可用时返回 None → 走降级轮，用户原话与已确认槽位都不动。
+    """
+    client = get_llm_client()
+    try:
+        return parse_llm_json_with_repair(
+            raw,
+            client,
+            repair_max_tokens=_EXTRACT_MAX_TOKENS,
+            response_format=_response_format(client),
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": _user_line(req, slots, state)},
+            ],
+        )
+    except Exception as e:
+        logger.warning("clarify repair failed: %s: %s", type(e).__name__, e)
+        return None
+
+
+def _trimmed_str(value: object) -> str | None:
+    """文本出口字段：非字符串或空白都按没给（不当成空话术）。"""
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _extract(
+    data: dict, slots: dict
+) -> tuple[str | None, list[str] | None, list[RequirementPatch], str | None, str | None, str | None, str | None]:
+    """把已解析的抽取结果结构化：槽位并入 slots、patch/reply/reply_for/accepted/ack 取出。
+
+    返回 (question, options, patches, reply, reply_for, accepted, ack)；JSON 解析在
+    调用方完成（`parse_llm_json_or_none` → `_repair`，唯一实现），这里只处理形状：
+    单条 patch 形状非法只跳过该条（记日志），不否定整轮。
     语义性拒绝（词表外类别、超界值）由 apply_intake_patches 处理并入 unresolved；
     reply 的目标校验在 clarify_policy.respond（服务端重算 next 后比对）。
     """
     patches: list[RequirementPatch] = []
-    try:
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
-        data = json.loads(text[text.find("{") : text.rfind("}") + 1])
-        for k in _KNOWN:
-            v = data.get(k)
-            if v not in (None, "", "null"):
-                slots[k] = v
-        raw_options = data.get("options")
-        options = None
-        if isinstance(raw_options, list):
-            options = [str(o).strip() for o in raw_options if str(o).strip()][:4] or None
-        raw_patches = data.get("patches")
-        if isinstance(raw_patches, list):
-            for item in raw_patches:
-                try:
-                    patches.append(RequirementPatch.model_validate(item))
-                except Exception as e:
-                    logger.warning("clarify patch invalid: %s | item=%s", e, str(item)[:120])
-        reply = data.get("reply")
-        reply = str(reply).strip() if isinstance(reply, str) and reply.strip() else None
-        reply_for = data.get("reply_for")
-        reply_for = str(reply_for).strip() if isinstance(reply_for, str) and reply_for.strip() else None
-        accepted = data.get("accepted")
-        accepted = str(accepted).strip() if isinstance(accepted, str) and accepted.strip() else None
-        ack = data.get("ack")
-        ack = str(ack).strip() if isinstance(ack, str) and ack.strip() else None
-        return data.get("question") or None, options, True, patches, reply, reply_for, accepted, ack
-    except Exception as e:
-        logger.warning("clarify parse failed: %s | raw=%s", e, raw[:200])
-        return None, None, False, [], None, None, None, None
+    for k in _KNOWN:
+        v = data.get(k)
+        if v not in (None, "", "null"):
+            slots[k] = v
+    raw_options = data.get("options")
+    options = None
+    if isinstance(raw_options, list):
+        options = [str(o).strip() for o in raw_options if str(o).strip()][:4] or None
+    raw_patches = data.get("patches")
+    if isinstance(raw_patches, list):
+        for item in raw_patches:
+            try:
+                patches.append(RequirementPatch.model_validate(item))
+            except Exception as e:
+                logger.warning("clarify patch invalid: %s | item=%s", e, str(item)[:120])
+    reply = _trimmed_str(data.get("reply"))
+    reply_for = _trimmed_str(data.get("reply_for"))
+    accepted = _trimmed_str(data.get("accepted"))
+    ack = _trimmed_str(data.get("ack"))
+    return data.get("question") or None, options, patches, reply, reply_for, accepted, ack
 
 
 def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
     state = _seed_state(req)
     slots = _slots_projection(state)
     raw = _ask(req, slots, state)
-    if raw is None:
-        question, options, parsed, patches = None, None, False, []
-        llm_reply, reply_for, accepted, ack = None, None, None, None
+    # 解析走唯一实现（core.json_utils），失败交 `_repair` 有界修复一次；两条都不可用
+    # 才是"本轮没抽到"——降级如实透出，已确认槽位与用户原话都不动（AILIVE-2）。
+    data = parse_llm_json_or_none(raw) if raw is not None else None
+    if raw is not None and data is None:
+        data = _repair(req, slots, state, raw)
+    parsed = data is not None
+    if data is None:
+        question, options, patches, llm_reply, reply_for, accepted, ack = None, None, [], None, None, None, None
     else:
-        question, options, parsed, patches, llm_reply, reply_for, accepted, ack = _extract(raw, slots)
+        question, options, patches, llm_reply, reply_for, accepted, ack = _extract(data, slots)
     for key in _INT_SLOTS:
         _normalize_int(slots, key)
     # 顺序即语义（E02 回归钉住）：先回写基础槽位、再应用 patch——「预算不限制了」

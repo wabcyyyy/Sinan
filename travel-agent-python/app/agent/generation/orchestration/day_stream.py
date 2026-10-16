@@ -89,7 +89,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     # 过滤 used_names：否则模型引用 [Rn] 命中"已去过"的 POI 时照样落地，
     # 逐日编排下产生跨天重复景点。编号一致性由 generate_day_once 用
     # 同一 exclude_names 重建池保证。
-    pool = ReferencePool(req.context, exclude_names=mem.exclude_names())
+    pool = ReferencePool.for_day(req, exclude_names=mem.exclude_names())
     total_days = req.days or 1
     # 密度交给模型按「偏好+地理+游玩时长」判断，不写死点位数量；
     # 只约束节奏目标（充实但不赶场），由 reflect 做空白/过满检查。
@@ -239,7 +239,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
     # 引用式生成：与 llm_open_day 使用同一个权威参考资料池（同样按
     # used_names 过滤，保证 refs 编号与 Prompt 渲染一致），命中时直接落地
     # 权威字段并跳过本地落坐标（资料坐标已是真实采集值）。
-    ref_pool = ReferencePool(ctx, exclude_names=set(req.used_names))
+    ref_pool = ReferencePool.for_day(req, exclude_names=set(req.used_names))
 
     lookup: dict[str, dict] = {}
     # 酒店是候选上下文的一部分，也需要用知识库事实覆盖模型输出。
@@ -339,6 +339,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             cost_observed=cost_observed,
             open_time_observed=open_time_observed,
             evidence_id=str((poi or item).get("evidence_id") or "") or None,
+            city=req.city,
         )
         normalize_item_clocks(item)
 

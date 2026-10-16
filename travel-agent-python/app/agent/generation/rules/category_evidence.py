@@ -2,11 +2,16 @@
 
 from app.schemas.trip import FactEvidence
 
+#: OSM `amenity` 里表示"用餐"的取值。用途判定（content/reference_pool.item_purpose）
+#: 与"排除类别的正向冲突证据"（下面的 `_DISTINCT_USES`）读同一份餐饮口径：
+#: 一个实体算不算吃饭的地方，只能有一个答案（T5b：类型被改写会静默关掉饮食闸）。
+DINING_AMENITIES = {"restaurant", "cafe", "fast_food", "food_court"}
+
 # 明确的独立用途；泛泛的 tourism=attraction 或缺少 religion 均不够。
 _DISTINCT_USES = {
     "leisure": {"park", "garden", "pitch", "sports_centre"},
     "shop": {"gift", "books", "supermarket", "convenience"},
-    "amenity": {"restaurant", "cafe", "fast_food", "food_court"},
+    "amenity": DINING_AMENITIES,
 }
 _TEMPLE_RELIGIONS = {"buddhist", "shinto"}
 _OTHER_WORSHIP_RELIGIONS = {"christian", "muslim", "jewish"}

@@ -232,6 +232,7 @@ def _generate_drafts(
                 cost_observed=False,
                 open_time_observed=False,
                 evidence_id=str(item.get("evidence_id") or "") or None,
+                city=req.city,
             )
         for item in plan["items"]:
             if item.get("poi_name"):
@@ -344,7 +345,7 @@ def generate_open_plans(
             "foods": foods or [],
             "weather": weather or [],
         }
-        ref_pool = ReferencePool(context)
+        ref_pool = ReferencePool(context, requirements=req.requirements_struct)
         plans, raw_suggestions, research_errors = _generate_drafts(
             req,
             feedback,

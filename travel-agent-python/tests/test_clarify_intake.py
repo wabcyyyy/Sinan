@@ -3,22 +3,53 @@
 from app.agent.editing import clarify as clarify_mod
 from app.agent.editing import clarify_policy as policy
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
-from app.schemas.trip_requirements import IntakeState
+from app.schemas.trip_requirements import IntakeState, TripRequirements
 from tests.llm_binding import FakeBinding
 
 
 class _FakeClient(FakeBinding):
-    """签名对齐 llm_client.complete 的最小桩。"""
+    """签名对齐 llm_client.complete/chat 的最小桩。
 
-    def __init__(self, raw: str | Exception) -> None:
+    `complete` 带 `response_format`（结构化输出档位由 client 的能力位决定），
+    `chat` 是输出不可用时的**有界修复**通道：`replies` 给出修复轮的输出，不给就
+    原样重复第一轮（保持"再失败即降级"的旧断言语义）；`chat_calls` 供用例断言
+    修复恰好一次。
+    """
+
+    def __init__(self, raw: str | Exception, replies: list[str] | None = None) -> None:
         self._raw = raw
+        self._replies = list(replies or [])
         self.max_tokens: int | None = None
+        self.response_formats: list[dict | None] = []
+        self.chat_calls = 0
 
-    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system_prompt: str = "",
+        temperature: float = 0,
+        max_tokens: int = 2048,
+        response_format: dict | None = None,
+    ) -> str:
         self.max_tokens = max_tokens
+        self.response_formats.append(response_format)
         if isinstance(self._raw, Exception):
             raise self._raw
         return self._raw
+
+    def chat(
+        self,
+        messages: list[dict],
+        temperature: float = 0,
+        max_tokens: int = 2048,
+        response_format: dict | None = None,
+        **kwargs,
+    ) -> str:
+        self.chat_calls += 1
+        self.chat_messages = messages
+        if self._replies:
+            return self._replies.pop(0)
+        return self._raw if isinstance(self._raw, str) else ""
 
 
 def _run(
@@ -341,3 +372,46 @@ def test_ack_prefixes_confirm_reply(monkeypatch) -> None:
     res = _run(monkeypatch, raw, state=asked)
     assert res.next == "confirm"
     assert res.reply == "带爸妈吃遍成都，安排！" + policy.CONFIRM_REPLY
+
+
+# ---- T5d：结构化输出 + 有界修复（失败不丢已确认需求） --------------------------------
+
+
+def test_intake_uses_structured_output_when_the_route_supports_it(monkeypatch) -> None:
+    """抽取与生成同口径：档位由 client 的能力位决定，clarify 只负责把它传给既有 API。"""
+    client = _FakeClient('{"city":"成都"}')
+    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda _role="main": client)
+    clarify_mod.run_clarify(ClarifyRequest(message="想去成都"))
+    (sent,) = client.response_formats
+    assert sent is not None and sent.get("type") in {"json_schema", "json_object"}, "不能裸调无 response_format"
+    # 与 client 自己的能力位判定完全一致：支持 json_schema 时必须带上抽取出口的形状，
+    # 不支持时降级 json_object——档位不由 clarify 自己猜。
+    expected = client.json_response_format("clarify_extract", clarify_mod._OUTPUT_SCHEMA)
+    assert sent == expected
+    if sent.get("type") == "json_schema":
+        assert sent["json_schema"]["schema"] == clarify_mod._OUTPUT_SCHEMA
+
+
+def test_unparseable_output_is_repaired_exactly_once(monkeypatch) -> None:
+    """解析失败 → 携原请求重问恰好一次；修复成功就不算降级轮。"""
+    client = _FakeClient("我觉得你说得对", replies=['{"days":3}'])
+    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda _role="main": client)
+    res = clarify_mod.run_clarify(ClarifyRequest(message="大概玩三天", slots={"city": "成都"}))
+    assert client.chat_calls == 1, "修复是有界的：恰好一次，不再循环重问"
+    assert res.degraded is False and res.slots["days"] == 3
+    repair_prompt = " ".join(str(message.get("content")) for message in client.chat_messages)
+    assert "大概玩三天" in repair_prompt, "修复轮必须带上用户原话，不能只凭失败原因重问"
+    assert "成都" in repair_prompt, "已确认槽位随原请求一起进修复轮"
+
+
+def test_repair_failure_degrades_without_losing_confirmed_slots(monkeypatch) -> None:
+    """修复轮仍不可用：如实降级，已确认槽位与缺槽清单照旧（不要求用户重输全部需求）。"""
+    client = _FakeClient("抱歉我不会", replies=["还是不会"])
+    monkeypatch.setattr(clarify_mod, "get_llm_client", lambda _role="main": client)
+    state = IntakeState(city="成都", days=3, persons=2, requirements=TripRequirements(dietary_requirement="vegan"))
+    res = clarify_mod.run_clarify(ClarifyRequest(message="换个说法试试", state=state))
+    assert client.chat_calls == 1
+    assert res.degraded is True
+    assert res.slots["city"] == "成都" and res.slots["days"] == 3 and res.slots["persons"] == 2
+    assert res.state.requirements.dietary_requirement == "vegan", "抽取失败不得清空已确认的硬约束"
+    assert res.missing == [] and res.options is not None

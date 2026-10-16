@@ -20,7 +20,7 @@ from __future__ import annotations
 import itertools
 
 from app.agent.generation.rules.category_evidence import category_membership, item_category_evidence
-from app.agent.generation.rules.day_policy import DayPolicy
+from app.agent.generation.rules.day_policy import DayPolicy, diet_gate_blocking
 from app.agent.generation.rules.transfer_time import item_end, item_start
 from app.schemas.constraints import ConstraintCheck, ConstraintReport
 from app.schemas.trip import FactEvidence
@@ -180,7 +180,7 @@ def _check_content(
                 day_no=day_no,
                 status="pass" if valid else "unknown",
                 item_refs=[name],
-                blocking=requirements.dining_evidence_policy != "review_candidates",
+                blocking=diet_gate_blocking(requirements),
                 reason=f"「{name}」有外部{label}标签，当前菜单仍须出发前核实"
                 if valid
                 else f"「{name}」尚无{label}可用性依据，仅为待核实餐饮候选，不能确认满足饮食要求",
@@ -309,7 +309,7 @@ def check_constraints(
                 day_no=day_no,
                 status="unknown",
                 reason="本日未提供餐饮安排，无法确认饮食要求已满足",
-                blocking=requirements.dining_evidence_policy != "review_candidates",
+                blocking=diet_gate_blocking(requirements),
             )
         )
     if locked is not None:

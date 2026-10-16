@@ -59,6 +59,7 @@ def field_fact_evidence(
     cost_observed: bool,
     open_time_observed: bool,
     evidence_id: str | None = None,
+    city: str | None = None,
 ) -> dict[str, FactEvidence]:
     """字段级证据票（GROUND-2）：identity/cost/open_time 各自独立记票。
 
@@ -66,12 +67,19 @@ def field_fact_evidence(
     候选池的条目其票价/开放时间即使全部来自模型世界知识，也随行级徽章被读成
     「有据」。现在 cost/open_time 只有真正从权威候选行回填才是 observed；模型
     直写一律 unverified/generated + 出发前复核。字段没有值就不发票。
+
+    `city` 给出时票必须与它对得上（两边都有值且不同才判不符，口径与
+    `grounding_labels.label_for_landed_item` 一致）：连锁品牌在不同城市同名同
+    source，只按 name+source+evidence_id 取票会让一座城市的证据替另一座城市的
+    同名实体说话（T5a 已知缺陷，这里就地补齐，不改 schema）。
     """
     snapshot = (
         evidence_row({"name": str(item.get("poi_name") or ""), "source": label.source, "evidence_id": evidence_id})
         if is_authoritative_source(label.source)
         else None
     )
+    if snapshot is not None and city and snapshot.get("city") and str(snapshot["city"]) != str(city):
+        snapshot = None
     # 引用本次取回的字段快照，不能只凭同名或 provider 字符串认领证据。
     source_ref = str(snapshot["evidence_id"]) if snapshot else None
     identity_verified = snapshot is not None and is_authoritative_source(label.source)
@@ -217,6 +225,7 @@ def apply_item_facts(
         cost_observed=cost_observed,
         open_time_observed=open_time_observed,
         evidence_id=str((poi or item).get("evidence_id") or "") or None,
+        city=city or None,
     )
     source_records.setdefault(label.source, source_record_for(label, poi))
 

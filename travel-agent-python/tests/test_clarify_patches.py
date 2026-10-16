@@ -10,12 +10,22 @@ from tests.llm_binding import FakeBinding
 
 
 class _FakeClient(FakeBinding):
-    """签名对齐 llm_client.complete 的最小桩。"""
+    """签名对齐 llm_client.complete/chat 的最小桩（结构化输出与有界修复都接得住）。"""
 
     def __init__(self, raw: str) -> None:
         self._raw = raw
 
-    def complete(self, prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
+    def complete(
+        self,
+        prompt: str,
+        system_prompt: str = "",
+        temperature: float = 0,
+        max_tokens: int = 2048,
+        response_format: dict | None = None,
+    ) -> str:
+        return self._raw
+
+    def chat(self, messages: list[dict], temperature: float = 0, max_tokens: int = 2048, **kwargs) -> str:
         return self._raw
 
 

@@ -5,8 +5,9 @@ import json
 import pytest
 
 from app.agent.core.poi_identity import same_entity
-from app.agent.data import places
+from app.agent.data import overpass, places
 from app.agent.editing import clarify
+from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.reflect import hard_day_issues
 from app.agent.generation.content.requirement_directives import requirements_directives_clause
 from app.agent.generation.orchestration import day_workflow
@@ -16,7 +17,8 @@ from app.agent.generation.rules.day_policy import day_policy_for
 from app.agent.generation.rules.generation_core import strip_model_claims
 from app.agent.grounding import existence, facts
 from app.agent.grounding.grounding_evidence import evidence_row, issue_evidence, verify_evidence
-from app.agent.grounding.grounding_labels import label_for_landed_item
+from app.agent.grounding.grounding_labels import apply_label, label_for_evidence_row, label_for_landed_item
+from app.agent.tools import impl as tools
 from app.common.config import settings
 from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
 from app.schemas.trip import ClarifyRequest, DailyPlan, GenerateDayRequest
@@ -254,3 +256,200 @@ def test_missing_food_and_stale_diet_evidence_cannot_pass():
     assert any("尚无素食" in issue for issue in hard_day_issues(plan, req))
     plan["items"] = [item for item in plan["items"] if item["item_type"] != "food"]
     assert any("未提供餐饮安排" in issue for issue in hard_day_issues(plan, req))
+
+
+# ---- T5b：检索类别不得改写用途（改类型绕不过饮食闸） --------------------------------
+
+_STRICT_DIET = TripRequirements(dietary_requirement="vegetarian", dining_evidence_policy="verified_only")
+
+
+def _overpass_restaurant(node: int = 1, *, diet: str | None = None, category: str | None = None) -> dict:
+    """Overpass 真实形状的餐饮行（纯归一，不打网络），再走生产入口当场签票。
+
+    `_normalize` 给的是 **OSM 主分类**（`category="amenity"`）；`category=` 参数模拟
+    同一家店从别的检索域回来时行上的分类字段（OTM 口径 / 调用方传入的 context 行）。
+    """
+    tags = {"name": "PLANT BASED", "amenity": "restaurant", "addr:street": "新宿"}
+    if diet:
+        tags[f"diet:{diet}"] = "yes"
+    row = overpass._normalize({"type": "node", "id": node, "lat": 35.6905, "lon": 139.7, "tags": tags})
+    assert row is not None
+    if category is not None:
+        row["category"] = category
+    return tools._as_candidate(row, "东京")
+
+
+def _landed_dining_item(pool_row: dict, *, declared: str = "food") -> dict:
+    """把一行参考资料**放进景点域池**落地，返回单日链给交付闸的那个条目形状。"""
+    pool = ReferencePool({"candidates": [pool_row]})
+    item = {
+        "item_type": declared,
+        "poi_name": str(pool_row["name"]),
+        "start_time": "12:30",
+        "end_time": "13:30",
+        "cost": 50,
+    }
+    assert pool.ground(item) is True, "池内命中是前提（否则走的是按名解析那条链）"
+    label = label_for_evidence_row(pool_row)
+    apply_label(item, label)
+    item["fact_evidence"] = field_fact_evidence(
+        item,
+        label,
+        cost_observed=False,
+        open_time_observed=False,
+        evidence_id=str(pool_row.get("evidence_id") or "") or None,
+        city="东京",
+    )
+    return item
+
+
+def _diet_verdict(item: dict) -> list[str]:
+    plan = _plan()
+    plan["items"][1] = item
+    return hard_day_issues(plan, _STRICT_DIET)
+
+
+@pytest.mark.parametrize("category", [None, "attraction", "amenity", "tourism", "food"])
+def test_retrieval_category_cannot_strip_the_dining_purpose(category):
+    """用途由条目自己决定：饮食行经景点域回来仍是一餐，饮食闸照旧查它（T5b）。"""
+    row = _overpass_restaurant(category=category)
+    item = _landed_dining_item(row)
+    assert item["item_type"] == "food", f"检索类别 {category!r} 把用餐用途改写掉了"
+    assert item["item_type"] in {"attraction", "food", "hotel", "transport"}, "item_type 始终在契约值域内"
+
+
+@pytest.mark.parametrize("category", ["food", "attraction"])
+def test_category_alone_cannot_unblock_an_evidence_less_meal(category):
+    """只改行上的分类字段，判据一字不差：类型变化不是解除硬约束的通道。"""
+    verdicts = _diet_verdict(_landed_dining_item(_overpass_restaurant(category=category)))
+    assert any("尚无素食可用性依据" in issue for issue in verdicts)
+    assert verdicts == _diet_verdict(_landed_dining_item(_overpass_restaurant(category="attraction")))
+
+
+def test_model_typing_a_restaurant_as_sightseeing_still_gets_diet_checked():
+    """反向同样封住：模型把餐厅写成景点时，落到的实体是用餐实体就升为 food。"""
+    item = _landed_dining_item(_overpass_restaurant(), declared="attraction")
+    assert item["item_type"] == "food"
+    assert any("尚无素食可用性依据" in issue for issue in _diet_verdict(item))
+
+
+def test_evidenced_vegetarian_meal_from_the_attraction_domain_can_pass():
+    """有真实 diet 标签时才放行——证明这条链确实做了饮食检查，不是恒拦或恒放。"""
+    row = _overpass_restaurant(diet="vegetarian")
+    item = _landed_dining_item(row)
+    assert item["item_type"] == "food"
+    assert item["fact_evidence"]["diet:vegetarian"].value_kind == "observed"
+    assert _diet_verdict(item) == []
+    plan = _plan()
+    plan["items"][1] = item
+    assert hard_delivery_blockers(1, DailyPlan.model_validate(plan), _STRICT_DIET) == []
+
+
+def test_ticket_does_not_back_a_same_named_entity_in_another_city():
+    """票按 name+source+evidence_id 取回后还要与当日城市对得上（T5a 已知缺陷就地补）。"""
+    row = {
+        "name": "PLANT BASED",
+        "city": "东京",
+        "source": "overpass",
+        "external_id": "osm:node:9",
+        "latitude": 35.6905,
+        "longitude": 139.7,
+        "dietary_options": ["vegetarian"],
+        "source_url": "https://www.openstreetmap.org/node/9",
+    }
+    issue_evidence(row)
+    label = label_for_evidence_row(row)
+    item = {"poi_name": "PLANT BASED", "item_type": "food", "cost": 50}
+    borrowed = field_fact_evidence(
+        item, label, cost_observed=False, open_time_observed=False, evidence_id=row["evidence_id"], city="大阪"
+    )
+    assert borrowed["identity"].verification_status == "unverified"
+    assert not any(key.startswith("diet:") for key in borrowed)
+    same_city = field_fact_evidence(
+        item, label, cost_observed=False, open_time_observed=False, evidence_id=row["evidence_id"], city="东京"
+    )
+    assert same_city["identity"].verification_status == "verified"
+    assert same_city["diet:vegetarian"].value_kind == "observed"
+
+
+# ---- T5a：排程前定资格（先选对实体，再交给模型排） ----------------------------------
+
+
+def _food_row(name: str, *, diet: str | None = None, lat: float = 35.6905, lng: float = 139.7) -> dict:
+    return {
+        "id": name,
+        "name": name,
+        "city": "东京",
+        "source": "overpass",
+        "latitude": lat,
+        "longitude": lng,
+        "dietary_options": [diet] if diet else [],
+    }
+
+
+def test_un_evidenced_dining_rows_are_not_offered_when_one_is_evidenced():
+    """饮食行不再只是"排得靠前"：不合格的行根本不进资料块，模型选不到。"""
+    rows = [_food_row("无证餐厅"), _food_row("素食食堂", diet="vegetarian")]
+    pool = ReferencePool({"foods": rows}, requirements=_STRICT_DIET)
+    block = pool.block()
+    assert "素食食堂" in block and "无证餐厅" not in block
+    assert pool.stats["dining_dropped"] == 1
+    assert pool.ground({"item_type": "food", "poi_name": "无证餐厅"}) is False, "被摘除的行不能再生效"
+
+
+def test_pool_empties_nothing_when_no_row_is_eligible():
+    """全部不合格（Overpass 没覆盖到）时原样注入并如实计数，不把"没查到"伪装成"没有餐厅"。"""
+    rows = [_food_row("甲"), _food_row("乙")]
+    pool = ReferencePool({"foods": rows}, requirements=_STRICT_DIET)
+    assert len(pool.references) == 2
+    assert pool.stats["dining_unqualified"] == 2 and "dining_dropped" not in pool.stats
+
+
+def test_review_candidates_policy_keeps_every_dining_row():
+    """用户明确选择"先给候选、我自己核实"后，资格筛子按同一个口径松开。"""
+    permissive = _STRICT_DIET.model_copy(update={"dining_evidence_policy": "review_candidates"})
+    pool = ReferencePool(
+        {"foods": [_food_row("无证餐厅"), _food_row("素食食堂", diet="vegetarian")]}, requirements=permissive
+    )
+    assert len(pool.references) == 2
+
+
+def test_far_branch_is_not_offered_when_a_nearby_branch_is():
+    """当天锚点（已选酒店）已知时，远处分店在排程前就被摘掉——与就近校正同一半径口径。"""
+    anchors = [(35.6938, 139.7034)]
+    pool = ReferencePool(
+        {
+            "foods": [
+                _food_row("新宿店", diet="vegetarian"),
+                _food_row("町田店", diet="vegetarian", lat=35.5427, lng=139.4466),
+            ]
+        },
+        requirements=_STRICT_DIET,
+        anchors=anchors,
+    )
+    block = pool.block()
+    assert "新宿店" in block and "町田店" not in block
+    assert pool.stats["dining_dropped"] == 1
+
+
+def test_for_day_takes_anchors_from_the_chosen_hotel_only():
+    """单日链两处池构造走同一入口：锚点=当日已选酒店；别的天已成功点位不算今天的参照。"""
+    req = GenerateDayRequest(
+        city="东京",
+        chosen_hotel="新宿华盛顿酒店",
+        requirements_struct=_STRICT_DIET,
+        context={
+            "hotels": [{"name": "新宿华盛顿酒店", "source": "opentripmap", "latitude": 35.6938, "longitude": 139.7034}],
+            "foods": [
+                _food_row("新宿店", diet="vegetarian"),
+                _food_row("町田店", diet="vegetarian", lat=35.5427, lng=139.4466),
+            ],
+            "used_points": [("别的天景点", "attraction", 35.72, 139.78)],
+        },
+    )
+    pool = ReferencePool.for_day(req)
+    assert [str(row["name"]) for row in pool.references] == ["新宿店", "新宿华盛顿酒店"], "远处分店不进资料块"
+    # 没有选定酒店就没有当天锚点：距离这一条不判（只按饮食证据筛）
+    no_hotel = req.model_copy(update={"chosen_hotel": None})
+    names = [str(row["name"]) for row in ReferencePool.for_day(no_hotel).references]
+    assert "町田店" in names, "used_points 是别的天已成功点位，不能当今天的参照来筛距离"

@@ -13,9 +13,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.agent.generation.content import landing
-from app.agent.generation.content.landing import MEAL_BRANCH_MAX_DISTANCE_M, drop_refuted_items, relocate_far_meals
+from app.agent.generation.content.landing import drop_refuted_items, relocate_far_meals
 from app.agent.generation.content.reflect import LATE_MEAL_MARK, hard_day_issues, is_late_meal, validate_plans
 from app.agent.generation.output.facts import build_lookup, field_fact_evidence, pool_row_for
+from app.agent.generation.rules.day_policy import MEAL_BRANCH_MAX_DISTANCE_M
 from app.agent.grounding import existence, nearby_branch
 from app.agent.grounding.existence import ResolveResult
 from app.agent.grounding.grounding_evidence import evidence_row, issue_evidence
@@ -272,6 +273,47 @@ def test_lookup_failure_falls_back_to_ungrounding(monkeypatch):
     items = _day(_far_kura())
     relocate_far_meals(items, city="东京")
     assert items[1]["latitude"] is None and items[1]["source"] == FAR_BRANCH_SOURCE
+
+
+def test_purpose_rewritten_by_the_retrieval_category_also_escaped_the_nearby_correction(monkeypatch):
+    """同一处类型改写还漏掉了就近校正：`relocate_far_meals` 按 `item_type == "food"` 取项，
+    经景点域池落地的餐厅被改成 attraction 后连"这家在 19 km 外"都不再判（T5b 的第二现场）。"""
+    from app.agent.data import overpass
+    from app.agent.generation.content.reference_pool import ReferencePool
+    from app.agent.tools import impl as tools
+
+    row = overpass._normalize(
+        {
+            "type": "node",
+            "id": 1174641596,
+            "lat": MACHIDA_KURA[0],
+            "lon": MACHIDA_KURA[1],
+            "tags": {"name": "くら寿司", "amenity": "restaurant", "diet:vegan": "yes"},
+        }
+    )
+    assert row is not None
+    row["category"] = "attraction"  # 同一家店从景点检索域回来
+    candidate = tools._as_candidate(row, "东京")
+    item = {"item_type": "food", "poi_name": "くら寿司"}
+    assert ReferencePool({"candidates": [candidate]}).ground(item) is True
+    assert item["item_type"] == "food"
+
+    monkeypatch.setattr(nearby_branch, "resolve_poi_near", lambda *a, **k: ResolveResult.unknown("no_branch_near_day"))
+    items = _day(item)
+    relocate_far_meals(items, city="东京")
+    dinner = items[1]
+    assert dinner["latitude"] is None and dinner["source"] == FAR_BRANCH_SOURCE, (
+        "远处分店被撤销落地，不借那家分店的证据"
+    )
+    evidence = field_fact_evidence(
+        dinner,
+        label_for_generated_item(),
+        cost_observed=False,
+        open_time_observed=False,
+        evidence_id=candidate["evidence_id"],
+        city="东京",
+    )
+    assert not any(key.startswith("diet:") for key in evidence), "町田店的 vegan 标签不能挂到新宿这餐上"
 
 
 # ---- 限框重查 -------------------------------------------------------------------

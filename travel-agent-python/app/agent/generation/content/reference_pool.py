@@ -8,18 +8,23 @@
 实现要点：
 - 背书判定不在本模块：来源是否可信、缺坐标怎么降级，全部交给
   `grounding_labels.label_for_evidence_row`（三条链路共用的唯一实现）；
+- **用途判定与排程前资格不在本模块**：检索类别不是用途、饮食要求与当天锚点决定
+  哪些行有资格进资料块，两条策略都在 `reference_policy`（本文件受 >400 行门禁，
+  且它的职责是编号/渲染/落地，不是判定）；
 - 来源值域校验不可省：/v1/generate-day 的 context 由调用方传入属不可信输入，
   不做值域校验则调用方可伪造 "opentripmap" 让幻觉事实获得外部背书；
 - 注入定界（§3.4.4 / P1-4）：池内文本全是第三方数据（联网搜索转写、OTM/OSM
   用户贡献字段或调用方传入的 context 行），渲染进 Prompt 前一律清洗 + 三引号
   定界声明"数据非指令"，不以"事实可信"自居。
 
-依赖：core.poi_identity（same_entity 名称门槛）、grounding_labels；无上层依赖。
+依赖：core.poi_identity（same_entity 名称门槛）、reference_policy（用途与资格）、
+grounding_labels；无上层依赖。
 """
 
 import re
 
 from app.agent.core.poi_identity import same_entity
+from app.agent.generation.content.reference_policy import apply_eligibility, day_anchors, item_purpose
 from app.agent.grounding.grounding_evidence import evidence_row
 from app.agent.grounding.grounding_labels import (
     UNTRUSTED_SOURCE,
@@ -29,6 +34,9 @@ from app.agent.grounding.grounding_labels import (
     is_trusted_row,
     label_for_evidence_row,
 )
+from app.agent.runtime.trace import record_event
+from app.schemas.trip import GenerateDayRequest
+from app.schemas.trip_requirements import TripRequirements
 
 # 开放模式参考资料注入规模：把本次候选池（OTM/联网搜索/LLM）拿到的点位按编号
 # 提供给模型，选点优先从资料中挑并输出 refs 引用编号；规模过大不再加。
@@ -66,10 +74,42 @@ class ReferencePool:
     P1 引用式生成的核心：候选池不再只是保底链路的白名单，还被格式化为
     带编号参考资料 [R1]…[Rn] 注入开放模式 Prompt；模型选点时输出 refs
     编号，生成后由 ground_reference_item 落地为权威字段并回填真实来源。
+
+    `requirements` / `anchors` 给出时收集末尾做一次资格筛选（`reference_policy.apply_eligibility`）；
+    refs 编号取自筛选后的结果，所以渲染与落地必须用**同一组参数**构造的池——单日链
+    两处都走 `for_day`，不各自挑参数。
     """
 
-    def __init__(self, context: dict | None, exclude_names: set[str] | None = None) -> None:
-        self.references: list[dict] = self._collect(context, exclude_names)
+    @classmethod
+    def for_day(cls, req: GenerateDayRequest, exclude_names: set[str] | None = None) -> "ReferencePool":
+        """单日链的池构造入口：资格判据从请求取，渲染与落地才不会编号错位。
+
+        锚点只取**排程前就已知**的那一个：当日已选定的酒店坐标。当天景点是模型排出来
+        的，排程前不存在，因此那种远处分店仍由落地后的就近校正
+        （`landing.relocate_far_meals`）负责，两处读同一个半径常量。
+        `context["used_points"]` 是**别的天**已成功点位（见
+        `itinerary_generation._other_completed_points`），不能当今天的锚点。
+        """
+        ctx = req.context or {}
+        return cls(
+            ctx,
+            exclude_names=exclude_names,
+            requirements=req.requirements_struct,
+            anchors=day_anchors(ctx, req.chosen_hotel),
+        )
+
+    def __init__(
+        self,
+        context: dict | None,
+        exclude_names: set[str] | None = None,
+        *,
+        requirements: TripRequirements | None = None,
+        anchors: list[tuple[float, float]] | None = None,
+    ) -> None:
+        collected = self._collect(context, exclude_names)
+        self.references, eligibility = apply_eligibility(collected, requirements, anchors or [])
+        if eligibility.get("dining_dropped"):
+            record_event("decision", "reference_pool_eligibility", metadata=eligibility)
         self.by_name: dict[str, dict] = {}
         self.by_normalized: dict[str, dict] = {}
         for poi in self.references:
@@ -85,6 +125,7 @@ class ReferencePool:
             "refs_cited": 0,
             "refs_valid": 0,
             "cited_references": 0,
+            **eligibility,
         }
 
     @staticmethod
@@ -255,7 +296,7 @@ class ReferencePool:
         self.stats["cited_references"] = len(self.cited_names)
         if not matched_by_name:
             item["poi_name"] = poi_name
-        item["item_type"] = poi.get("category") or poi["_reference_category"]
+        item["item_type"] = item_purpose(item.get("item_type"), poi)
         # 背书判定唯一实现：值域外的来源（例如客户端伪造的 context）改写为
         # client-context 并降级；缺 source 的池内行按 pool-unknown 记账——
         # 既不挂"权威知识库"的名号（该表已于 V4 退役），也不谎称是客户端传入。

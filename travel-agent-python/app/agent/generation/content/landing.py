@@ -19,6 +19,7 @@ from typing import Any
 
 from app.agent.core.poi_identity import PoiSeenRegistry, haversine_m
 from app.agent.generation.content.reference_pool import ReferencePool
+from app.agent.generation.rules.day_policy import MEAL_BRANCH_MAX_DISTANCE_M
 from app.agent.generation.rules.generation_core import filter_dirty_items
 from app.agent.grounding.facts import has_coord, local_ground
 from app.agent.grounding.grounding_evidence import evidence_row
@@ -139,20 +140,13 @@ def drop_refuted_items(items: list[dict], *, city: str, report: dict[str, Any] |
     return kept
 
 
-#: 餐饮点位离当天最近的景点/酒店超过这个距离，就不再当作这一天能顺路去的那家。
-#: 连锁店全城几十家分店：按名解析回的是 OSM 排序最前的那家，城市级检索池（Overpass
-#: ±0.13°）里也混着远处分店，模型照抄池内店名时并不知道它在哪（实测 2026-10-12：
-#: 「くら寿司」落到约 19 km 外、「日高屋」「Délifrance」落到约 6 km 外的秋叶原）。
-#: 5 km 放过同片区内正常的跨街区用餐，拦下跨区分店。
-MEAL_BRANCH_MAX_DISTANCE_M = 5000.0
-
-
 def relocate_far_meals(items: list[dict], *, city: str) -> None:
     """落在远处分店的餐饮项：换成当天附近的同名分店，找不到就撤销落地。
 
     按名解析与参考资料命中两种来源都管——远处的池内行同样是真实实体，只是不在
     这一天的动线上；只校正服务端落地的位置（source 在权威值域内），别的坐标不归本规则。
-    锚点是当天已落地的景点与酒店；没有锚点不判（没有参照就不猜）。
+    锚点是当天已落地的景点与酒店；没有锚点不判（没有参照就不猜）。半径常量与排程前的
+    选池资格（`content/reference_pool`）共用 `rules/day_policy` 里的那一个数。
     撤销落地时清掉坐标、poi_id 与地址，标签退回生成态、source 记为 FAR_BRANCH_SOURCE：
     不背书、不查票，远处分店的饮食/类别证据挂不上来；坐标没了，转场修正也不会按
     19 km 去顺延餐次。换成附近分店时标签按该分店的票重算。由 `drop_refuted_items`

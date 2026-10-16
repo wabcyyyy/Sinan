@@ -198,7 +198,7 @@ def open_trip_prompt(req: GenerateDayRequest) -> tuple[str, str]:
     返回 (system, user)；追加块顺序与既有一致：intent → reference →
     budget → requirements → feedback。
     """
-    pool = ReferencePool(req.context)
+    pool = ReferencePool(req.context, requirements=req.requirements_struct)
     days = req.days or 1
     # 住宿口径：generation_core（N 天 = N-1 晚，全程默认同一家）
     hotel_clause = hotel_prompt_clause(req.needs_hotel, days)
