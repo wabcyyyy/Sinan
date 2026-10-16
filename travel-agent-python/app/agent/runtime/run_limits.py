@@ -2,11 +2,18 @@
 
 没有 active run 时函数保持兼容，不会限制离线工具单测；HTTP 入口通过
 ``observe_run`` 自动启用。限制由执行器检查，而不是只写在 Prompt 里。
+
+成本准入（V17/T2）也挂在这条接缝上：`reserve_llm` 在**外呼之前**把预留交给持久账本
+（`app/services/cost_ledger.py`，两条传输路径见该文件 docstring），`settle_llm` 用真实
+usage 结算、usage 未知时保留保守值。上限比较发生在账本的守卫更新里，所以
+「并发不超卖」「一笔预留恰好结算一次」「崩溃未结算有界」都是同一条接缝的性质，
+不是每个入口各自自觉调用的闸门。
 """
 
 from __future__ import annotations
 
 import contextvars
+import logging
 import threading
 import time
 import uuid
@@ -14,7 +21,22 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+from app.common import cost_policy as policy
 from app.common.config import settings
+from app.common.llm_route import current_route, route_degradation
+
+logger = logging.getLogger(__name__)
+
+#: 成本账本后端：由 services 侧在启动时注入（`cost_ledger.install_backend`）。
+#: 有规划任务的腿走 `persist`（预算与成本同一条写入线），没有任务的腿走这里——
+#: 两者最终都进同一个 `cost_ledger.apply_events`，只有事务边界不同。
+_cost_backend: Callable[[list[dict]], None] | None = None
+
+
+def set_cost_backend(backend: Callable[[list[dict]], None] | None) -> None:
+    """登记/撤除成本账本后端（测试与 lifespan 用；agent 层不反向 import services）。"""
+    global _cost_backend
+    _cost_backend = backend
 
 
 class RunLimitExceeded(ValueError):
@@ -75,6 +97,9 @@ class RunLimits:
     terminal_resets: int = 0
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
     _reservations: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
+    # 待交给持久账本的成本事件（预留/结算）。只在 `_save()` 成功后清空：落账失败时这批
+    # 事件必须留给下一次写入重试，与 `_persist` 的"基线只在成功后推进"同一条纪律。
+    _cost_events: list[dict] = field(default_factory=list, repr=False)
     persist: Callable[[dict], None] | None = field(default=None, repr=False)
     # 失权/取消探针：由 services 侧注入（agent 不反向依赖 services）。check() 每次调用它，
     # 探针内部的缓存与代价由注入方决定。
@@ -93,8 +118,53 @@ class RunLimits:
         return min(remaining, phase - time.monotonic()) if phase else remaining
 
     def _save(self) -> None:
+        """把快照交给持久面；有成本事件时它们**必须**跟着一起落（成本先于外呼定稿）。
+
+        两条传输路径共用 services 的唯一实现：有任务 → `persist`（预算 + 续租 + 失权判定），
+        没任务 → 启动时登记的 `cost_backend`。两者都不在（离线脚本/单测没有业务库）时，
+        第一次丢弃会留一条 WARNING：硬费用账不能"没人接就走静默"。
+        """
+        events = self._cost_events
+        if self.persist is None and not events:
+            return
         if self.persist is not None:
             self.persist(self.snapshot())
+        elif _cost_backend is not None:
+            _cost_backend(list(events))
+        else:
+            _note_cost_dropped(len(events))
+        self._cost_events = []
+
+    def _cost_event(
+        self, op: str, key: str, prompt: int, completion: int, usage: dict | None = None
+    ) -> tuple[dict, bool]:
+        """构造一条成本事件，并回答"这次结算拿到的是真 usage 还是保守值"。
+
+        归属就在发起点判：`current_route()` 非空 = 用户自带网关（BYOK），
+        空 = 运营方 key。降级原因（BYOK 查不到而回落）由 `llm_route` 的上下文带出来，
+        账记 platform 是真话、但原因必须留痕——静默转嫁是 PLAN §5 T2 点名的失败模式。
+        """
+        from app.agent.runtime.observability import current_scene  # 延迟导入：observability 依赖本模块
+
+        route = current_route()
+        event = {
+            "op": op,
+            "id": key,
+            "attribution": policy.ATTR_BYOK if route is not None else policy.ATTR_PLATFORM,
+            "user_id": self.user_id,
+            "itinerary_id": self.itinerary_id,
+            "task_id": self.task_id,
+            "scene": current_scene(),
+        }
+        if op == "reserve":
+            degraded = route_degradation()
+            if degraded:
+                event["note"] = degraded
+            event["prompt"], event["completion"] = max(0, prompt), max(0, completion)
+            return event, False
+        charged_prompt, charged_completion, complete = policy.settle_charge(prompt, completion, usage)
+        event["prompt"], event["completion"], event["usage_complete"] = charged_prompt, charged_completion, complete
+        return event, complete
 
     def reserve_llm(self, prompt_estimate: int, output_tokens: int) -> str:
         with self._lock:
@@ -103,23 +173,35 @@ class RunLimits:
             if self.max_tokens > 0 and self.prompt_tokens + self.completion_tokens + prompt + output > self.max_tokens:
                 raise RunLimitExceeded("Token 预算不足以发起本次请求")
             key = uuid.uuid4().hex
+            event, _ = self._cost_event("reserve", key, prompt, output)
             self.llm_calls += 1
             self.prompt_tokens += prompt
             self.completion_tokens += output
             self._reservations[key] = (prompt, output)
-            self._save()
+            self._cost_events.append(event)
+            try:
+                self._save()  # 持久预留：请求还没出去，账已经落定（触顶即抛，下面一起回退）
+            except BaseException:
+                self._cost_events = [item for item in self._cost_events if item["id"] != key]
+                del self._reservations[key]
+                self.llm_calls -= 1
+                self.prompt_tokens -= prompt
+                self.completion_tokens -= output
+                raise
             return key
 
     def settle_llm(self, reservation: str, usage: dict | None) -> None:
         with self._lock:
             reserved = self._reservations.pop(reservation, None)
             if reserved is None:
-                return
-            if usage is None or "prompt_tokens" not in usage or "completion_tokens" not in usage:
+                return  # 幂等：没有预留可结算（已结算过 / 从未持久化）就不动账
+            event, complete = self._cost_event("settle", reservation, reserved[0], reserved[1], usage)
+            if not complete:
                 self.usage_unknown += 1
             else:
-                self.prompt_tokens += max(0, int(usage["prompt_tokens"])) - reserved[0]
-                self.completion_tokens += max(0, int(usage["completion_tokens"])) - reserved[1]
+                self.prompt_tokens += event["prompt"] - reserved[0]
+                self.completion_tokens += event["completion"] - reserved[1]
+            self._cost_events.append(event)
             self._save()
             if self.max_tokens > 0 and self.prompt_tokens + self.completion_tokens > self.max_tokens:
                 raise RunLimitExceeded("供应商报告用量超过预留预算")
@@ -205,7 +287,35 @@ class RunLimits:
             "replans": self.replans,
             "max_replans": self.max_replans,
             "no_progress_count": self.no_progress_count,
+            # 待落账的成本事件（预留/结算）。持久化时由 services 侧剥掉再进 budget_json：
+            # 它是"这一次写入要干的事"，不是"当前状态"，留在快照里会被接管后的新 worker 重放。
+            "cost_events": list(self._cost_events),
         }
+
+
+_cost_drop_noted = False
+
+
+def _note_cost_dropped(count: int) -> None:
+    """没有持久面可接成本事件时留一次痕迹（离线脚本/单测的正常形态，生产不该出现）。
+
+    只告警一次、不抛错：抛错会让"没有业务库的离线工具"直接不能跑，而那正是
+    `RunLimits` 无 active run 时保持兼容的既有口径。真正的硬顶在 services 侧装好后生效。
+    """
+    global _cost_drop_noted
+    if _cost_drop_noted or count <= 0:
+        return
+    _cost_drop_noted = True
+    logger.warning(
+        "no durable cost backend installed; %d cost event(s) stayed in-memory only "
+        "(expected for offline scripts/tests, NOT for the served app)",
+        count,
+    )
+
+
+def cost_dropped_noted() -> bool:
+    """上述告警是否已经发生过（测试与深探读它，不用去抓日志）。"""
+    return _cost_drop_noted
 
 
 _active_limits: contextvars.ContextVar[RunLimits | None] = contextvars.ContextVar(

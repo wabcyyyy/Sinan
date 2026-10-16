@@ -199,6 +199,27 @@ class Settings(BaseSettings):
     # 按 token 的进程内分钟窗（token 泄露止损，内网信任面 + 单进程前提）
     user_live_quotes_per_minute: int = 6
     agent_rate_limit_per_minute: int = 30
+    # ---- 成本硬顶（V17/T2）：账本在 MySQL（cost_ledger），不在 Redis ----
+    # 单位一律是 token 与调用次数：本仓没有可信定价表，编造人民币金额只会造出一份
+    # "看着精确、实则无人负责"的账。没有可信定价时用 token 硬顶（PLAN §5 T2）。
+    # 默认值按"公开上线首日"取保守量级，真实单位成本出来后再收紧（T6/T9 的实测项）。
+    # 0 = 该维度不限（自托管部署关掉窗口顶的合法形态；预留/结算/收口不变式不受影响）。
+    user_daily_token_cap: int = 8000000
+    user_daily_call_cap: int = 5000
+    platform_daily_token_cap: int = 20000000
+    platform_daily_call_cap: int = 20000
+    # 一笔预留的结算宽限下限：实际宽限取 max(LLM_TIMEOUT+30, 本值)。到期仍 OPEN 的预留
+    # 由清理任务收口为 ABANDONED——额度**保留**（保守），且从此不可再结算（幂等的另一半）。
+    cost_reservation_ttl_seconds: float = 270
+    # 同一窗口允许同时悬挂的未结算预留数：崩溃循环的有界性判据（不依赖清理任务准时跑到）。
+    # 上限按"并发腿数"量级给：一次生成最多研究三路 + 生成 + 修复并行，64 足够且不掩盖真卡死。
+    cost_max_open_reservations: int = 64
+    # 行程级累计补齐额度（跨 attempt、跨用户点击只增）：免扣的是用户"每日生成次数"，
+    # 不免扣补齐额度（P0-3 产品语义 + PLAN §5 T2 新增项）。0 = 不限（保留旧行为）。
+    trip_repair_allowance: int = 6
+    repair_backoff_base_seconds: float = 30
+    repair_backoff_max_seconds: float = 1800
+
     # 单次 run 内检索/证据类调用上限（研究补查、联网搜索、外部点位 API）
     max_retrievals: int = 48
     # 研究阶段自己的额度（PLAN-A1 后续）：max_retrievals 是全 run 共用的，三域研究的

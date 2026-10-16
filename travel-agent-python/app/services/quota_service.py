@@ -1,32 +1,47 @@
-"""按用户的 LLM 花费闸门（R1-9，业务轨：超限抛 ApiError(429)）。
+"""烧模型额度入口的准入闸门（业务轨：超限抛 ApiError(429)）。
 
-为什么现有的 `app/agent/runtime/run_limits.py` 挡不住：那份预算是**按次**的
-（一次生成最多 32 次 LLM 调用 / 8 万 token / 120 秒），一个登录用户循环 POST
-`/api/itinerary/generate` 就能拿到 N 份"每次都不超预算"的额度 → 无上限烧钱。
-全局有界线程池只保证不把进程拖死，不保证单个用户花掉多少。
+两层闸门**分工明确**，不是同一件事做两遍（V17/T2 之后口径）：
 
-两个窗口都用 `state_and_sessions.sliding_hit`（与登录/分享限速同一套实现，
-Redis 不可用时退进程内窗口）：
-- 每分钟：挡脚本式连点；
-- 每天：挡"慢慢磨"的滥用，也是给自托管部署的一个可配硬顶。
+1. **速率**（本文件，Redis 滑动窗 + 进程内兜底）：每分钟点几次、今天点了几"次"。
+   Redis 熔断期退回进程内表、恢复后又从空计数重新开始（见 `state_and_sessions._bound_windows`
+   自己写明的方向）——那是**放松速率**，可以接受。
+2. **钱与额度**（`app/services/cost_ledger.py`，MySQL `cost_ledger`）：今天到底花了多少
+   token / 调用数，行程还能补几次，平台日总额有没有触顶熔断。这一层**不能**被 Redis 故障
+   或切回清零，所以账不在 Redis（PLAN §5 T2）。逐笔的持久预留与结算在
+   `RunLimits.reserve_llm/settle_llm` 里做（`app/agent/runtime/run_limits.py`），
+   本文件调的 `cost_ledger.enforce_windows` 只是让入口能干净地回 429，
+   而不是等外呼打到一半才发现账本已经顶到头。
+
+为什么只有本文件不够（历史口径，保留以便读懂旧注释）：`app/agent/runtime/run_limits.py`
+那份预算是**按次**的（一次生成最多 32 次 LLM 调用 / 8 万 token；整趟行程
+`ITINERARY_DEADLINE_SECONDS=300`、单次图运行 `AGENT_DEADLINE_SECONDS=240`——旧注释写的
+"120 秒"早已不是事实），一个登录用户循环 POST `/api/itinerary/generate` 就能拿到 N 份
+"每次都不超预算"的额度 → 无上限烧钱。全局有界线程池只保证不把进程拖死，
+不保证单个用户花掉多少。
 
 未做（明确登记）：按用户的**并发**在跑任务数。它需要一个租约/信号量原语
-（获取—释放—超时回收），本仓现在只有全局有界池；等那个原语出现再补，
-不在这里用「记两次窗口」糊一个假并发闸。
+（获取—释放—超时回收）。V16/T1 的 `planning_task` 租约其实就是那个原语，
+"同用户已有活任务 → 429" 也已经按持久面判（`planning_task_store.open_attempt`）；
+本文件仍只判窗口，不去重复那套判定。
 """
 
 from __future__ import annotations
 
 from app.common.config import settings
 from app.common.envelope import ApiError
-from app.services import state_and_sessions
+from app.services import cost_ledger, state_and_sessions
 
 _MINUTE_WINDOW_SECONDS = 60
 _DAY_WINDOW_SECONDS = 86400
 
 
 def enforce_llm_budget(user_id: int) -> None:
-    """消耗 LLM 的入口在动手之前调它：先记一次，再判分钟窗与日窗。"""
+    """消耗 LLM 的入口在动手之前调它：先过持久硬顶，再记一次并判分钟窗与日窗。
+
+    日窗判的是"今日生成**次数**"（产品配额），不是金额；金额/用量硬顶由
+    `cost_ledger.enforce_windows` 按 token 与调用数判（没有可信定价，所以不编造人民币）。
+    """
+    cost_ledger.enforce_windows(user_id)
     minute_key = f"quota:llm:min:{user_id}"
     day_key = f"quota:llm:day:{user_id}"
     per_minute = state_and_sessions.sliding_hit(minute_key, _MINUTE_WINDOW_SECONDS)
@@ -51,10 +66,31 @@ def enforce_llm_rate_only(user_id: int) -> None:
     - 端点语义侧每次成功重生成该天即转 SUCCEEDED，再点返回 400——单行程的免费
       重生成次数上限 = 未交付天数（≤7），把天重新变回未交付态需要真实的上游
       生成失败，不受用户控制。
+
+    免扣的**只是**用户日次数。V17/T2 在上面这条线之外补了三层它管不到的东西：
+    行程累计补齐额度、连续失败退避、用户/平台窗口硬顶——判定在
+    `app/services/cost_ledger.py:admit_repair`，调用点在
+    `itinerary_generation.regenerate_day` 的前置校验之后（真动手补才扣一格，
+    400/404/409 不消耗额度）。也就是说"补齐不重复收你的次数"这句话仍然为真，
+    但它不再是"补齐不花钱、可以无限补"的借口。
     """
     key = f"quota:llm:min:{user_id}"
     if state_and_sessions.sliding_hit(key, _MINUTE_WINDOW_SECONDS) > settings.user_llm_runs_per_minute:
         raise ApiError(429, "操作过于频繁，请稍后再试")
+
+
+def enforce_places_rate(user_id: int) -> None:
+    """点位近邻/详情这类**外部地点 API** 腿的按用户分钟窗（不占 AI 生成次数）。
+
+    `/api/itinerary/poi-nearby` 走 OpenTripMap / Nominatim 的免 key 或免费额度通道，
+    一次调用**不烧模型**：旧实现让它去过 `enforce_llm_budget`，等于用户点一下"附近有什么"
+    就被扣掉一次今日生成配额——那是把"哪条腿在花钱"说错了（PLAN §5 T2「补齐错误的限额
+    注释与产品提示」）。这里只留速率闸，理由与 `enforce_live_quote_budget` 同族：
+    免费源有配额与 1 rps 政策，需要挡脚本式连点，但不该计入 AI 生成的产品额度。
+    """
+    key = f"quota:places:min:{user_id}"
+    if state_and_sessions.sliding_hit(key, _MINUTE_WINDOW_SECONDS) > settings.user_live_quotes_per_minute:
+        raise ApiError(429, "查询过于频繁，请稍后再试")
 
 
 def enforce_live_quote_budget(user_id: int) -> None:
@@ -72,8 +108,8 @@ def enforce_live_quote_budget(user_id: int) -> None:
         raise ApiError(429, "查询过于频繁，请稍后再试")
 
 
-# 连通性测试的分钟窗上限。不走 settings：探测端点专属的紧闸（真实用户手动点
-# 不会一分钟 6 次），拉 env 键反而是配置面噪音（2026-10-02 终审修复，保守取整）。
+# 连通性测试的分钟窗上限。不走 settings：探测端点专属的紧闸（真人手动点不会一分钟
+# 连发 6 次，上限取 5 = 第 6 次起拒），拉 env 键反而是配置面噪音（2026-10-02 终审修复，保守取整）。
 _GATEWAY_TESTS_PER_MINUTE = 5
 
 

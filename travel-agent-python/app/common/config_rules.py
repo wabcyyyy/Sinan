@@ -51,6 +51,16 @@ NUMERIC_RULES: tuple[tuple[str, str, float, float], ...] = (
     ("share_rate_limit_per_minute", "必须 >= 1", 0, float("inf")),
     ("public_rate_limit_per_minute", "必须 >= 1", 0, float("inf")),
     ("serpapi_monthly_quota", "必须 >= 1", 0, float("inf")),
+    # 成本硬顶（V17/T2）：0 = 该维度不限（自托管关掉窗口顶的合法形态），故下界取 -1。
+    ("user_daily_token_cap", "必须 >= 0", -1, float("inf")),
+    ("user_daily_call_cap", "必须 >= 0", -1, float("inf")),
+    ("platform_daily_token_cap", "必须 >= 0", -1, float("inf")),
+    ("platform_daily_call_cap", "必须 >= 0", -1, float("inf")),
+    ("cost_reservation_ttl_seconds", "必须 > 0", 0, float("inf")),
+    ("cost_max_open_reservations", "必须 >= 0", -1, float("inf")),
+    ("trip_repair_allowance", "必须 >= 0", -1, float("inf")),
+    ("repair_backoff_base_seconds", "必须 > 0", 0, float("inf")),
+    ("repair_backoff_max_seconds", "必须 > 0", 0, float("inf")),
 )
 _RANGES = {key: (low, high) for key, _req, low, high in NUMERIC_RULES}
 

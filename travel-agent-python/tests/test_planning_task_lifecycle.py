@@ -323,7 +323,8 @@ def test_takeover_refuses_a_still_leased_task(env) -> None:
         planning_tasks.takeover(1, trip_id)
 
     assert _task_row(trip_id).attempt == 1, "被拒的接管不得推进 attempt"
-    assert planning_tasks.state_of(trip_id)["state"] == "QUEUED"
+    snapshot = planning_tasks.state_of(trip_id)
+    assert snapshot is not None and snapshot["state"] == "QUEUED"
 
 
 def test_cancel_flag_with_dead_holder_converges_once(env) -> None:
@@ -359,6 +360,7 @@ def test_resubmit_reopens_window_not_quota(env) -> None:
     second = planning_tasks.resume_or_restart(1, trip_id)
 
     assert second.llm_calls == 1 and second.retrievals == 2, "新 attempt 必须继承已花掉的账"
+    assert first_deadline is not None and second.deadline_at is not None
     assert second.deadline_at > first_deadline, "重开的是时间窗，不是额度"
     row = _task_row(trip_id)
     assert row.attempt == 2 and row.consumed_llm_calls == 1 and row.state == "QUEUED"

@@ -83,6 +83,9 @@ class MetricsRegistry:
             "research_rounds": 0,
             "research_degraded": 0,
             "research_refills": 0,
+            # 归属降级次数（V17/T2）：用户配了 BYOK 却因网关表不可读回落到运营方 key。
+            # 成本账会带 byok_lookup_failed 原因，这里给运营一个"有没有在偷偷转嫁"的可观察量。
+            "llm_route_degradations": 0,
         }
         self._latency_ms = 0.0
         self._last_failures: list[dict] = []
@@ -129,6 +132,15 @@ class MetricsRegistry:
         """登记一次 Supervisor 缺口补查（refill 路由）。"""
         with self._lock:
             self._counts["research_refills"] += 1
+
+    def record_llm_route_degradation(self) -> None:
+        """登记一次归属降级（V17/T2）：BYOK 查不到而回落运营方 key。
+
+        与 `cost_ledger` 的 `attribution_note` 同源但用途不同：账本记"哪一笔被转嫁"，
+        这里记"今天转嫁了几次"，供告警阈值用（真实转嫁成本必须让运营看见，不能只埋在日志里）。
+        """
+        with self._lock:
+            self._counts["llm_route_degradations"] += 1
 
     def record(self, trace: dict, *, success: bool) -> None:
         events = trace.get("events") or []

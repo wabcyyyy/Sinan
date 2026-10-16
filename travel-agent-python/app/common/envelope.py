@@ -56,7 +56,15 @@ def error_code(exc: BaseException) -> str:
     这里只透出异常**类别**：`ApiError` → `API_{status}`，其余 → 异常类名
     （如 ConnectTimeout、ValueError）——不含 URL/堆栈，不破 R2-F3 边界；
     类别名足以与 usage 库/日志按类型归因（连接超时 vs 读超时 vs 结构化解析失败）。
+
+    自带 `stable_code` 的领域异常优先返回它（V17/T2 的成本硬顶：`USER_COST_LIMIT` /
+    `PLATFORM_COST_LIMIT` / `TRIP_REPAIR_LIMIT` / `TRIP_REPAIR_BACKOFF` /
+    `LLM_RESERVATION_FLOOD`）。API_429 分不清"你点太快"与"平台今日已熔断"，
+    而运营与前端要按码分派——码是稳定面，message 是人话面。
     """
+    stable = getattr(exc, "stable_code", None)
+    if isinstance(stable, str) and stable:
+        return stable
     if isinstance(exc, ApiError):
         return f"API_{exc.status}"
     return type(exc).__name__

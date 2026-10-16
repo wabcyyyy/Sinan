@@ -81,6 +81,17 @@ def counters_of(snapshot: dict) -> dict[str, int]:
     return {key: int(snapshot.get(key) or 0) for key in LIFETIME_COLUMNS}
 
 
+def budget_payload(snapshot: dict) -> dict:
+    """进 `budget_json` 的那部分：剥掉一次性的成本事件。
+
+    `cost_events`（V17/T2）描述"这一次写入要落哪些账"，不是"当前状态"。留在快照里会被
+    接管后的新 worker 当成自己的待办重放——预留行按主键幂等，不至于重复扣钱，但会把
+    上一个 worker 的事件算到这次头上，白多一层排查面。事件的实际落库在
+    `planning_tasks._persist` 里先于本写入完成。
+    """
+    return {key: value for key, value in snapshot.items() if key != "cost_events"}
+
+
 def read(session, itinerary_id: int, *, for_update: bool = False) -> PlanningTask | None:
     statement = select(PlanningTask).where(PlanningTask.itinerary_id == itinerary_id)
     if for_update:
@@ -233,7 +244,7 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                     deadline_at=datetime.fromtimestamp(snapshot["deadline_at"]),
                     lease_expires_at=lease_until(at),
                     heartbeat_at=at,
-                    budget_json=json.dumps(snapshot),
+                    budget_json=json.dumps(budget_payload(snapshot)),
                 )
             )
             try:
@@ -261,7 +272,7 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                     heartbeat_at=at,
                     cancel_requested_at=None,
                     result_code=None,
-                    budget_json=json.dumps(snapshot),
+                    budget_json=json.dumps(budget_payload(snapshot)),
                 )
             )
         rebuilt = read(session, itinerary_id)
@@ -308,7 +319,7 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                 attempt=row.attempt + 1,
                 lease_expires_at=lease_until(at),
                 heartbeat_at=at,
-                budget_json=json.dumps(snapshot),
+                budget_json=json.dumps(budget_payload(snapshot)),
             )
         )
         if getattr(result, "rowcount", 0) == 0:
@@ -321,7 +332,11 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
 def apply_budget(itinerary_id: int, task_id: str, snapshot: dict, deltas: dict[str, int]) -> None:
     """预算落库 = 同一次条件更新里续租 + 累计账本加增量。"""
     at = now()
-    values: dict = {"budget_json": json.dumps(snapshot), "lease_expires_at": lease_until(at), "heartbeat_at": at}
+    values: dict = {
+        "budget_json": json.dumps(budget_payload(snapshot)),
+        "lease_expires_at": lease_until(at),
+        "heartbeat_at": at,
+    }
     for column, delta in deltas.items():
         values[column] = getattr(PlanningTask, column) + delta
     statement = (

@@ -61,6 +61,7 @@ from app.schemas.trip_requirements import (
 )
 from app.services import (
     budget_engine,
+    cost_ledger,
     day_persistence,
     generation_events,
     generation_gate,
@@ -490,8 +491,13 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
     if day.generation_status == "RUNNING":
         raise ApiError(409, "这一天正在生成中，请勿重复操作")
 
+    # 补齐额度（V17/T2）：前置校验都过了、真的要用 LLM 重补这一天，才扣行程的一格补齐额度。
+    # 顺序是刻意的——400/404/409 这些"这次根本没动手"的请求不允许消耗额度；
+    # 免扣的用户「今日生成次数」保持在端点侧（quota_service.enforce_llm_rate_only）。
+    cost_ledger.admit_repair(user_id, itinerary_id)
     limits = planning_tasks.acquire(user_id, itinerary_id)
     locked = False
+    repaired = False
     try:
         locked = generation_gate.try_day_lock(itinerary_id, day_no)
         if not locked:
@@ -512,8 +518,12 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
             # 成功收尾与 plan_days 共用 _finish：预算是交付的一部分、终态按天状态重算
             # （补齐最后缺口天时行程升级 COMPLETED）、版本快照与 SSE 终帧照发。
             _finish(user_id, itinerary_id, command, snapshot_summary=f"重生成第 {day_no} 天")
+        repaired = True
         return itinerary_query.detail(user_id, itinerary_id)
     finally:
+        # 退避状态（V17/T2）：失败一次就把下一次补齐推后（指数、封顶），成功即清零。
+        # 挡的是"反复点补齐把额度与线程池磨穿"，不是挡真实用户的第二次尝试。
+        cost_ledger.record_repair_result(itinerary_id, succeeded=repaired)
         planning_tasks.release(itinerary_id, limits.task_id, core_only=True)
         if locked:
             generation_gate.release_day_lock(itinerary_id, day_no)

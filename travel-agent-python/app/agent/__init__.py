@@ -47,6 +47,7 @@ from app.agent.runtime.run_limits import (
     check_task_write,
     current_limits,
     phase_scope,
+    set_cost_backend,
     use_task_limits,
 )
 from app.agent.runtime.usage_store import usage_store
@@ -103,6 +104,7 @@ __all__ = [
     "search_hotels",
     "search_live_flight_quotes",
     "search_live_hotel_quotes",
+    "set_cost_backend",
     "shape_quote_for_wire",
     "spread_hotels",
     "sync_schedule_summary",

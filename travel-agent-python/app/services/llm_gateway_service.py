@@ -12,8 +12,10 @@
 路由语义（失败回退拍板，2026-10-02）：**网关调用失败响亮报错、不静默回退默认通道**
 ——静默回退会把用户自愿承担的成本转嫁给运营方 key，且同一段生成中途换模型家族会
 产出割裂的行程。例外只有一类：resolve_route 遇到**基础设施故障**（网关表不可读）
-时 fail-open 回默认通道并 warning（可用性优先，路由保真度让位）。密文解不开
-（ApiError 409）不在此列——必须响亮上抛，让用户重录密钥，而不是无声替他烧运营方 key。
+时 fail-open 回默认通道（可用性优先，路由保真度让位）。但这一腿烧的就不再是用户的 key，
+所以同步登记**归属降级**（V17/T2）：成本账记 platform 并留 `byok_lookup_failed` 原因、
+ERROR 日志、指标计数——"静默把用户的成本转给平台" 从此是可追责事件，不是一句 warning。
+密文解不开（ApiError 409）不在此列——必须响亮上抛，让用户重录密钥，而不是无声替他烧运营方 key。
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ import httpx
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.common import gateway_crypto
+from app.agent import metrics
+from app.common import cost_policy, gateway_crypto, llm_route
 from app.common.envelope import ApiError
 from app.common.llm_client import LLMClient
 from app.common.llm_route import LLMRoute, use_route
@@ -280,7 +283,10 @@ def resolve_route(user_id: int) -> LLMRoute | None:
 
     失败语义（对齐模块 docstring 的拍板）：
     - **基础设施故障**（网关表不可读等非 ApiError 异常）：fail-open 回默认通道
-      + warning——可用性优先，路由保真度让位；
+      + warning——可用性优先，路由保真度让位。**但这一腿从此烧的是运营方的 key**，
+      所以就地登记归属降级（V17/T2）：账记 platform 是真话，`attribution_note` 留原因，
+      ERROR 级日志 + 指标计数让"静默转嫁"变成可追责事件，而不是只有模块 docstring 里
+      一句"可用性优先"。
     - **密文解不开**（_route_of 的 ApiError 409）：响亮上抛。吞掉它等于轮换
       加密 key 后全员静默切回运营方付费通道，且设置页还挂着"生效中"横幅
       （2026-10-02 终审）。
@@ -298,7 +304,14 @@ def resolve_route(user_id: int) -> LLMRoute | None:
     except ApiError:
         raise
     except Exception as exc:
-        logger.warning("resolve llm gateway route failed for user %s, falling back to default: %s", user_id, exc)
+        llm_route.mark_route_degradation(cost_policy.NOTE_BYOK_LOOKUP_FAILED)
+        metrics.record_llm_route_degradation()
+        logger.error(
+            "BYOK route lookup failed for user %s; this leg falls back to the PLATFORM key (%s): %s",
+            user_id,
+            cost_policy.NOTE_BYOK_LOOKUP_FAILED,
+            exc,
+        )
         return None
 
 

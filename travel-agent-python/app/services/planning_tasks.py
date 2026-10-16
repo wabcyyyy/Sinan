@@ -28,7 +28,7 @@ from app.common.config import settings
 from app.common.envelope import ApiError, error_code, user_reason
 from app.db.models import ItineraryDay, ItineraryMain
 from app.db.session import session_scope
-from app.services import budget_engine, day_persistence, generation_events, itinerary_query
+from app.services import budget_engine, cost_ledger, day_persistence, generation_events, itinerary_query
 from app.services import planning_task_store as store
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,9 @@ class _Held:
     heartbeat_timer: threading.Timer | None = None
     enriching: bool = False
     lost: bool = False
+    # 这份 attempt 是不是"对已结算交付责任的后台重拉"（= 一次补齐，V17/T2）。
+    # 用户侧补齐在 `itinerary_generation.regenerate_day` 自己登记结果，两者不双计。
+    repair: bool = False
     outcome: str | None = None
     result_code: str | None = None
     last_counters: dict[str, int] = field(default_factory=dict)
@@ -96,7 +99,17 @@ def _persist(itinerary_id: int, task_id: str, snapshot: dict) -> None:
 
     增量在内存里比，不多读一行；接管后新 worker 以继承来的计数器为基线，因此不会把
     旧 worker 已花掉的成本再记一遍。
+
+    成本事件（V17/T2）先于预算 CAS 落账，且用 `cost_ledger` 自己的事务：
+    **预留必须在请求发出之前定稿**，而预算 CAS 失败意味着"本 worker 失权"，不是
+    "这笔钱没花"——把两者捆成一个事务会让失权 worker 的真实外呼从硬费用账上消失，
+    正是 PLAN §5 T2 要堵的那类漏账。反过来（先 CAS 再落账）则会出现"请求已发出、
+    账还没落"的窗口。失权时这批事件会随 `_save` 抛错留在内存里，下一次写入重试；
+    `cost_ledger._reserve` 按预留主键幂等，重放不会重复扣。
     """
+    events = snapshot.get("cost_events") or []
+    if events:
+        cost_ledger.apply_events(list(events))
     counters = store.counters_of(snapshot)
     with _lock:
         held = _held.get(itinerary_id)
@@ -213,15 +226,18 @@ def _expire(itinerary_id: int, task_id: str) -> None:
 # ------------------------------------------------------------------ 生命周期 API ----
 
 
-def acquire(user_id: int, itinerary_id: int) -> RunLimits:
+def acquire(user_id: int, itinerary_id: int, *, repair: bool = False) -> RunLimits:
     """开一个新的执行尝试（首次提交，或用户对已终态行程的显式补齐/重建）。
 
     累计账本不从零开始——重开的是时间窗，不是额度；`submit_at` 只记首次提交，
     之后的 attempt 共享同一条交付责任。
+
+    `repair=True` 表示这份 attempt 是「对已结算责任的后台重拉」（= 一次补齐）：
+    脱离句柄时按交付结果登记退避状态（`cost_ledger.record_repair_result`）。
     """
     limits, snapshot = store.open_attempt(user_id, itinerary_id)
     logger.info("planning task acquired: itinerary=%s task=%s", itinerary_id, (limits.task_id or "")[:8])
-    return _register(_Held(limits=limits, last_counters=store.counters_of(snapshot)))
+    return _register(_Held(limits=limits, last_counters=store.counters_of(snapshot), repair=repair))
 
 
 def takeover(user_id: int, itinerary_id: int) -> RunLimits:

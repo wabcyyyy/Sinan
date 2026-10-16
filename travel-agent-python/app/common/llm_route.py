@@ -36,6 +36,10 @@ class LLMRoute:
 
 
 _route_var: ContextVar[LLMRoute | None] = ContextVar("ta_llm_route", default=None)
+# 归属降级原因（V17/T2）：用户配了 BYOK 网关、但**查它这件事本身**失败（网关表读不出来），
+# 于是这一腿回落到运营方 key。账必须记 platform（那是真话），但原因得留痕——
+# 「路由故障悄悄把用户的成本转给平台」是 PLAN §5 T2 点名的失败模式。
+_degradation_var: ContextVar[str | None] = ContextVar("ta_llm_route_degradation", default=None)
 
 
 def current_route() -> LLMRoute | None:
@@ -43,11 +47,32 @@ def current_route() -> LLMRoute | None:
     return _route_var.get()
 
 
+def route_degradation() -> str | None:
+    """当前路由上下文里的归属降级原因；None = 没有降级。"""
+    return _degradation_var.get()
+
+
+def mark_route_degradation(reason: str) -> None:
+    """登记一次归属降级（只有 `resolve_route` 的 fail-open 分支会调）。
+
+    写在**当前上下文**里，紧跟着被 `use_route` 接走：线程池复用线程，
+    不随 use_route 复位就会把上一条请求的"BYOK 查不到"抹到下一条正常路由的腿上。
+    """
+    _degradation_var.set(reason)
+
+
 @contextmanager
 def use_route(route: LLMRoute | None) -> Iterator[LLMRoute | None]:
-    """把路由压进上下文（None 也是显式压栈：子树强制默认通道），退出还原。"""
-    token = _route_var.set(route)
+    """把路由压进上下文（None 也是显式压栈：子树强制默认通道），退出还原。
+
+    进入时接走同上下文里刚登记的降级原因：`route` 为空 + 有降级 = 用户配了 BYOK 但查不到
+    而回落运营方 key（记账时留 `attribution_note`）；`route` 非空时不可能有降级，强制清空。
+    """
+    pending = _degradation_var.get()
+    value_token = _route_var.set(route)
+    degrade_token = _degradation_var.set(None if route is not None else pending)
     try:
         yield route
     finally:
-        _route_var.reset(token)
+        _degradation_var.reset(degrade_token)
+        _route_var.reset(value_token)

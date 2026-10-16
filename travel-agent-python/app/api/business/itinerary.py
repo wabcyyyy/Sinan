@@ -93,7 +93,13 @@ def post_city_guide(body: dict[str, Any], user: AuthUser = Depends(enforce_busin
 
 @router.post("/poi-nearby")
 def post_poi_nearby(body: dict[str, Any], user: AuthUser = Depends(enforce_business_auth)) -> dict:
-    quota_service.enforce_llm_budget(user.id)
+    """同城点位近邻（OpenTripMap / Nominatim）。
+
+    配额口径（V17/T2 纠正）：这一条腿**不烧模型**，所以不占用户「今日 AI 生成次数」——
+    旧实现过 `enforce_llm_budget`，等于用户点一下"附近有什么"就被扣掉一次生成配额，
+    把"哪条腿在花钱"说错了。只保留速率闸（免费源有配额与 1 rps 政策）。
+    """
+    quota_service.enforce_places_rate(user.id)
     return ok(itinerary_city.poi_nearby(body))
 
 
@@ -235,7 +241,13 @@ def post_regenerate_day(
 
     只接 PENDING/FAILED/空天（已成功天 400）；同步执行，返回补齐后的最新详情
     （语义与配额拍板见 `itinerary_generation.regenerate_day` 与 `quota_service.enforce_llm_rate_only`）。
-    配额硬线：只拦分钟窗、不扣日窗——用户不为补齐从未交付的天再付一次配额。
+    配额硬线（两层，缺一不可）：
+    - **不扣**用户「今日生成次数」——用户不为从未交付的天再付一次配额（P0-3，保持原样），
+      这里只过分钟速率窗；
+    - 行程累计补齐额度、连续失败退避与用户/平台窗口硬顶是 V17/T2 的持久判定，落在
+      `itinerary_generation.regenerate_day` 的前置校验**之后**（`cost_ledger.admit_repair`）：
+      前置 400/404/409 不消耗额度，真动手补才扣一格。超限回带稳定码的 429
+      （TRIP_REPAIR_LIMIT / TRIP_REPAIR_BACKOFF / *_COST_LIMIT）。
     """
     quota_service.enforce_llm_rate_only(user.id)
     return ok(itinerary_generation.regenerate_day(user.id, id, dayNo))
