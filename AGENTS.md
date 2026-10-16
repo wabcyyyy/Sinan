@@ -58,6 +58,8 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 
 2026-10-16 个人展示口径（用户明确授权）：Vercel Hobby 静态构建复用本分支的正式页面、视觉与 Motion 动效，以固定样例提供免登录交互，不接真实模型。展示身份和草稿使用独立命名空间，并只保存在当前标签页；保留正式模式的服务端会话与草稿归属逻辑。部署配置与交互边界见 `docs/public/vercel-demo.md`。
 
+2026-10-16 试用上线口径修订（用户明确授权）：admin 域开放最小试用后台（邀请码、用户余额/费用、人工赠额与禁用），复用既有管理员鉴权；其余运维能力继续经脚本直调。首版部署优先 Railway 单实例及持久卷，保留本地 Compose，不要求自管 Caddy。每位新用户一次性赠送 6 元试用额度，不自动续期、不接支付；应用按运营者配置单价记账，不冒充供应商账单。
+
 ## 哲学（违反任何一条的 PR 请先停下来说明）
 
 1. **单一真源**：每类事实只有一份权威定义（schema 在 app/schemas、SQL 在 db/migrations、env 键在 app/common/config.py + .env.example）。副本必然漂移，不允许出现第二份。

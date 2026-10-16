@@ -1333,6 +1333,277 @@
         }
       }
     },
+    "/api/auth/trial-policy": {
+      "get": {
+        "summary": "Policy",
+        "operationId": "policy_api_auth_trial_policy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Policy Api Auth Trial Policy Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/trial-wallet": {
+      "get": {
+        "summary": "My Wallet",
+        "operationId": "my_wallet_api_user_trial_wallet_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response My Wallet Api User Trial Wallet Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/trial/users": {
+      "get": {
+        "summary": "Users",
+        "operationId": "users_api_admin_trial_users_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Users Api Admin Trial Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/trial/invites": {
+      "post": {
+        "summary": "Invites",
+        "operationId": "invites_api_admin_trial_invites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialInviteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Invites Api Admin Trial Invites Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/trial/users/{user_id}/wallet": {
+      "get": {
+        "summary": "Wallet",
+        "operationId": "wallet_api_admin_trial_users__user_id__wallet_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Wallet Api Admin Trial Users  User Id  Wallet Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/trial/users/{user_id}/grants": {
+      "post": {
+        "summary": "Grant",
+        "operationId": "grant_api_admin_trial_users__user_id__grants_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialGrantBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Grant Api Admin Trial Users  User Id  Grants Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/trial/charges/{charge_id}/reconcile": {
+      "post": {
+        "summary": "Reconcile",
+        "operationId": "reconcile_api_admin_trial_charges__charge_id__reconcile_post",
+        "parameters": [
+          {
+            "name": "charge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Charge Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialReconcileBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reconcile Api Admin Trial Charges  Charge Id  Reconcile Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/info": {
       "get": {
         "tags": [
@@ -10505,6 +10776,18 @@
               }
             ],
             "title": "Nickname"
+          },
+          "inviteCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitecode"
           }
         },
         "type": "object",
@@ -10772,6 +11055,69 @@
         ],
         "title": "Suggestion",
         "description": "备选池条目：生成时未排入行程、可在「发现更多」一键加入的候选点位。\n\n候选池保底链路中条目必须来自候选池（代码侧兜底校验）；开放模式\n（open_research）下允许池外模型建议，坐标留空由前端经地图检索补齐。"
+      },
+      "TrialGrantBody": {
+        "properties": {
+          "amountCny": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amountcny"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Requestid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amountCny",
+          "reason",
+          "requestId"
+        ],
+        "title": "TrialGrantBody"
+      },
+      "TrialInviteBody": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "title": "TrialInviteBody"
+      },
+      "TrialReconcileBody": {
+        "properties": {
+          "amountCny": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Amountcny"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amountCny",
+          "reason"
+        ],
+        "title": "TrialReconcileBody"
       },
       "TripItem": {
         "properties": {

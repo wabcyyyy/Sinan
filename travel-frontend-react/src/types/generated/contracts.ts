@@ -490,6 +490,62 @@ export interface CityGuideResponse {
 }
 
 // ===== business_api =====
+export interface TrialPolicyVO {
+  inviteRequired: boolean
+  billingEnabled: boolean
+  initialCreditCny: number
+  dailyAiOperations: number
+}
+
+export interface TrialEntryVO {
+  id: string
+  kind: string
+  status: string
+  amountCny: number
+  reservedCny: number
+  model: string | null
+  detail: Record<string, unknown> | null
+  createdAt: string
+}
+
+export interface TrialWalletVO {
+  userId: number
+  balanceCny: number
+  spentCny: number
+  entries: TrialEntryVO[]
+}
+
+export interface TrialInviteBody {
+  count: number
+}
+
+export interface TrialInvitesVO {
+  codes: string[]
+}
+
+export interface TrialGrantBody {
+  amountCny: number
+  reason: string
+  requestId: string
+}
+
+export interface TrialReconcileBody {
+  amountCny: number
+  reason: string
+}
+
+export interface TrialUserVO {
+  id: number
+  username: string
+  status: number | null
+  role: string
+}
+
+export interface TrialUsersVO {
+  records: TrialUserVO[]
+  total: number
+}
+
 export interface LoginBody {
   username: string
   password: string
@@ -499,6 +555,7 @@ export interface RegisterBody {
   username: string
   password: string
   nickname: string | null
+  inviteCode: string | null
 }
 
 export interface UserInfoVO {

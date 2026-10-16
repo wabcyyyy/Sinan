@@ -240,6 +240,7 @@ def test_connection(user_id: int, gateway_id: int) -> dict:
         max_attempts=_TEST_MAX_ATTEMPTS,
         follow_redirects=False,
         guarded_egress=True,
+        user_funded=True,
     )
     started = time.monotonic()
     try:
@@ -313,5 +314,7 @@ def route_scope(user_id: int) -> Iterator[LLMRoute | None]:
     不在配置面上的路径，目的地同样在连接边界被逐地址校验——不在这里重复解析 DNS，
     免得每条腿多付一次查询、还给人"这里才是防线"的错觉。
     """
-    with use_route(resolve_route(user_id)):
+    from app.common.trial_billing import payer_scope
+
+    with use_route(resolve_route(user_id)), payer_scope(user_id):
         yield

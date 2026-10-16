@@ -18,6 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -265,3 +266,32 @@ class ItemFeedback(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class TrialInvite(Base):
+    __tablename__ = "trial_invite"
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    consumed_by: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class TrialWallet(Base):
+    __tablename__ = "trial_wallet"
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    balance_micros: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    spent_micros: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+
+
+class TrialLedger(Base):
+    __tablename__ = "trial_ledger"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    reserved_micros: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    amount_micros: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    model: Mapped[str | None] = mapped_column(String(128))
+    detail: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

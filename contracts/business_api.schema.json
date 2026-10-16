@@ -1,6 +1,265 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "TrialPolicyVO": {
+      "properties": {
+        "inviteRequired": {
+          "title": "Inviterequired",
+          "type": "boolean"
+        },
+        "billingEnabled": {
+          "title": "Billingenabled",
+          "type": "boolean"
+        },
+        "initialCreditCny": {
+          "title": "Initialcreditcny",
+          "type": "number"
+        },
+        "dailyAiOperations": {
+          "title": "Dailyaioperations",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "inviteRequired",
+        "billingEnabled",
+        "initialCreditCny",
+        "dailyAiOperations"
+      ],
+      "title": "TrialPolicyVO",
+      "type": "object"
+    },
+    "TrialEntryVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "amountCny": {
+          "title": "Amountcny",
+          "type": "number"
+        },
+        "reservedCny": {
+          "title": "Reservedcny",
+          "type": "number"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Detail"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "amountCny",
+        "reservedCny",
+        "model",
+        "detail",
+        "createdAt"
+      ],
+      "title": "TrialEntryVO",
+      "type": "object"
+    },
+    "TrialWalletVO": {
+      "properties": {
+        "userId": {
+          "title": "Userid",
+          "type": "integer"
+        },
+        "balanceCny": {
+          "title": "Balancecny",
+          "type": "number"
+        },
+        "spentCny": {
+          "title": "Spentcny",
+          "type": "number"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/TrialEntryVO"
+          },
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "userId",
+        "balanceCny",
+        "spentCny",
+        "entries"
+      ],
+      "title": "TrialWalletVO",
+      "type": "object"
+    },
+    "TrialInviteBody": {
+      "properties": {
+        "count": {
+          "default": 1,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "title": "TrialInviteBody",
+      "type": "object",
+      "required": [
+        "count"
+      ]
+    },
+    "TrialInvitesVO": {
+      "properties": {
+        "codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "codes"
+      ],
+      "title": "TrialInvitesVO",
+      "type": "object"
+    },
+    "TrialGrantBody": {
+      "properties": {
+        "amountCny": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 100.0,
+          "title": "Amountcny",
+          "type": "number"
+        },
+        "reason": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "requestId": {
+          "format": "uuid",
+          "title": "Requestid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amountCny",
+        "reason",
+        "requestId"
+      ],
+      "title": "TrialGrantBody",
+      "type": "object"
+    },
+    "TrialReconcileBody": {
+      "properties": {
+        "amountCny": {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Amountcny",
+          "type": "number"
+        },
+        "reason": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amountCny",
+        "reason"
+      ],
+      "title": "TrialReconcileBody",
+      "type": "object"
+    },
+    "TrialUserVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Status"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "status",
+        "role"
+      ],
+      "title": "TrialUserVO",
+      "type": "object"
+    },
+    "TrialUsersVO": {
+      "properties": {
+        "records": {
+          "items": {
+            "$ref": "#/$defs/TrialUserVO"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "records",
+        "total"
+      ],
+      "title": "TrialUsersVO",
+      "type": "object"
+    },
     "LoginBody": {
       "properties": {
         "username": {
@@ -40,12 +299,26 @@
           ],
           "default": null,
           "title": "Nickname"
+        },
+        "inviteCode": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Invitecode"
         }
       },
       "required": [
         "username",
         "password",
-        "nickname"
+        "nickname",
+        "inviteCode"
       ],
       "title": "RegisterBody",
       "type": "object"

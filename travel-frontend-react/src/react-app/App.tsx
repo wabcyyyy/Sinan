@@ -15,6 +15,9 @@ import { SettingsPage } from './settings/SettingsPage'
 import { navigate, useLocation } from './router'
 import { ErrorBlock, LoadingBlock, NotFoundBlock, ScreenState } from './shared/States'
 import { SharePage } from './shared/SharePage'
+import { PrivacyPage } from './shared/PrivacyPage'
+import '../styles/trial.css'
+const AdminPage = lazy(() => import('./admin/AdminPage').then((module) => ({ default: module.AdminPage })))
 
 // 行程详情页是 maplibre-gl 的唯一消费链（全站最重依赖），路由级懒加载让
 // 登录/首页/列表的首屏不必先下载地图库；chunk 拉取失败会作为渲染错误
@@ -29,7 +32,6 @@ function pageTitle(path: string) {
   if (path === '/trips' || path.startsWith('/trips/')) return '我的行程 · 司南 Sinan'
   if (path === '/settings') return '设置 · 司南 Sinan'
   if (path === '/login') return '登录 · 司南 Sinan'
-  if (path === '/demo') return '固定示例回放 · 司南 Sinan'
   return '司南 Sinan'
 }
 
@@ -116,6 +118,8 @@ function BusinessApp() {
   if (location.path.startsWith('/s/')) return <SharePage path={location.path} />
   let page: ReactNode
   if (location.path === '/') page = <HomePage signedIn={Boolean(username)} />
+  else if (location.path === '/admin') page = <AdminPage />
+  else if (location.path === '/privacy') page = <PrivacyPage />
   else if (location.path === '/explore' || location.path === '/explore/') page = <ExplorePage />
   else if (location.path.startsWith('/explore/guide/')) page = <GuideDetailPage path={location.path} />
   else if (location.path === '/trips') page = <TripsPage />

@@ -78,7 +78,7 @@ def _clear_cookie(response: Response) -> None:
 
 @auth_router.post("/register")
 def register(body: RegisterBody, request: Request) -> dict:
-    user_service.register(body.username, body.password, body.nickname, client_ip(request))
+    user_service.register(body.username, body.password, body.nickname, client_ip(request), body.inviteCode)
     return ok()
 
 

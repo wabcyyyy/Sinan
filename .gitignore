@@ -82,3 +82,10 @@ coverage.xml
 
 # Local validation receipts and process lock
 .validation/
+
+# Personal workspace notes and generated live acceptance output (keep locally).
+/.workbuddy/
+.env.local
+.env.*.local
+/travel-agent-python/tests/agent_eval/report/live/
+/travel-agent-python/tests/agent_eval/report/experience/*.local-pre-sync-*.json

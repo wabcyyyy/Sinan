@@ -61,6 +61,13 @@ def client_ip(request: Request) -> str:
     remote = request.client.host if request.client else None
     if not remote:
         return "unknown"
+    # 仅限 Railway HTTP edge 为唯一公网入口的部署；不采信调用者自带的 XFF。
+    # X-Real-IP 覆写语义必须在目标域名验收（见 production.md），不能用于直连服务。
+    if settings.railway_edge_headers:
+        try:
+            return str(ipaddress.ip_address(request.headers.get("x-real-ip", "")))
+        except ValueError:
+            return remote
     forwarded = request.headers.get("x-forwarded-for") or ""
     hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
     if not hops or not is_trusted_address(remote):

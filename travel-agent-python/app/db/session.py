@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker, with_loader_criteria
 
 from app.common.config import settings
@@ -32,10 +32,15 @@ _SOFT_DELETE_CLASSES: tuple[type, ...] = tuple(
 
 def database_url() -> str:
     """与 Java 侧同库；注意环境变量名不同源：Java 读 MYSQL_*，本服务读 DB_*。"""
-    return (
-        f"mysql+pymysql://{settings.db_user}:{settings.db_password}"
-        f"@{settings.db_host}:{settings.db_port}/{settings.db_name}?charset=utf8mb4"
-    )
+    return URL.create(
+        "mysql+pymysql",
+        username=settings.db_user,
+        password=settings.db_password,
+        host=settings.db_host,
+        port=settings.db_port,
+        database=settings.db_name,
+        query={"charset": "utf8mb4"},
+    ).render_as_string(hide_password=False)
 
 
 _engine: Engine | None = None

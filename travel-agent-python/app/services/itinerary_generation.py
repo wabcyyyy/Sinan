@@ -259,7 +259,9 @@ def plan_days(
         timing.mark("terminal")
         planning_tasks.release(itinerary_id, limits.task_id)
         return
-    with use_route(route), use_task_limits(limits):
+    from app.common.trial_billing import payer_scope
+
+    with use_route(route), use_task_limits(limits), payer_scope(user_id):
         try:
             limits.check("deadline")
             if not _shell_exists(itinerary_id):
@@ -1212,6 +1214,16 @@ def _replay_if_known(user_id: int, replay_id: int | None, idempotency_key: str |
 
 
 def generate(user_id: int, body: GenerateTripRequest, idempotency_key: str | None = None) -> dict[str, Any]:
+    from app.services import generation_admission
+
+    existing = (
+        cache_store.get_json(_IDEM_NAMESPACE, f"{user_id}:{idempotency_key.strip()[:128]}") if idempotency_key else None
+    )
+    with generation_admission.new_trip(user_id, existing if isinstance(existing, int) else None):
+        return _create_generation(user_id, body, idempotency_key)
+
+
+def _create_generation(user_id: int, body: GenerateTripRequest, idempotency_key: str | None) -> dict[str, Any]:
     """建壳 → 逐日异步生成 → 立即返回可轮询的初始详情（status=1）。
 
     `idempotency_key`（来自 X-Idempotency-Key 头，可选）：TTL 内同键重试

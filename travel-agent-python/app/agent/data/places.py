@@ -33,7 +33,7 @@ from app.common.http_client import api_client, contact_user_agent
 logger = logging.getLogger(__name__)
 
 _OTM_BASE = "https://api.opentripmap.com/0.1/en"
-_NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search"
+_NOMINATIM_BASE = settings.nominatim_base_url
 # 与 wikipedia 图片通道一致的 UA 策略（Nominatim 政策要求可联系的标识；OTM 同式
 # 标识，L1 补充 1：三客户端此前不带 UA，对免费源不留联系方式不礼貌）。
 # 联系方式走 UA_CONTACT 部署参数（R3-F7 拍板 2026-10-05）：默认占位地址，真实值进 .env 不入仓。

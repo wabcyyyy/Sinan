@@ -17,7 +17,7 @@
 
 import re
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_一-龥]+$")
 PASSWORD_RE = re.compile(r"^[A-Za-z0-9!@#$%^&*_\-]+$")
@@ -46,6 +46,7 @@ class RegisterBody(BaseModel):
     username: str
     password: str
     nickname: str | None = None
+    inviteCode: str | None = Field(default=None, max_length=128)
 
     @field_validator("username")
     @classmethod

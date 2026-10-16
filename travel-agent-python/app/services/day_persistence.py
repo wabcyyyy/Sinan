@@ -4,12 +4,8 @@
 清旧草稿 → 写全部 items → 置 SUCCEEDED。反过来（把 LLM 调用包进事务）会长时间占住连接池连接，
 而 `DB_POOL_MAX` 默认只有 10。预算重算同样移出本服务（由编排层提交到富化池）。
 
-四处必须与 Java 一致的细节：
-1. `itemMapper.delete(day_id)` 是**软删**（@TableLogic），用来清掉失败重试/续跑留下的半成品；
-2. `generation_status` 只有 SUCCEEDED 才算齐备，`markRunning`/`markFailed` 都先过幂等门；
-3. `hotel` 项在 `dayNo > stayNights` 时**跳过且不占 sort_no**（最后一天不住店）；
-4. 行程级终态一律走**单列 UPDATE**，禁止整行回写——富化/生成是异步的，整行回写会用陈旧实体
-   覆盖用户在这期间的并发编辑。
+失败重试软删旧条目，只有 SUCCEEDED 算交付；退房日不留酒店项。
+行程级终态用单列 UPDATE，避免异步富化覆盖用户的并发编辑。
 """
 
 from __future__ import annotations
@@ -73,7 +69,6 @@ def persist(
         day.generation_error = None
         if plan.note is not None:
             day.note = plan.note
-        day.metadata_json = _day_metadata_json(plan)
 
         session.execute(
             update(ItineraryItem).where(ItineraryItem.day_id == day.id, ItineraryItem.deleted == 0).values(deleted=1)
@@ -83,6 +78,7 @@ def persist(
             session.add(_build_item(itinerary_id, day.id, item, sort_no))
 
         blockers = hard_delivery_blockers(day_no, plan, requirements=getattr(request, "requirements_struct", None))
+        day.metadata_json = _day_metadata_json(plan)
         if blockers:
             logger.warning("day %s kept PENDING (hard blockers): %s", f"{itinerary_id}.{day_no}", blockers)
             day.generation_status = "PENDING"

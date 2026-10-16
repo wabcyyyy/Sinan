@@ -353,7 +353,14 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         for check in report.checks:
             if check.kind == "dietary_requirement":
                 issues.append({"code": "DIETARY_EVIDENCE_REVIEW", "message": f"第 {day['dayNo']} 天：{check.reason}"})
-    if quality_status == "READY" and any(issue["code"] == "DIETARY_EVIDENCE_REVIEW" for issue in issues):
+    for day in days:
+        notes = (_loads_object(day.metadata_json) or {}).get("practicalNotes") or []
+        issues.extend(
+            {"code": "CONSTRAINT_UNKNOWN", "message": note}
+            for note in notes
+            if isinstance(note, str) and note.startswith("待确认（")
+        )
+    if issues and quality_status == "READY":
         quality_status = "READY_WITH_WARNINGS"
 
     return {

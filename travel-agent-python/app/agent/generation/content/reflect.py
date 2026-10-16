@@ -83,7 +83,7 @@ def hard_day_issues(
     unknown = [
         f"第 {day_no} 天待确认（{check.kind}）：{check.reason}"
         for check in report.unknown_checks
-        if check.reason and (check.kind != "dietary_requirement" or check.blocking)
+        if check.reason and check.blocking
     ]
     return [*structural, *blockers, *unknown]
 

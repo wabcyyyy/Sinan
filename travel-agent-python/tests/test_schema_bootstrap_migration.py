@@ -97,15 +97,17 @@ def test_revision_refuses_to_rebuild_an_existing_schema(sqlite_db) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_head_is_0017_and_linear() -> None:
+def test_head_is_0019_and_linear() -> None:
     """成本账本（V17）接在规划任务表之后，历史链保持单一且完整。"""
     script = ScriptDirectory.from_config(db_migrate.alembic_config())
-    assert script.get_current_head() == "0017_cost_ledger"
+    assert script.get_current_head() == "0019_trial_access"
     # 从 head 沿 down_revision 走回基线，链路上每个 revision 都必须真实存在
     chain: list[str] = []
     for revision in script.walk_revisions(base="base", head="heads"):
         chain.append(revision.revision)
     assert chain == [
+        "0019_trial_access",
+        "0018_seed_city_consumption",
         "0017_cost_ledger",
         "0016_planning_task",
         "0015_item_cost_currency",
@@ -246,3 +248,18 @@ def test_v12_seeds_domestic_tourist_cities_from_sql_truth() -> None:
         assert f"('{city}', '中国', 'CN', 1)" in joined, f"{city} 必须补种为国内城市"
     assert "CREATE TABLE" not in joined, "V12 是纯 INSERT 迁移，不得建表"
     assert "lat" not in joined and "lng" not in joined, "坐标一律 NULL——兜底坐标必须来自真实来源"
+
+
+def test_v18_seeds_city_consumption_from_sql_truth() -> None:
+    """2026-10-11 仓库体检：city_consumption 此前无任何迁移种入，新装库恒空、
+    预算静默退回代码默认值。V18 把种子并入迁移链（纯 INSERT、不建表），
+    并钉住 INSERT IGNORE——README 曾指导手工导入，重复键不得让启动迁移炸掉。"""
+    schema_source = importlib.import_module("app.db.schema_source")
+
+    statements = [s for _, s in schema_source.statements_between(18, 18)]
+    assert statements, "V18 SQL 真相源缺失"
+    joined = "\n".join(statements)
+    for city in ("北京", "上海", "成都", "西安", "三亚"):
+        assert f"('{city}'," in joined, f"{city} 必须补种消费基准"
+    assert "INSERT IGNORE INTO city_consumption" in joined, "必须容忍重复键（手工导入过的库）"
+    assert "CREATE TABLE" not in joined, "V18 是纯 INSERT 迁移，不得建表"

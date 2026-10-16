@@ -16,6 +16,7 @@ import type * as Contracts from '../../types/generated/contracts'
 import { loginRedirect, navigate } from '../router'
 import { Icon } from '../shared/Icon'
 import { PageHeader } from '../shared/PageHeader'
+import { TrialWallet } from './TrialWallet'
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../shared/States'
 import type { ChannelStatus, GatewayFormValues } from './llmGateway'
 import {
@@ -134,6 +135,7 @@ export function SettingsPage() {
   const editing = form && form.id !== null ? items.find((item) => item.id === form.id) ?? null : null
 
   return <div className="page-content settings-page">
+    <TrialWallet />
     <PageHeader eyebrow="Model access" title="模型接入" description={isDemoMode() ? '展示版使用固定样例，不连接模型服务、不接收 API 密钥。' : '接入你的 OpenAI 兼容 API：生成与对话可走你自己的通道与额度。密钥加密保存在你的账号下，任何页面只显示尾 4 位。'} />
     {isDemoMode() ? <p className="settings-note" role="status">当前为演示访客，无真实账号、余额或模型费用。</p> : <AccountSecurityCard />}
     {loading ? <LoadingBlock label="正在读取配置…" />

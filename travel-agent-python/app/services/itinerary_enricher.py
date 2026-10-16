@@ -107,7 +107,9 @@ def _enrich(user_id: int, itinerary_id: int, request: Any, expected_revision: in
     except ApiError as exc:
         logger.warning("byok route broken, skip enrichment for itinerary %s: %s", itinerary_id, exc)
         return
-    with use_route(route):
+    from app.common.trial_billing import payer_scope
+
+    with use_route(route), payer_scope(user_id):
         with session_scope() as session:
             main = session.get(ItineraryMain, itinerary_id)
         if main is None:

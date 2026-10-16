@@ -1,0 +1,63 @@
+# Isolated local acceptance environment; not public production credentials.
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: example-only-hosted-root
+      MYSQL_DATABASE: sinan_trial
+      MYSQL_USER: sinan
+      MYSQL_PASSWORD: example-only-hosted-db
+      TZ: UTC
+    volumes:
+      - trial-mysql:/var/lib/mysql
+    healthcheck:
+      test: [CMD, mysql, -h, 127.0.0.1, -usinan, -pexample-only-hosted-db, -e, 'SELECT 1']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes', --requirepass, example-only-hosted-redis]
+    volumes:
+      - trial-redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, -a, example-only-hosted-redis, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.hosted
+    stop_grace_period: 45s
+    environment:
+      DB_HOST: mysql
+      DB_PORT: '3306'
+      DB_NAME: sinan_trial
+      DB_USER: sinan
+      DB_PASSWORD: example-only-hosted-db
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_PASSWORD: example-only-hosted-redis
+      JWT_SECRET: example-only-hosted-jwt-signing-material
+      AGENT_INTERNAL_TOKEN: example-only-hosted-internal-material
+      LLM_API_KEY: ''
+      FRONTEND_SHELL_URL: http://127.0.0.1:8000/index.html
+    volumes:
+      - trial-data:/app/data
+    ports:
+      - '127.0.0.1:18000:8000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  trial-mysql:
+  trial-redis:
+  trial-data:

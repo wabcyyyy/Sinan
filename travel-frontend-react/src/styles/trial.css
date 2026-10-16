@@ -1,0 +1,10 @@
+.trial-panel { padding: 24px; margin-block: 16px; border: 1px solid var(--sinan-line); border-radius: 16px; }
+.trial-panel p { line-height: 1.7; margin-block: 12px; }
+.trial-panel label { display: block; margin-block: 12px; }
+.trial-panel input { display: block; max-width: 100%; padding: 8px; background: var(--sinan-paper); color: var(--sinan-ink); border: 1px solid var(--sinan-line); border-radius: 8px; }
+.trial-panel table { width: 100%; border-collapse: collapse; text-align: left; }
+.trial-panel th, .trial-panel td { padding: 8px; border-bottom: 1px solid var(--sinan-line); overflow-wrap: anywhere; }
+.trial-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.trial-panel button { margin-inline-end: 8px; margin-block: 4px; }
+.trial-panel output { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.trial-admin { overflow-x: auto; }

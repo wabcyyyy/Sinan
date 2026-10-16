@@ -1,0 +1,24 @@
+[
+  {
+    "id": "P01", "message": "杭州两日，两个人，人文和美食",
+    "slots": {"city": "杭州", "days": 2, "persons": 2, "start_date": "2026-11-02", "preferences": ["人文", "美食"]},
+    "requirements": {}
+  },
+  {
+    "id": "P02", "message": "带爸妈杭州三日，慢一点，第二天必须去灵隐寺，不要博物馆",
+    "slots": {"city": "杭州", "days": 3, "persons": 3, "start_date": "2026-11-02", "preferences": ["自然风光"]},
+    "requirements": {
+      "pace": "relaxed", "excludedCategories": ["museum"],
+      "requiredPlaces": [{"constraintId": "lingyin", "name": "灵隐寺", "dayNo": 2}],
+      "dayWindows": [{"dayNo": 1, "kind": "arrival", "notBefore": "15:00", "finishBy": "20:00"}]
+    }
+  },
+  {
+    "id": "P03", "message": "西安三日两个人，预算严格不超过3000元，不含往返，第二天必须去大雁塔",
+    "slots": {"city": "西安", "days": 3, "persons": 2, "budget": 3000, "start_date": "2026-11-02", "preferences": ["人文历史"]},
+    "requirements": {
+      "requiredPlaces": [{"constraintId": "dayanta", "name": "大雁塔", "dayNo": 2}],
+      "budgetPolicy": {"mode": "hard_cap", "includeIntercityTransport": false}
+    }
+  }
+]

@@ -47,7 +47,7 @@ from app.agent.runtime.observability import current_scene, metrics
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.agent.runtime.trace import current_run_id, record_event
 from app.agent.runtime.usage_store import usage_store
-from app.common import egress_guard, llm_breaker, model_registry
+from app.common import egress_guard, llm_breaker, model_registry, trial_billing
 from app.common.config import settings
 from app.common.http_deadline import bounded_chunks, bounded_lines
 from app.common.llm_route import LLMRoute, current_route
@@ -340,6 +340,7 @@ class LLMClient:
         follow_redirects: bool | None = None,
         guarded_egress: bool = False,
         capabilities: frozenset[str] | None = None,
+        user_funded: bool = False,
     ) -> None:
         # 显式传入即覆盖（角色 client / BYOK 路由走这里），缺省 = main 角色（见 model_registry）；
         # main 的解析带熔断备选链（P0-2）：主通道开窗且配了 LLM_MAIN_FALLBACK_PROVIDER
@@ -367,6 +368,8 @@ class LLMClient:
         # ——目的地在 socket 前一刻逐地址校验并钉到校验过的公网 IP（app.common.egress_guard）；
         # False = 运营方 .env 里的固定通道（可信配置，不套同一拒绝规则，见该模块口径）。
         self._guarded_egress = guarded_egress
+
+        self._user_funded = user_funded
 
     def _http(self) -> httpx.Client:
         """本次调用使用的 httpx 通道（受守卫 / 共享）。测试打桩点：两个 getter 都是模块级函数。"""
@@ -450,16 +453,19 @@ class LLMClient:
                         "inflight",
                         provider=self._base_url,
                     )
-                    with self._http().stream(
-                        "POST",
-                        url,
-                        json=payload,
-                        headers=headers,
-                        timeout=_build_timeout(timeout),
-                        follow_redirects=self._follow_redirects,
-                    ) as resp:
-                        resp.raise_for_status()
-                        body = json.loads(b"".join(bounded_chunks(resp, limits)))
+                    with trial_billing.billable_call(self._base_url, payload, user_funded=self._user_funded) as charge:
+                        with self._http().stream(
+                            "POST",
+                            url,
+                            json=payload,
+                            headers=headers,
+                            timeout=_build_timeout(timeout),
+                            follow_redirects=self._follow_redirects,
+                        ) as resp:
+                            resp.raise_for_status()
+                            body = json.loads(b"".join(bounded_chunks(resp, limits)))
+                        if charge is not None:
+                            charge.settle(body.get("usage"))
                     usage = body.get("usage")
                     if limits and reservation:
                         limits.settle_llm(reservation, usage)
@@ -614,14 +620,17 @@ class LLMClient:
         finish_reason = None
         content_length = 0
         try:
-            with self._http().stream(
-                "POST",
-                url,
-                json=payload,
-                headers=headers,
-                timeout=_build_timeout(timeout),
-                follow_redirects=self._follow_redirects,
-            ) as resp:
+            with (
+                trial_billing.billable_call(self._base_url, payload, user_funded=self._user_funded) as charge,
+                self._http().stream(
+                    "POST",
+                    url,
+                    json=payload,
+                    headers=headers,
+                    timeout=_build_timeout(timeout),
+                    follow_redirects=self._follow_redirects,
+                ) as resp,
+            ):
                 resp.raise_for_status()
                 if limits:
                     expiry_timer = threading.Timer(max(0.001, limits.remaining()), resp.close)
@@ -663,6 +672,8 @@ class LLMClient:
                     if content:
                         content_length += len(content)
                         yield content
+                if charge is not None:
+                    charge.settle(stream_usage)
         except StreamCancelled:
             raise
         except Exception as exc:
@@ -853,6 +864,7 @@ def _routed_client(route: LLMRoute) -> LLMClient:
                 model=route.model,
                 follow_redirects=False,
                 guarded_egress=True,
+                user_funded=True,
             )
             _route_clients[key] = client
         return client

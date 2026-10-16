@@ -32,7 +32,7 @@ npm run preview
 
 将通过验证的修改合并并推送到 GitHub 的 `master` 分支，Vercel 会自动构建，成功后更新 `sinan-demo.vercel.app`。其他分支的推送用于预览；要更新公开展示站，需合并到 `master`。没有推送的本地修改不会上线。
 
-本次整合工作区为 `C:/Users/25924/.codex/worktrees/vercel-latest-frontend/Sinan`，后续可从独立分支提交并通过 Pull Request 合并到 `master`。原 `D:/wcy/project/Sinan` 的未提交工作保留，本地 `master` 尚未更新；不要在旧工作区强行拉取或覆盖。
+整合分支已合并到 `master`，Vercel 跟随 GitHub 的 `master` 自动部署。后续在 `master` 提交并推送经过验证的改动即可触发更新，无需上传本地构建目录。
 
 Vercel 项目设置：
 

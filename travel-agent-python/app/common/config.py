@@ -77,6 +77,16 @@ class Settings(BaseSettings):
 
     # ---- 服务面 ----
     agent_host: str = "127.0.0.1"
+    registration_invite_required: bool = False
+    user_generation_limit_enabled: bool = False
+    nominatim_base_url: str = "https://nominatim.openstreetmap.org/search"
+    trial_billing_enabled: bool = False
+    trial_initial_credit_cny: float = 6.0
+    llm_price_cny_json: str = "{}"
+    serve_frontend: bool = False
+    frontend_dist: str = "frontend"
+    port: int = 8000
+    railway_edge_headers: bool = False
     agent_reload: bool = False
     agent_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     agent_internal_token: str = ""
@@ -154,7 +164,7 @@ class Settings(BaseSettings):
     # 按用户的闸门（R1-9）：上面两份预算是"按次"的，单用户循环调用拿到的就是
     # N 份按次额度 → 无上限；这两项才是按 principal 的顶。
     user_llm_runs_per_minute: int = 6
-    user_daily_llm_runs: int = 100
+    user_daily_llm_runs: int = 20
     # P1-8 同族两项：实时价两端点直烧 SerpApi 共享月池（按人闸门）；agent 直调面
     # 按 token 的进程内分钟窗（token 泄露止损，内网信任面 + 单进程前提）
     user_live_quotes_per_minute: int = 6
@@ -307,11 +317,7 @@ class Settings(BaseSettings):
     # claims 里，与 Cookie Max-Age 的差异无害，可独立设置有效期。
     jwt_secret: str = ""
     jwt_expire_hours: int = 24
-    # 登录按 IP 的总量滑窗（每分钟，审计 §3.3.3）：失败锁按 (IP, 用户名) 对计数，
-    # 换用户名喷密码不触发；这道闸不看用户名不分成败，堵密码喷洒与 bcrypt CPU 放大。
-    # 做成配置（而不是注册闸那类常量）：离线套件把它放开到极大值防止用例间互相
-    # 污染（conftest `_neutralize_ip_and_user_limits`，登录在多个不 reset 状态的
-    # 测试文件里都被调用），专项用例再改回小值。
+    # 按 IP 总量限制登录，补充按 (IP, 用户名) 的失败锁。
     login_ip_rate_per_minute: int = 30
     # 默认安全：会话票是唯一凭据载体，明文链路上可被同网段摘取。本地明文 http 与
     # compose（nginx 只 listen 80）在 .env / compose env_file 里显式设 false，
@@ -321,11 +327,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _static_validation(self) -> "Settings":
-        """配置静态自洽（数值/范围）：任何实例化都生效（含测试 import 期）。
-
-        只做「配置自身自洽」的检查，且所有默认值必须能通过——依赖运行语境的安全
-        检查（真实密钥、绑定地址）在 validate_boot()，放 import 期会炸掉测试与脚本。
-        """
+        """校验数值自洽；依赖真实密钥、绑定地址的检查仅在 validate_boot 执行。"""
         bad = [
             f"{key}={getattr(self, key)} {requirement}"
             for key, requirement, _low, _high in NUMERIC_RULES
@@ -337,6 +339,8 @@ class Settings(BaseSettings):
 
     def validate_boot(self) -> None:
         """main.py lifespan 的启动校验入口：坏配置 boot 期报清晰错误退出（不在 import 期）。"""
+        if self.serve_frontend and not self.auth_cookie_secure:
+            raise RuntimeError("公开托管入口必须设置 AUTH_COOKIE_SECURE=true")
         # 占位密钥（审计 §3.4.2 / P0-5 应用侧）：公开示例值不能当真密钥——先于长度/组合
         # 校验拒绝，错误信息直指生成方式。空值不在此判：JWT_SECRET 空串由下面的长度
         # 校验拦，AGENT_INTERNAL_TOKEN 空串对本地回环开发是合法形态。

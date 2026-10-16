@@ -1,0 +1,30 @@
+# One persistent FastAPI process serves the built SPA; Railway provides TLS.
+FROM node:22-alpine AS frontend
+WORKDIR /frontend
+COPY travel-frontend-react/package*.json ./
+RUN npm ci
+COPY travel-frontend-react/ ./
+RUN npm run build
+
+FROM python:3.12-slim AS deps
+COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv
+WORKDIR /app
+COPY travel-agent-python/pyproject.toml travel-agent-python/uv.lock ./
+RUN uv sync --frozen --no-dev
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=deps /app/.venv /app/.venv
+COPY travel-agent-python/app ./app
+COPY travel-agent-python/scripts ./scripts
+COPY travel-agent-python/main.py travel-agent-python/alembic.ini ./
+COPY LICENSE THIRD_PARTY_NOTICES.md ./
+COPY --from=frontend /frontend/dist ./frontend
+COPY deploy/hosted_start.py ./hosted_start.py
+ENV PATH="/app/.venv/bin:$PATH" AGENT_HOST=0.0.0.0 SERVE_FRONTEND=true \
+    AUTH_COOKIE_SECURE=true REGISTRATION_INVITE_REQUIRED=true USER_GENERATION_LIMIT_ENABLED=true \
+    TRIAL_BILLING_ENABLED=true TZ=UTC WEB_SEARCH_ENABLED=false LIVE_PRICE_SEARCH=false LIVE_FOOD_PRICE_SEARCH=false
+RUN useradd -m -u 1000 appuser && mkdir -p /app/data && chown appuser:appuser /app/data
+# A newly mounted volume is root-owned. Entrypoint fixes only its root then drops UID/GID.
+EXPOSE 8000
+CMD ["python", "hosted_start.py"]

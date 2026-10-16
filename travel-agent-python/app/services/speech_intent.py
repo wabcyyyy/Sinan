@@ -16,6 +16,7 @@ import logging
 from fastapi import UploadFile
 
 from app.agent import use_scene
+from app.common.config import settings
 from app.common.envelope import ApiError
 from app.common.speech_client import transcribe
 from app.services import cover_service, llm_gateway_service, quota_service
@@ -42,6 +43,8 @@ def interpret(user_id: int, file: UploadFile) -> dict:
     data = cover_service.read_upload_capped(file.file, SPEECH_INTENT_MAX_BYTES)
     if not data:
         raise ApiError(400, "音频文件为空")
+    if settings.trial_billing_enabled:
+        raise ApiError(503, "试用期间暂不开放语音识别，请使用文字输入")
     with llm_gateway_service.route_scope(user_id), use_scene("assist"):
         # guard_agent_call：上游异常 → 502 通用文案；自己的 ValueError → 502 带原因
         text = guard_agent_call(

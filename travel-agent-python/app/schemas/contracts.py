@@ -87,6 +87,15 @@ from app.schemas.template import (
     TemplatePublishVO,
     TemplateSummaryVO,
 )
+from app.schemas.trial import (
+    TrialGrantBody,
+    TrialInviteBody,
+    TrialInvitesVO,
+    TrialPolicyVO,
+    TrialReconcileBody,
+    TrialUsersVO,
+    TrialWalletVO,
+)
 from app.schemas.trip import (
     AdjustRequest,
     AdjustResponse,
@@ -146,6 +155,13 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
     ),
     # 业务面核心端点（/api/auth/**、/api/itinerary/** 写路径，G-1.1 取舍范围）
     "business_api": (
+        TrialPolicyVO,
+        TrialWalletVO,
+        TrialInviteBody,
+        TrialInvitesVO,
+        TrialGrantBody,
+        TrialReconcileBody,
+        TrialUsersVO,
         LoginBody,
         RegisterBody,
         UserInfoVO,

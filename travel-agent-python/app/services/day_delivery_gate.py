@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.agent import hard_day_issues
+from app.agent import check_constraints, day_policy_for, hard_day_issues
 from app.schemas.trip import DailyPlan
 from app.schemas.trip_requirements import TripRequirements
 
@@ -54,4 +54,16 @@ def hard_delivery_blockers(
       strict 预算/时间冲突——判 status/blocking，不再靠中文子串。
     """
     plan_dict = {"day_no": day_no, "items": [_rule_item(item) for item in plan.items]}
+    report = check_constraints(
+        plan_dict,
+        requirements,
+        day_no,
+        day_policy_for(requirements, day_no),
+        locked_names=locked_names,
+        strict_budget=strict_budget,
+    )
+    for check in report.unknown_checks:
+        note = f"待确认（{check.kind}）：{check.reason}"
+        if note not in plan.practical_notes:
+            plan.practical_notes.append(note)
     return hard_day_issues(plan_dict, requirements, locked_names=locked_names, strict_budget=strict_budget)

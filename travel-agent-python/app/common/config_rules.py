@@ -20,6 +20,8 @@ from __future__ import annotations
 # 数值范围规则：(键, 人话要求, 下界(开区间), 上界(闭区间))；默认值必须全部通过。
 # max_replans 下界 -1 表示允许 0（显式关闭重规划）。
 NUMERIC_RULES: tuple[tuple[str, str, float, float], ...] = (
+    ("port", "必须在 1-65535 之间", 0, 65535),
+    ("trial_initial_credit_cny", "必须在 0-100 之间", -1e-10, 100),
     ("llm_timeout", "必须 > 0", 0, float("inf")),
     ("llm_connect_timeout", "必须 > 0", 0, float("inf")),
     ("itinerary_deadline_seconds", "必须 > 0", 0, float("inf")),

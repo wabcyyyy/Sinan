@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import sys
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -117,8 +118,9 @@ def stop_all() -> None:
     with _lock:
         threads = [task.thread for task in _tasks.values() if task.thread is not None]
         _started = False
+    deadline = time.monotonic() + 5.0
     for thread in threads:
-        thread.join(timeout=5.0)
+        thread.join(timeout=max(0, deadline - time.monotonic()))
     with _lock:
         for task in _tasks.values():
             task.thread = None

@@ -1,7 +1,8 @@
 import type { UserInfoVO } from '../../types/generated/contracts'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { login, register, ReactApiError } from '../../api/sinan'
+import { login, register, ReactApiError, getTrialPolicy } from '../../api/sinan'
+import type * as Contracts from '../../types/generated/contracts'
 import { navigate, useLocation } from '../router'
 import { Brand } from '../shared/Brand'
 import hangzhou from '../../assets/img/cover-hangzhou.webp'
@@ -14,6 +15,9 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [policy, setPolicy] = useState<Contracts.TrialPolicyVO | null>(null)
+  useEffect(() => { getTrialPolicy().then(setPolicy).catch(() => {}) }, [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => { document.title = '登录 · 司南 Sinan'; return () => { document.title = '司南 Sinan' } }, [])
@@ -22,7 +26,7 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
     if (!username.trim() || password.length < 6) { setError('请输入账号和至少 6 位密码'); return }
     setBusy(true)
     try {
-      if (mode === 'register') await register({ username: username.trim(), password, nickname: nickname.trim() || null })
+      if (mode === 'register') await register({ username: username.trim(), password, nickname: nickname.trim() || null, inviteCode: inviteCode.trim() || null })
       const result = await login({ username: username.trim(), password })
       onAuthenticated(result.user)
       const redirect = location.query.get('redirect')
@@ -45,13 +49,14 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
         <p>{mode === 'login' ? '登录后保存、编辑和分享行程。' : '注册后可以保存每一次出发的方向。'}</p>
         <form onSubmit={submit}>
           {mode === 'register' && <label>怎么称呼你<input value={nickname} onChange={(event) => setNickname(event.target.value)} autoComplete="nickname" placeholder="昵称（可选）" /></label>}
+          {mode === 'register' && <label>邀请码<input value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} autoComplete="off" required={policy?.inviteRequired} placeholder={policy?.inviteRequired ? '请输入一次性邀请码' : '邀请码（如有）'} /></label>}
           <label>账号<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" placeholder="用户名" /></label>
           <label>密码<input value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} type="password" placeholder="至少 6 位" /></label>
           {error && <div className="form-error" role="alert"><Icon name="alert" size={16} />{error}</div>}
           <button className="button button-primary auth-submit" type="submit" disabled={busy}>{busy ? '正在连接…' : mode === 'login' ? '登录司南' : '注册并登录'}<Icon name="arrow" size={17} /></button>
         </form>
         <button className="auth-switch" type="button" onClick={() => { setMode((value) => value === 'login' ? 'register' : 'login'); setError('') }}>{mode === 'login' ? '还没有账号？创建一个' : '已经有账号？直接登录'}</button>
-        <p className="auth-footnote">你的行程由你掌握，司南只在你需要时保存它。</p>
+        <p className="auth-footnote">{policy?.billingEnabled && <>注册一次性赠送 {policy.initialCreditCny} 元试用额度，用完不自动补充。澄清、生成和编辑均按模型用量消耗额度，每日最多 {policy.dailyAiOperations} 次 AI 操作。费用按平台配置单价估算，可在设置页查看。<br /></>}输入会发送至配置的第三方模型服务。行程默认私有，主动分享后持链接者可查看。<a href="/privacy">隐私与数据删除</a> · <a href="/demo">先看固定演示</a></p>
       </div>
     </div>
   </div>

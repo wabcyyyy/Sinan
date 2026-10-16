@@ -5,6 +5,10 @@
 
 [English](README.en.md) · [架构](docs/public/architecture.md) · [开发](docs/public/development.md) · [参与贡献](.github/CONTRIBUTING.md)
 
+小规模上线使用 [Railway 部署指南](docs/public/production.md)：同域整站容器、邀请码、一次性 6 元试用赠额与最小管理后台。仓库提供部署准备，公网与真实模型验收状态须单独确认。
+
+个人作品展示可使用 [Vercel 免费展示版](docs/public/vercel-demo.md)：复用完整正式前端页面，以本地样例体验规划、地图与编辑确认，无需后端或模型 Key。
+
 本批实现与验收结果见 [开源预览验收记录](docs/public/preview-verification.md)。
 
 ## 先体验：不需要模型密钥

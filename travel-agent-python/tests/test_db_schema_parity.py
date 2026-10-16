@@ -12,7 +12,7 @@ from app.db.models import Base
 from app.db.schema_source import migration_files, read_all, split_statements
 
 _COLUMN_RE = re.compile(
-    r"^\s*`?(\w+)`?\s+(?:BIGINT|VARCHAR|DECIMAL|INT|TINYINT|DATETIME|DATE|TIME|TEXT|LONGTEXT|CHAR|DOUBLE|FLOAT)",
+    r"^\s*`?(\w+)`?\s+(?:BIGINT|VARCHAR|DECIMAL|INT|TINYINT|DATETIME|DATE|TIME|TEXT|LONGTEXT|CHAR|DOUBLE|FLOAT|JSON)",
     re.I | re.M,
 )
 _CREATE_TABLE_RE = re.compile(r"CREATE TABLE (?:IF NOT EXISTS )?(\w+)\s*\((.*?)\n\)\s*ENGINE", re.S | re.I)

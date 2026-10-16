@@ -28,11 +28,13 @@ from app.api.business.share import router as share_router
 from app.api.business.share_shell import router as share_shell_router
 from app.api.business.speech_intent import router as speech_intent_router
 from app.api.business.templates import router as templates_router
+from app.api.business.trial import router as trial_router
 from app.api.business.uploads import router as uploads_router
 from app.api.business.weather import router as weather_router
 
 business_routers: tuple[APIRouter, ...] = (
     auth_router,
+    trial_router,
     user_router,
     client_errors_router,
     itinerary_router,

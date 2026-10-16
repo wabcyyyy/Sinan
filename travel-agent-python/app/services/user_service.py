@@ -24,13 +24,14 @@ from dataclasses import dataclass
 import bcrypt
 from sqlalchemy import select
 
-from app.common import jwt_tokens
+from app.common import jwt_tokens, trial_billing
 from app.common.config import settings
 from app.common.envelope import ApiError
 from app.db.models import SysUser
 from app.db.session import session_scope
 from app.schemas.business.auth import UserInfoVO
 from app.services import state_and_sessions as sessions
+from app.services import trial_invites
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def _find_user(username: str) -> SysUser | None:
         return session.execute(select(SysUser).where(SysUser.username == username)).scalar_one_or_none()
 
 
-def register(username: str, password: str, nickname: str | None, ip: str) -> dict:
+def register(username: str, password: str, nickname: str | None, ip: str, invite_code: str | None = None) -> dict:
     if sessions.sliding_hit(sessions.register_key(ip), sessions.LOGIN_WINDOW_SECONDS) > sessions.MAX_REGISTER_ATTEMPTS:
         raise ApiError(429, "注册过于频繁，请稍后再试")
     if _find_user(username) is not None:
@@ -99,7 +100,12 @@ def register(username: str, password: str, nickname: str | None, ip: str) -> dic
             )
             session.add(user)
             session.flush()
+            if settings.registration_invite_required:
+                trial_invites.consume(session, invite_code, user.id)
+            trial_billing.open_wallet(session, user.id)
             vo = to_vo(user)
+    except ApiError:
+        raise
     except Exception as exc:  # 唯一键冲突等一律回同一句模糊文案
         # 只记异常类型：SQLAlchemy 的 StatementError 会把 SQL 与**绑定参数**一起
         # 打进 str(exc)，注册失败路径上的参数含 bcrypt 口令哈希——离线可破，

@@ -108,6 +108,15 @@ export function register(data: Contracts.RegisterBody) {
   return apiRequest<void>('/auth/register', { method: 'POST', body: JSON.stringify(data) })
 }
 
+export const getTrialPolicy = () => apiRequest<Contracts.TrialPolicyVO>('/auth/trial-policy')
+export const getTrialWallet = () => apiRequest<Contracts.TrialWalletVO>('/user/trial-wallet')
+export const getTrialUsers = (page = 1) => apiRequest<Contracts.TrialUsersVO>(`/admin/trial/users?page=${page}&size=20`)
+export const getUserWallet = (id: number) => apiRequest<Contracts.TrialWalletVO>(`/admin/trial/users/${id}/wallet`)
+export const issueTrialInvites = (data: Contracts.TrialInviteBody) => apiRequest<Contracts.TrialInvitesVO>('/admin/trial/invites', { method: 'POST', body: JSON.stringify(data) })
+export const grantTrialCredit = (id: number, data: Contracts.TrialGrantBody) => apiRequest<Contracts.TrialWalletVO>(`/admin/trial/users/${id}/grants`, { method: 'POST', body: JSON.stringify(data) })
+export const setTrialUserStatus = (id: number, status: number) => apiRequest<null>(`/admin/users/${id}/status/${status}`, { method: 'PUT' })
+export const reconcileTrialCharge = (id: string, data: Contracts.TrialReconcileBody) => apiRequest<null>(`/admin/trial/charges/${id}/reconcile`, { method: 'POST', body: JSON.stringify(data) })
+
 export function logout() {
   return apiRequest<void>('/auth/logout', { method: 'POST' })
 }
