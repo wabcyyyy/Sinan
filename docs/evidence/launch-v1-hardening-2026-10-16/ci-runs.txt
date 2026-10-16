@@ -1,0 +1,5 @@
+completed	failure	Document the production entry, including what an operator must still …	ci	master	push	38837437328	14s	2026-10-16T01:52:19Z
+completed	failure	Install the durable cost backend when the app starts	ci	master	push	38837204371	15s	2026-10-16T01:49:44Z
+completed	failure	Treat an unfinished final check as unfinished, not as a pass	ci	master	push	38836121180	11s	2026-10-16T01:37:30Z
+completed	failure	Account for model spend in a durable ledger before the call is made	ci	master	push	38835557115	36s	2026-10-16T01:31:12Z
+completed	success	nightly	nightly	master	schedule	38807680268	43s	2026-10-15T21:09:23Z
