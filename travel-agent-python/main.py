@@ -165,6 +165,17 @@ def _cleanup_traces() -> None:
         logger.info("[trace] removed %d archives older than %dd", removed, retention.TRACE_ARCHIVE_KEEP_DAYS)
 
 
+def _ops_watch() -> None:
+    """运维巡检（T8b）：磁盘余量 / 备份龄期 / 依赖可用性。检查本体在 app.common.ops_watch。
+
+    模块内导入而不是模块顶部：巡检要读 deep_health 的探测缓存，放顶部会让 common 之间
+    的导入顺序在启动期绕一圈（同 usage 清理的口径）。
+    """
+    from app.common import ops_watch
+
+    ops_watch.run_once()
+
+
 def _cleanup_exports() -> None:
     """导出文件保留 30 天（审查 P2-2：应用侧此前永不删除，还被 backup 连带放大）。"""
     removed = retention.cleanup_exports(settings.export_dir)
@@ -190,6 +201,9 @@ async def lifespan(app: FastAPI):
     cron.register("usage-cleanup", 86400, _cleanup_usage)
     cron.register("checkpoint-cleanup", 86400, _cleanup_checkpoints)
     cron.register("cost-reservation-sweep", 120, _sweep_cost_reservations, startup_delay_seconds=5)
+    # 运维巡检（T8b）：5 分钟一轮。告警冷却在 alerting 里，边沿触发在 ops_watch 里，
+    # 所以这一轮的代价是三次本地探测，不是每分钟重发同一条告警。
+    cron.register("ops-watch", 300, _ops_watch, startup_delay_seconds=20)
     # 成本账本后端（V17/T2）：RunLimits 的 reserve/settle 事件要落 MySQL 的 cost_ledger。
     # 这一步原先只写在 cost_ledger 的 docstring 里、无人调用——不接上就是"账本实现了但
     # 线上根本不记"，费用硬顶永远读到空账。放启动期并且不吞异常：装不上就不要装作在服务。
