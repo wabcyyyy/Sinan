@@ -229,7 +229,7 @@ def _fake_client_of(raw: str) -> Callable[[], Any]:
 
     class _FakeClient(FakeBinding):
         @staticmethod
-        def complete(prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048) -> str:
+        def complete(prompt: str, system_prompt: str = "", temperature: float = 0, max_tokens: int = 2048, response_format: dict | None = None) -> str:
             return raw
 
     return lambda: _FakeClient()
