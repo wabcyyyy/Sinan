@@ -179,6 +179,9 @@ export function useHomePlanning() {
   // 生成进行中，页面重建即消失（spec 明说不要求复活，DB 快照是对账权威）
   const [previewState, setPreviewState] = useState<ItemPreviewState>(emptyPreviewState)
   const [coreReady, setCoreReady] = useState(false)
+  // 业务面 `degraded` 帧：某些外部信息没取到，交付按可得内容继续。
+  // 只在生成中显示（渲染侧 gated by busy），终态由 message 自己承担措辞。
+  const [degradedNote, setDegradedNote] = useState<string | null>(null)
   const request = useRef<AbortController | null>(null)
   const requestVersion = useRef(0)
   const mounted = useRef(true)
@@ -210,6 +213,20 @@ export function useHomePlanning() {
       // M5b：core_ready 只是非阻断里程碑提示（「主行程可查看」），done 的完整
       // 收尾语义不变；stage_timing 是观测帧，前端暂不展示，透传不消费即可
       if (event.type === 'core_ready') setCoreReady(true)
+      // 这两帧此前被整帧丢弃。丢掉的代价不是少一行提示，而是「外部信息没取到」和
+      // 「断线后补不全、得以 DB 详情为准」两种用户该感知的状态在界面上根本不存在。
+      if (event.type === 'degraded') {
+        const scope = String(data.scope ?? '')
+        setDegradedNote(scope ? `部分信息未取得（${scope}），已按可得内容继续` : '部分信息未取得，已按可得内容继续')
+      }
+      if (event.type === 'resync') {
+        // 补帧不完整时 DB 是唯一权威：立刻对账一次，而不是等下一轮 2s 轮询。
+        void getItineraryDetail(created.id, controller.signal)
+          .then((detail) => {
+            if (!controller.signal.aborted && intakeOwnerIsCurrent(ownerEpoch)) setDraft(detail)
+          })
+          .catch(() => {})
+      }
       // 终态（complete 直发帧 / 重连后补的 done 快照帧）：清残余预览与里程碑提示
       if (event.type === 'complete' || event.type === 'done') {
         setPreviewState(emptyPreviewState()); setCoreReady(false)
@@ -424,6 +441,8 @@ export function useHomePlanning() {
     previews: previewState.candidates,
     /** M5b：主行程已可查看、备选仍在完善的非阻断提示态 */
     coreReady,
+    /** T4：`degraded` 帧的诚实提示；渲染侧仅在 busy 时显示 */
+    degradedNote,
     busy, submit, reset, resumeGeneration,
     /** T1 持久取消旗的产品入口与在途标记（TripPanel 生成态用） */
     cancelling, cancel,

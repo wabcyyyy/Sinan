@@ -122,7 +122,7 @@ function TripSteps({ step, busy }: { step: number; busy: boolean }) {
  * ready+draft 已由上面的 TripBoard 接走，此处仅剩 draft 异常缺失的退化兜底。
  * 数据来自 SSE + 轮询对账的 draft（useHomePlanning），无需独立请求。 */
 function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlanning> }) {
-  const { status, message, progress, draft, busy, previews, coreReady, cancelling, cancel } = planning
+  const { status, message, progress, draft, busy, previews, coreReady, degradedNote, cancelling, cancel } = planning
   const doneDays = draft ? draft.dayList.filter((day) => dayDone(day)).length : 0
   // 总进度：阶段占前 60%，逐日交付占后 40%——天数越多，后段越能看出在动
   const stagePart = Math.min(progress, PLANNING_STAGES.length) / PLANNING_STAGES.length
@@ -163,6 +163,8 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
     {/* M5b（spec §11）：core_ready 非阻断轻提示——主行程已可查看，备选富化仍在进行；
         done/complete 收尾时提示随状态一并清（useHomePlanning），这里不需要再兜底 */}
     {coreReady && <p className="planning-core-hint" role="status"><Icon name="spark" size={13} />主行程已可查看，备选仍在完善</p>}
+    {/* 外部信息没取到时不装作「全都齐了」；复用同一非阻断提示位，零新增样式 */}
+    {busy && degradedNote && <p className="planning-core-hint" role="status"><Icon name="alert" size={13} />{degradedNote}</p>}
     {status === 'login' && <button className="button button-primary" type="button" onClick={() => navigate(loginRedirect())}>登录并继续<Icon name="arrow" size={16} /></button>}
     {draft && draft.days > 0 && <motion.ol className="trip-preview-days" variants={staggerChildren(0.07)} initial="hidden" animate="show">
       {Array.from({ length: draft.days }, (_, index) => index + 1).map((dayNo) => (

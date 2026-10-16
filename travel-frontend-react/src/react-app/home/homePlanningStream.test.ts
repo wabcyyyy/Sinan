@@ -207,6 +207,7 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
         coreReady: planning.coreReady,
         message: planning.message,
         cancelling: planning.cancelling,
+        degraded: planning.degradedNote,
         previews: planning.previews.map((candidate) => `${candidate.dayNo}:${String(candidate.item.poiName)}`),
       })),
     )
@@ -246,8 +247,27 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
       coreReady: boolean
       message: string
       cancelling: boolean
+      degraded: string | null
       previews: string[]
     }
+
+  it('degraded 帧要露出诚实提示，resync 帧必须立刻按 DB 详情对账', async () => {
+    const container = await mountProbe()
+    await startGeneration(container)
+    expect(stateOf(container).degraded).toBeNull()
+
+    await feed({
+      type: 'degraded', itineraryId: 7, seq: 9, ts: '2026-10-09T00:00:09Z',
+      data: { scope: 'research', reason: 'overpass timeout', fallback: 'llm_only' },
+    })
+    expect(stateOf(container).degraded).toContain('部分信息未取得')
+
+    // 断线补不全：DB 详情是唯一权威，必须立刻再取一次，不能等下一轮 2s 轮询
+    const before = getDetailMock.mock.calls.length
+    await feed({ type: 'resync', itineraryId: 7, seq: 10, ts: '2026-10-09T00:00:10Z', data: {} })
+    await flush()
+    expect(getDetailMock.mock.calls.length).toBeGreaterThan(before)
+  })
 
   it('取消：只向服务端落持久旗，监控继续对账，终态如实写成"已取消"而不是"已准备好"', async () => {
     cancelMock.mockResolvedValue({
