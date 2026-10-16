@@ -1,0 +1,10 @@
+✓ master ci · 38841982926
+✓ preflight in 40s (ID 116784023067)
+✓ python-agent in 5m21s (ID 116784212345)
+✓ schema-migration in 33s (ID 116784212420)
+✓ frontend in 36s (ID 116784212445)
+✓ preview-stack in 1m48s (ID 116784212460)
+✓ agent-eval in 25s (ID 116784212513)
+✓ eval-determinism in 32s (ID 116784212526)
+run 38841982926 · master@28b74c9 (T3 egress guard) · conclusion success
+preflight, schema-migration, python-agent (full suite + diff-cover gate), agent-eval, eval-determinism, frontend, preview-stack all green
