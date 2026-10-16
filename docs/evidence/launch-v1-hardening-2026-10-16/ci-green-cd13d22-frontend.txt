@@ -1,0 +1,9 @@
+run 38844855394 · master@cd13d22 (degraded/resync 前端消费) · conclusion success
+✓ master ci · 38844855394
+✓ preflight in 32s (ID 116793139728)
+✓ agent-eval in 32s (ID 116793279900)
+✓ frontend in 38s (ID 116793279917)
+✓ schema-migration in 32s (ID 116793279923)
+✓ preview-stack in 2m4s (ID 116793279990)
+✓ eval-determinism in 28s (ID 116793279992)
+✓ python-agent in 7m10s (ID 116793280000)
