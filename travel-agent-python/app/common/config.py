@@ -111,14 +111,6 @@ class Settings(BaseSettings):
     # main 备选链与通道告警（审计 P0-2；完整语义见 model_registry / llm_breaker 与 .env.example）
     llm_main_fallback_provider: str = ""
     llm_alert_webhook_url: str = ""
-    # ---- 运维告警与巡检（T8b）：alerting 只有一个出口，本键未配时回落到上面的历史键 ----
-    alert_webhook_url: str = ""
-    #: 数据盘剩余空间低于该值（MB）发 ops.disk_low；0 = 不检查（不猜一个默认阈值）
-    alert_disk_min_free_mb: int = 0
-    #: 备份目录（未配置就如实跳过备份龄期检查，不假称通过）
-    alert_backup_dir: str = ""
-    #: 最新一份备份超过该小时数发 ops.backup_stale；0 = 不检查
-    alert_backup_max_age_hours: float = 0.0
     llm_timeout: float = 240
     llm_pool_max_connections: int = 20
     llm_pool_max_keepalive: int = 10
