@@ -59,6 +59,24 @@
 - 外部依赖实况：OpenTripMap 本轮连续 SSL `UNEXPECTED_EOF` 失败并触发熔断降级；
   搜索角色提示 `api.deepseek.com` 无 `enable_search` 能力，需 `LLM_ROLE_SEARCH` + dashscope 配置才能真正启用。
 
+## 结论补记（同日 11:15，候选推进到 `207f00f`）
+
+本文件上面那节"未通过 / 未知"已被后续提交推翻，事实更新如下（原始记录保留不删）：
+
+- **CI 已三次连续 green**：`e836e91`（门禁修串）、`28b74c9`（T3 出网防护）、`5ffd636`（T4 终态所有权）。
+  七 job 全绿：preflight（含代码规模棘轮与契约漂移）、schema-migration（真 MySQL 8 上 V1..V17）、
+  python-agent（**全量离线单测 + 变更行覆盖率门**）、agent-eval（四套评测 + 逐指标棘轮）、
+  eval-determinism、frontend、preview-stack。逐 job 见 `ci-green-*.txt`。
+- 修串过程中的六条真缺陷全部只在 CI 暴露，本地看不见（棘轮越线、迁移链测试钉旧 head、契约漂移、
+  评测替身缺 `response_format`、依赖日志措辞的断言、配额门名单把已解耦的点位查询又绑回去）。
+- 新增入库能力：`28b74c9` 出网目的地在 socket 前一刻逐地址校验并钉 IP（保留 SNI/证书主机名校验、
+  逐跳复验、用户网关强制 HTTPS、解析失败 fail-closed、不回显内网信息，enable/generate/resume/图片代理统一原语，
+  无开关）；`4613571` 认不出的声明币种不再按金额阈值猜换算；`5ffd636` 行程终态写入受所有权约束
+  （刻意不拦取消收敛）。
+- 本地遗留事实：dev MySQL `travel_assistant` 未应用 V17，因此 `tests/test_quota_and_headers.py` 有 4 例
+  报 `Table 'travel_assistant.cost_ledger' doesn't exist`；CI 先跑 schema-migration 所以是绿的。
+  这不是代码缺陷，但会让下一轮本地首跑误判回归。
+
 ## 结论
 
 **NOT READY（不可向真实用户公开上线）。** 判据是上面那组未通过与未执行，而不是主观余量：
