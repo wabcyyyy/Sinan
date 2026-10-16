@@ -130,7 +130,10 @@ def test_resolve_route_fail_open_on_db_error(monkeypatch, caplog) -> None:
     with caplog.at_level("WARNING", logger="app.services.llm_gateway_service"), llm_gateway_service.route_scope(7):
         assert current_route() is None
         assert llm_client.get_llm_client() is llm_client.get_llm_client()
-    assert "falling back" in caplog.text
+    # 钉稳定归因码与"这一腿记在运营方 key 上"的事实，而不是某句散文——
+    # T2 之后日志文案改了，散文断言只会因措辞飘红，真正要保证的东西没被钉住。
+    assert "byok_lookup_failed" in caplog.text
+    assert "PLATFORM key" in caplog.text
 
 
 # ---------- 业务腿注入探针（迁移面契约） ----------
