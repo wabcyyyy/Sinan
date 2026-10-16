@@ -58,12 +58,19 @@ def test_daily_window_blocks_the_extra_run(monkeypatch) -> None:
     assert exc.value.status == 429
 
 
+#: 只走"点位查询速率"闸、**不**消耗用户日生成配额的处理入口。
+#: 它们曾和生成端点混在同一份名单里：用户点一下"附近有什么"就被扣掉一次生成机会。
+#: 单独登记比留在 _LLM_HANDLERS 里更强——下面的用例同时钉住"调了 places 速率"与
+#: "没有调生成配额闸"两个方向。
+_PLACES_ONLY_HANDLERS = ("post_poi_nearby",)
+
+
 def test_every_llm_handler_calls_the_gate() -> None:
     """co_names 证明"处理器里真的调了这个方法"，而不是注释里提了一句。"""
     from app.api.business import itinerary as itinerary_api
     from app.api.business import pois as pois_api
 
-    for name in _LLM_HANDLERS:
+    for name in [n for n in _LLM_HANDLERS if n not in _PLACES_ONLY_HANDLERS]:
         handler = getattr(itinerary_api, name)
         assert "enforce_llm_budget" in handler.__code__.co_names, name
     # /api/pois 的补池同样烧联网搜索 LLM（审查 P1-2），同口径钉住
@@ -115,3 +122,17 @@ def test_security_headers_are_on_every_response() -> None:
         assert response.headers["x-content-type-options"] == "nosniff", path
         assert response.headers["x-frame-options"] == "DENY", path
         assert "frame-ancestors" in response.headers["content-security-policy"], path
+
+
+def test_places_lookup_is_decoupled_from_generation_quota() -> None:
+    """点位查询不是生成：必须走 places 速率闸，且**不得**扣用户日生成配额。
+
+    这条不是放宽上面的门——是把"点一次附近有什么就少一次生成机会"这个已修的缺陷
+    反向钉住：若有人把 enforce_llm_budget 加回该处理器，或用别的方式绕开速率闸，都会红。
+    """
+    from app.api.business import itinerary as itinerary_api
+
+    for name in _PLACES_ONLY_HANDLERS:
+        handler = getattr(itinerary_api, name)
+        assert "enforce_places_rate" in handler.__code__.co_names, name
+        assert "enforce_llm_budget" not in handler.__code__.co_names, name
