@@ -1,0 +1,10 @@
+✓ master ci · 38843722249
+✓ preflight in 37s (ID 116789707374)
+✓ frontend in 39s (ID 116789888931)
+✓ eval-determinism in 28s (ID 116789888937)
+✓ python-agent in 5m25s (ID 116789888961)
+✓ schema-migration in 37s (ID 116789888970)
+✓ preview-stack in 2m9s (ID 116789889017)
+✓ agent-eval in 27s (ID 116789889150)
+run 38843722249 · master@5ffd636 (T4 terminal ownership) · conclusion success · 全 7 job 绿
+本轮累计三次连续 green：e836e91（门禁修串）、28b74c9（T3）、5ffd636（T4 终态所有权）
