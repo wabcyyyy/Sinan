@@ -861,6 +861,17 @@ def _persist_stream_day(
         generation_gate.release_day_lock(itinerary_id, day_no)
 
 
+class DeliveryCheckIncomplete(RuntimeError):
+    """终检本身没跑完（校验器抛错、证据读失败）——与"检查跑完并判定违规"是两回事。
+
+    旧口径 `logger.warning` 之后当通过：天仍是 SUCCEEDED，整趟被写成 COMPLETED，用户拿到
+    一份没有任何验收背书的产品，而且从状态上看不出来。这里刻意**不**新增状态词表，
+    而是让它走既有失败收敛（已交付天保留为 PARTIAL、最终预算重算、error 帧带稳定码），
+    所以"没有完成检查"既不会被冒充成通过，也不会被冒充成明确违规。
+    刻意不继承 RunLimitExceeded：预算耗尽允许带着已有证据诚实降级，检查没跑完不行。
+    """
+
+
 def _revalidate_stream_days(itinerary_id: int, command: GenerateCommand, fingerprint: str) -> None:
     """整段流式落库天的后置终检（validate_plans 的生产主路径调用点）。
 
@@ -923,8 +934,13 @@ def _revalidate_stream_days(itinerary_id: int, command: GenerateCommand, fingerp
             if not issues:
                 continue
             _reset_stream_day(itinerary_id, day, fingerprint, issues)
+    except (planning_tasks.TaskCancelled, planning_tasks.TaskOwnershipLost):
+        # 取消/失权不是"检查未完成"：这两种情况下这趟的结论本就不归本 worker，
+        # 包装成终检失败会覆盖新持有者的判断，也会把用户取消说成系统故障。
+        raise
     except Exception as validate_exc:
-        logger.warning("stream final validation skipped for itinerary %s: %s", itinerary_id, validate_exc)
+        logger.error("stream final check did not complete for itinerary %s: %s", itinerary_id, validate_exc)
+        raise DeliveryCheckIncomplete(f"行程 {itinerary_id} 的最终质量检查未完成") from validate_exc
 
 
 def _reset_stream_day(itinerary_id: int, day: ItineraryDay, fingerprint: str, issues: list[str]) -> None:

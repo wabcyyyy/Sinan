@@ -366,6 +366,38 @@ def test_resubmit_reopens_window_not_quota(env) -> None:
     assert row.attempt == 2 and row.consumed_llm_calls == 1 and row.state == "QUEUED"
 
 
+def test_incomplete_final_check_is_not_a_budget_degradation(env) -> None:
+    """"检查没跑完"不得被研究段的"预算耗尽诚实降级"分支吞掉——那正是绕过验收的老路。"""
+    from app.agent.runtime.run_limits import RunLimitExceeded
+    from app.services.itinerary_generation import DeliveryCheckIncomplete
+
+    assert not issubclass(DeliveryCheckIncomplete, RunLimitExceeded)
+    assert issubclass(DeliveryCheckIncomplete, RuntimeError)
+
+
+def test_incomplete_final_check_keeps_delivered_days_as_partial(env) -> None:
+    """终检抛错时整趟不能写成 COMPLETED：已交付天保留为 PARTIAL，执行态归失败。"""
+    from app.services.itinerary_generation import DeliveryCheckIncomplete
+
+    trip_id = _seed_trip(delivered_days=1)
+    planning_tasks.acquire(1, trip_id)
+
+    planning_tasks.finish_failure(trip_id, DeliveryCheckIncomplete("行程最终质量检查未完成"))
+
+    assert _main(trip_id).gen_state == "PARTIAL", "检查没跑完不等于全部通过"
+    with db_session.session_scope() as session:
+        days = (
+            session.execute(
+                select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id).order_by(ItineraryDay.day_no)
+            )
+            .scalars()
+            .all()
+        )
+        session.expunge_all()
+    succeeded = [day.day_no for day in days if day.generation_status == "SUCCEEDED"]
+    assert succeeded == [1], "已交付的天必须留着，不被一次失败清空"
+
+
 def test_budget_write_renews_lease(env) -> None:
     """每次预算写入顺带续租：活着的外呼成本记录本身就是心跳。"""
     trip_id = _seed_trip()
