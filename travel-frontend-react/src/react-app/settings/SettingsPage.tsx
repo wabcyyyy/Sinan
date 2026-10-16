@@ -1,3 +1,4 @@
+import { isDemoMode } from '../../demoMode'
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import {
@@ -133,16 +134,16 @@ export function SettingsPage() {
   const editing = form && form.id !== null ? items.find((item) => item.id === form.id) ?? null : null
 
   return <div className="page-content settings-page">
-    <PageHeader eyebrow="Model access" title="模型接入" description="接入你的 OpenAI 兼容 API：生成与对话可走你自己的通道与额度。密钥加密保存在你的账号下，任何页面只显示尾 4 位。" />
-    <AccountSecurityCard />
+    <PageHeader eyebrow="Model access" title="模型接入" description={isDemoMode() ? '展示版使用固定样例，不连接模型服务、不接收 API 密钥。' : '接入你的 OpenAI 兼容 API：生成与对话可走你自己的通道与额度。密钥加密保存在你的账号下，任何页面只显示尾 4 位。'} />
+    {isDemoMode() ? <p className="settings-note" role="status">当前为演示访客，无真实账号、余额或模型费用。</p> : <AccountSecurityCard />}
     {loading ? <LoadingBlock label="正在读取配置…" />
       : error ? <ErrorBlock message={error} onRetry={load} onLogin={authExpired ? () => navigate(loginRedirect()) : undefined} />
         : <>
-          <ChannelBanner status={channel} />
+          {!isDemoMode() && <ChannelBanner status={channel} />}
           {note && <p className={note.kind === 'ok' ? 'settings-note ok' : 'settings-note error'} role={note.kind === 'ok' ? 'status' : 'alert'}>{note.text}</p>}
           <div className="settings-section-head">
             <h2>我的配置</h2>
-            {!form && <button className="button button-secondary" type="button" onClick={() => { setForm({ id: null, values: emptyGatewayForm() }); setNote(null); setDeleteArm(null) }}><Icon name="edit" size={15} />新增配置</button>}
+            {!form && <button className="button button-secondary" type="button" disabled={isDemoMode()} onClick={() => { setForm({ id: null, values: emptyGatewayForm() }); setNote(null); setDeleteArm(null) }}><Icon name="edit" size={15} />新增配置</button>}
           </div>
           {form && <GatewayForm
             mode={form.id === null ? 'create' : 'edit'}

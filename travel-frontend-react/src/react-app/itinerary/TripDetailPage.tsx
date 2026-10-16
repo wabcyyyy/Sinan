@@ -1,3 +1,4 @@
+import { hasIdentity } from '../../demoMode'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -139,7 +140,7 @@ export function TripDetailPage({ path }: { path: string }) {
     setWeather(null)
     setFeedbacks(new Map())
     setFeedbackOn(false)
-    if (id === '0' || !localStorage.getItem('sinan-username')) {
+    if (id === '0' || !hasIdentity()) {
       setTrip({ ...sampleItinerary, id: Number(id) || 0 })
       setOffline(true)
       setLoading(false)
@@ -166,12 +167,12 @@ export function TripDetailPage({ path }: { path: string }) {
 
   /** 对话应用/冲突后的静默对账：不闪 loading，直接换上服务端最新详情。 */
   const refreshDetail = () => {
-    if (offline || id === '0' || !localStorage.getItem('sinan-username')) return
+    if (offline || id === '0' || !hasIdentity()) return
     getItineraryDetail(id).then(setTrip).catch(() => {})
   }
 
   useEffect(() => {
-    if (!trip || offline || id === '0' || !localStorage.getItem('sinan-username')) return
+    if (!trip || offline || id === '0' || !hasIdentity()) return
     let alive = true
     getItineraryWeather(id).then((value) => { if (alive && value.daily?.length) setWeather(value) }).catch(() => {})
     // 能力探针兼回显：200=开（拿到本人反馈），404=flag 关或非成员（隐藏，不暴露能力存在性）

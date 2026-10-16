@@ -74,3 +74,18 @@ it('first login continues only this tab anonymous conversation', async () => {
   expect(intakeSessionStorage.getItem('current')).toBe('this conversation')
   expect(intakeHistoryStorage.getItem('history')).toBeNull()
 })
+
+
+it('opens the full demo without session bootstrap or touching real identity and drafts', async () => {
+  window.history.replaceState({}, '', '/demo')
+  localStorage.setItem('sinan-username', 'real-user')
+  sessionStorage.setItem('sinan-intake-v1', 'legacy real draft')
+  sessionStorage.setItem('sinan-intake-v2:user-7:current', 'real draft')
+  await act(async () => root.render(createElement(App)))
+  expect(container.textContent).toContain('产品交互演示')
+  expect(container.textContent).toContain('演示访客')
+  expect(vi.mocked(getUserInfo)).not.toHaveBeenCalled()
+  expect(localStorage.getItem('sinan-username')).toBe('real-user')
+  expect(sessionStorage.getItem('sinan-intake-v1')).toBe('legacy real draft')
+  expect(sessionStorage.getItem('sinan-intake-v2:user-7:current')).toBe('real draft')
+})

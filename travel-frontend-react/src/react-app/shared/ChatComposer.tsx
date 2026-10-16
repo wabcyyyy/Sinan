@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isDemoMode } from '../../demoMode'
 import type { ChangeEvent } from 'react'
 import { isOfflineError, isUnauthorized, ReactApiError } from '../../api/sinan'
 import { Icon } from './Icon'
@@ -121,9 +122,9 @@ export function ChatComposer({
                   type="button"
                   className={imageBusy ? 'composer-image is-busy' : 'composer-image'}
                   aria-label={imageBusy ? '正在识别图片' : '识别图片'}
-                  disabled={locked || speech.listening}
+                  disabled={locked || speech.listening || isDemoMode()}
                   onClick={() => fileRef.current?.click()}
-                  title="上传旅行/攻略图片识别意图"
+                  title={isDemoMode() ? '展示版不上传图片，识别需要真实模型服务' : '上传旅行/攻略图片识别意图'}
                 >
                   <Icon name="image" size={16} />
                   <span className="composer-tool-label">识图</span>
@@ -136,9 +137,9 @@ export function ChatComposer({
                 className={speech.listening ? 'composer-mic is-listening' : 'composer-mic'}
                 aria-label={speech.listening ? '停止语音输入' : '语音输入'}
                 aria-pressed={speech.listening}
-                disabled={disabled || speech.transcribing}
+                disabled={disabled || speech.transcribing || isDemoMode()}
                 onClick={speech.toggle}
-                title={speech.transcribing ? '正在转写刚才的语音…' : '语音输入想法'}
+                title={isDemoMode() ? '展示版不采集语音' : speech.transcribing ? '正在转写刚才的语音…' : '语音输入想法'}
               >
                 <Icon name="mic" size={16} />
                 <span className="composer-tool-label">语音</span>

@@ -1,3 +1,4 @@
+import { isDemoMode } from '../../demoMode'
 /** 地图点位的纯派生逻辑（React 详情页地图卡）：建点、估算计数、外链构造。
  * 深链一律先过 shared/map-link 的白名单再进 href——前端只构造两类查询 URL，
  * 与后端 map_link.py 的出口域同一集合。 */
@@ -110,6 +111,7 @@ export function amapLink(pin: Pick<MapPin, 'latitude' | 'longitude' | 'poiName'>
  * 名字缺省时返回 undefined，调用方直接不渲染图。
  */
 export function poiPhotoUrl(name: string | null | undefined, city: string | null | undefined): string | undefined {
+  if (isDemoMode()) return undefined
   const cleanName = (name || '').trim()
   if (!cleanName || cleanName.length > 64) return undefined
   const params = new URLSearchParams({ name: cleanName, city: (city || '').trim().slice(0, 32) })

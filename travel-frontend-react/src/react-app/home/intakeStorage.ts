@@ -1,3 +1,5 @@
+import { isDemoMode, storageKey } from '../../demoMode'
+
 /** Draft ownership comes only from the server-confirmed identity. */
 let owner: string | null = null
 let epoch = 0
@@ -23,7 +25,7 @@ export function activateIntakeOwner(userId: number | null, transferAnonymous = f
     try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i)
-      if (key?.startsWith(`${prefix}${owner}:`)) sessionStorage.removeItem(key)
+      if (key?.startsWith(storageKey(`${prefix}${owner}:`))) sessionStorage.removeItem(key)
     }
     } catch { /* unavailable storage */ }
   }
@@ -39,7 +41,7 @@ export function suspendIntakeOwner(): void {
     try {
       for (let i = sessionStorage.length - 1; i >= 0; i--) {
         const key = sessionStorage.key(i)
-        if (key?.startsWith(`${prefix}${owner}:`)) sessionStorage.removeItem(key)
+        if (key?.startsWith(storageKey(`${prefix}${owner}:`))) sessionStorage.removeItem(key)
       }
     } catch { /* unavailable storage */ }
   }
@@ -48,8 +50,8 @@ export function suspendIntakeOwner(): void {
 }
 
 function scopedStorage(history: boolean) {
-  const storage = () => history && hasIntakeUser() ? localStorage : sessionStorage
-  const scopedKey = (key: string) => `${prefix}${owner}:${key}`
+  const storage = () => history && hasIntakeUser() && !isDemoMode() ? localStorage : sessionStorage
+  const scopedKey = (key: string) => storageKey(`${prefix}${owner}:${key}`)
   return {
     getItem(key: string): string | null {
       try { return owner === null ? null : storage().getItem(scopedKey(key)) } catch { return null }

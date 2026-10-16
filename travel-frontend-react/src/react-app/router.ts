@@ -1,5 +1,6 @@
 import { intakeSessionStorage } from './home/intakeStorage'
 import { useCallback, useEffect, useState } from 'react'
+import { appHref, appPath } from '../demoMode'
 
 export interface LocationState {
   path: string
@@ -20,16 +21,17 @@ export function legacyExploreRedirect(pathname: string): string | null {
 }
 
 function readLocation(): LocationState {
-  const redirected = legacyExploreRedirect(window.location.pathname)
-  if (redirected) window.history.replaceState({}, '', redirected)
+  const redirected = legacyExploreRedirect(appPath(window.location.pathname))
+  if (redirected) window.history.replaceState({}, '', appHref(redirected))
   // Retired creation pages share the homepage form; preserve bookmarked input.
-  if (['/plan', '/generate'].includes(window.location.pathname)) {
-    window.history.replaceState({}, '', `/${window.location.search}`)
+  if (['/plan', '/generate'].includes(appPath(window.location.pathname))) {
+    window.history.replaceState({}, '', appHref(`/${window.location.search}`))
   }
-  return { path: window.location.pathname, query: new URLSearchParams(window.location.search) }
+  return { path: appPath(window.location.pathname), query: new URLSearchParams(window.location.search) }
 }
 
 export function navigate(to: string) {
+  to = appHref(to)
   if (to === window.location.pathname + window.location.search) return
   window.history.pushState({}, '', to)
   window.dispatchEvent(new PopStateEvent('popstate'))

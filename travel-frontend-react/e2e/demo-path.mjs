@@ -1,119 +1,142 @@
-// Offline browser delivery: no backend or model secrets. Also runs against nginx in compose CI.
+// Full production pages, fixed local data, zero business API/model requests.
 import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import pw from 'playwright-core'
 
 const base = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const prefix = process.env.E2E_DEMO_PREFIX ?? '/demo'
 const channel = process.env.E2E_CHANNEL || 'msedge'
 const artifacts = fileURLToPath(new URL('./artifacts/', import.meta.url))
 const browser = await pw.chromium.launch(channel === 'bundled' ? {} : { channel })
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' })
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' })
   const page = await context.newPage()
   const apiRequests = []
   const errors = []
-  page.on('pageerror', (error) => errors.push(String(error)))
-  await page.route('**/*', async (route) => {
+  page.on('pageerror', error => errors.push(String(error)))
+  await page.route('**/*', route => {
     const url = new URL(route.request().url())
     if (url.pathname.startsWith('/api/')) { apiRequests.push(url.pathname); return route.abort() }
-    if (url.origin !== new URL(base).origin) return route.abort()
-    return route.continue()
+    return url.origin === new URL(base).origin ? route.continue() : route.abort()
   })
   await page.addInitScript(() => {
     localStorage.setItem('sinan-username', 'existing-user-do-not-touch')
     const original = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
-      if (String(kind).startsWith('webgl')) return null
-      return original.call(this, kind, ...args)
+    HTMLCanvasElement.prototype.getContext = function(kind, ...args) {
+      return String(kind).startsWith('webgl') ? null : original.call(this, kind, ...args)
     }
   })
-  await page.goto(`${base}/demo`, { waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: '在成都，把脚步放慢' }).waitFor()
-  await page.getByRole('button', { name: '播放', exact: true }).click()
-  await page.getByRole('button', { name: '暂停', exact: true }).click()
-  const paused = await page.locator('output').textContent()
-  await page.waitForTimeout(1400)
-  assert.equal(await page.locator('output').textContent(), paused)
-  await page.getByRole('button', { name: '重置', exact: true }).click()
-  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: '单步', exact: true }).click()
-  assert.match(await page.locator('output').textContent(), /行程就绪/)
-  assert.equal(await page.locator('.board-day-chip').count(), 2)
-  await page.getByRole('button', { name: 'DAY 02', exact: false }).click()
-  await page.getByRole('heading', { name: '杜甫草堂', exact: true }).waitFor()
-  await page.getByRole('button', { name: '查看编辑示例', exact: true }).click()
-  await page.locator('.chat-diff-box').waitFor()
-  assert.equal(await page.locator('.board-budget-total').textContent(), '￥570')
-  await page.getByRole('button', { name: '应用到行程', exact: true }).click()
-  assert.equal(await page.getByRole('heading', { name: '杜甫草堂', exact: true }).count(), 0)
-  assert.equal(await page.locator('.board-budget-total').textContent(), '￥520')
-  assert.ok(await page.locator('.demo-links a').count() >= 4)
-  assert.match(await page.locator('aside').textContent(), /WebGL|地图未能启动/)
+  await page.goto(`${base}${prefix}/`)
+  await page.getByRole('heading', { name: /去哪里？\s*说一句话，行程就有了/ }).waitFor()
+  await page.getByLabel('产品演示说明').waitFor()
+  assert.equal(await page.locator('.hero-collage .hero-tile').count(), 6, 'Latest homepage photo collage must be present')
+  assert.ok(await page.getByRole('button', { name: '识别图片', exact: true }).isDisabled())
   mkdirSync(artifacts, { recursive: true })
+  await page.screenshot({ path: `${artifacts}/demo-home.png`, fullPage: true })
+  await page.locator('#primary-navigation').getByRole('button', { name: '探索', exact: true }).click()
+  await page.getByRole('heading', { name: '先找点方向' }).waitFor()
+  await page.locator('#primary-navigation').getByRole('button', { name: '我的行程', exact: true }).click()
+  await page.getByRole('heading', { name: '我的行程', exact: true }).waitFor()
+  await page.getByRole('button', { name: '看完整行程', exact: true }).click()
+  await page.getByRole('heading', { name: '成都 · 茶馆与街巷两日慢游', exact: true }).waitFor()
+  await page.getByRole('heading', { name: '对话编排', exact: true }).waitFor()
+  assert.match(await page.locator('.trip-map-wrap').innerText(), /WebGL|地图未能启动/)
+  assert.equal(await page.locator('.detail-metrics strong').first().textContent(), '￥740')
+  const transit = await page.locator('.transit-pill').first().boundingBox()
+  assert.ok(transit && transit.width > 150 && transit.height < 80, 'Transit guidance should remain readable horizontally')
+  await page.getByRole('button', { name: /^DAY 02/ }).click()
+  await page.getByRole('heading', { name: '杜甫草堂', exact: true }).waitFor()
+  await page.getByRole('button', { name: '把第 2 天安排更松弛一些', exact: true }).click()
+  await page.locator('.chat-diff-box').waitFor()
+  assert.equal(await page.getByRole('heading', { name: '杜甫草堂', exact: true }).count(), 1)
+  assert.equal(await page.locator('.detail-metrics strong').first().textContent(), '￥740')
+  await page.getByRole('button', { name: '应用到行程', exact: true }).click()
+  await page.getByRole('heading', { name: '少赶一站，把上午留白', exact: true }).waitFor()
+  assert.equal(await page.getByRole('heading', { name: '杜甫草堂', exact: true }).count(), 0)
+  assert.equal(await page.locator('.detail-metrics strong').first().textContent(), '￥690')
+  await page.getByRole('button', { name: /^DAY 01/ }).click()
+  await page.getByRole('heading', { name: '少城住宿（合成示例酒店）', exact: true }).waitFor()
+  await page.getByRole('button', { name: '编辑标题', exact: true }).click()
+  await page.getByLabel('当天标题', { exact: true }).fill('我的成都慢游')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await page.getByRole('heading', { name: '我的成都慢游', exact: true }).waitFor()
+  await page.getByRole('button', { name: '分享', exact: true }).click()
+  await page.getByText('展示版未连接后端，此功能需要真实服务；', { exact: false }).waitFor()
   await page.screenshot({ path: `${artifacts}/demo-desktop.png`, fullPage: true })
+  await page.reload()
+  await page.getByRole('heading', { name: '我的成都慢游', exact: true }).waitFor()
+  assert.equal(await page.locator('.detail-metrics strong').first().textContent(), '￥690')
   await page.setViewportSize({ width: 390, height: 844 })
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
   await page.screenshot({ path: `${artifacts}/demo-mobile.png`, fullPage: true })
-  await page.reload({ waitUntil: 'networkidle' })
-  assert.match(await page.locator('output').textContent(), /1\/7/)
-  await page.getByRole('button', { name: '播放', exact: true }).click()
-  await page.getByRole('button', { name: '查看编辑示例', exact: true }).waitFor({ state: 'visible' })
-  await page.waitForFunction(() => document.querySelector('output')?.textContent?.includes('行程就绪'), null, { timeout: 15000 })
-  await page.getByRole('button', { name: '重置', exact: true }).click()
-  assert.match(await page.locator('output').textContent(), /1\/7/)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.getByRole('button', { name: '体验规划流程', exact: true }).click()
+  await page.getByLabel('说说你的旅行想法', { exact: true }).waitFor()
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await page.getByRole('button', { name: '就这样，开始规划', exact: true }).click()
+  await page.locator('.board-budget-total').waitFor({ timeout: 12000 })
+  assert.equal(await page.locator('.board-day-chip').count(), 2)
+  assert.equal(await page.locator('.trip-board-cta').getAttribute('href'), `${prefix}/trips/102`)
+  await page.reload()
+  await page.locator('.board-budget-total').waitFor()
   assert.equal(await page.evaluate(() => localStorage.getItem('sinan-username')), 'existing-user-do-not-touch')
+  await page.getByLabel('产品演示说明').getByRole('button', { name: '重置体验', exact: true }).click()
+  await page.getByRole('heading', { name: /去哪里？\s*说一句话，行程就有了/ }).waitFor()
+  await page.getByRole('button', { name: '看完整行程', exact: true }).click()
+  await page.getByRole('heading', { name: '茶馆、街巷与成都日常', exact: true }).waitFor()
+  assert.equal(await page.locator('.detail-metrics strong').first().textContent(), '￥740')
+  assert.equal(await page.evaluate(() => localStorage.getItem('sinan-username')), 'existing-user-do-not-touch')
+  await page.locator('#primary-navigation').getByRole('button', { name: '设置', exact: true }).click()
+  await page.getByRole('heading', { name: '模型接入', exact: true }).waitFor()
+  assert.ok(await page.getByRole('button', { name: '新增配置', exact: true }).isDisabled())
   assert.deepEqual(apiRequests, [])
   assert.deepEqual(errors, [])
-  // A second context exercises real MapLibre initialization with a local empty style.
-  // It proves rendering and marker placement, not external tile availability.
-  const mapContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' })
-  const mapPage = await mapContext.newPage()
-  mapPage.on('pageerror', (error) => errors.push(String(error)))
-  await mapPage.route('**/*', async (route) => {
+  await context.close()
+
+  // Real MapLibre initialization; local blank style avoids external tile variability.
+  const maps = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' })
+  const mapPage = await maps.newPage()
+  mapPage.on('pageerror', error => errors.push(String(error)))
+  await mapPage.route('**/*', route => {
     const url = new URL(route.request().url())
     if (url.pathname.startsWith('/api/')) { apiRequests.push(url.pathname); return route.abort() }
-    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({
-      contentType: 'application/json', body: JSON.stringify({ version: 8, sources: {}, layers: [] }),
-    })
-    if (url.origin !== new URL(base).origin) return route.abort()
-    return route.continue()
+    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 8, sources: {}, layers: [] }) })
+    return url.origin === new URL(base).origin ? route.continue() : route.abort()
   })
-  await mapPage.goto(`${base}/demo`)
-  for (let i = 0; i < 6; i++) await mapPage.getByRole('button', { name: '单步', exact: true }).click()
-  await mapPage.locator('.map-pin-wrap').first().waitFor({ state: 'visible' })
-  assert.equal(await mapPage.locator('.map-pin-wrap').count(), 6)
-  // Wait past the component's 600 ms fitBounds transition before inspecting its final view.
+  await mapPage.goto(`${base}${prefix}/trips/101`)
+  await mapPage.locator('.map-pin-wrap').first().waitFor()
+  assert.equal(await mapPage.locator('.map-pin-wrap').count(), 11)
+  await mapPage.getByRole('button', { name: '视野全览', exact: true }).click()
   await mapPage.waitForTimeout(800)
   await mapPage.waitForFunction(() => {
-    const map = document.querySelector('.trip-map')?.getBoundingClientRect()
-    return map && [...document.querySelectorAll('.map-pin-wrap')].every((pin) => {
+    const bounds = document.querySelector('.trip-map')?.getBoundingClientRect()
+    return bounds && [...document.querySelectorAll('.map-pin-wrap')].every(pin => {
       const box = pin.getBoundingClientRect()
-      return box.left >= map.left && box.right <= map.right && box.top >= map.top && box.bottom <= map.bottom
+      return box.left >= bounds.left && box.right <= bounds.right && box.top >= bounds.top && box.bottom <= bounds.bottom
     })
   })
   await mapPage.screenshot({ path: `${artifacts}/demo-map.png`, fullPage: true })
   assert.deepEqual(apiRequests, [])
-  await mapContext.close()
-  const unavailableContext = await browser.newContext({ reducedMotion: 'reduce' })
-  const unavailablePage = await unavailableContext.newPage()
-  unavailablePage.on('pageerror', (error) => errors.push(String(error)))
-  await unavailablePage.route('**/*', (route) => {
+  assert.deepEqual(errors, [])
+  await maps.close()
+  const unavailable = await browser.newContext()
+  const unavailablePage = await unavailable.newPage()
+  unavailablePage.on('pageerror', error => errors.push(String(error)))
+  await unavailablePage.route('**/*', route => {
     const url = new URL(route.request().url())
-    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({
-      status: 403, body: 'test-only unavailable map style',
-    })
+    if (url.href === 'https://tiles.openfreemap.org/styles/liberty') return route.fulfill({ status: 403, body: 'test-only unavailable map style' })
     if (url.pathname.startsWith('/api/')) apiRequests.push(url.pathname)
     return url.origin === new URL(base).origin && !url.pathname.startsWith('/api/') ? route.continue() : route.abort()
   })
-  await unavailablePage.goto(`${base}/demo`)
-  for (let i = 0; i < 6; i++) await unavailablePage.getByRole('button', { name: '单步', exact: true }).click()
+  await unavailablePage.goto(`${base}${prefix}/trips/101`)
   await unavailablePage.getByText('底图暂时加载不出来', { exact: false }).waitFor()
-  assert.equal(await unavailablePage.locator('.board-day-chip').count(), 2)
-  assert.equal(await unavailablePage.locator('.demo-links a').count(), 6)
+  await unavailablePage.getByRole('heading', { name: '人民公园', exact: true }).waitFor()
+  await unavailablePage.getByRole('heading', { name: '人民公园', exact: true }).click()
+  await unavailablePage.getByRole('link', { name: '高德地图导航', exact: true }).waitFor()
+  await unavailablePage.getByRole('link', { name: 'Google 地图', exact: true }).waitFor()
   assert.deepEqual(apiRequests, [])
   assert.deepEqual(errors, [])
-  await unavailableContext.close()
-  console.log('PASS: replay, pause, step, reset, scoped edit, budget, refresh, mobile and map fallback; zero API calls')
-} finally {
-  await browser.close()
-}
+  await unavailable.close()
+  console.log('PASS: real homepage/explore/list/detail, generation, scoped edit and budget, title, refresh, mobile, map; zero API calls')
+} finally { await browser.close() }

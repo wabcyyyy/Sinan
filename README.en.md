@@ -14,7 +14,8 @@ docker compose --profile apps up -d --build --wait --wait-timeout 300
 ```
 
 Open [the local demo](http://localhost:5173/demo). No account or model API key is required.
-This is a synthetic fixed replay, not a live model run. It neither saves user data nor proves model quality.
+The demo reuses the latest production pages and animations with synthetic local data. Changes are kept in this tab only; no business API or model is called, and this does not prove model quality.
+Public showcase: [sinan-demo.vercel.app](https://sinan-demo.vercel.app). See [Vercel deployment](docs/public/vercel-demo.md).
 Container builds and optional map tiles require internet access.
 
 Initialization preserves existing configuration and generates secrets only for new files.

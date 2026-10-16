@@ -1,3 +1,5 @@
+import { isDemoMode } from '../demoMode'
+import { apiFetch as fetch } from './transport'
 import type * as Contracts from '../types/generated/contracts'
 import type { ChatDraftPayload, ItineraryChatMessage } from '../types/chat'
 import type { ItineraryDetail, ItinerarySummary, LiveHotelQuotes } from '../types/itinerary'
@@ -676,7 +678,7 @@ const reportedErrors = new Set<string>()
 /** fire-and-forget 上报：探针失败必须静默——它失败时再抛错会递归触发自身。 */
 export function reportClientError(report: Contracts.ClientErrorReport): void {
   // Demo failures stay local too, including React ErrorBoundary and window probes.
-  if (typeof window !== 'undefined' && window.location.pathname === '/demo') return
+  if (isDemoMode()) return
   const key = `${report.source || 'unknown'}:${report.message}`
   if (reportedErrors.has(key) || reportedErrors.size >= CLIENT_ERROR_SESSION_CAP) return
   reportedErrors.add(key)

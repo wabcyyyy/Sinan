@@ -56,6 +56,8 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 - **Java 已退役**：`travel-backend-java/` 已删除，FastAPI 是唯一后端。不要以任何形式复活第二份后端实现。业务端点的行为基准是 `tests/api` 契约与 `tests/test_cutover_contract.py`。
 - **数据库迁移 append-only**：SQL 真相源是 `travel-agent-python/app/db/migrations/sql/V*.sql`，已入库的迁移文件禁止修改/重排，新变更只能追加新版本。
 
+2026-10-16 个人展示口径（用户明确授权）：Vercel Hobby 静态构建复用本分支的正式页面、视觉与 Motion 动效，以固定样例提供免登录交互，不接真实模型。展示身份和草稿使用独立命名空间，并只保存在当前标签页；保留正式模式的服务端会话与草稿归属逻辑。部署配置与交互边界见 `docs/public/vercel-demo.md`。
+
 ## 哲学（违反任何一条的 PR 请先停下来说明）
 
 1. **单一真源**：每类事实只有一份权威定义（schema 在 app/schemas、SQL 在 db/migrations、env 键在 app/common/config.py + .env.example）。副本必然漂移，不允许出现第二份。

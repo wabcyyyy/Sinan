@@ -4,7 +4,7 @@
 
 先按 README 初始化配置，执行 `docker compose up -d mysql redis`。
 后端目录运行 `uv sync --frozen`，再运行 `uv run python main.py`。
-前端目录运行 `npm ci`，再运行 `npm run dev`。单看固定回放只需前端，打开 `/demo`。
+前端目录运行 `npm ci`，再运行 `npm run dev`。完整页面样例只需前端，打开 `/demo`；`npm run build:demo` 构建免登录静态展示（入口 `/`），部署见 [Vercel 展示说明](vercel-demo.md)。
 宿主机连接基础设施时检查 DB_PORT/REDIS_PORT 与根环境文件一致。
 
 ## 后端
@@ -54,7 +54,7 @@ npm run e2e:demo
 ```
 
 浏览器测试需要前端运行与 Edge/Chrome，默认 Edge，可设 E2E_CHANNEL=chrome。
-CI 安装 Playwright Chromium 并设 E2E_CHANNEL=bundled。回放测试阻断业务 API 与外部资源，不调用模型。
+CI 安装 Playwright Chromium 并设 E2E_CHANNEL=bundled。展示测试阻断业务 API 与外部资源，不调用模型，验证正式页面、生成脚本、编辑确认和地图降级。测试展示构建时设置 E2E_DEMO_PREFIX 为空。
 `e2e:golden` 是真实生成路径，不要与固定回放混淆。
 
 ## 字体维护

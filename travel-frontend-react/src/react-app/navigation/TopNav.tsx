@@ -3,6 +3,7 @@ import { navigate, resetHomeSession, useLocation } from '../router'
 import { Brand } from '../shared/Brand'
 import { Icon } from '../shared/Icon'
 import { applyAppearance, readAppearance, saveAppearance } from '../../styles/appearance'
+import { isDemoMode, resetDemo } from '../../demoMode'
 
 // 探索页三合一（2026-10-02）：目的地/灵感/攻略三项收敛为一项「探索」（PLAN §1.2）。
 // 导航补「首页」（PLAN §2.1，2026-10-03）：isActive('/') 现有实现天然只命中 '/'，不改判定。
@@ -38,7 +39,7 @@ export function TopNav({ onLogin, onLogout, username }: { onLogin?: () => void; 
         {username && <button className={isActive('/settings') ? 'top-nav-link active' : 'top-nav-link'} type="button" onClick={() => go('/settings')}>设置</button>}
         <button className="top-nav-appearance" type="button" aria-label={dark ? '切换到亮色' : '切换到暗色'} aria-pressed={dark} onClick={() => { setOpen(false); toggleDark() }}><Icon name={dark ? 'sun' : 'moon'} size={18} /></button>
         {username
-          ? <><span className="top-nav-user"><span className="top-nav-avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span><span className="top-nav-username">{username}</span></span><button className="top-nav-link top-nav-logout" type="button" onClick={() => { setOpen(false); if (onLogout) onLogout() }}>登出</button></>
+          ? <><span className="top-nav-user"><span className="top-nav-avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span><span className="top-nav-username">{username}</span></span><button className="top-nav-link top-nav-logout" type="button" onClick={() => { setOpen(false); if (isDemoMode()) resetDemo(); else if (onLogout) onLogout() }}>{isDemoMode() ? '重置体验' : '登出'}</button></>
           : <button className="top-nav-login" type="button" onClick={() => { setOpen(false); if (onLogin) onLogin(); else go('/login') }}>登录 / 注册</button>}
       </nav>
       <button className="top-nav-menu" type="button" aria-label={open ? '关闭导航' : '打开导航'} aria-expanded={open} aria-controls="primary-navigation" onClick={() => setOpen((value) => !value)}><Icon name={open ? 'close' : 'menu'} size={22} /></button>

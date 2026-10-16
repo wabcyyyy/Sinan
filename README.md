@@ -16,10 +16,9 @@ docker compose -f compose.setup.yml run --rm setup
 docker compose --profile apps up -d --build --wait --wait-timeout 300
 ```
 
-打开 [固定示例回放](http://localhost:5173/demo)。无需登录，能够播放、暂停、单步查看成都两天一晚的交付过程，
-并体验“让第二天轻松一点”的差异预览与确认。
+打开 [完整页面演示](http://localhost:5173/demo)，或访问 [Vercel 展示站](https://sinan-demo.vercel.app)。无需登录，复用新版首页、探索、行程列表、详情、地图与编辑确认，以成都两天一晚固定样例体验交互。部署方式见 [Vercel 展示说明](docs/public/vercel-demo.md)。
 
-**这是合成固定示例，不是实时 AI 生成。** 回放不调用业务 API 或模型，不保存用户数据，不证明模型质量。
+**这是合成固定示例，不是实时 AI 生成。** 演示不调用业务 API 或模型；交互数据只保存在当前标签页，刷新可恢复，重置可清除，不证明模型质量。
 容器首次构建需要下载镜像和依赖；地图底图需要联网，失败时仍能查看行程与地图深链。
 
 初始化从模板生成随机口令、JWT 与内部令牌，默认模型 key 留空。已有配置与数据不会被覆盖。

@@ -1,3 +1,5 @@
+import { isDemoMode } from '../demoMode'
+import { DemoBanner } from './demo/DemoBanner'
 import type { UserInfoVO } from '../types/generated/contracts'
 import { activateIntakeOwner, clearLegacyIntakeStorage, suspendIntakeOwner } from './home/intakeStorage'
 import { lazy, Suspense, useEffect, useState, useRef } from 'react'
@@ -20,7 +22,6 @@ import { SharePage } from './shared/SharePage'
 const TripDetailPage = lazy(() =>
   import('./itinerary/TripDetailPage').then((module) => ({ default: module.TripDetailPage })),
 )
-const DemoPage = lazy(() => import('./demo/DemoPage').then((module) => ({ default: module.DemoPage })))
 
 function pageTitle(path: string) {
   if (path === '/') return '司南 Sinan · 让每一段旅程找到方向'
@@ -35,19 +36,23 @@ function pageTitle(path: string) {
 export default function App() {
   const location = useLocation()
   useEffect(() => { document.title = pageTitle(location.path) }, [location.path])
-  // The demo never mounts the session bootstrap or reads identity storage.
-  if (location.path === '/demo') return <Suspense fallback={<LoadingBlock label="正在打开固定示例…" />}><DemoPage /></Suspense>
   return <BusinessApp />
 }
 
 function BusinessApp() {
   const location = useLocation()
   const revision = useRef(0)
-  const [user, setUser] = useState<UserInfoVO | null>(null)
-  const [status, setStatus] = useState<'checking' | 'ready' | 'logout' | 'logout-error' | 'check-error'>('checking')
+  const demo = isDemoMode()
+  const [user, setUser] = useState<UserInfoVO | null>(() => {
+    if (!demo) return null
+    activateIntakeOwner(0)
+    return { id: 0, username: '演示访客', nickname: '演示访客', phone: null, role: 'user' }
+  })
+  const [status, setStatus] = useState<'checking' | 'ready' | 'logout' | 'logout-error' | 'check-error'>(demo ? 'ready' : 'checking')
   const [sessionVersion, setSessionVersion] = useState(0)
   useEffect(() => { document.title = pageTitle(location.path) }, [location.path])
   useEffect(() => {
+    if (demo) return
     let disposed = false
     try { clearLegacyIntakeStorage() } catch { /* unavailable storage */ }
     const verify = async () => {
@@ -107,7 +112,7 @@ function BusinessApp() {
   if (status === 'logout-error') return <ScreenState><ErrorBlock title="退出未完成" message="网络可能断开了，稍后再试一次。" retryLabel="重试退出" onRetry={() => void handleLogout()} /></ScreenState>
   if (status === 'check-error') return <ScreenState><ErrorBlock title="暂时没有连上司南" message="无法确认登录状态，检查网络后再试一次。" retryLabel="重试" onRetry={() => window.location.reload()} /></ScreenState>
   const username = user?.username ?? ''
-  if (location.path === '/login') return <LoginPage onAuthenticated={authenticated} />
+  if (location.path === '/login' && !demo) return <LoginPage onAuthenticated={authenticated} />
   if (location.path.startsWith('/s/')) return <SharePage path={location.path} />
   let page: ReactNode
   if (location.path === '/') page = <HomePage signedIn={Boolean(username)} />
@@ -119,8 +124,9 @@ function BusinessApp() {
   else page = <div className="page-content"><NotFoundBlock onHome={() => navigate('/')} /></div>
   return (
     <AppShell onLogin={() => navigate('/login')} username={username} onLogout={handleLogout}>
+      {demo && <DemoBanner />}
       <Suspense key={`${user?.id ?? 'anonymous'}:${sessionVersion}`} fallback={<LoadingBlock label="正在打开行程…" />}>{page}</Suspense>
-      {username && <span className="sr-only">已登录：{username}</span>}
+      {username && <span className="sr-only">{demo ? '当前身份：' : '已登录：'}{username}</span>}
     </AppShell>
   )
 }
