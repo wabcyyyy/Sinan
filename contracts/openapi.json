@@ -1355,6 +1355,49 @@
         }
       }
     },
+    "/api/user/password": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Change Password",
+        "description": "改密：验原口令、重新哈希，并撤销该账号其余全部会话（`user_service.change_password`）。\n\n挂在 `/api/user/**` 而不是 `/api/auth/**` 是**安全取向**，不是归类习惯：\n`/api/auth/` 在 `PUBLIC_PATHS` 的前缀白名单里（登录注册必须匿名可达），落在它下面\n的写端点会连票都不看就放行。改密必须被挡住，所以进默认拒绝的 user 面——\n这条边界由 `tests/test_default_deny_auth.py` 机检，不靠评审肉眼。",
+        "operationId": "change_password_api_user_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Change Password Api User Password Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/client-errors": {
       "post": {
         "tags": [
@@ -1512,6 +1555,7 @@
           "itinerary"
         ],
         "summary": "Post Poi Nearby",
+        "description": "同城点位近邻（OpenTripMap / Nominatim）。\n\n配额口径（V17/T2 纠正）：这一条腿**不烧模型**，所以不占用户「今日 AI 生成次数」——\n旧实现过 `enforce_llm_budget`，等于用户点一下\"附近有什么\"就被扣掉一次生成配额，\n把\"哪条腿在花钱\"说错了。只保留速率闸（免费源有配额与 1 rps 政策）。",
         "operationId": "post_poi_nearby_api_itinerary_poi_nearby_post",
         "requestBody": {
           "content": {
@@ -2171,7 +2215,7 @@
           "itinerary"
         ],
         "summary": "Post Regenerate Day",
-        "description": "重生成第 N 天（P0-3 部分交付一键自救）：真·LLM 重新生成，非 optimize 的确定性重排。\n\n只接 PENDING/FAILED/空天（已成功天 400）；同步执行，返回补齐后的最新详情\n（语义与配额拍板见 `itinerary_generation.regenerate_day` 与 `quota_service.enforce_llm_rate_only`）。\n配额硬线：只拦分钟窗、不扣日窗——用户不为补齐从未交付的天再付一次配额。",
+        "description": "重生成第 N 天（P0-3 部分交付一键自救）：真·LLM 重新生成，非 optimize 的确定性重排。\n\n只接 PENDING/FAILED/空天（已成功天 400）；同步执行，返回补齐后的最新详情\n（语义与配额拍板见 `itinerary_generation.regenerate_day` 与 `quota_service.enforce_llm_rate_only`）。\n配额硬线（两层，缺一不可）：\n- **不扣**用户「今日生成次数」——用户不为从未交付的天再付一次配额（P0-3，保持原样），\n  这里只过分钟速率窗；\n- 行程累计补齐额度、连续失败退避与用户/平台窗口硬顶是 V17/T2 的持久判定，落在\n  `itinerary_generation.regenerate_day` 的前置校验**之后**（`cost_admission.admit_repair`）：\n  前置 400/404/409 不消耗额度，真动手补才扣一格。超限回带稳定码的 429\n  （TRIP_REPAIR_LIMIT / TRIP_REPAIR_BACKOFF / *_COST_LIMIT）。",
         "operationId": "post_regenerate_day_api_itinerary__id__days__dayNo__regenerate_post",
         "parameters": [
           {
@@ -6666,6 +6710,25 @@
         },
         "type": "object",
         "title": "ButlerNoteResponse"
+      },
+      "ChangePasswordBody": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "title": "Old Password"
+          },
+          "new_password": {
+            "type": "string",
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordBody",
+        "description": "`POST /api/user/password` 请求体：只有两个口令，**刻意没有 username 字段**。\n\n- 身份取信已验签的会话（JWT 的 sub），不由请求体指定——否则这条端点自己就变成\n  「拿自己的票改别人密码」的越权面；\n- 新口令的形态阈值不在这里重写第二份（AGENTS.md 哲学 #1）：长度 6-24、字符集、\n  非空全部向 `app/schemas/business/auth.py` 的 `RegisterBody` 校验器要答案，\n  失败文案因此与注册一字不差，并走既有的 400 信封映射；「字母+数字」那半条\n  与注册同样落在服务层（`user_service.change_password`）。"
       },
       "ChatEditBody": {
         "properties": {
