@@ -368,7 +368,7 @@ def test_resubmit_reopens_window_not_quota(env) -> None:
 
 
 def test_incomplete_final_check_is_not_a_budget_degradation(env) -> None:
-    """"检查没跑完"不得被研究段的"预算耗尽诚实降级"分支吞掉——那正是绕过验收的老路。"""
+    """「检查没跑完」不得被研究段的「预算耗尽诚实降级」分支吞掉——那正是绕过验收的老路。"""
     from app.agent.runtime.run_limits import RunLimitExceeded
     from app.services.itinerary_generation import DeliveryCheckIncomplete
 
