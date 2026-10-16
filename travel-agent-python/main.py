@@ -37,7 +37,7 @@ from app.common.config import settings
 from app.common.envelope import fail, install_exception_handlers
 from app.common.request_id import RequestIdMiddleware
 from app.db import migrate as db_migrate
-from app.services import export_service, generation_recovery, itinerary_chat, itinerary_generation
+from app.services import cost_ledger, export_service, generation_recovery, itinerary_chat, itinerary_generation
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -177,6 +177,10 @@ async def lifespan(app: FastAPI):
     # 两个任务都经 app.common.cron——pytest 环境自动 no-op，不再各写各的线程。
     cron.register("usage-cleanup", 86400, _cleanup_usage)
     cron.register("checkpoint-cleanup", 86400, _cleanup_checkpoints)
+    # 成本账本后端（V17/T2）：RunLimits 的 reserve/settle 事件要落 MySQL 的 cost_ledger。
+    # 这一步原先只写在 cost_ledger 的 docstring 里、无人调用——不接上就是"账本实现了但
+    # 线上根本不记"，费用硬顶永远读到空账。放启动期并且不吞异常：装不上就不要装作在服务。
+    cost_ledger.install_backend()
     # 增长面保留策略（审查 P2-2）：轨迹文件归档、导出文件 30 天
     cron.register("trace-cleanup", 86400, _cleanup_traces, startup_delay_seconds=8)
     cron.register("export-cleanup", 86400, _cleanup_exports, startup_delay_seconds=8)
