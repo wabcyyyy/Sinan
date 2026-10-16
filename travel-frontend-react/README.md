@@ -2,6 +2,10 @@
 
 React 19 + Vite + TypeScript 壳（入口 `src/react-app/`，`main.tsx` 挂载 `App.tsx`）：首页 ChatIntake 一句话对话创建（澄清卡 + 槽位确认条）、生成期实时预览、行程列表、详情页 ChatPanel 对话编排 + 地图。`src/` 下 Vue3 组件树已整体删除（2026-09-27），只剩 React 消费集：`api/`（后端只经 `api/sinan.ts` 访问）、`shared/`（框架无关纯函数与地图深链）、`types/`（手镜像 + 生成的契约）、`styles/`（令牌与首帧外观）、`assets/`。
 
+## 免费展示站
+
+[sinan-demo.vercel.app](https://sinan-demo.vercel.app) 使用本目录的真实页面和固定样例，免登录，不调用模型。Vercel 自动构建 GitHub 上 `codex/vercel-latest-frontend` 分支的推送，运行 `npm run build:demo`，产物为 `dist`。本地修改须提交并推送到该分支才会上线；详见 [部署说明](../docs/public/vercel-demo.md)。
+
 ## 技术栈
 
 - React 19.2 + Vite 7 + TypeScript；**无路由库 / 无全局状态库**：路由由 `src/react-app/router.ts`（History API）+ `App.tsx` 按路径分发，状态在组件 hooks
@@ -47,4 +51,5 @@ npm run e2e:golden   # 金路径 E2E（先跑仓库根的 scripts/start-all.ps1 
 
 | 变量 | 说明 |
 | --- | --- |
-| （无） | 前端不需要任何 key：地图为 OpenFreeMap 免 key 在线矢量瓦片（署名随图），点位/封面图经服务端同源代理获取（图库 key 只在服务端） |
+| `VITE_DEMO_MODE` | 默认 false；`build:demo` 从 `.env.demo` 读取 true，以固定样例提供完整页面交互，不接真实模型。 |
+| API key | 前端不需要任何 key：地图为 OpenFreeMap 免 key 在线矢量瓦片（署名随图），点位/封面图经服务端同源代理获取（图库 key 只在服务端） |

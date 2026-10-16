@@ -26,26 +26,34 @@ npm run preview
 
 ## 发布到 Vercel
 
-当前个人展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)，项目 `wabcy/sinan-demo`，使用 Hobby 套餐。2026-10-16 展示适配迁移到远端 master `eb151681d71c3addacf620b1283faa4f07078a04`，保留该版本的首页照片拼贴、Motion 动效和详情页重排。发布目录为本次独立 worktree 中的 `travel-frontend-react`，尚未连接 Git 自动部署。
+当前个人展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)，项目 `wabcy/sinan-demo`，使用 Hobby 套餐。2026-10-16 展示适配迁移到远端 master `eb151681d71c3addacf620b1283faa4f07078a04`，保留该版本的首页照片拼贴、Motion 动效和详情页重排。Git 自动部署已连接 `wabcyyyy/Sinan`，生产分支为 `codex/vercel-latest-frontend`。`master` 不作为本展示站的生产分支。
 
-### 从本机更新
+### 自动发布更新
 
-在已登录 Vercel CLI 的本机，从 `travel-frontend-react` 执行：
+在整合分支的独立工作区提交并推送修改：
 
 ```bash
-vercel deploy --prod --scope wabcy --build-env VITE_DEMO_MODE=true
+git add <本次修改的文件>
+git commit -m "Describe the showcase change"
+git push origin codex/vercel-latest-frontend
 ```
 
-本机目录已链接项目；其他机器先执行 `vercel login`，再执行 `vercel link --yes --scope wabcy --project sinan-demo`。`.vercel/` 和 `.env.local` 是本机配置，不入仓；`.vercelignore` 排除旧构建、测试截图和本机凭据。部署在 Vercel 重新运行 `build:demo`。
+Vercel 接收 GitHub 推送，使用仓库中的代码构建，成功后自动更新 `sinan-demo.vercel.app`。没有推送的本地修改不会上线。当前整合工作区为 `C:/Users/25924/.codex/worktrees/vercel-latest-frontend/Sinan`；原 `D:/wcy/project/Sinan` 的未提交工作保留，不要在旧工作区直接拉取或覆盖。
 
-### 改用 Git 自动部署
+Vercel 项目设置：
 
-1. GitHub 登录 Vercel，选择个人、非商业用途的免费 Hobby 计划。
-2. 本批代码提交并推送后，Import Git Repository，选择 Sinan 仓库。
-3. Root Directory 选择 `travel-frontend-react`，Framework Preset 选择 Vite，Node.js 选择 22.x。
-4. 仓内 `vercel.json` 指定 `npm run build:demo` 和产物 `dist`，并将 SPA 路由重写到 `index.html`。不要选择根目录的 Python 服务。
-5. 不填写数据库密码、JWT 或模型 Key，也无需购买域名。不要让项目环境变量覆盖 `.env.demo` 的 `VITE_DEMO_MODE=true`。
-6. 点击 Deploy，使用生成的 Vercel 域名。验证首页、探索、我的行程、详情、编辑确认和刷新直达 `/trips/101`。
+| 设置 | 值 |
+| --- | --- |
+| Git repository | `wabcyyyy/Sinan` |
+| Production branch | `codex/vercel-latest-frontend` |
+| Root Directory | `travel-frontend-react` |
+| Framework | Vite |
+| Build Command | `npm run build:demo` |
+| Output Directory | `dist` |
+
+`build:demo` 读取入仓的 `.env.demo`，其中仅含公开开关 `VITE_DEMO_MODE=true`。不需要数据库密码、JWT 或模型 Key，也无需购买域名。`.vercel/` 与 `.env.local` 是本机配置，不入仓。
+
+在 [Vercel 项目部署列表](https://vercel.com/wabcy/sinan-demo/deployments) 查看对应 Git 提交的状态。失败时检查日志，站点继续使用上一版成功部署；需要重试时在部署详情中使用 Redeploy。Git 集成必须保留对 `Sinan` 仓库的授权。
 
 发布成功后仍须验证公开 URL 和目标网络体验；构建通过本身不能说明浏览器交互或外部地图正常。
 
