@@ -1,0 +1,17 @@
+✓ master ci · 38841225227
+✓ preflight in 32s (ID 116781529374)
+✓ schema-migration in 36s (ID 116781672832)
+✓ agent-eval in 26s (ID 116781672837)
+✓ python-agent in 3m56s (ID 116781672854)
+✓ frontend in 39s (ID 116781672873)
+✓ preview-stack in 2m8s (ID 116781672926)
+✓ eval-determinism in 32s (ID 116781672928)
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+run 38841225227 · master@e836e91 · conclusion success · 4m32s
+all seven jobs green: preflight (ruff/format/pyright/import-linter/metrics/secret/drift), schema-migration (V1..V17 on real MySQL 8), python-agent (full offline suite + diff-cover gate), agent-eval (four eval suites + per-metric ratchet), eval-determinism, frontend, preview-stack
