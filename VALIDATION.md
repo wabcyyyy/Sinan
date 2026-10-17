@@ -23,7 +23,7 @@ Sinan 的 `just check` / `just test` 也是这个入口。无需每轮选择 L0�
 .\verify.ps1                         # 日常快速验证；可复用适用收据
 .\verify.ps1 -Plan                   # 查看选择及留给 CI 的项目
 .\verify.ps1 -Files <当前任务路径>    # 多任务共用 dirty 树时声明准确范围
-.\verify.ps1 -Tests <现有pytest节点>  # 追加关键回归（路径相对仓库根）
+.\verify.ps1 -Tests <现有pytest节点>  # 追加关键回归（路径相对仓库根；多个节点空格或逗号分隔）
 .\verify.ps1 -Base <实际Git基线>      # 包含已提交的分支变化和本地变化
 .\verify.ps1 -NoCache                # 明确要求重新检查
 .\verify.ps1 -Full                   # 用户明确要求的本地完整离线验证

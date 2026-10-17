@@ -101,8 +101,11 @@ $files = Get-ChildItem -Path $root -Recurse -File -Force -ErrorAction SilentlyCo
     }
 
 foreach ($file in $files) {
-    # Never scan real local .env (contains live keys by design; not tracked).
-    if ($file.Name -eq '.env') { continue }
+    # Never scan real local env files (contain live keys by design; not tracked):
+    # .env and the gitignored .env.local family (Vite convention). Section 1 above
+    # still fails the run the moment one of them gets tracked, so content-scanning
+    # them here only false-alarms on the developer's own machine.
+    if ($file.Name -eq '.env' -or ($file.Name -like '.env*' -and $file.Name -like '*.local')) { continue }
     # This scanner itself embeds pattern literals.
     if ($file.Name -eq 'check-secrets.ps1') { continue }
     if ($file.FullName -match 'package-lock|pnpm-lock|\.min\.(js|css)') { continue }
