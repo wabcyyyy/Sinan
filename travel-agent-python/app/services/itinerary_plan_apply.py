@@ -71,7 +71,11 @@ def apply_plans(
         # PR-6 确认流薄适配：有待确认提案时以 Command(resume) 续跑，服务端复核
         # 「确认的确实是要应用的那份草稿」；无待确认提案（超时清理 / 存量消息）
         # 回退既有 message 级语义，不新增硬失败。
-        verdict = resume_confirmation(confirm_thread(itinerary_id), {"action": "apply_plans"})
+        # 出发前照看（§4.5）：线程只认服务端消息里的 `_confirmationThread`——care
+        # 草稿落在独立 care 线程（不碰 chat-{id} 上的用户 checkpoint）；无该键的
+        # 普通草稿仍用原共享线程。客户端无法指定线程。
+        thread = itinerary_chat.action_confirmation_thread(message) or confirm_thread(itinerary_id)
+        verdict = resume_confirmation(thread, {"action": "apply_plans"})
         if verdict is not None and not verdict.confirmed:
             raise ApiError(409, f"确认与提案不一致：{verdict.reason}")
         plans = itinerary_chat.read_plans(message)

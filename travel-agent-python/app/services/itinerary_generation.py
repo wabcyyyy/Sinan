@@ -73,7 +73,6 @@ from app.services import (
     planning_tasks,
     stay_hotels,
 )
-from app.services import preferences as preferences_service
 
 logger = logging.getLogger(__name__)
 
@@ -1275,7 +1274,8 @@ def _create_generation(user_id: int, body: GenerateTripRequest, idempotency_key:
                     generation_status="PENDING",
                 )
             )
-    preferences_service.record_preferences(user_id, command.preferences)
+    # 规格 §3.1.3（个人 Agent V1）：普通建壳不再把本次偏好自动写入长期记忆——
+    # 长期记忆只经 /preferences/memory 显式保存；本次偏好仍随壳存 itinerary_main.preferences。
     # 壳已提交：这里若抛 500，submit_planning 就跑不到，留下一个 GENERATING 空壳等 5 分钟续跑扫描。
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "create", "创建行程草稿")
     # 建壳成功后回填幂等占位值：此后同键重试拿回这个 itinerary_id

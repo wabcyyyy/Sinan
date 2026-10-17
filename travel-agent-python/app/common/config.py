@@ -239,6 +239,9 @@ class Settings(BaseSettings):
     template_community_enabled: bool = False
     # 条目对/错反馈（C3.5）：默认关闭——增强能力由管理员显式打开（与 mcp_write 同模式）
     item_feedback_enabled: bool = False
+    # 出发前照看（个人 Agent V1）：详情页「出发前照看」面板与后台天气检查的总开关。
+    # false 时 care 读端点报 supported=false、写端点 404；开启后仍按用户级开关逐行程启用。
+    care_enabled: bool = False
 
     # ---- 图片源 ----
     unsplash_access_key: str = ""

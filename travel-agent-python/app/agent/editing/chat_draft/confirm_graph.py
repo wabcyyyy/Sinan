@@ -37,6 +37,11 @@ from app.schemas.trip import ChatTurnResponse
 
 CONFIRM_THREAD_PREFIX = "chat"
 
+#: 出发前照看（个人 Agent V1）提案的独立线程前缀：后台草稿不得占用 `chat-{id}`
+#: 共享线程（§4.5——共享线程上「同一线程新提案覆盖旧暂停态」，后台绑定会把用户
+#: 自己的对话 checkpoint 顶掉），提案发布时才落 care 线程的 checkpoint。
+CARE_THREAD_PREFIX = "care"
+
 
 class ConfirmResume(NamedTuple):
     """`Command(resume)` 续跑的判定结果：确认值与提案的服务端复核结论。"""
@@ -50,6 +55,15 @@ class ConfirmResume(NamedTuple):
 def confirm_thread(itinerary_id: int | str) -> str:
     """确认流 thread_id（确定性：提案/确认两侧同源可找回）。"""
     return f"{CONFIRM_THREAD_PREFIX}-{itinerary_id}"
+
+
+def care_confirm_thread(itinerary_id: int | str) -> str:
+    """照看提案的确认线程（复用 confirm_thread 的确定性命名，前缀独立）。
+
+    命名能力与 chat 线程同源（提案/确认两侧同式拼名可找回），但名字空间分开：
+    care 线程上只有后台发布的提案，`chat-{id}` 上只有前台对话提案，互不覆盖。
+    """
+    return f"{CARE_THREAD_PREFIX}-{itinerary_id}"
 
 
 def _proposal_kind(reply: ChatTurnResponse) -> str:

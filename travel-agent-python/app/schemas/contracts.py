@@ -31,6 +31,15 @@ from app.schemas.agent_ops import (
     PoiNearbyResponse,
 )
 from app.schemas.business.auth import LoginBody, LoginData, RegisterBody, UserInfoVO
+from app.schemas.business.care import (
+    CareCheckResult,
+    CareDayObservation,
+    CareDismissBody,
+    CareStateVO,
+    CareUpdateBody,
+    MemoryBody,
+    MemoryVO,
+)
 from app.schemas.business.image_intent import ImageIntentVO
 from app.schemas.business.itinerary import (
     ApplyPlansBody,
@@ -171,6 +180,13 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
         HotelOptionRequest,
         LiveQuotesBody,
         PreferenceSignalsBody,
+        CareUpdateBody,
+        CareStateVO,
+        CareCheckResult,
+        CareDayObservation,
+        CareDismissBody,
+        MemoryBody,
+        MemoryVO,
         VersionBody,
         OptimizeDayBody,
         UpdateDayBody,

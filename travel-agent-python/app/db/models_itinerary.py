@@ -122,6 +122,39 @@ class ItineraryChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
+class ItineraryCare(Base):
+    """出发前照看任务的持久状态（V20，个人 Agent V1）：一行 = 一趟行程的照看授权与最近结果。
+
+    刻意**不继承 SoftDelete**（同 planning_task 的理由）：它没有 deleted 列，也不该有——
+    行程软删后这一行自然不可达（GET/PUT 都先复核 itinerary_main 归属，404），
+    扫描面（S2 起）按「主行程存在且未出发」再筛，不依赖本表自身可删。
+
+    日期口径：`last_ai_attempt_on` 是**上海自然日**（Asia/Shanghai，由 app/common/clock
+    统一解释，禁止主机 date.today()）；其余时刻按既有约定存应用侧 naive 本地时刻。
+    """
+
+    __tablename__ = "itinerary_care"
+
+    itinerary_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    # enabled 也表示用户同意按现有额度机制消耗后台 AI（规格 §4.1）
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    watched_item_ids_json: Mapped[list | None] = mapped_column(JSON, comment="关注天气影响的活动 item ID（1-20）")
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime, comment="到期扫描时刻；NULL=不参与扫描")
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime, comment="最近一次检查完成时刻（checkedAt）")
+    last_status: Mapped[str | None] = mapped_column(String(24), comment="用户可见状态（pending/no_risk/...）")
+    last_result_json: Mapped[dict | None] = mapped_column(
+        JSON, comment="有界结果：逐日观测/受影响项/原因/pendingMessageId"
+    )
+    notified_risks_json: Mapped[list | None] = mapped_column(JSON, comment="已呈现或已忽略的风险键（去重权威）")
+    last_ai_attempt_on: Mapped[date | None] = mapped_column(Date, comment="上海自然日：每日至多一次自动 AI 尝试")
+    check_token: Mapped[str | None] = mapped_column(String(36), comment="争抢令牌：失效 token 不得发布结果")
+    checking_until: Mapped[datetime | None] = mapped_column(DateTime, comment="争抢截止：过期 token 可重领")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class ItineraryDay(Base, SoftDelete):
     __tablename__ = "itinerary_day"
     __table_args__ = (

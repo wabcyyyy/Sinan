@@ -1,4 +1,4 @@
-import { hasIdentity } from '../../demoMode'
+import { hasIdentity, isDemoMode } from '../../demoMode'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -31,6 +31,7 @@ import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/S
 import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
+import { TripCarePanel, carePanelVisible } from './TripCarePanel'
 import { feedbackIndex } from './itemFeedback'
 import { ItemFeedbackControl } from './ItemFeedbackControl'
 import { TripMapPanel } from './TripMapPanel'
@@ -112,10 +113,27 @@ export function TripDetailPage({ path }: { path: string }) {
   // FEUX-1：/trips/5 → /trips/999 切换时慢响应后到覆盖新响应——请求序号守卫，
   // 只有「最新一次 load」的结果才允许落地（列表页 TripsPage 同款）
   const loadSeqRef = useRef(0)
+  // 出发前照看（个人 Agent V1）：对话草稿确认会消费 care 草稿——bump 此键让面板重取状态
+  const [careRefreshTick, setCareRefreshTick] = useState(0)
 
   const selectPin = (pin: MapPin) => {
     setDayNo(pin.dayNo)
     setActivePin(pin.key)
+  }
+
+  /** 照看结果卡「查看调整草稿」：跳既有聊天草稿（当前唯一待确认卡），不另开草稿面。
+   * 对话历史异步载入，锚点短重试（上限 2s），展开失败也只是不滚动，不报错。 */
+  const openChatDraft = () => {
+    setChatCollapsed(false)
+    const jump = (tries: number) => {
+      const el = document.getElementById('chat-active-draft')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      if (tries > 0) window.setTimeout(() => jump(tries - 1), 250)
+    }
+    window.setTimeout(() => jump(8), 60)
   }
 
   /** 时间线条目点击：选中（地图飞到该点，不滚页面）+ 展开/收起地图出口 */
@@ -388,9 +406,20 @@ export function TripDetailPage({ path }: { path: string }) {
           onToggleCollapse={() => setChatCollapsed((value) => !value)}
           currentDayNo={dayNo}
           city={trip.city}
+          onAfterApply={() => setCareRefreshTick((tick) => tick + 1)}
         />
       )}
       <section className="day-content">
+        {/* 出发前照看（个人 Agent V1）：只在真实模式挂载——离线样例与演示模式
+            不渲染、不请求 care API（规格 §5 静态展示隔离）；不支持/未加载时面板自隐藏 */}
+        {carePanelVisible({ offline, demo: isDemoMode() }) && (
+          <TripCarePanel
+            itineraryId={trip.id}
+            dayList={trip.dayList}
+            onViewDraft={openChatDraft}
+            refreshKey={careRefreshTick}
+          />
+        )}
         {/* 天切换（2026-10-12 改版）：原独立侧栏列收进内容卡顶部的吸顶横条，工作区从三栏
             收成「对话 | 行程」两栏（与首页工作台同一心智）；选中底块是 layoutId 滑块 */}
         <nav className="day-tabs" aria-label="按天切换">{trip.dayList.map((item) => {

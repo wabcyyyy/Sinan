@@ -14,6 +14,7 @@ from app.common import event_hub, event_publisher
 from app.common.addons import require_addon
 from app.common.config import settings
 from app.common.envelope import ApiError, ok
+from app.schemas.business.care import CareUpdateBody, MemoryBody
 from app.schemas.business.itinerary import (
     ApplyPlansBody,
     ArchiveBody,
@@ -33,6 +34,8 @@ from app.schemas.business.itinerary import (
 )
 from app.services import (
     cover_service,
+    itinerary_care,
+    itinerary_care_check,
     itinerary_chat,
     itinerary_city,
     itinerary_command,
@@ -145,6 +148,21 @@ def post_preference_signals(
 @router.get("/preferences/signals")
 def get_preference_signals(user: AuthUser = Depends(enforce_business_auth)) -> dict:
     return ok(preferences.signals(user.id, 50))
+
+
+@router.get("/preferences/memory")
+def get_preference_memory(user: AuthUser = Depends(enforce_business_auth)) -> dict:
+    """显式长期记忆只读视图（规格 §3.1）：仅 explicit_memory 来源，历史标签不算。"""
+    return ok(preferences.memory_labels(user.id))
+
+
+@router.put("/preferences/memory")
+def put_preference_memory(
+    body: MemoryBody,
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """原子保存显式记忆集合；空集合 = 遗忘此入口管理的全部记忆（规格 §3.1.6）。"""
+    return ok(preferences.save_memory(user.id, body.positive, body.negative))
 
 
 @router.get("")
@@ -516,6 +534,53 @@ def set_archived(
     user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_command.set_archived(user.id, id, body.archived))
+
+
+# ---- 出发前照看（个人 Agent V1）：薄路由，归属/资格/状态在 itinerary_care ----
+
+
+@router.get("/{id}/care")
+def get_itinerary_care(
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """照看状态投影；只读、不触发外呼（规格 §4.3），非所有者 404。"""
+    return ok(itinerary_care.care_state(user.id, id))
+
+
+@router.put("/{id}/care")
+def put_itinerary_care(
+    body: CareUpdateBody,
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """保存授权与监控范围；开启须显式 allowBackgroundAi=true（后台 AI 费用授权）。"""
+    return ok(itinerary_care.update_care(user.id, id, body))
+
+
+@router.post("/{id}/care/check", status_code=202)
+def post_itinerary_care_check(
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """立即检查（规格 §4.3）：与 cron 同一执行函数、同一次争抢，经有界 chat_pool 提交。
+
+    202 = 已受理（池满/已在检查等边界语义见 itinerary_care_check.request_check）；
+    正在检查返回当前状态，不创建第二份；满载返回现有繁忙错误并释放本次争抢。
+    """
+    return ok(itinerary_care_check.request_check(user.id, id))
+
+
+@router.post("/{id}/care/dismiss")
+def post_itinerary_care_dismiss(
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    """忽略当前照看建议（规格 §4.3）：仅消费本表 pendingMessageId 对应的 care 草稿。
+
+    不清空普通聊天草稿；无待忽略对象幂等返回当前状态；非所有者 404。
+    """
+    return ok(itinerary_care.dismiss_pending(user.id, id))
 
 
 # ---- 公开分享（SPEC v2.3 §6.6，S2）：owner 面三端点；匿名面在 share.py ----

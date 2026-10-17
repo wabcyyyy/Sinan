@@ -34,6 +34,7 @@ from app.db.models_execution import CostLedger, LlmReservation, PlanningTask
 from app.db.models_itinerary import (
     BudgetDetail,
     Expense,
+    ItineraryCare,
     ItineraryChatMessage,
     ItineraryDay,
     ItineraryItem,
@@ -53,6 +54,7 @@ __all__ = [
     "Expense",
     "ExportTask",
     "ItemFeedback",
+    "ItineraryCare",
     "ItineraryChatMessage",
     "ItineraryDay",
     "ItineraryInvitation",

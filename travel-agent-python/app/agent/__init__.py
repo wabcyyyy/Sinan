@@ -16,12 +16,25 @@ from app.agent.data.city_center import destination_problem
 from app.agent.data.live_quotes import quota_exhausted as live_quote_quota_exhausted
 from app.agent.data.weather import get_weather_forecast
 from app.agent.editing.chat_draft import run_chat_turn
-from app.agent.editing.chat_draft.confirm_graph import ConfirmResume, confirm_thread, resume_confirmation
+from app.agent.editing.chat_draft.confirm_graph import (
+    ConfirmResume,
+    care_confirm_thread,
+    confirm_thread,
+    resume_confirmation,
+    run_confirmation,
+)
 from app.agent.editing.city_guide import run_city_guide
 from app.agent.editing.clarify import run_clarify
 from app.agent.editing.image_intent import run_image_intent
 from app.agent.editing.local_replan import run_local_replan
 from app.agent.editing.nl_edit import run_edit_ops
+from app.agent.editing.weather_care import (
+    CareAdjustInput,
+    CareAdjustResult,
+    CareAffectedDay,
+    CareWatchedItem,
+    run_weather_care_adjustment,
+)
 from app.agent.generation.content.butler import run_butler_note, run_poi_intros
 from app.agent.generation.content.narrative import sync_schedule_summary
 from app.agent.generation.content.reflect import BUDGET_OVERAGE_MARK, hard_day_issues, validate_plans
@@ -58,6 +71,10 @@ from app.agent.tools.registry import ToolInvocationError, ToolSpec, registry
 
 __all__ = [
     "BUDGET_OVERAGE_MARK",
+    "CareAdjustInput",
+    "CareAdjustResult",
+    "CareAffectedDay",
+    "CareWatchedItem",
     "ConfirmResume",
     "DayResume",
     "RunLimitExceeded",
@@ -67,6 +84,7 @@ __all__ = [
     "TaskStopped",
     "ToolInvocationError",
     "ToolSpec",
+    "care_confirm_thread",
     "check_constraints",
     "check_task_write",
     "confirm_thread",
@@ -92,6 +110,7 @@ __all__ = [
     "run_chat_turn",
     "run_city_guide",
     "run_clarify",
+    "run_confirmation",
     "run_edit_ops",
     "run_generate",
     "run_generate_day",
@@ -100,6 +119,7 @@ __all__ = [
     "run_local_replan",
     "run_plan_context",
     "run_poi_intros",
+    "run_weather_care_adjustment",
     "scene",
     "search_hotels",
     "search_live_flight_quotes",

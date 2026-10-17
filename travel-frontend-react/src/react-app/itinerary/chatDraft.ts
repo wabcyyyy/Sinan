@@ -230,3 +230,18 @@ export function pendingActionSummary(pending: NonNullable<ItineraryChatMessage['
   const nights = pending.night_count ? `，共 ${pending.night_count} 晚` : ''
   return `AI 提议更换住宿：${hotels}${pending.target_tier ? `（${pending.target_tier}）` : ''}${nights}`
 }
+
+/** 照看草稿的确认线程前缀（单一真源在后端 confirm_graph.CARE_THREAD_PREFIX，
+ * 发布时作为 `_confirmationThread` 随服务端草稿消息持久化）。 */
+const CARE_THREAD_PREFIX = 'care-'
+
+/** 是否出发前照看发布的草稿：读服务端随草稿持久化的 `_confirmationThread` 元数据
+ * （只有 care 发布写入 care-{id}；普通草稿无此键或为 chat-{id}）——不按内容前缀猜，
+ * 用户消息以「[行程照看]」开头不会被误标。仅用于草稿卡的来源标注——「当前唯一待确认」
+ * 语义仍由 activeActionIndex 统一给出，care 草稿不享受第二套待确认判定（规格 §4.5：
+ * 前台新草稿照常替代已发布的 care 草稿）。 */
+export function isCareDraft(msg: ItineraryChatMessage): boolean {
+  if (msg.role !== 'ai') return false
+  const thread = (msg.plans?.[0] as { _confirmationThread?: unknown } | undefined)?._confirmationThread
+  return typeof thread === 'string' && thread.startsWith(CARE_THREAD_PREFIX)
+}

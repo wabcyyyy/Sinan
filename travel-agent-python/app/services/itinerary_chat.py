@@ -206,6 +206,29 @@ def has_action_payload(message: ItineraryChatMessage) -> bool:
     )
 
 
+def latest_action_message(session, user_id: int, itinerary_id: int) -> ItineraryChatMessage | None:
+    """「当前唯一待确认」的判定（M4/§4.5 单一真源）：最近一条带草稿的 AI 消息。
+
+    apply 链（require_pending_action 的 409「已被更新的建议取代」）与出发前照看
+    （有前台待确认草稿就不发起后台模型调用）用的是同一个语义、同一个查询——
+    两处各写一份必然漂移，故提为一处。
+    """
+    candidates = (
+        session.execute(
+            select(ItineraryChatMessage)
+            .where(
+                ItineraryChatMessage.itinerary_id == itinerary_id,
+                ItineraryChatMessage.user_id == user_id,
+                ItineraryChatMessage.role == "ai",
+            )
+            .order_by(ItineraryChatMessage.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return next((row for row in candidates if has_action_payload(row)), None)
+
+
 def consume_pending_action(message: ItineraryChatMessage) -> None:
     message.plans_json = "[]"
     message.hotel_options_json = "[]"
@@ -243,20 +266,7 @@ def require_pending_action(
     if message is None or not payload:
         raise ApiError(409, "该方案已失效，请使用最新建议")
 
-    candidates = (
-        session.execute(
-            select(ItineraryChatMessage)
-            .where(
-                ItineraryChatMessage.itinerary_id == itinerary_id,
-                ItineraryChatMessage.user_id == user_id,
-                ItineraryChatMessage.role == "ai",
-            )
-            .order_by(ItineraryChatMessage.id.desc())
-        )
-        .scalars()
-        .all()
-    )
-    latest = next((row for row in candidates if has_action_payload(row)), None)
+    latest = latest_action_message(session, user_id, itinerary_id)
     if latest is None or latest.id != message.id:
         raise ApiError(409, "该方案已被更新的建议取代，请使用最新方案")
 
@@ -481,11 +491,14 @@ def attach_base_revision(
     base_revision: str,
     camel_case: bool,
     planning_revision: int | None = None,
+    confirmation_thread: str | None = None,
 ) -> list[Any]:
     """给草稿逐项打上版本指纹：plans 用 `_baseRevision`（下划线=内部字段），酒店用 `baseRevision`。
 
     M4：同时嵌整数规划修订号（`_basePlanningRevision`/`basePlanningRevision`），
     apply 端做原子条件更新（CAS）——hash 只做可读校验身份，不代替 CAS。
+    出发前照看（§4.5）：`confirmation_thread` 非空时再嵌 `_confirmationThread`——
+    草稿元数据随消息持久化，apply 只认服务端消息里的线程，不认客户端回显。
     """
     key = "baseRevision" if camel_case else "_baseRevision"
     rev_key = "basePlanningRevision" if camel_case else "_basePlanningRevision"
@@ -495,8 +508,28 @@ def attach_base_revision(
         item[key] = base_revision
         if planning_revision is not None:
             item[rev_key] = planning_revision
+        if confirmation_thread is not None:
+            item["_confirmationThread"] = confirmation_thread
         attached.append(item)
     return attached
+
+
+def action_confirmation_thread(message: ItineraryChatMessage) -> str | None:
+    """草稿声明 own 的确认线程（仅服务端写入的 `_confirmationThread`；普通草稿 → None）。"""
+    plans = read_json_list(message.plans_json)
+    if plans and isinstance(plans[0], dict):
+        thread = plans[0].get("_confirmationThread")
+        return None if thread is None else str(thread)
+    return None
+
+
+def lock_main_for_draft(session, itinerary_id: int) -> None:
+    """「当前待确认草稿」检查/写入共用的主行程行锁（§4.5：前台 finalize 与后台发布同一把）。
+
+    前台操作优先的实现即锁序：后台发布在锁内看到任何待确认草稿就丢弃；SQLite 没有
+    SELECT ... FOR UPDATE（方言自动忽略），行级串行化在 MySQL 上生效。
+    """
+    session.execute(select(ItineraryMain.id).where(ItineraryMain.id == itinerary_id).with_for_update())
 
 
 def save_chat_message(
@@ -567,6 +600,9 @@ def finalize_chat_turn(
         "pendingAction": turn.get("pendingAction"),
     }
     with session_scope() as session:
+        # 与后台发布（itinerary_care_check._publish）同一把主行程行锁（§4.5）：
+        # 两侧对「当前待确认草稿」的检查/写入因此串行，前台优先。
+        lock_main_for_draft(session, itinerary_id)
         save_chat_message(session, user_id, itinerary_id, "user", message, [], [], False)
         if out["changed"] or hotel_options:
             invalidate_in_session(session, user_id, itinerary_id)

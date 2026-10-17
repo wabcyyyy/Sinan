@@ -7,7 +7,7 @@ import { ChatComposer, composeDraft, imageFeedbackText } from '../shared/ChatCom
 import { Icon } from '../shared/Icon'
 import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { renderChatMarkdown } from './chatMarkdown'
-import { activeActionIndex, describeStructuredChange, diffBadge, hotelDefaultSelection, pendingActionSummary, structuredDraftChanges, unverifiedNames } from './chatDraft'
+import { activeActionIndex, describeStructuredChange, diffBadge, hotelDefaultSelection, isCareDraft, pendingActionSummary, structuredDraftChanges, unverifiedNames } from './chatDraft'
 import { getDayQuickPrompts, getPromptSceneGroups } from './chatPrompts'
 import { describeLiveQuotesError, liveQuotesCaption, quoteRowMeta } from './hotelLiveQuotes'
 import type { LiveQuotesState } from './hotelLiveQuotes'
@@ -26,6 +26,7 @@ export function ChatPanel({
   onToggleCollapse,
   currentDayNo = 1,
   city,
+  onAfterApply,
 }: {
   itineraryId: number
   dayList: DayPlan[]
@@ -35,6 +36,9 @@ export function ChatPanel({
   onToggleCollapse?: () => void
   currentDayNo?: number
   city?: string
+  /** 草稿确认成功后的外部联动（个人 Agent V1）：照看面板据此重取状态
+   *（确认应用会消费 care 草稿，GET care 的派生状态随之变化）。 */
+  onAfterApply?: () => void
 }) {
   const chat = useTripChat(itineraryId, onApplied, onReconcile)
   const [draft, setDraft] = useState('')
@@ -132,14 +136,21 @@ export function ChatPanel({
               // 流式回合里 AI 消息先占位，正文到达前显示跳点思考态。
               : (msg.content ? renderChatMarkdown(msg.content) : <span className="chat-thinking" aria-label="司南正在想"><i /><i /><i /></span>)}</div>
             {isDraft && (
-              <DraftCard
-                msg={msg}
-                itineraryId={itineraryId}
-                dayList={dayList}
-                applying={chat.applying}
-                onApply={() => void chat.applyDraft()}
-                onApplyHotel={(option, roomType, dayNos) => void chat.applyHotel(option, roomType, dayNos)}
-              />
+              <div id="chat-active-draft">
+                <DraftCard
+                  msg={msg}
+                  itineraryId={itineraryId}
+                  dayList={dayList}
+                  applying={chat.applying}
+                  onApply={() => {
+                    void chat.applyDraft().then((applied) => {
+                      // 确认成功后联动外部（照看面板重取状态）；失败时 409 对账已由 hook 处理
+                      if (applied) onAfterApply?.()
+                    })
+                  }}
+                  onApplyHotel={(option, roomType, dayNos) => void chat.applyHotel(option, roomType, dayNos)}
+                />
+              </div>
             )}
           </div>
         )
@@ -217,6 +228,7 @@ export function DraftCard({
   const changes = msg.plans?.length ? structuredDraftChanges(dayList, msg.plans) : []
   const unverified = msg.plans?.length ? unverifiedNames(dayList, msg.plans) : []
   return <div className="chat-draft">
+    {isCareDraft(msg) && <p className="chat-draft-source" role="note"><Icon name="sun" size={13} />来自出发前照看：按预报风险准备的调整，确认后才会改变行程。</p>}
     {msg.requiresConfirmation && msg.pendingAction && (
       <div className="chat-confirm" role="status">
         <strong>需要你确认</strong>

@@ -635,6 +635,53 @@ export interface PreferenceSignalsBody {
   confidence: number | null
 }
 
+export interface CareUpdateBody {
+  enabled: boolean | null
+  watchedItemIds: number[] | null
+  allowBackgroundAi: boolean | null
+}
+
+export interface CareCheckResult {
+  checkedAt: string | null
+  status: string
+  reason: string | null
+  days: CareDayObservation[]
+  affectedItemIds: number[]
+  pendingMessageId: number | null
+}
+
+export interface CareDayObservation {
+  date: string
+  precipProb: number | null
+  weatherCode: number | null
+  condition: string | null
+  risk: boolean
+}
+
+export interface CareStateVO {
+  supported: boolean
+  enabled: boolean
+  watchedItemIds: number[]
+  status: string | null
+  nextCheckAt: string | null
+  lastCheckedAt: string | null
+  lastResult: CareCheckResult | null
+  needsReselect: boolean
+}
+
+export interface CareDismissBody {
+}
+
+export interface MemoryBody {
+  positive: string[]
+  negative: string[]
+}
+
+export interface MemoryVO {
+  positive: string[]
+  negative: string[]
+}
+
 export interface VersionBody {
   operation: string
   summary: string

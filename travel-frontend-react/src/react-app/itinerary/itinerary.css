@@ -496,3 +496,51 @@
 @keyframes chat-think { 0%, 100% { opacity: .3; transform: translateY(0); } 45% { opacity: 1; transform: translateY(-3px); } }
 
 .chat-empty { display: grid; gap: 14px; padding: 2px 0 6px; color: var(--sinan-muted); font-size: 13px; line-height: 1.8; }
+
+/* ---------- 出发前照看（个人 Agent V1，规格 §5）：开关/关注活动/费用说明/结果卡 ---------- */
+.care-panel { display: grid; gap: 14px; margin-bottom: 18px; padding: 18px 20px; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius); background: var(--sinan-surface); box-shadow: var(--sinan-shadow-soft); }
+.care-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.care-panel-head h2 { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 15px; font-weight: 700; color: var(--sinan-ink); }
+.care-panel-head h2 svg { color: var(--sinan-accent); }
+.care-panel-head p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--sinan-muted); }
+.care-switch { display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--sinan-ink-soft); white-space: nowrap; }
+.care-switch input { width: 17px; height: 17px; accent-color: var(--sinan-accent); cursor: pointer; }
+.care-enable-box { display: grid; gap: 9px; padding: 12px 14px; border-radius: var(--sinan-radius-sm); background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); }
+.care-cost-note { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 12.5px; line-height: 1.75; color: var(--sinan-ink-soft); }
+.care-cost-note svg { flex-shrink: 0; margin-top: 3px; color: var(--sinan-accent); }
+.care-agree { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sinan-ink); }
+.care-agree input { width: 15px; height: 15px; accent-color: var(--sinan-accent); cursor: pointer; }
+.care-watch { display: grid; gap: 8px; }
+.care-watch-label { font-size: 12px; font-weight: 700; color: var(--sinan-ink-soft); }
+.care-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.care-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 11px; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius-pill); background: var(--sinan-surface); color: var(--sinan-ink-soft); font-size: 12px; line-height: 1.5; cursor: pointer; transition: border-color .18s, background .18s, color .18s; }
+.care-chip span { flex-shrink: 0; font-weight: 700; color: var(--sinan-muted); }
+.care-chip:hover { border-color: var(--sinan-accent); color: var(--sinan-ink); }
+.care-chip.is-on { border-color: var(--sinan-accent); background: var(--sinan-accent-soft); color: var(--sinan-ink); }
+.care-chip.is-on span { color: var(--sinan-accent-dark); }
+.care-chip:disabled { cursor: default; opacity: .65; }
+.care-watch-empty { margin: 0; font-size: 12.5px; color: var(--sinan-muted); }
+.care-save-range { justify-self: start; }
+.care-warning { display: flex; align-items: center; gap: 7px; margin: 0; padding: 9px 12px; border-radius: var(--sinan-radius-sm); background: var(--sinan-accent-wash); color: var(--sinan-accent-dark); font-size: 12.5px; line-height: 1.6; }
+.care-warning svg { flex-shrink: 0; }
+.care-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.care-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--sinan-ink-soft); }
+.care-status.is-checking { color: var(--sinan-accent-dark); }
+.care-next { font-size: 12px; color: var(--sinan-muted); }
+.care-result { display: grid; gap: 9px; padding: 13px 15px; border-radius: var(--sinan-radius-sm); background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); }
+.care-result-head { display: flex; align-items: baseline; gap: 9px; }
+.care-result-head strong { font-size: 12.5px; color: var(--sinan-ink); }
+.care-result-head span { font-size: 12px; color: var(--sinan-muted); }
+.care-result-line { margin: 0; font-size: 13px; line-height: 1.7; color: var(--sinan-ink-soft); }
+.care-result-line.is-active { font-weight: 700; color: var(--sinan-accent-dark); }
+.care-risk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.care-risk-list li { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; line-height: 1.6; color: var(--sinan-ink-soft); }
+.care-risk-list strong { flex-shrink: 0; color: var(--sinan-ink); }
+.care-affected { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--sinan-ink-soft); }
+.care-result-foot { margin: 0; font-size: 11.5px; line-height: 1.6; color: var(--sinan-muted); }
+.care-result-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.care-notice { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; color: var(--sinan-accent-dark); }
+.care-notice button { margin-left: auto; }
+/* 照看草稿在对话流里的来源标注（展示识别，不改变既有草稿卡语义） */
+.chat-draft-source { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; line-height: 1.6; color: var(--sinan-ink-soft); }
+.chat-draft-source svg { flex-shrink: 0; color: var(--sinan-accent); }

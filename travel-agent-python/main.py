@@ -36,7 +36,14 @@ from app.common.config import settings
 from app.common.envelope import fail, install_exception_handlers
 from app.common.request_id import RequestIdMiddleware
 from app.db import migrate as db_migrate
-from app.services import cost_ledger, export_service, generation_recovery, itinerary_chat, itinerary_generation
+from app.services import (
+    cost_ledger,
+    export_service,
+    generation_recovery,
+    itinerary_care_check,
+    itinerary_chat,
+    itinerary_generation,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -214,6 +221,14 @@ async def lifespan(app: FastAPI):
     cron.register("timezone-check", 86400, timezone_check.verify, startup_delay_seconds=6)
     generation_recovery.register_loop()
     cron.register("operations-monitor", 60, operations.check, startup_delay_seconds=15)
+    # 出发前照看扫描（个人 Agent V1，规格 §3.2）：每 5 分钟、单次最多 5 项、串行；
+    # 执行与「立即检查」共用同一函数与争抢，全局开关关闭时扫描直接空转。
+    cron.register(
+        "itinerary-care-scan",
+        itinerary_care_check.SCAN_INTERVAL_SECONDS,
+        itinerary_care_check.scan_due_checks,
+        startup_delay_seconds=12,
+    )
     cron.start_all()
     try:
         yield

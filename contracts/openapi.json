@@ -2009,6 +2009,70 @@
         }
       }
     },
+    "/api/itinerary/preferences/memory": {
+      "get": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Get Preference Memory",
+        "description": "显式长期记忆只读视图（规格 §3.1）：仅 explicit_memory 来源，历史标签不算。",
+        "operationId": "get_preference_memory_api_itinerary_preferences_memory_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Preference Memory Api Itinerary Preferences Memory Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Put Preference Memory",
+        "description": "原子保存显式记忆集合；空集合 = 遗忘此入口管理的全部记忆（规格 §3.1.6）。",
+        "operationId": "put_preference_memory_api_itinerary_preferences_memory_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Put Preference Memory Api Itinerary Preferences Memory Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/itinerary": {
       "get": {
         "tags": [
@@ -3604,6 +3668,194 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Set Archived Api Itinerary  Id  Archive Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/care": {
+      "get": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Get Itinerary Care",
+        "description": "照看状态投影；只读、不触发外呼（规格 §4.3），非所有者 404。",
+        "operationId": "get_itinerary_care_api_itinerary__id__care_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Itinerary Care Api Itinerary  Id  Care Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Put Itinerary Care",
+        "description": "保存授权与监控范围；开启须显式 allowBackgroundAi=true（后台 AI 费用授权）。",
+        "operationId": "put_itinerary_care_api_itinerary__id__care_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CareUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Put Itinerary Care Api Itinerary  Id  Care Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/care/check": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Post Itinerary Care Check",
+        "description": "立即检查（规格 §4.3）：与 cron 同一执行函数、同一次争抢，经有界 chat_pool 提交。\n\n202 = 已受理（池满/已在检查等边界语义见 itinerary_care_check.request_check）；\n正在检查返回当前状态，不创建第二份；满载返回现有繁忙错误并释放本次争抢。",
+        "operationId": "post_itinerary_care_check_api_itinerary__id__care_check_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Post Itinerary Care Check Api Itinerary  Id  Care Check Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/care/dismiss": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Post Itinerary Care Dismiss",
+        "description": "忽略当前照看建议（规格 §4.3）：仅消费本表 pendingMessageId 对应的 care 草稿。\n\n不清空普通聊天草稿；无待忽略对象幂等返回当前状态；非所有者 404。",
+        "operationId": "post_itinerary_care_dismiss_api_itinerary__id__care_dismiss_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Post Itinerary Care Dismiss Api Itinerary  Id  Care Dismiss Post"
                 }
               }
             }
@@ -6982,6 +7234,49 @@
         "type": "object",
         "title": "ButlerNoteResponse"
       },
+      "CareUpdateBody": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "watchedItemIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watcheditemids"
+          },
+          "allowBackgroundAi": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowbackgroundai"
+          }
+        },
+        "type": "object",
+        "title": "CareUpdateBody",
+        "description": "`PUT /api/itinerary/{id}/care` 请求体。\n\n开启（enabled=true）必须同时显式 allowBackgroundAi=true（后台 AI 费用授权，\n规格 §3.2）；关闭不要求再次授权。watchedItemIds 缺省=不动现有监控范围。"
+      },
       "ChangePasswordBody": {
         "properties": {
           "old_password": {
@@ -10085,6 +10380,29 @@
           "role"
         ],
         "title": "MemberRoleUpdate"
+      },
+      "MemoryBody": {
+        "properties": {
+          "positive": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Positive",
+            "default": []
+          },
+          "negative": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Negative",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "MemoryBody",
+        "description": "`PUT /api/itinerary/preferences/memory` 请求体：原子替换显式记忆集合；\n空集合 = 遗忘此入口管理的全部记忆（规格 §3.1.6）。"
       },
       "NlEditBody": {
         "properties": {

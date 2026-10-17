@@ -1501,6 +1501,325 @@
         "confidence"
       ]
     },
+    "CareUpdateBody": {
+      "properties": {
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "watchedItemIds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Watcheditemids"
+        },
+        "allowBackgroundAi": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowbackgroundai"
+        }
+      },
+      "title": "CareUpdateBody",
+      "type": "object",
+      "required": [
+        "enabled",
+        "watchedItemIds",
+        "allowBackgroundAi"
+      ]
+    },
+    "CareCheckResult": {
+      "properties": {
+        "checkedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkedat"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "days": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CareDayObservation"
+          },
+          "title": "Days",
+          "type": "array"
+        },
+        "affectedItemIds": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Affecteditemids",
+          "type": "array"
+        },
+        "pendingMessageId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pendingmessageid"
+        }
+      },
+      "required": [
+        "checkedAt",
+        "status",
+        "reason",
+        "days",
+        "affectedItemIds",
+        "pendingMessageId"
+      ],
+      "title": "CareCheckResult",
+      "type": "object"
+    },
+    "CareDayObservation": {
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "precipProb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precipprob"
+        },
+        "weatherCode": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weathercode"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Condition"
+        },
+        "risk": {
+          "default": false,
+          "title": "Risk",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "date",
+        "precipProb",
+        "weatherCode",
+        "condition",
+        "risk"
+      ],
+      "title": "CareDayObservation",
+      "type": "object"
+    },
+    "CareStateVO": {
+      "properties": {
+        "supported": {
+          "title": "Supported",
+          "type": "boolean"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "watchedItemIds": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Watcheditemids",
+          "type": "array"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "nextCheckAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nextcheckat"
+        },
+        "lastCheckedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lastcheckedat"
+        },
+        "lastResult": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CareCheckResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "needsReselect": {
+          "default": false,
+          "title": "Needsreselect",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "supported",
+        "enabled",
+        "watchedItemIds",
+        "status",
+        "nextCheckAt",
+        "lastCheckedAt",
+        "lastResult",
+        "needsReselect"
+      ],
+      "title": "CareStateVO",
+      "type": "object"
+    },
+    "CareDismissBody": {
+      "properties": {},
+      "title": "CareDismissBody",
+      "type": "object"
+    },
+    "MemoryBody": {
+      "properties": {
+        "positive": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Positive",
+          "type": "array"
+        },
+        "negative": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Negative",
+          "type": "array"
+        }
+      },
+      "title": "MemoryBody",
+      "type": "object",
+      "required": [
+        "positive",
+        "negative"
+      ]
+    },
+    "MemoryVO": {
+      "properties": {
+        "positive": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Positive",
+          "type": "array"
+        },
+        "negative": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Negative",
+          "type": "array"
+        }
+      },
+      "title": "MemoryVO",
+      "type": "object",
+      "required": [
+        "positive",
+        "negative"
+      ]
+    },
     "VersionBody": {
       "properties": {
         "operation": {

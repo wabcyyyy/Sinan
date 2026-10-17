@@ -677,6 +677,51 @@ export function liveHotelQuotes(id: number | string, body?: Contracts.LiveQuotes
   })
 }
 
+// ===== 出发前照看（个人 Agent V1，/itinerary/{id}/care）：状态面全部服务端持有 =====
+
+/** 照看状态投影：只读、不触发外呼；supported=false = 功能关闭或行程不具备资格。 */
+export function getTripCare(id: number | string) {
+  return apiRequest<Contracts.CareStateVO>(`/itinerary/${id}/care`)
+}
+
+/** 保存授权与监控范围。开启（enabled=true）必须同时显式 allowBackgroundAi=true；
+ * 关闭不要求再次授权；watchedItemIds 传 undefined = 不动现有范围。 */
+export function updateTripCare(id: number | string, body: Contracts.CareUpdateBody) {
+  return apiRequest<Contracts.CareStateVO>(`/itinerary/${id}/care`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
+/** 立即检查：与 cron 同一执行函数与争抢，202 = 已受理；正在检查返回当前状态；
+ * 池满 429（繁忙文案由后端给）。 */
+export function requestTripCareCheck(id: number | string) {
+  return apiRequest<Contracts.CareStateVO>(`/itinerary/${id}/care/check`, { method: 'POST' })
+}
+
+/** 忽略当前照看建议：仅消费服务端 pendingMessageId 指向的 care 草稿，
+ * 不碰普通聊天草稿；无对象/已应用一律幂等返回当前状态。 */
+export function dismissTripCare(id: number | string) {
+  return apiRequest<Contracts.CareStateVO>(`/itinerary/${id}/care/dismiss`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+// ===== 显式长期旅行记忆（个人 Agent V1，/itinerary/preferences/memory）=====
+
+export function getPreferenceMemory() {
+  return apiRequest<Contracts.MemoryVO>('/itinerary/preferences/memory')
+}
+
+/** 原子替换显式记忆集合；空集合 = 遗忘此入口管理的全部记忆。 */
+export function savePreferenceMemory(body: Contracts.MemoryBody) {
+  return apiRequest<Contracts.MemoryVO>('/itinerary/preferences/memory', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
 // ===== 客户端错误探针（POST /api/client-errors，匿名可达）=====
 
 // 会话级防刷：同源同消息只报一次、总量封顶。上限刻意压在服务端分钟窗（30）之下，
