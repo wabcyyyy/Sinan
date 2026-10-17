@@ -1,8 +1,8 @@
-> 历史记录：以下为 2026-10-11 的旧演示验收；其中暂停/单步、预算和截图不能作为新版页面证据。2026-10-16 完整页面展示的交互与部署说明见 [Vercel 展示说明](vercel-demo.md)。
+> 历史记录：以下为 2026-10-11 的旧演示验收；其中暂停/单步、预算和截图不能作为新版页面证据。2026-10-16 完整页面展示的交互与部署说明见 [Vercel 展示说明](../public/vercel-demo.md)。（2026-10-17 自 `docs/public/` 迁入证据目录，仅位置变化。）
 
 # 开源预览验收记录
 
-本页为 2026-10-11 历史验收记录；其中精简回放页面、播放/单步控件和旧截图已由 2026-10-16 的完整正式页面演示替代。当前入口与行为见 [Vercel 展示版](vercel-demo.md)，历史数量不代表当前版本验收结果。
+本页为 2026-10-11 历史验收记录；其中精简回放页面、播放/单步控件和旧截图已由 2026-10-16 的完整正式页面演示替代。当前入口与行为见 [Vercel 展示版](../public/vercel-demo.md)，历史数量不代表当前版本验收结果。
 
 日期：2026-10-11。代码基准：`ab3eb80`，本批实现与补充修复截至 `5fef88e`。
 分支：`codex/open-source-preview`。本记录对应本地验收，尚未推送或运行远端 GitHub Actions。
@@ -47,9 +47,9 @@ Docker 验收使用独立副本、项目名 `sinan-preview-audit-01a12958`、独
 浏览器截图由固定回放自动生成；地图截图使用本地空样式，空白底色不是实际在线底图。
 截图内照片来自随仓成都封面（George N，CC BY 2.0），完整来源见 [照片署名台账](../../travel-frontend-react/src/assets/img/CREDITS.md)。
 
-![编辑确认后的桌面回放](preview/demo-desktop.png)
+![编辑确认后的桌面回放](../public/preview/demo-desktop.png)
 
-[移动端截图](preview/demo-mobile.png) · [地图点位截图](preview/demo-map.png)
+[移动端截图](../public/preview/demo-mobile.png) · [地图点位截图](../public/preview/demo-map.png)
 
 字体来源与校验值见 [provenance.json](../../travel-agent-python/app/resources/fonts/provenance.json)。
 离线体验报告见 [experience_report.json](../../travel-agent-python/tests/agent_eval/report/experience/experience_report.json)，记录提交与数据集哈希。
@@ -57,7 +57,7 @@ Docker 验收使用独立副本、项目名 `sinan-preview-audit-01a12958`、独
 
 ## 复跑入口
 
-首次启动和诊断按 [README](../../README.md)；回归命令按 [开发指南](development.md)。
+首次启动和诊断按 [README](../../README.md)；回归命令按 [开发指南](../public/development.md)。
 浏览器入口为前端目录的 `npm run e2e:demo`，可指定 `E2E_BASE_URL`；CI 使用 Playwright Chromium。
 历史秘密扫描在根目录执行 `powershell -NoProfile -File scripts/check-secrets.ps1 -History`，已知测试口令仍会被报告并返回非零，需人工判读。
 

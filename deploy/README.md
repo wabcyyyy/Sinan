@@ -1,15 +1,18 @@
-# 生产部署入口（T8a）
+# 生产部署入口（自托管 / Caddy 全栈）
 
-这份目录是司南**对外发布**的唯一入口。根目录的 `docker-compose.yml` 继续是本地/演示编排，
-两者刻意不合并、不互相引用：口径不同（下表），合并只会把预览面的宽松项带进生产。
+> 托管平台路径（Railway 单实例 + 持久卷）见 [docs/public/production.md](../docs/public/production.md)；
+> 本目录是不依赖平台的**自托管备选**：Caddy 终结 TLS 的单机 Compose 栈。
+> 根目录的 `docker-compose.yml` 继续是本地/演示编排，两者刻意不合并、不互相引用：
+> 口径不同（下表），合并只会把预览面的宽松项带进生产。
 
 - 命令入口：`deploy/deploy.sh`（构建→开账号→迁移→起栈→验收→回滚）
 - 编排：`deploy/docker-compose.prod.yml`
 - 边缘：`deploy/Caddyfile`（TLS、安全头、请求体分档、内部面公网拒绝、SSE 不缓冲）
 - 数据库账号：`deploy/provision.sql`（最小权限，人跑或 deploy.sh 跑，幂等）
 
-`main.py:47`、`app/common/config.py:45-47`、`tests/test_body_size_limit.py:3`、
-`app/api/agent.py:264` 引用的就是这里的 `Caddyfile` 与 `deploy.sh`；这四个引用现在是事实。
+`app/common/config_primitives.py` 的占位符拦截（应用侧）与 `tests/test_body_size_limit.py`、
+`tests/test_boot_secret_placeholders.py`（两层口径）引用的就是这里的 `Caddyfile` 与 `deploy.sh`：
+部署侧 `deploy.sh` 拦一道，应用侧 `validate_boot` 再拦一道。
 
 ## 1. 与预览编排的差异（为什么不能拿 docker-compose.yml 上线）
 
@@ -21,7 +24,7 @@
 | DB 身份 | `DB_USER: root` | 运行账号只有 SELECT/INSERT/UPDATE/DELETE；结构变更走迁移账号 |
 | 应用端口 | 后端 `127.0.0.1:8000` 宿主可直连 | 后端/前端/MySQL/Redis **一个都不发布**；宿主只看到 443/80 |
 | 数据库网段 | 普通 bridge | `sinan-data` 是 `internal: true`，无对外路由 |
-| 停止 | 无 `stop_grace_period`（默认 10s） | 后端 150s（盖过 `main.py:207` 的 4×30s 池排空） |
+| 停止 | `stop_grace_period: 45s`（≥ 全局 30s 排空预算） | 后端 150s（盖过 `shutdown.drain` 的全局 30s 排空，留足退出余量） |
 | 资源/日志 | 无 cpu/mem 上限；日志 50m×5 | 每容器 cpu/mem 上限 + 日志 20m×5 |
 | 容器身份 | 全部默认 root 起 | 除 MySQL 外全非 root；`read_only` + `tmpfs` + `cap_drop ALL` + `no-new-privileges` |
 | 镜像 | `latest` 语义，无溯源 | 标签=git SHA，OCI `revision` 标签由构建校验 |
@@ -163,7 +166,7 @@ time C stop
 C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 了
 ```
 
-带**在跑生成任务**时的排空（SIGTERM 后能不能等到 4×30s 池排完）需要真实模型额度才能制造，
+带**在跑生成任务**时的排空（SIGTERM 后能不能等到全局 30s 排空预算耗尽）需要真实模型额度才能制造，
 本切片没演，属 T9；这里只证明了配置上限大于排空预算、空闲停止干净、`StopTimeout` 确实落到容器上。
 
 ## 5. 脏工作树与"这台机器不是构建机"
@@ -194,14 +197,14 @@ C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 
 
 实现对话（2026-10-16 夜，Windows/Docker 29.8.2 + Compose v5.5.1）在**隔离端口集
 14443/18080、一次性命名卷、一次性库名 `sinan_drill`、一次性口令、`tls internal` 自签**上
-真跑过一遍，完整输出贴在 `docs/launch-v1/handoffs/T8a.md`。跑过并且通过的：
+真跑过一遍，完整输出归档在 `docs/evidence/launch-v1-hardening-2026-10-16.md`。跑过并且通过的：
 
 - `docker compose -f deploy/docker-compose.prod.yml config` 插值与结构校验；
 - 两个镜像从 `git archive HEAD` 构建，`docker image inspect` 的
   `org.opencontainers.image.revision` 等于该 SHA；
 - `provision.sql` 跑两遍（幂等），GRANTS 实测只有 DML / DML+结构两类，无 `*.*`、无 GRANT OPTION；
-- 迁移账号跑 `ensure_schema` → V1…V16 建表成功；随后应用以运行账号启动（启动期那句
-  `main.py:252 ensure_schema()` 在无 DDL 权限下是无副作用的通过路径）；
+- 迁移账号跑 `ensure_schema` → V1…V16 建表成功；随后应用以运行账号启动（启动期 lifespan 里的
+  `ensure_schema()` 在无 DDL 权限下是无副作用的通过路径）；
 - `up -d --wait` 全栈 healthy；`/api/agent/health/deep` 经 Caddy 内部探测面返回
   `mysql=up redis=up`；公网侧 `/api/agent/health`、`/api/agent/health/deep`、
   `/api/agent/v1/metrics`、`/mcp` 全部 403，匿名业务面 401，SPA 首页 200；
@@ -216,8 +219,8 @@ C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 
 - `docker compose down -v` 后本次创建的容器、卷、归档目录与临时 env 文件全部删除。
 
 **没跑过、因此不得当作已完成的**：真实域名与 ACME 签发（用的是内置 CA）、`docker push`
-（无仓库凭据）、带在跑生成任务的 SIGTERM 排空（无模型额度，150s 是按 `main.py:207`
-的 4×30s 算术推的）、SSE 经 Caddy 的实际不缓冲取证（只验证了 `flush_interval -1` 的语法）、
+（无仓库凭据）、带在跑生成任务的 SIGTERM 排空（无模型额度，150s 按 `shutdown.drain`
+的全局 30s 预算留足了余量）、SSE 经 Caddy 的实际不缓冲取证（只验证了 `flush_interval -1` 的语法）、
 备份与隔离恢复（命名卷还没接进 `scripts/backup_restore.py`）、告警投递、外部拨测、
 依赖/镜像漏洞扫描、以及在真实并发下 2G/2 核上限是否合适（只量到空闲 RSS：
 后端 183MiB、MySQL 391MiB、Redis 10MiB、Caddy 20MiB、前端 14MiB）。

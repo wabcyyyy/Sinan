@@ -5,11 +5,11 @@
 
 [English](README.en.md) · [架构](docs/public/architecture.md) · [开发](docs/public/development.md) · [参与贡献](.github/CONTRIBUTING.md)
 
-小规模上线使用 [Railway 部署指南](docs/public/production.md)：同域整站容器、邀请码、一次性 6 元试用赠额与最小管理后台。仓库提供部署准备，公网与真实模型验收状态须单独确认。
+小规模上线使用 [Railway 部署指南](docs/public/production.md)：同域整站容器、邀请码、一次性 6 元试用赠额与最小管理后台。仓库提供部署准备，公网与真实模型验收状态须单独确认；不依赖平台的自托管（Caddy 全栈）见 [deploy/README.md](deploy/README.md)。
 
 个人作品展示可使用 [Vercel 免费展示版](docs/public/vercel-demo.md)：复用完整正式前端页面，以本地样例体验规划、地图与编辑确认，无需后端或模型 Key。
 
-本批实现与验收结果见 [开源预览验收记录](docs/public/preview-verification.md)。
+2026-10-11 开源预览批次的历史验收记录在 [证据目录](docs/evidence/preview-acceptance-2026-10-11.md)，其中的数字不代表当前版本。
 
 ## 先体验：不需要模型密钥
 
@@ -37,6 +37,7 @@ docker compose exec -T agent-python python scripts/preview_doctor.py
 - 对话收集目的地、天数、人数、偏好与意图。
 - 生成每日安排与预算，实时展示交付进度及失败或待核实状态。
 - 对话提出编辑建议，查看变化后确认；通过地图深链核实地点。
+- 出发前自动检查天气风险并给出可确认的调整草稿；旅行偏好可显式保存与遗忘，见 [照看与记忆](docs/public/care-and-memory.md)。
 - 管理个人行程，提供分享与中文 PDF 导出。
 
 真实生成需要在后端 `.env` 配置模型网关、模型名与 key，详见 [配置指南](docs/public/configuration.md)。

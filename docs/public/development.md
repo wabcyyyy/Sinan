@@ -57,7 +57,7 @@ npm run e2e:demo
 CI 安装 Playwright Chromium 并设 E2E_CHANNEL=bundled。展示测试阻断业务 API 与外部资源，不调用模型，验证正式页面、生成脚本、编辑确认和地图降级。测试展示构建时设置 E2E_DEMO_PREFIX 为空。
 `e2e:golden` 是真实生成路径，不要与固定回放混淆。
 
-## 简历证据采集：约束修复与候选预览
+## 生成证据采集与回放探针
 
 复用业务探针、LangGraph 检查点和 Playwright。先启动**仅前端**，执行离线采集回放：
 
@@ -74,7 +74,7 @@ uv run python scripts/live_perf_probe.py --evidence-input tests/agent_eval/repor
 规则侧单测还覆盖 unknown、必去丢失、检查点缺失、同题重复与时间格式归一。
 Windows 若临时目录权限异常，将 TEMP/TMP、UV_CACHE_DIR 指向仓库内可写目录。
 
-真实调用须单独授权：使用同一命令追加 `--live`，后端须已用当前 checkout/config 启动，
+真实调用会消耗模型额度并写入数据库：使用同一命令追加 `--live`，后端须已用当前 checkout/config 启动，
 `E2E_REPEATS=1` 对 `tests/agent_eval/live_pilot_cases.json` 三题各跑一次；clarify 回放冻结输入，
 生成/研究/修复/落库均真实。浏览器采集与业务生成是**同一批请求**。首次先查三题采集完整性，
 不自动扩到 24 次；失败、unknown、新增违规不剔除，也不为补齐漂亮结果自动重跑。
@@ -101,10 +101,6 @@ Windows 若临时目录权限异常，将 TEMP/TMP、UV_CACHE_DIR 指向仓库�
 旧 live_perf_report 的 SSE 起点时间与新版 POST 起点绝对时间不可合并；修复前后也不使用两次独立生成作配对。
 检查点以本次尝试的起止时间限定，避免把以后手动重生成混入同请求。城市字典/消费基准须在运行前固定；
 源码中的迁移 SQL hash 不证明数据库已应用版本，不能把本地源码/config 身份冒充运行中服务的身份证明。
-
-三条待实测的简历结果分别是：①同请求违规检查项消除与最终履约（含失败/unknown）；
-②定向修复的必去保留、非重生成日期保留与新增违规；③多日行程候选上屏相对主行程可用的配对提前量。
-修复触发不足或提前量有限时如实报告，不预设改善幅度。本次只授权实现与离线验证，真实试运行尚未执行。
 
 ## 字体维护
 

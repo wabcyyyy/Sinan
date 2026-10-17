@@ -260,10 +260,10 @@ services:
     security_opt:
       - no-new-privileges:true
     # ---- 停止宽限：150s 的算术（这条别调小）----
-    # main.py:207 的排空是**逐个池**限时 30s，共四个池（generation/enricher/export/chat，
-    # main.py:196-201），最坏 4×30=120s；再加 lifespan 退出与 uvicorn 关闭在途请求的
-    # 余量。低于 120s 会在池还在排空时收到 SIGKILL，留下成批 GENERATING 行等续跑
-    # （正是 main.py:203-206 注释要避免的事）。150s = 120s 排空 + 30s 退出余量。
+    # 排空预算是 shutdown.drain 的**全局** 30s（main.py lifespan 收尾时调用，四个池
+    # generation/enricher/export/chat 共享）；再加 lifespan 退出与 uvicorn 关闭在途
+    # 请求的余量。低于排空预算会在池还在收尾时收到 SIGKILL，留下成批 GENERATING 行
+    # 等续跑（正是 drain 超时日志提示要避免的事）。150s 对当前 30s 预算是保守上限。
     stop_grace_period: 150s
     depends_on:
       volume-init:
