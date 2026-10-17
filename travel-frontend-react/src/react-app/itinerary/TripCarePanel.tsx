@@ -50,6 +50,7 @@ export type CareDraftState = 'pending' | 'applied' | 'stale'
 
 export function careDraftState(result: Contracts.CareCheckResult | null): CareDraftState | null {
   if (!result) return null
+  if (result.pendingMessageId != null) return 'pending'
   if (result.status === 'pending' || result.status === 'applied' || result.status === 'stale') return result.status
   return null
 }
@@ -232,6 +233,7 @@ export function CarePanelView(props: CarePanelViewProps) {
         {checkedAt && <span>{checkedAt} 检查</span>}
       </div>
       {draftState && <p className={`care-result-line${draftState === 'pending' ? ' is-active' : ''}`}>{CARE_DRAFT_COPY[draftState]}</p>}
+      {draftState === 'pending' && resultLine && care.lastResult?.status !== 'pending' && <p className="care-result-line">{resultLine}</p>}
       {!draftState && resultLine && !care.needsReselect && <p className="care-result-line">{resultLine}</p>}
       {showRiskRows && <ul className="care-risk-list" aria-label="预报依据">
         {riskRows.map((row) => <li key={row.date}>

@@ -27,6 +27,7 @@ export function ChatPanel({
   currentDayNo = 1,
   city,
   onAfterApply,
+  draftRequest = 0,
 }: {
   itineraryId: number
   dayList: DayPlan[]
@@ -39,6 +40,8 @@ export function ChatPanel({
   /** 草稿确认成功后的外部联动（个人 Agent V1）：照看面板据此重取状态
    *（确认应用会消费 care 草稿，GET care 的派生状态随之变化）。 */
   onAfterApply?: () => void
+  /** 每次点击查看后台草稿时递增，确保聊天已挂载时也重新取数。 */
+  draftRequest?: number
 }) {
   const chat = useTripChat(itineraryId, onApplied, onReconcile)
   const [draft, setDraft] = useState('')
@@ -46,6 +49,22 @@ export function ChatPanel({
   const [sceneIdx, setSceneIdx] = useState(0)
   const sceneTabsId = useId()
   const logRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!draftRequest) return
+    let cancelled = false
+    let frame: number | undefined
+    void chat.reload().then((ok) => {
+      if (!ok || cancelled) return
+      frame = window.requestAnimationFrame(() => {
+        if (!cancelled) document.getElementById('chat-active-draft')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    })
+    return () => {
+      cancelled = true
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+    }
+  }, [draftRequest, chat.reload])
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight })

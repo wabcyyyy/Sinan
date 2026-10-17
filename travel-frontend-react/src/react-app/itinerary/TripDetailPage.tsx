@@ -115,25 +115,17 @@ export function TripDetailPage({ path }: { path: string }) {
   const loadSeqRef = useRef(0)
   // 出发前照看（个人 Agent V1）：对话草稿确认会消费 care 草稿——bump 此键让面板重取状态
   const [careRefreshTick, setCareRefreshTick] = useState(0)
+  const [chatDraftRequest, setChatDraftRequest] = useState(0)
 
   const selectPin = (pin: MapPin) => {
     setDayNo(pin.dayNo)
     setActivePin(pin.key)
   }
 
-  /** 照看结果卡「查看调整草稿」：跳既有聊天草稿（当前唯一待确认卡），不另开草稿面。
-   * 对话历史异步载入，锚点短重试（上限 2s），展开失败也只是不滚动，不报错。 */
+  /** 查看后台草稿时先取最新聊天；由 ChatPanel 在载入完成后定位草稿。 */
   const openChatDraft = () => {
     setChatCollapsed(false)
-    const jump = (tries: number) => {
-      const el = document.getElementById('chat-active-draft')
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        return
-      }
-      if (tries > 0) window.setTimeout(() => jump(tries - 1), 250)
-    }
-    window.setTimeout(() => jump(8), 60)
+    setChatDraftRequest((request) => request + 1)
   }
 
   /** 时间线条目点击：选中（地图飞到该点，不滚页面）+ 展开/收起地图出口 */
@@ -407,6 +399,7 @@ export function TripDetailPage({ path }: { path: string }) {
           currentDayNo={dayNo}
           city={trip.city}
           onAfterApply={() => setCareRefreshTick((tick) => tick + 1)}
+          draftRequest={chatDraftRequest}
         />
       )}
       <section className="day-content">

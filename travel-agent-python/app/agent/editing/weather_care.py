@@ -23,7 +23,9 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
+from copy import deepcopy
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 from app.agent.editing.chat_draft import run_chat_turn
 from app.agent.editing.chat_draft.validate import (
@@ -33,6 +35,12 @@ from app.agent.editing.chat_draft.validate import (
 )
 from app.agent.generation.rules.constraint_checks import check_constraints
 from app.agent.generation.rules.day_policy import day_policy_for
+from app.agent.generation.rules.transfer_time import (
+    ROUTE_ESTIMATE_TOLERANCE_MIN,
+    estimate_transfer_minutes,
+    item_end,
+    item_start,
+)
 from app.schemas.trip import ChatTurnRequest, ChatTurnResponse
 from app.schemas.trip_requirements import TripRequirements
 
@@ -151,7 +159,7 @@ def _review(data: CareAdjustInput, response: ChatTurnResponse) -> tuple[list[dic
     days = len(baseline)
     if not response.changed or not response.plans:
         return None, _reason_of(response.reply) or "近期有降水风险，但没有形成安全的调整方案"
-    draft = response.plans
+    draft = deepcopy(response.plans)
     if len(draft) != days:
         # apply 是整份替换：天数不一致的草稿会误删其他天（§4.5 点名回归项）
         return None, "草稿天数与当前行程不一致，已按保护规则丢弃"
@@ -164,14 +172,15 @@ def _review(data: CareAdjustInput, response: ChatTurnResponse) -> tuple[list[dic
 
     baseline_by_day = {_as_day_no(plan["day_no"]): plan for plan in baseline}
     draft_by_day = {_as_day_no(plan["day_no"]): plan for plan in draft}
+    _restore_day_metadata(baseline_by_day, draft_by_day)
     affected_nos = {day.day_no for day in data.affected_days}
     watched_ids = {item.id for day in data.affected_days for item in day.items}
 
     for day_no in range(1, days + 1):
         if day_no in affected_nos:
             continue
-        # 其他日期逐字段保持原值（§4.5）：note 与条目整字典（含 id/费用/坐标）原样
-        if draft_by_day[day_no].get("note") != baseline_by_day[day_no].get("note"):
+        # 完整日期字段也包括 theme/miniRoute 等元数据，不能因整份替换而丢失。
+        if _day_fields(draft_by_day[day_no]) != _day_fields(baseline_by_day[day_no]):
             return None, f"第 {day_no} 天不在受影响范围内但其说明被修改，已丢弃"
         if _items_multiset(draft_by_day[day_no]) != _items_multiset(baseline_by_day[day_no]):
             return None, f"第 {day_no} 天不在受影响范围内但其安排被修改，已丢弃"
@@ -192,6 +201,12 @@ def _review(data: CareAdjustInput, response: ChatTurnResponse) -> tuple[list[dic
         day_no, first, second = novel_conflicts[0]
         return None, f"第 {day_no} 天「{first}」与「{second}」时间重叠，已丢弃"
 
+    baseline_gaps = _transfer_shortfalls(baseline)
+    for pair, shortfall in _transfer_shortfalls(draft).items():
+        if shortfall > baseline_gaps.get(pair, 0):
+            day_no, first, second = pair
+            return None, f"第 {day_no} 天「{first}」到「{second}」转场时间不足，已丢弃"
+
     problem = _required_places_intact(data.requirements, draft)
     if problem is not None:
         return None, problem
@@ -204,7 +219,39 @@ def _review(data: CareAdjustInput, response: ChatTurnResponse) -> tuple[list[dic
         problem = _constraints_blocking(data.requirements, draft_by_day[day.day_no], day.day_no)
         if problem is not None:
             return None, problem
+    response.plans = draft  # 确认 checkpoint 与实际发布草稿必须完全一致。
     return draft, None
+
+
+def _restore_day_metadata(baseline_by_day: dict[int, dict], draft_by_day: dict[int, dict]) -> None:
+    """紧凑输出省略元数据不表示删除，沿用正式日期的原值。"""
+    for day_no, plan in draft_by_day.items():
+        for key, value in baseline_by_day[day_no].items():
+            if key not in ("items", "note") and not key.startswith("_"):
+                plan.setdefault(key, deepcopy(value))
+
+
+def _day_fields(plan: dict) -> dict:
+    return {key: value for key, value in plan.items() if key != "items" and not key.startswith("_")}
+
+
+def _transfer_shortfalls(plans: list[dict]) -> dict[tuple[int, str, str], int]:
+    """复用生成链的坐标估算与容差；既有不足可保留/改善，不接受新增或恶化。"""
+    gaps: dict[tuple[int, str, str], int] = {}
+    for plan in plans:
+        items = sorted(
+            (item for item in plan.get("items") or [] if item.get("item_type") in ("attraction", "food")),
+            key=item_start,
+        )
+        for first, second in pairwise(items):
+            required = estimate_transfer_minutes(first, second)
+            if required is None:
+                continue  # 缺坐标仍是未知，不伪造零分钟路线。
+            shortfall = required - (item_start(second) - item_end(first)) - ROUTE_ESTIMATE_TOLERANCE_MIN
+            if shortfall > 0:
+                pair = (_as_day_no(plan.get("day_no")), str(first.get("poi_name")), str(second.get("poi_name")))
+                gaps[pair] = max(gaps.get(pair, 0), shortfall)
+    return gaps
 
 
 def _review_affected_day(

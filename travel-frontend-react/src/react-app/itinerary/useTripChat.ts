@@ -54,14 +54,18 @@ export function useTripChat(
     try {
       const history = await getItineraryChatHistory(itineraryId)
       setMsgs(history)
+      setNotice('')
+      return true
     } catch {
-      setMsgs([])
+      setNotice('暂未取得最新聊天记录，请稍后重试')
+      return false
     } finally {
       setLoaded(true)
     }
   }, [itineraryId])
 
   useEffect(() => {
+    setMsgs([])
     setLoaded(false)
     setNotice('')
     void reload()

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from math import isfinite
 
 from sqlalchemy import or_, select, update
 
@@ -112,7 +113,20 @@ def evaluate_check(itinerary_id: int, token: str) -> CheckOutcome | SuggestionOr
     if rows is None:
         return _unavailable_outcome(gate)
     observations, risk_by_date = _observe(gate, rows)
+    known_dates = {parse_iso_date(entry.get("date")) for entry in rows if _weather_is_known(entry)}
+    if not set(gate.item_day.values()).issubset(known_dates):
+        return _unavailable_outcome(gate)
     return _decide(itinerary_id, token, today, gate, observations, risk_by_date)
+
+
+def _weather_is_known(entry: dict[str, object]) -> bool:
+    """明确雨雪即可判风险；无风险需代码与概率均有效，缺日期/字段不当晴天。"""
+    code, prob = entry.get("code"), entry.get("precip_prob")
+    valid_code = isinstance(code, int) and not isinstance(code, bool) and 0 <= code <= 99
+    valid_prob = isinstance(prob, (int, float)) and not isinstance(prob, bool) and isfinite(prob) and 0 <= prob <= 100
+    return (valid_code and valid_prob) or _risk_category(
+        code if valid_code else None, prob if valid_prob else None
+    ) is not None
 
 
 def _admit(itinerary_id: int, token: str, today: date) -> _CheckFacts | CheckOutcome | None:

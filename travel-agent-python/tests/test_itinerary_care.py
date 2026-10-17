@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import Future
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import date, datetime, timedelta
@@ -347,10 +348,7 @@ class _CareModelStub:
             raise RuntimeError("model exploded")
         if self.behavior == "fail":
             return CareAdjustResult(ok=False, reason="模型返回的方案没有通过复核")
-        plans = [
-            {"day_no": day["day_no"], "note": day["note"], "items": [dict(item) for item in day["items"]]}
-            for day in data.plans
-        ]
+        plans = deepcopy(data.plans)
         watched_ids = {item.id for affected in data.affected_days for item in affected.items}
         for affected in data.affected_days:
             plan = next(plan for plan in plans if plan["day_no"] == affected.day_no)
@@ -459,6 +457,30 @@ def test_care_scan_weather_none_marks_unavailable_and_keeps_last_observation(car
     assert _chat_message_count() == 0 and _care_row(trip_id).last_ai_attempt_on is None
 
 
+@pytest.mark.parametrize("weather", ["empty", "missing_day", "missing_fields", "missing_prob", "missing_code"])
+def test_care_incomplete_weather_is_unavailable_without_model(care_model, care_run, weather):
+    trip_id, item_ids = _make_trip(start_in_days=2)
+    client = _client()
+    _enable(client, trip_id, item_ids)
+    first_day = shanghai_today() + timedelta(days=2)
+    care_run.rows = _day_rows(first_day) + _day_rows(first_day + timedelta(days=1))
+    if weather == "empty":
+        care_run.rows = []
+    elif weather == "missing_day":
+        care_run.rows = care_run.rows[:1]
+    else:
+        if weather in ("missing_fields", "missing_code"):
+            care_run.rows[1]["code"] = None
+        if weather in ("missing_fields", "missing_prob"):
+            care_run.rows[1]["precip_prob"] = None
+    assert itinerary_care_check.scan_due_checks() == 1
+    data = client.get(f"/api/itinerary/{trip_id}/care").json()["data"]
+    assert data["status"] == "unavailable"
+    assert data["lastResult"]["reason"] == "暂未取得天气信息"
+    assert care_model.calls == [] and _chat_message_count() == 0
+    assert _care_row(trip_id).last_ai_attempt_on is None
+
+
 def test_care_scan_far_future_waits_without_any_call(care_run):
     trip_id, item_ids = _make_trip(start_in_days=10)
     client = _client()
@@ -542,7 +564,8 @@ def test_care_prob_drift_does_not_renotify(care_model, care_run):
     care_run.rows = _day_rows(window_day, code=3, prob=71)
     assert itinerary_care_check.scan_due_checks() == 1, "概率漂移仍继续天气观测"
     data = client.get(f"/api/itinerary/{trip_id}/care").json()["data"]
-    assert data["status"] == "no_risk", "70→71 不重复通知（规格 §3.3）"
+    assert data["status"] == "pending", "不重复通知，但未处理的原草稿仍可确认/忽略"
+    assert data["lastResult"]["pendingMessageId"] is not None
     assert data["lastResult"]["days"][0]["risk"] is True, "风险照实记录，只是不再打扰"
     row = _care_row(trip_id)
     assert row.notified_risks_json == [f"{window_day.isoformat()}:rain"], "已处理键不重复写入"
@@ -573,6 +596,7 @@ def _publish_draft(
     assert _enable(client, trip_id, watched).status_code == 200
     rain_day = shanghai_today() + timedelta(days=3)
     care_run.rows = _day_rows(rain_day, code=61, prob=85)
+    care_run.rows += _day_rows(rain_day - timedelta(days=1))
     assert itinerary_care_check.scan_due_checks() == 1
     data = client.get(f"/api/itinerary/{trip_id}/care").json()["data"]
     with db_session.session_scope() as session:
@@ -642,6 +666,55 @@ def test_care_publishes_full_draft_and_keeps_other_day_intact(care_model, care_r
     assert checkpoint.get_checkpointer().get(checkpoint.run_config(chat_thread_of(trip_id))) is None, (
         "后台生成不绑定 chat-{id}（§4.5）"
     )
+
+
+def test_care_apply_preserves_daily_metadata_including_unaffected_day(care_model, care_run):
+    import json
+
+    trip_id, item_ids = _make_trip(start_in_days=2)
+    metadata = {
+        "theme": "西湖慢游",
+        "miniRoute": ["断桥", "西泠桥"],
+        "backupPlan": "雨天博物馆",
+        "photoSpots": ["湖边"],
+        "practicalNotes": ["带伞"],
+    }
+    with db_session.session_scope() as session:
+        for day in session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id)):
+            day.metadata_json = json.dumps(metadata, ensure_ascii=False)
+    client = _client()
+    _, message, _ = _publish_draft(care_model, care_run, client, trip_id, item_ids[2:3])
+    assert all(plan["theme"] == metadata["theme"] for plan in care_model.calls[0].plans)
+    itinerary_plan_apply.apply_plans(1, trip_id, message.id, itinerary_chat.action_base_revision(message))
+    with db_session.session_scope() as session:
+        days = session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id)).all()
+        assert len(days) == 2
+        for day in days:
+            assert day.metadata_json is not None
+            assert json.loads(day.metadata_json) == metadata
+
+
+@pytest.mark.parametrize("weather", ["same_risk", "clear", "unavailable"])
+def test_care_pending_survives_next_check_and_remains_dismissible(care_model, care_run, weather):
+    trip_id, item_ids = _make_trip()
+    client = _client()
+    _, message, rain_day = _publish_draft(care_model, care_run, client, trip_id, item_ids)
+    if weather == "unavailable":
+        care_run.rows = None
+    else:
+        care_run.rows = _day_rows(rain_day, code=61 if weather == "same_risk" else 0)
+    _become_due(trip_id)
+    assert itinerary_care_check.scan_due_checks() == 1
+    data = client.get(f"/api/itinerary/{trip_id}/care").json()["data"]
+    assert data["status"] == "pending"
+    assert data["lastResult"]["pendingMessageId"] == message.id
+    assert data["lastResult"]["status"] == ("unavailable" if weather == "unavailable" else "no_risk")
+    assert len(care_model.calls) == 1 and _chat_message_count() == 1
+    dismissed = client.post(f"/api/itinerary/{trip_id}/care/dismiss")
+    assert dismissed.status_code == 200 and dismissed.json()["data"]["status"] == "applied"
+    _become_due(trip_id)
+    assert itinerary_care_check.scan_due_checks() == 1
+    assert client.get(f"/api/itinerary/{trip_id}/care").json()["data"]["lastResult"]["pendingMessageId"] is None
 
 
 def test_care_generation_binds_owner_scene_and_run_limits(care_model, care_run):
@@ -1560,6 +1633,68 @@ def test_care_review_keeps_unaffected_day_and_passes_valid_adjustment(care_llm):
     assert by_id[13] == plans[0]["items"][2], "交通身份/价格/时间全部保留"
     assert by_id[14]["start_time"] == "13:30" and by_id[14]["cost"] == 40.0, "非监控活动只动了时间"
     assert result.response is not None, "发布侧需要原始提案绑确认线程"
+
+
+@pytest.mark.parametrize("mutate", [False, True])
+def test_care_review_preserves_omitted_metadata_and_rejects_unaffected_changes(care_llm, mutate):
+    plans = _care_plans()
+    for plan in plans:
+        plan.update(theme="原主题", practicalNotes=["原提示"], miniRoute=["原路线"])
+    draft = _respond_copy(plans).plans  # 模拟紧凑输出省略元数据。
+    draft[0]["items"][1].update(start_time="08:30", end_time="10:30")
+    if mutate:
+        draft[1]["theme"] = "擅自重写其他日"
+    care_llm.response = _respond(draft)
+    result = _run_care(care_llm, _care_input(plans))
+    if mutate:
+        assert not result.ok
+    else:
+        assert result.ok and result.plans[1] == plans[1]
+        assert result.plans[0]["practicalNotes"] == ["原提示"]
+        assert result.response is not None and result.response.plans == result.plans
+
+
+@pytest.mark.parametrize(
+    ("baseline_end", "draft_end", "accepted"),
+    [("09:30", "10:59", False), ("09:30", "09:31", True), ("10:50", "10:49", True), ("10:50", "10:59", False)],
+)
+def test_care_review_checks_transfer_gaps_without_rejecting_legacy_improvements(
+    care_llm, baseline_end, draft_end, accepted
+):
+    plans = [
+        {
+            "day_no": 1,
+            "note": "转场测试",
+            "items": [
+                {
+                    "id": 12,
+                    "item_type": "attraction",
+                    "poi_name": "公园",
+                    "start_time": "09:00",
+                    "end_time": baseline_end,
+                    "latitude": 30.0,
+                    "longitude": 120.0,
+                },
+                {
+                    "id": 14,
+                    "item_type": "food",
+                    "poi_name": "午餐",
+                    "start_time": "11:00",
+                    "end_time": "11:30",
+                    "latitude": 30.02,
+                    "longitude": 120.02,
+                },
+            ],
+        }
+    ]
+    draft = deepcopy(plans)
+    draft[0]["items"][0]["end_time"] = draft_end
+    care_llm.response = _respond(draft)
+    result = _run_care(care_llm, _care_input(plans))
+    assert result.ok is accepted
+    if not accepted:
+        assert result.reason is not None
+        assert "转场时间不足" in result.reason
 
 
 def test_care_review_rejects_single_day_reply(care_llm):

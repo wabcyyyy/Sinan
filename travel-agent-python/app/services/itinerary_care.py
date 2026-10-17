@@ -136,7 +136,9 @@ def _derive_message_state(session, owner_id: int, itinerary_id: int, result: dic
         return {**result, "status": "applied", "pendingMessageId": None}, "applied"
     latest = itinerary_chat.latest_action_message(session, owner_id, itinerary_id)
     if latest is not None and latest.id == message.id:
-        return {**result, "status": "pending"}, "pending"
+        # 后续天气观测（尤其 unavailable）照实保留，草稿入口由有效消息引用独立表达。
+        status = "pending" if result.get("status") in (STATUS_SUGGESTED, "pending") else result.get("status")
+        return {**result, "status": status}, "pending"
     return {**result, "status": "stale", "pendingMessageId": None}, "stale"
 
 

@@ -195,6 +195,17 @@ describe('受影响活动与预报依据', () => {
 })
 
 describe('CarePanelView 静态渲染', () => {
+  it('天气不可用仍保留有效草稿入口，同时如实显示天气未知并隐藏旧风险行', () => {
+    const result = riskResult({ status: 'unavailable', reason: '暂未取得天气信息', pendingMessageId: 9 })
+    expect(careDraftState(result)).toBe('pending')
+    const html = renderToStaticMarkup(createElement(CarePanelView, viewProps(
+      careState({ enabled: true, status: 'pending', lastResult: result }),
+    )))
+    expect(html).toContain('查看调整草稿')
+    expect(html).toContain('忽略')
+    expect(html).toContain('暂未取得天气信息')
+    expect(html).not.toContain('降水概率')
+  })
   it('关闭态：费用说明与额度授权勾选可见，开关可开', () => {
     const html = renderToStaticMarkup(createElement(CarePanelView, viewProps(careState())))
     expect(html).toContain('出发前照看')

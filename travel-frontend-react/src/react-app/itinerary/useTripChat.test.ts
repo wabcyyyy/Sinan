@@ -1,10 +1,22 @@
 import { act } from 'react'
-import { createElement } from 'react'
+import { createElement, type HTMLAttributes } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { chatEditItinerary, chatEditStream, getItineraryChatHistory, ReactApiError } from '../../api/sinan'
 import type { ChatReply } from '../../api/sinan'
 import { useTripChat } from './useTripChat'
+import { ChatPanel } from './ChatPanel'
+
+// 这里只验证取数与草稿定位，动画由浏览器负责；避免 happy-dom 的 WAAPI 取消异常。
+vi.mock('motion/react', () => {
+  const staticElement = (tag: 'div' | 'span' | 'button') =>
+    ({ children, ...props }: HTMLAttributes<HTMLElement> & Record<string, unknown>) => createElement(
+      tag,
+      Object.fromEntries(Object.entries(props).filter(([name]) => !['variants', 'initial', 'animate', 'transition', 'layoutId'].includes(name))),
+      children,
+    )
+  return { motion: { div: staticElement('div'), span: staticElement('span'), button: staticElement('button') } }
+})
 
 /**
  * M6（spec §12 编辑入口）turn 幂等的前端消费测试：mock api 层捕获 X-Turn-Id 入参，
@@ -126,6 +138,50 @@ describe('useTripChat M6 turn 幂等（spec §12 编辑入口）', () => {
     expect(streamTurnId(1)).toBeTruthy()
     expect(streamTurnId(1)).not.toBe(first)
     expect(stateOf(container).sending).toBe(false)
+  })
+
+  it('查看后台草稿：已挂载的聊天先重取历史，收到新草稿后才定位；取数失败可重试', async () => {
+    vi.useFakeTimers()
+    try {
+      const container = document.createElement('div')
+      document.body.appendChild(container)
+      const root = createRoot(container)
+      roots.push({ root, container })
+      const render = async (draftRequest: number) => {
+        await act(async () => { root.render(createElement(ChatPanel, {
+          itineraryId: 7, dayList: [], onApplied: () => {}, onReconcile: () => {}, draftRequest,
+        })) })
+      }
+      await render(0)
+      expect(historyMock).toHaveBeenCalledTimes(1)
+      expect(container.querySelector('#chat-active-draft')).toBeNull()
+      let resolveHistory!: (history: Awaited<ReturnType<typeof getItineraryChatHistory>>) => void
+      historyMock.mockImplementationOnce(() => new Promise((resolve) => { resolveHistory = resolve }))
+      await render(1)
+      expect(historyMock).toHaveBeenCalledTimes(2)
+      expect(container.querySelector('#chat-active-draft')).toBeNull()
+      await act(async () => { resolveHistory([{
+        id: 9, role: 'ai', content: '[行程照看] 新草稿', changed: true, baseRevision: 'rev-2',
+        plans: [{ day_no: 1, items: [{ poi_name: '室内博物馆', item_type: 'attraction' }] }],
+      }]) })
+      const card = container.querySelector<HTMLElement>('#chat-active-draft')!
+      expect(card).not.toBeNull()
+      const scroll = vi.fn()
+      card.scrollIntoView = scroll
+      await act(async () => { await vi.advanceTimersByTimeAsync(32) })
+      expect(scroll).toHaveBeenCalledOnce()
+      historyMock.mockRejectedValueOnce(new Error('network down'))
+      await render(2)
+      expect(container.textContent).toContain('暂未取得最新聊天记录')
+      expect(container.querySelector('#chat-active-draft')).not.toBeNull()
+      historyMock.mockResolvedValueOnce([])
+      await render(3)
+      expect(historyMock).toHaveBeenCalledTimes(4)
+      expect(container.querySelector('#chat-active-draft')).toBeNull()
+      expect(container.textContent).not.toContain('暂未取得最新聊天记录')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('流式失败回退阻塞通道：同一 send 复用同一 turnId（断流恢复不跑第二份）', async () => {

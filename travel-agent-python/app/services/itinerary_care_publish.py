@@ -1,17 +1,12 @@
 """出发前照看的后台建议：模型流程（规格 §4.4 步骤 5–6）与发布短事务（步骤 8–9）。
 
-判定管线（`itinerary_care_risk.evaluate_check`）门槛全过、当日 AI 尝试已原子占用后，
-`run_suggestion` 在**真正执行的线程**（cron 线程或 chat_pool 工作线程，均不继承请求
-线程的 contextvars）内依次重建后台费用/身份上下文：路由解析 → `use_route`+
-`payer_scope` → `use_task_limits`（带 owner_id/itinerary_id 的 RunLimits，guard 探针
-每次外呼前复核令牌/资格）→ `use_scene("chat")` → `observe_run`——begin_limits 继承
-上一步压入的 limits，顺序颠倒就成了无主账（§4.4 步骤 5）。
+当日 AI 尝试占用后，`run_suggestion` 在实际工作线程内依次绑定 use_route、
+payer_scope、带 owner/itinerary 的 RunLimits、chat scene 与 observe_run；
+不能依赖请求线程的 contextvars。guard 每次外呼前复核令牌与资格。
+后台限额为 90 秒、最多 4 次模型调用，token/检索上限沿用现有默认。
 
-本批后台限额是代码常量：90 秒截止、最多 4 次模型调用，token/检索上限沿用现有默认
-（步骤 6，不加 env）。发布是**短事务**（内无 LLM/HTTP 外呼）：主行程行锁（与前台
-`finalize_chat_turn` 同一把，§4.5 前台优先）内复核令牌、资格、版本与「当前待确认
-草稿」，通过才写一条 `[行程照看]` AI 消息（附基准版本与 care 确认线程元数据）、
-去重键、last_result 并清令牌——失败/崩溃不得留键（步骤 8）。
+发布短事务无 LLM/HTTP 外呼：与前台共用主行程行锁，复核令牌、资格、版本及待确认
+草稿后，写入 `[行程照看]` 消息、确认线程、去重键与结果并清令牌；失败不留键。
 
 不调用 finalize_chat_turn（它会伪造 user 消息并顶掉前台草稿），不建 planning_task
 行、不改 gen_state。依赖：itinerary_care_check（收尾落库，本模块失败路径复用其
@@ -20,6 +15,7 @@ token 条件写；反向的 execute_check 用函数内懒导入取本模块，�
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -43,7 +39,7 @@ from app.common.envelope import ApiError
 from app.common.llm_route import use_route
 from app.common.trial_billing import payer_scope
 from app.common.vo_json import iso_datetime
-from app.db.models import ItineraryCare, ItineraryMain, SysUser
+from app.db.models import ItineraryCare, ItineraryDay, ItineraryMain, SysUser
 from app.db.session import session_scope
 from app.schemas.trip_requirements import TripRequirements
 from app.services import itinerary_chat, llm_gateway_service, quota_service
@@ -219,17 +215,24 @@ def _generation_inputs(itinerary_id: int, token: str, order: SuggestionOrder) ->
         budget = None if main.budget is None else float(main.budget)
         start_date = None if main.start_date is None else str(main.start_date)
         hotel_tier = main.hotel_tier
-    # current_plans 开自己的会话：指纹必须算在 Decimal 原始形状上（canonical_json
-    # 拒绝 float），发给模型的 plans 再转 float（agent 侧 float 运算的历史口径）
-    raw_plans = itinerary_chat.current_plans(itinerary_id)
+        # current_plans 的历史指纹形状不变；照看是整份替换，另带齐每日展示元数据。
+        raw_plans = itinerary_chat.current_plans(itinerary_id)
+        base_revision = itinerary_chat.plan_revision(raw_plans)
+        metadata_by_day = {
+            day.day_no: json.loads(day.metadata_json)
+            for day in session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id))
+            if day.metadata_json
+        }
+    # 指纹先算 Decimal 原始形状；发给模型时再转 float，不改变现有确认版本口径。
+    care_plans = [{**metadata_by_day.get(plan["day_no"], {}), **plan} for plan in raw_plans]
     return _GenerationInputs(
         owner_id=owner_id,
-        base_revision=itinerary_chat.plan_revision(raw_plans),
+        base_revision=base_revision,
         planning_revision=planning_revision,
         watched_item_ids=watched,
         care_input=CareAdjustInput(
             city=city,
-            plans=itinerary_chat._json_numbers(raw_plans),
+            plans=itinerary_chat._json_numbers(care_plans),
             requirements=requirements,
             affected_days=order.affected,
             persons=persons,

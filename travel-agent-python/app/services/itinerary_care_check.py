@@ -208,7 +208,17 @@ def finalize_check_in_session(session, itinerary_id: int, token: str, outcome: C
     if outcome.status is not None:
         values["last_status"] = outcome.status
     if outcome.result is not None:
-        values["last_result_json"] = outcome.result
+        result = dict(outcome.result)
+        # 天气观测与待确认草稿各自存续；后续无新建议不能抹掉仍可操作的照看消息。
+        row = session.get(ItineraryCare, itinerary_id)
+        previous = row.last_result_json if row and isinstance(row.last_result_json, dict) else {}
+        pending_id = previous.get("pendingMessageId")
+        if not result.get("pendingMessageId") and pending_id is not None:
+            main = session.get(ItineraryMain, itinerary_id)
+            latest = itinerary_chat.latest_action_message(session, main.user_id, itinerary_id) if main else None
+            if latest is not None and latest.id == pending_id:
+                result["pendingMessageId"] = pending_id
+        values["last_result_json"] = result
     if outcome.risk_keys:
         values["notified_risks_json"] = _merged_keys(session, itinerary_id, outcome.risk_keys)
     session.execute(statement.values(**values))
