@@ -256,6 +256,31 @@ def execute(result: dict[str, Any], args: argparse.Namespace, files: list[str]) 
     return run_validation(ROOT, CFG, result, args, files, git, paths, fingerprint)
 
 
+def collect_changed(args: argparse.Namespace, files: set[str], parser: argparse.ArgumentParser) -> list[str]:
+    """收集相对 HEAD（可选 --base）的变更路径并做仓库内校验。
+
+    暂存的 rename/删除会让旧路径既不在 index 也不在磁盘，只在 HEAD 里——
+    它是合法的变更侧路径，不能当未知文件拒掉（2026-10-17 修复：git mv 后 verify.ps1 必崩）。
+    """
+    head_files = set(git("ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")) - {""}
+    local = set(git("diff", "HEAD", "--name-only", "--no-renames", "-z").split("\0"))
+    local |= set(git("ls-files", "--others", "--exclude-standard", "-z").split("\0"))
+    if args.base:
+        base = git("merge-base", "HEAD", args.base).strip()
+        args.diff_base = base
+        local |= set(git("diff", base, "HEAD", "--name-only", "--no-renames", "-z").split("\0"))
+    args.local_dirty = local - {""}
+    changed = sorted({name.replace("\\", "/") for name in args.files} if args.files else local - {""})
+    if any(
+        Path(name.split("::")[0]).is_absolute() or ".." in Path(name.split("::")[0]).parts or name.startswith("-")
+        for name in changed
+    ):
+        parser.error("Use repository-relative paths inside this repository")
+    if any(name not in head_files and name not in files and not (ROOT / name).is_file() for name in changed):
+        parser.error("Unknown changed file (check spelling); deleted tracked paths are allowed")
+    return changed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--level", choices=["auto", "0", "1", "2", "3"], default="auto")
@@ -287,27 +312,19 @@ def main() -> int:
     if args.budget is not None and args.budget <= 0:
         parser.error("--budget must be positive")
     files = paths()
-    local = set(git("diff", "HEAD", "--name-only", "--no-renames", "-z").split("\0"))
-    local |= set(git("ls-files", "--others", "--exclude-standard", "-z").split("\0"))
-    if args.base:
-        base = git("merge-base", "HEAD", args.base).strip()
-        args.diff_base = base
-        local |= set(git("diff", base, "HEAD", "--name-only", "--no-renames", "-z").split("\0"))
-    changed = sorted({name.replace("\\", "/") for name in args.files} if args.files else local - {""})
+    changed = collect_changed(args, files, parser)
     if any(
         Path(name.split("::")[0]).is_absolute() or ".." in Path(name.split("::")[0]).parts or name.startswith("-")
-        for name in [*changed, *args.tests]
+        for name in args.tests
     ):
         parser.error("Use repository-relative paths inside this repository")
-    if any(name not in files and not (ROOT / name).is_file() for name in changed):
-        parser.error("Unknown changed file (check spelling); deleted tracked paths are allowed")
     if any(not (ROOT / name.split("::")[0]).is_file() for name in args.tests):
         parser.error("Additional pytest files must exist")
     if not changed and args.level != "3":
         print("No changed files. No checks run; this is not a validation pass.")
         return 0
     result = plan(args, files, changed)
-    result["unrelated_dirty"] = sorted(local - set(changed) - {""}) if args.files else []
+    result["unrelated_dirty"] = sorted(getattr(args, "local_dirty", set()) - set(changed)) if args.files else []
     if args.run:
         print(
             f"L{result['level']}: {len(changed)} changed files, {len(result['tests'])} selected test files; "

@@ -3,11 +3,12 @@
 为什么值得单独钉：退休动作最容易以两种方式静默出事——
 1. **运行时找不到文件**：SQL 真相源与印刷字体今天都住在 Java 模块里，直接删目录，
    服务要到"启动迁移"或"导出 PDF"时才炸；
-2. **门禁自己先红**：`check_schema_contract.py` 以"Java 目录必须存在"为前提，归档当天
+2. **门禁自己先红**：`check_schema_contract.py` 曾以"Java 目录必须存在"为前提，归档当天
    CI 会因为脚本读不到目录而失败。
 
-所以两处路径都改成"Java 侧优先 + 本仓副本兜底"的解析器，归档因此是**一次纯文件搬迁**；
-脚本在"Java 侧不存在"时给出明确语义（不是静默跳过）：schema 契约输出里注明跳过了实体列那一半。
+两处路径因此改成"Java 侧优先 + 本仓副本兜底"的解析器完成了归档；退役成为定局后
+（2026-10-17），脚本里的 Java 实体列对照半区整段删除，schema 契约门禁只对照 Python
+只读列，并有测试钉住 Java 侧入口不得回流。
 
 （2026-09-18 自检整改 R0-5）`scripts/check_endpoint_coverage.py` 已删除：Java 目录消失后
 它只剩"打印 OK 并 return 0"一条路径，两个统计函数永不被调用——一个恒真的门禁比没有门禁更糟，
@@ -66,15 +67,22 @@ def test_font_default_resolves_to_the_in_repo_copy(monkeypatch, tmp_path) -> Non
     assert config._default_font_path() == str(service_root / "app" / "resources" / "fonts" / "SinanSansSC-Regular.ttf")
 
 
-def test_schema_contract_notes_the_skipped_java_half(monkeypatch, tmp_path, capsys) -> None:
+def test_schema_contract_has_no_java_half_left() -> None:
+    """退役定局后 Java 实体列对照已整段删除：入口常量与检查函数不得回流，
+    输出也不再出现"跳过/已删除"的降级措辞——门禁要么全查、要么报错，没有静默半区。"""
     module = _load_script("check_schema_contract")
-    monkeypatch.setattr(module, "ENTITY_DIR", tmp_path / "archived")
+    assert not hasattr(module, "ENTITY_DIR"), "Java 实体目录常量不得回流"
+    assert not hasattr(module, "check_java"), "Java 对照函数不得回流"
 
-    assert module.main() == 0
-    output = capsys.readouterr().out
+    import io
+    from contextlib import redirect_stdout
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        assert module.main() == 0
+    output = buffer.getvalue()
     assert "OK:" in output
-    # 跳过必须写在输出里：不能让人以为"两端都对齐"
-    assert "跳过" in output and "已删除" in output
+    assert "跳过" not in output and "已删除" not in output
 
 
 def test_script_fallback_matches_the_app_resolver(monkeypatch) -> None:

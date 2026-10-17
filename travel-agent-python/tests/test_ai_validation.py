@@ -107,6 +107,25 @@ class PersonalValidation(unittest.TestCase):
         self.assertFalse(any("FULL" in c["argv"] for c in plan["commands"]))
         self.assertFalse(any("MODULE" in c["argv"] for c in plan["commands"]))
 
+    def test_staged_rename_survives_changed_collection(self) -> None:
+        """git mv 之后旧路径只在 HEAD 与 diff 里（不在 index、不在磁盘）：收集不得当未知文件拒掉。"""
+        subprocess.run(
+            ["git", "mv", "app/leaf.py", "app/leaf_moved.py"], cwd=self.root, check=True, capture_output=True
+        )
+        changed = self.module.collect_changed(
+            argparse.Namespace(base=None, files=None), self.module.paths(), argparse.ArgumentParser()
+        )
+        self.assertIn("app/leaf.py", changed)
+        self.assertIn("app/leaf_moved.py", changed)
+
+    def test_collect_changed_still_rejects_unknown_files(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.module.collect_changed(
+                argparse.Namespace(base=None, files=["nope/missing.py"]),
+                self.module.paths(),
+                argparse.ArgumentParser(),
+            )
+
     def test_diff_accepts_crlf_but_rejects_real_trailing_spaces(self) -> None:
         plan = self.module.plan(self.args(), self.module.paths(), ["app/leaf.py"])
         diff_command = plan["commands"][0]["argv"]

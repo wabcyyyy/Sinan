@@ -2,7 +2,7 @@
 /**
  * theme-lint：外观契约的机器强制（SPEC v2.3 §7.1.6 / S0-11）。
  *
- * 扫描 `src/**` 的 .vue `<style>` 块与 .css 文件，三条禁令：
+ * 扫描 `src/**` 的 .css 文件，三条禁令：
  *   ① 裸色值：禁止 #hex / rgb( / rgba( —— 颜色只能来自令牌变量。
  *      例外：**令牌定义块**（:root / [data-scheme=…] / .dark / prefers-color-scheme: dark）
  *      内部允许写具体色值（那正是令牌的唯一产地）。
@@ -16,8 +16,8 @@
  *   `cssVar('--lp-*', …)` 行内作为离线兜底的 hex 视为令牌取值的合理回落，予以放行
  *   （与「令牌定义块」例外同理）。把新文件加进 TS_VISUAL_FILES 前先确认它可 0 裸 hex。
  *
- * 成功口径：`src/components/ui/**`、`src/styles/**`、`src/App.vue` 与本期新增 view 必须
- * 0 违规。未收敛的旧文件登记在 theme-lint.allowlist.json —— **只准变短不准变长**：
+ * 成功口径：`src/**` 全部样式与本期新增 view 必须 0 违规。未收敛的旧文件登记在
+ * theme-lint.allowlist.json —— **只准变短不准变长**：
  *   - 新文件出现违规 = CI 红；已豁免文件中出现「比登记更多」的违规 = CI 红；
  *   - 修好一个文件就把它从列表删掉、把 _count 改小（只删不加）。
  *
@@ -63,7 +63,7 @@ function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name)
     if (statSync(path).isDirectory()) walk(path, acc)
-    else if (name.endsWith('.css') || name.endsWith('.vue')) acc.push(path)
+    else if (name.endsWith('.css')) acc.push(path)
   }
   return acc
 }
@@ -71,17 +71,6 @@ function walk(dir, acc = []) {
 /** 注释等长置空（保留换行），避免注释里的示例色值误报、行号仍准确。 */
 function blankComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-}
-
-/** .vue 只保留 <style> 块内容参与扫描；其余区域等长置空，行号不变。 */
-function maskVueToStyles(text) {
-  let out = text.replace(/[^\n]/g, ' ')
-  for (const m of text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
-    const start = m.index + m[0].indexOf('>') + 1
-    const end = start + m[1].length
-    out = out.slice(0, start) + text.slice(start, end) + out.slice(end)
-  }
-  return out
 }
 
 function scanCss(text, file, out) {
@@ -125,9 +114,7 @@ function scanTs(text, file, out) {
 function collect() {
   const violations = []
   for (const file of walk(SRC)) {
-    const raw = readFileSync(file, 'utf8')
-    const text = file.endsWith('.vue') ? maskVueToStyles(raw) : raw
-    scanCss(text, file, violations)
+    scanCss(readFileSync(file, 'utf8'), file, violations)
   }
   for (const rel of TS_VISUAL_FILES) {
     scanTs(readFileSync(join(ROOT, rel), 'utf8'), join(ROOT, rel), violations)

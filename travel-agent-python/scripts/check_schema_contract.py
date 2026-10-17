@@ -1,4 +1,4 @@
-"""schema 漂移检查：Flyway 迁移（V1 基线 + 全部 V*.sql）必须覆盖 Python 查询列（Java 实体列一半已归档跳过）。
+"""schema 漂移检查：Flyway 迁移（V1 基线 + 全部 V*.sql）必须覆盖 Python 查询列。
 
 用法（仓库任意位置）：
     uv run python scripts/check_schema_contract.py
@@ -8,9 +8,7 @@
   CREATE TABLE 的列定义 + ALTER TABLE ... ADD COLUMN 新增的列；
 - Python：app/agent/data/city_reference.py 查询的 city_geo / city_consumption 列
   （下方静态期望表，POI 库退役后 agent 层仅存的城市级数据面）必须在并集中存在；
-- Java：各 @TableName 实体的字段（camelCase→snake_case）必须在对应表的并集列中；
-  **Java 模块归档后这一半自动跳过并在输出里注明**（不会静默当全过）；
-- 任何缺失即 exit 1 —— 新环境「启动即建表」后两端查询不会因缺列直接失败。
+- 任何缺失即 exit 1 —— 新环境「启动即建表」后查询不会因缺列直接失败。
 
 为什么不再只读 V1：V1 一经发布不得修改（Flyway checksum 校验），后续变更一律新增
 V2__*.sql。若只解析 V1，给实体加字段而 ALTER 写进 V2 会被误报为漂移，等于把
@@ -42,7 +40,6 @@ except ImportError:
 
 # 与运行时同源：只有一个落点（R3-5，见 tests/test_retirement_readiness.py）
 MIGRATION_DIR = resolve_migration_dir()
-ENTITY_DIR = ROOT / "travel-backend-java/src/main/java/com/travel/backend/entity"
 
 # city_reference（agent 层仅存的数据库面）查询列的静态期望：脚本改解析 SQL 字符串
 # 太脆，列清单以本表为准——city_reference 增列时这里同步登记，缺列即门禁变红。
@@ -95,10 +92,6 @@ def parse_migrations() -> tuple[dict[str, set[str]], list[str]]:
     return tables, warnings
 
 
-def snake(name: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-
-
 def check_python(tables: dict[str, set[str]]) -> list[str]:
     problems: list[str] = []
     for table, columns in CITY_REFERENCE_TABLES.items():
@@ -110,45 +103,23 @@ def check_python(tables: dict[str, set[str]]) -> list[str]:
     return problems
 
 
-def check_java(tables: dict[str, set[str]]) -> list[str]:
-    """Java 实体列 vs 迁移列。Java 模块归档后这一半自动失效（返回空），由 main 说明。"""
-    if not ENTITY_DIR.is_dir():
-        return []
-    problems: list[str] = []
-    for f in sorted(ENTITY_DIR.glob("*.java")):
-        text = f.read_text(encoding="utf-8")
-        m = re.search(r'@TableName\("(\w+)"\)', text)
-        if not m:
-            continue
-        table = m.group(1)
-        known = tables.get(table)
-        if known is None:
-            problems.append(f"{f.name}: 迁移（V1+V*）缺少实体对应表 {table}")
-            continue
-        for fm in re.finditer(r"^\s*private\s+[\w<>,\s\.]+\s+(\w+)\s*;", text, re.M):
-            col = snake(fm.group(1))
-            if col not in known:
-                problems.append(f"{f.name}: {table} 缺列 {col}")
-    return problems
-
-
 def main() -> int:
     files = migration_files()
     if not files:
         print(f"未找到迁移文件：{MIGRATION_DIR}")
         return 1
     tables, warnings = parse_migrations()
-    problems = check_python(tables) + check_java(tables)
+    problems = check_python(tables)
     if problems:
-        print("schema 漂移（迁移 V1+V* 与两端代码不一致）：")
+        print("schema 漂移（迁移 V1+V* 与 Python 查询列不一致）：")
         for p in problems:
             print("  -", p)
         return 1
     for w in warnings:
         print("  !", w)
-    java_half = "Python 只读列与 Java 实体列全部存在" if ENTITY_DIR.is_dir() else "Java 实体列对照已跳过（模块已删除）"
     print(
-        f"OK: 应用 {len(files)} 个迁移文件（{files[0].name} … {files[-1].name}），覆盖 {len(tables)} 张表；{java_half}"
+        f"OK: 应用 {len(files)} 个迁移文件（{files[0].name} … {files[-1].name}），"
+        f"覆盖 {len(tables)} 张表；Python 只读列全部存在"
     )
     return 0
 

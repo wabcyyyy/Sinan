@@ -2,7 +2,7 @@
 /**
  * ep-allowlist：去 EP 的机器门禁（SPEC v2.6 §19.7-2）。
  *
- * 扫描 `src/**` 的 .vue/.ts（跳过生成的 *.d.ts 与测试文件），统计 Element Plus 的使用：
+ * 扫描 `src/**` 的 .ts/.tsx（跳过生成的 *.d.ts 与测试文件），统计 Element Plus 的使用：
  *   ① 组件标签 `<el-…>`（含闭合标签）；② 服务式 API 标识符（ElMessage/ElMessageBox/…）。
  * 注释会被等长置空后再计数，避免注释里的提及污染计数。
  *
@@ -10,7 +10,7 @@
  *   - 出现不在允许清单里的文件 = 红（产品面禁止新增 EP 使用）；
  *   - 允许清单内文件计数**比登记更多** = 红；
  *   - 计数变少 = 提示（可把清单计数改小），不算红。
- * 允许清单 = scripts/ep-allowlist.json（含 admin/Generate/Login 等存量的冻结计数）。
+ * 允许清单 = scripts/ep-allowlist.json（Vue 树退役后已清零，保持为空）。
  *
  * 用法：
  *   node scripts/ep-allowlist.mjs                  # 检查（CI 用）
@@ -33,9 +33,10 @@ function walk(dir, acc = []) {
     const path = join(dir, name)
     if (statSync(path).isDirectory()) walk(path, acc)
     else if (
-      (name.endsWith('.vue') || name.endsWith('.ts')) &&
+      (name.endsWith('.ts') || name.endsWith('.tsx')) &&
       !name.endsWith('.d.ts') &&
-      !name.endsWith('.test.ts')
+      !name.endsWith('.test.ts') &&
+      !name.endsWith('.test.tsx')
     ) {
       acc.push(path)
     }
@@ -46,7 +47,6 @@ function walk(dir, acc = []) {
 /** 注释等长置空（保留换行），注释里的提及不参与计数。 */
 function blankComments(text) {
   return text
-    .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length))
 }
@@ -74,7 +74,7 @@ function main() {
   if (update) {
     const payload = {
       _note:
-        'EP 允许清单（SPEC v2.6 §19.7-2）：只准变短不准变长——把 EP 从某个文件清干净就从这里删掉；不许加新文件/加计数。admin/Generate/Login 等存量面在清单内冻结。',
+        'EP 允许清单（SPEC v2.6 §19.7-2）：只准变短不准变长——把 EP 从某个文件清干净就从这里删掉；不许加新文件/加计数。Vue 树退役后清单保持为空，产品面禁止引入 Element Plus。',
       _count: Object.keys(counts).length,
       files: Object.fromEntries(Object.keys(counts).sort().map((k) => [k, counts[k]])),
     }
@@ -111,7 +111,7 @@ function main() {
   if (problems.length) {
     console.error('[ep-allowlist] 未通过：')
     for (const p of problems) console.error('  - ' + p)
-    console.error('  提示：产品面新代码请用 src/components/ui/ 的自研件；确需例外先改代码而不是改清单。')
+    console.error('  提示：产品面禁止引入 Element Plus；新组件放 src/react-app/ 下，使用现有令牌与共享组件。')
     return 1
   }
   console.log('[ep-allowlist] OK')
