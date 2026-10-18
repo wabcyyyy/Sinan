@@ -18,6 +18,14 @@
 | 外部服务与可选功能 | 后端 `.env.example` | 完整字段与注释以此为准 |
 
 真实生成填写 `LLM_BASE_URL`、`LLM_MODEL`、`LLM_API_KEY` 后重新创建后端容器。联网搜索和具名 provider 以完整模板说明为准。
+
+完整 Docker 栈在仓库根目录执行：
+
+```bash
+docker compose --profile apps up -d --force-recreate agent-python
+```
+
+宿主机开发则停止并重新运行后端进程。已有 env 不会被初始化器修复或覆盖，修改时先确认上面的生效顺序。
 不要把示例占位符当作凭据；不要为 Compose 显式设置指向 localhost 的 `REDIS_URL`，它优先于派生地址。
 端口冲突时调整根文件的 MYSQL_PORT/REDIS_PORT，不要停止其他项目的服务。
 

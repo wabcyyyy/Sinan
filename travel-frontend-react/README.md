@@ -30,11 +30,15 @@ React 19 + Vite + TypeScript 壳（入口 `src/react-app/`，`main.tsx` 挂载 `
 
 ## 启动
 
+需要 Node 22.12+。在本目录执行：
+
 ```bash
-cp .env.example .env   # 空白模板：前端不需要任何第三方 key
-npm install
+npm ci
 npm run dev            # http://localhost:5173，/api 代理到 8000（FastAPI）
 ```
+
+只看固定样例访问 `/demo`，无需后端、数据库、账号或模型 key。普通首页的真实规划需要后端，按 [宿主机开发指南](../docs/public/development.md#宿主机开发) 启动，并先停止占用相同端口的应用容器。
+前端不需要任何第三方 key；只有自定义公开开关时才需要本地 env，不要覆盖已有配置。
 
 构建：`npm run build`（vite build）。
 

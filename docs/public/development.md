@@ -2,15 +2,62 @@
 
 需要 Python 3.12、uv、Node 22.12+。CI 与 Docker 使用 Node 22，依赖以锁文件为准。
 
-先按 README 初始化配置，执行 `docker compose up -d mysql redis`。
-后端目录运行 `uv sync --frozen`，再运行 `uv run python main.py`。
-前端目录运行 `npm ci`，再运行 `npm run dev`。完整页面样例只需前端，打开 `/demo`；`npm run build:demo` 构建免登录静态展示（入口 `/`），部署见 [Vercel 展示说明](vercel-demo.md)。
-宿主机连接基础设施时检查 DB_PORT/REDIS_PORT 与根环境文件一致。
+仅体验固定样例可直接使用 [README 的仅前端方案](../../README.md#仅前端演示)。以下是修改代码时的宿主机开发方式。
+
+## 宿主机开发
+
+在仓库根目录初始化配置。若此前已启动完整 Docker 栈，先停止它的两个应用容器，避免与本机服务争用 8000/5173；MySQL 和 Redis 继续由 Docker 提供。
+
+```bash
+docker compose -f compose.setup.yml run --rm setup
+docker compose --profile apps stop agent-python frontend-react
+docker compose up -d --wait mysql redis
+```
+
+初始化为缺失的 env 生成数据库口令、JWT 和内部令牌，保留已有文件；不要再用 `cp .env.example .env` 覆盖它们。
+真实生成按 [配置指南](configuration.md) 设置后端模型信息。本机 HTTP 开发在后端 `.env` 设置 `AUTH_COOKIE_SECURE=false`，HTTPS 部署保持 true。
+如果初始化后修改了根 `.env` 的数据库或 Redis 配置，还需同步后端 `.env` 中的 `DB_PORT`、`DB_PASSWORD`、`DB_NAME` 和 `REDIS_PORT`、`REDIS_PASSWORD`；MySQL 库名在根文件中叫 `MYSQL_DB`。
+
+分别打开两个终端，从仓库根目录执行：
+
+```bash
+# 终端一：后端
+cd travel-agent-python
+uv sync --frozen
+uv run python main.py
+```
+
+```bash
+# 终端二：前端
+cd travel-frontend-react
+npm ci
+npm run dev
+```
+
+访问 Vite 输出的地址（默认 `http://localhost:5173`），注册、登录后使用真实规划；`/demo` 为免登录固定样例。
+按 Ctrl+C 停止各自的开发进程。切回完整 Docker 运行前先停止本机进程，再按 README 启动应用容器。
+端口冲突见 [排障指南](troubleshooting.md#端口冲突)。
+
+## 日常验证
+
+以下命令均在仓库根目录执行，按平台选择：
+
+```powershell
+# Windows PowerShell
+.\verify.ps1
+```
+
+```bash
+# Linux / macOS：复用同一个验证器与规则，无需 PowerShell
+uv run --project travel-agent-python python scripts/ai_validate.py --run
+```
+
+`just check` / `just test` 和 `.ps1` 快捷入口目前面向 Windows；Linux/macOS 使用上面的 Python 入口。
+两种入口均按改动选择检查、最多自动选 6 个测试文件，快速执行预算 90 秒。规则与参数见 [VALIDATION.md](../../VALIDATION.md)。
 
 ## 后端
 
-日常在根目录运行 `verify.ps1`（或 `just check`），规则见 `VALIDATION.md`。
-完整门禁交给 CI；用户明确要求本地全量时，在 `travel-agent-python/` 执行：
+日常使用上面的平台对应入口。完整门禁交给 CI；Windows 上明确要求本地全量时，在 `travel-agent-python/` 执行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check.ps1 -Full

@@ -1,8 +1,11 @@
 # travel-agent-python
 
-**单进程后端 + AI Agent 服务**：既提供业务接口（`/api/**`：鉴权、行程读写、版本快照、PDF 导出、后台管理、SSE 事件流），也提供 Agent 接口（`/api/agent/v1/**`）。行程生成/调整通过 LangGraph 工作流调用 LLM（任意 OpenAI 兼容端点，默认 DeepSeek 官方 `deepseek-flash`）。**AI-NATIVE 数据面（2026-09-17 起）**：本地不再维护景点语料库（`poi_knowledge` 已随 V4 迁移退役）——地点事实走「LLM 世界知识 + 联网搜索（DashScope enable_search）+ **OpenTripMap**（OSM+Wikidata 加工的旅游切片：坐标/分类/图片/百科简介）+ **Nominatim**（点名→坐标兜底）」，票价/营业时间无结构化来源，由 LLM 估价并按 `estimated` 如实标注，前端以**地图深链**（国内高德 URI / 海外谷歌 Maps）引导用户出发前核实。数据库只存用户数据：用户、偏好、行程快照（`itinerary_item` 为快照式落库，已生成行程不依赖任何外部数据源）、`city_geo` 城市字典与 `city_consumption` 消费基准。（历史上业务面在 Spring Boot 侧，已按绞杀者路线整体迁到本服务，两个面同进程直调。）
+单进程 FastAPI 后端，同时提供业务面 `/api/**`（鉴权、行程、编辑、分享、PDF、后台）与内部 Agent 面 `/api/agent/v1/**`。
+前端经业务服务调用 Agent 门面，生成和修复在同一进程内编排；内部 Agent HTTP 接口不经过前端代理公开。
 
-生产主链路为**整段流式生成**（`/v1/generate-stream`）：一次 LLM 调用生成整趟行程（模型看得见全盘，跨天重复与片区走回头路在源头收敛），流式增量解析 `daily_plans` 数组，每解析出一个完整天立即做引用落地/坐标补齐/双通道去重（归一化同名 + 落地坐标 <80m），以 JSON Lines 逐天下发；`/v1/generate`（整段非流式，走同一张 LangGraph 图）用于直接调用（离线评测默认走业务层 `plan_days`，此图只作 `--path graph` 对照），`/v1/generate-day` 供编排器做恢复续跑与缺天修复。
+产品生成入口是 `services/itinerary_generation.py` 的 `plan_days`：并行研究 → 整段流式生成 → 落库终检 → 违规或缺失天逐日补齐。
+已成功天会保留，最终状态区分完整、部分交付与失败。业务进度通过 SSE 推送；Agent 面的 `/api/agent/v1/generate-stream` 另提供 JSON Lines 接口。
+数据库保存用户数据、行程快照及城市级字典；地点候选来自模型知识与外部服务，估算内容须在出发前核实。
 
 ## 技术栈
 
@@ -10,33 +13,33 @@
 - FastAPI 0.111 + Uvicorn
 - LangGraph 1.2.12 + LangChain Core
 - PyMySQL（读 `city_geo` 字典与 `city_consumption` 消费基准两张城市级表）
-- 外部地点层：OpenTripMap（免 key 注册；仅 en/ru，名称为英文，中文名由 LLM 对齐）+ Nominatim（免 key，1 rps 政策）
+- 外部地点层：OpenTripMap（需 API key；仅 en/ru，名称为英文，中文名由 LLM 对齐）+ Nominatim（免 key，1 rps 政策）
 - 联网搜索：DashScope enable_search 插件（经 LLM 供应商，补真实店名/项目名；不保证坐标）。**只有百炼兼容层有这个插件**：主通道若是 DeepSeek 官方等无插件网关，联网补池与实时价会如实按「未联网」降级（一次外呼都不发，绝不用模型记忆冒充检索结果；见 `app/agent/data/web_search.py:search_channel_ready`）。要保留联网能力就把该通道指向 `https://dashscope.aliyuncs.com/compatible-mode/v1`。
 
-## 工作流（LangGraph）
+## 产品链路与 Agent 图
 
-```
-parse ──► research ──► generate ──► reflect ──► format
-                 │                       │
-                 └───── 失败/重试/补查 ───┘
-
-research 节点（多 Agent 研究层）：Supervisor 并行派发 酒店/景点/美食 三个研究 Agent
-  （LLM 规划检索策略 → 工具检索 → 评估充分性 → 不足补查一轮），输出证据包 EvidencePack；
-  校验发现"无景点"类证据缺口时只重派发对应研究 Agent 补查。
-  工具检索 = OpenTripMap 半径池（景点，带坐标）∪ 联网搜索补池（真实店名，不保证坐标）。
-
-generate 内部（LLM-only，外部数据只作证据）：
-  开放模式（唯一路径）：LLM 知识选点 + 候选资料[Rn]注入 → refs 引用落地 → Nominatim grounding 补坐标
-  失败降级：           重试一次 → 仍失败返回"待研究草案"（绝不以候选拼装行程冒充生成结果）
+```text
+业务面 /api/itinerary/**
+  → plan_days
+  → 景点 / 餐饮 / 住宿三路研究（线程池并行，各域使用 LangGraph 子图）
+  → stream 分支整段流式生成、逐天落库
+  → 确定性终检
+  → day 分支仅补齐违规或缺失天
+  → 汇总预算与交付状态，SSE 通知前端
 ```
 
-- `parse`：意图解析（城市/天数/偏好/预算）
-- `research`：多 Agent 研究编排 —— 三域研究 Agent 并行收集证据（OTM 半径池 + 联网搜索补池），Supervisor 汇总证据包并驱动证据型缺口补查
-- `generate`：开放模式为主；外部候选（OTM/Nominatim/联网）命中项落地为 `partially_verified/observed` 并回填真实 `source`，模型自选点标 `unverified/before_departure`（坐标由 Nominatim grounding 补齐，解析不到的城市如实留空）
-- `reflect`：校验时间冲突 / 路线可达性 / 日饱和度 / 预算超支等 11 类规则，`needs_fix` 时最多 2 轮修正，输出 `validation_log`
-- `format`：结构化输出 + 确定性预算重算（成本随草稿/估价落地，酒店走估价→季节系数定价链）
+研究子图执行检索策略规划、工具检索、充分性评估与有界补查，输出 `EvidencePack`。
+生成内容经引用落地、坐标补齐与跨天去重；落库后的终检覆盖时间、路线、预算、必去和排除等约束。
 
-每次外部检索写入脱敏 Trace 事件（含候选数、来源与 fallback 标记）；可通过 `X-Agent-Run-ID` 追踪完整检索链路。
+另有供内部直接调用的 `trip` 分支：
+
+```text
+parse → research → generate → reflect → format
+```
+
+它服务 `/api/agent/v1/generate`，前端业务链路不经过这个入口。
+离线评测默认走 `plan_days` 产品路径；`--path graph` 才使用 `trip` 分支作对照。
+外部检索记录脱敏 Trace，可通过 `X-Agent-Run-ID` 追踪。完整说明见 [架构文档](../docs/public/architecture.md)。
 
 ## 外部地点层（app/agent/data/places.py）
 
@@ -65,11 +68,18 @@ tests/
 
 ## 启动
 
+先按 [宿主机开发指南](../docs/public/development.md#宿主机开发) 在仓库根目录初始化配置、启动 MySQL/Redis，并停止可能占用端口的应用容器。
+初始化器会为缺失文件生成数据库口令、JWT 和内部令牌；不要用 `cp .env.example .env` 覆盖已生成的配置。
+现有配置若来自手动复制的模板，须替换 `JWT_SECRET`、`AGENT_INTERNAL_TOKEN` 等占位符，并核对数据库与 Redis 连接；占位令牌即使在回环地址也会被拒绝。
+
+准备完成后，在本目录执行：
+
 ```bash
-cp .env.example .env   # 填入 LLM_API_KEY、DB_PASSWORD、JWT_SECRET（≥32 位，本服务签发会话票）；OTM_API_KEY 建议配置（opentripmap.io 免费注册）
-uv sync                # 安装运行时依赖
-uv run python main.py  # 127.0.0.1:8000，默认不开启 reload
+uv sync --frozen
+uv run python main.py  # 默认 127.0.0.1:8000，不开启 reload
 ```
+
+真实生成另需配置模型；只看固定样例可直接使用 [仅前端演示](../README.md#仅前端演示)。
 
 环境变量（`.env`）：`LLM_BASE_URL`（默认 DeepSeek 官方 API `https://api.deepseek.com`）、`LLM_API_KEY`、`LLM_MODEL`（默认 deepseek-flash）、`LLM_ENABLE_THINKING`（思考模式开关，DeepSeek 官方通道下发 `thinking: {"type":"enabled"|"disabled"}`）、`LLM_REASONING_EFFORT`（思考强度 low/high/max；留空 = 不下发，空串等同没配）、`LLM_TIMEOUT`（批量生成 200-300 字介绍时输出可达 4000+ token，建议 ≥240）、`DEFAULT_BUDGET`、`DB_*`、`AGENT_INTERNAL_TOKEN`（配置后保护生成/编辑接口；`AGENT_HOST` 绑定非回环地址且未配置 token 时启动直接报错，留空仅适合本机回环开发）、`AGENT_RELOAD`（开发环境可设为 `true`）。**模型侧已角色化（2026-10-04）**：一个用途一个角色键 `LLM_ROLE_{MAIN,FAST,VISION,JUDGE,SEARCH,STT}`，值是 `provider:model`（裸模型名 = 默认 provider，留空 = 复用 main）；额外网关按名册 `LLM_PROVIDER_{DASHSCOPE,MIMO}_{BASE_URL,API_KEY}` 声明。解析、能力判断与启动期校验都在 `app/common/model_registry.py`——新增用途不必再加一组平铺键。外部地点层：`OTM_API_KEY`（opentripmap.io 免费 key；留空则景点池走纯联网搜索）、`OTM_RADIUS_M`/`OTM_LIMIT`（城市半径检索范围与上限）、`PLACES_TIMEOUT_SECONDS`（OTM/Nominatim 单次超时）、`NOMINATIM_ENABLED`（点名解析兜底开关；公共实例 1 rps 政策由客户端自节流保证）。表结构由本服务启动时自动迁移（`app/db/migrate.py`：空库按版本序执行 `app/db/migrations/sql/V*.sql` 全量建表，已有表的库只打版本点、绝不重跑 DDL），无需手工执行建表/增量 SQL；SQL 真相源在 `app/db/migrations/sql/V*.sql`（全仓只留这一份，V4 退役了 `poi_knowledge` 与 `hotel_room_type`）。若配置 `ROUTE_SERVICE_ENABLED=true`，反思与质检阶段会用确定性路线矩阵校验 POI 间可达性——纯坐标估算（haversine × 道路系数 + 缓冲），无任何外部路线 API，结果自带 `degraded` 标记。`SCHEDULE_OPTIMIZER_ENABLED=true` 控制确定性时间窗优化器。`TOOL_MAX_CALLS` 控制单次 Agent 请求的工具调用总预算，单工具风险、版本、Schema、超时和调用上限由 Tool Registry 管理；`AGENT_DEADLINE_SECONDS`、`MAX_LLM_CALLS`、`MAX_TOKEN_BUDGET` 和 `MAX_REPLANS` 控制单次运行边界，`TRACE_STORAGE_PATH` 控制 JSONL Trace 持久化位置（错误文本中的 API key/Bearer 令牌会集中脱敏）。
 

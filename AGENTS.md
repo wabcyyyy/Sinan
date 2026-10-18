@@ -3,6 +3,7 @@
 ## 个人项目快速迭代（本节优先，2026-10-12）
 
 日常只运行根目录 `verify.ps1`（Sinan 也可 `just check`），规则详见 `VALIDATION.md`。
+Linux/macOS 使用同一验证器：在仓库根运行 `uv run --project travel-agent-python python scripts/ai_validate.py --run`；当前 `.ps1` 与 just 配方是 Windows 快捷入口。
 默认做改动文件静态检查及少量最近的相关测试，不自动跑全量；高风险增加相关关键链路检查。
 普通 commit、push、任务/批次收尾、跨模块修改、新开对话均不构成本地全量的触发条件。
 完整回归交给现有 CI；用户明确要求本地全量时才使用 `verify.ps1 -Full`。

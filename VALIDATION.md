@@ -1,7 +1,11 @@
 # 个人项目验证规则
 
-日常一个入口：仓库根 `powershell -NoProfile -ExecutionPolicy Bypass -File verify.ps1`。
-Sinan 的 `just check` / `just test` 也是这个入口。无需每轮选择 L0–L3。
+日常使用同一个验证器，以下命令均在仓库根目录执行：
+
+- Windows：`powershell -NoProfile -ExecutionPolicy Bypass -File verify.ps1`；`just check` / `just test` 是同一入口。
+- Linux/macOS：`uv run --project travel-agent-python python scripts/ai_validate.py --run`。
+
+先在后端目录完成 `uv sync --frozen`。`.ps1` 与当前 just 配方面向 Windows；无需每轮选择 L0–L3。
 
 - 默认检查 diff、改动 Python 语法/Ruff、最近相关测试；前端做增量类型检查和 related 单测。
   diff 接受仓库已有的 CRLF 换行，仍拒绝行尾空格、文件末空行与缩进中的空格后接 Tab。
@@ -32,6 +36,8 @@ Sinan 的 `just check` / `just test` 也是这个入口。无需每轮选择 L0�
 
 底层 `scripts/ai_validate.py` 保留 `--level 0/1/2/3`：0 静态诊断，默认少量相关测试，
 显式 2 不限文件数量的模块回归，显式 3 全量。日常入口不会自动选择 3。
+Linux/macOS 去掉 `--run` 可查看计划，`--tests` / `--files` / `--base` 对应上面的同名参数；
+路径使用仓库相对路径。完整本地门禁仍包含 Windows PowerShell 脚本，Linux/macOS 的完整回归由现有 CI 执行。
 默认只看相对 HEAD 的 dirty；应在 commit 前运行。已提交变化用 -Base，不能遗漏后假称通过。
 同一仓库串行；日志在 `.validation/`，临时目录在仓库外、每次唯一。
 运行预算只覆盖执行阶段，启动、依赖身份读取和计划计算另有少量开销。
