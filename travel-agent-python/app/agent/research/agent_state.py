@@ -27,18 +27,16 @@ MODE_STREAM = "stream"
 
 
 class UnifiedAgentState(BaseModel):
-    """day / trip / research 共用状态；未用到的字段保持默认即可。
+    """统一承载生成、研究与确认分支的可持久化图状态。
 
-    M0：由 TypedDict(total=False) 改为 Pydantic BaseModel（同名字段、全字段带默认值）；
-    PR-2：吸收 AgentState（trip 字段的旧 TypedDict 副本）与 ResearchAgentState 两份
-    重复定义（哲学 1：每类事实只有一份权威定义），删除 dict 兼容访问器、节点全部
-    改属性访问（哲学 4：就地迁移，不留兼容壳）。检索计划字段因与当日计划 `plan`
-    撞名，改称 `research_plan`（原 ResearchAgentState.plan）。
+    节点接收模型实例并返回部分更新；集中定义字段，避免检查点恢复时
+    多份状态模型漂移。extra="forbid" 拒绝模型构造时的未知字段。
 
-    - extra="forbid"：节点返回未知键时响亮失败（保持 LangGraph 对非法更新键的
-      报错语义，防止静默丢字段）；
-    - dict 入口不变：``unified_agent_graph.invoke(empty_*_state(req))`` 仍传 dict，
-      LangGraph 自行 coerce 成模型实例；节点返回部分更新 dict 的约定也不变。
+    Attributes:
+        mode: 生成图的分支标识，取 trip、day 或 stream。
+        validation_issues: 本轮确定性检查发现的问题，供下一轮修复消费。
+        feedback: 传回生成节点的修复反馈，最后一次尝试也保留。
+        refill_count: 已执行的证据缺口补查次数，供路由限制重查。
     """
 
     model_config = ConfigDict(extra="forbid")

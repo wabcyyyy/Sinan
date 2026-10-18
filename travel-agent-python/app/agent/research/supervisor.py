@@ -95,10 +95,16 @@ def decompose(req: GenerateRequest) -> list[ResearchTask]:
 
 
 def run_research_parallel(tasks: list[ResearchTask]) -> dict[ResearchDomain, EvidencePack]:
-    """并行执行全部研究任务；单域失败降级为 degraded 证据包。
+    """并行派发领域研究，并显式保留各域的失败信息。
 
-    必须在提交点（主线程）copy_context：worker 线程默认不继承 contextvars，
-    若在 worker 内才 copy，trace/预算上下文已经丢失，研究轨迹挂不到本次运行。
+    提交前复制 contextvars，使 worker 延续同一次运行的轨迹与预算上下文；
+    单域异常转为 degraded 证据包，避免一个数据源失败抹去其他域的证据。
+
+    Args:
+        tasks: 按景点、美食、酒店等领域拆分的研究任务。
+
+    Returns:
+        按领域索引的证据包，失败包携带 gaps 与 degraded 标记。
     """
     packs: dict[ResearchDomain, EvidencePack] = {}
     # 研究阶段并行度 = 三个领域 Agent；与 _search_pois 的并行度口径一致，

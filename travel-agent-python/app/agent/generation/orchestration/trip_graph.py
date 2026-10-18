@@ -219,6 +219,7 @@ def trip_needs_fix(state: UnifiedAgentState) -> str:
 
 
 def build_unified_graph() -> StateGraph:
+    """构建三分支生成图；stream 的落库终检由业务层负责。"""
     graph = StateGraph(UnifiedAgentState)
 
     graph.add_node("dispatch", dispatch)

@@ -91,7 +91,17 @@ def _validate_choice(reply: ChatTurnResponse, kind: str, choice: dict) -> Confir
 
 @traced("node", "chat.await_confirmation")
 def await_confirmation(state: UnifiedAgentState) -> dict:
-    """提案落 checkpoint 后 interrupt 暂停；resume 值与提案复核后落 chat_confirm。"""
+    """暂停提案并在恢复时复核用户选择，避免确认另一份内容。
+
+    interrupt 之前只读取 state，因为 LangGraph 恢复时会重执行本节点；
+    提案构建与模型调用留在图外，避免一次确认再次生成或产生写入副作用。
+
+    Args:
+        state: 含服务端原始提案的统一图状态。
+
+    Returns:
+        chat_confirm 部分更新，供业务层继续校验并决定是否写库。
+    """
     reply = cast("ChatTurnResponse", state.chat_reply)
     kind = _proposal_kind(reply)
     # interrupt：暂停并把提案落 checkpoint。本节点 interrupt 之前只读 state，

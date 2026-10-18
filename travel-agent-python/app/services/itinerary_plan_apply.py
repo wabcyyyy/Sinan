@@ -63,6 +63,13 @@ DEFAULT_NEW_DAY_NOTE = "宽松安排"
 def apply_plans(
     user_id: int, itinerary_id: int, action_message_id: int | None, base_revision: str | None
 ) -> dict[str, Any]:
+    """校验并应用服务端草稿，CAS 冲突时整笔回滚。
+
+    快照、行程、需求与草稿消费由同一业务事务提交。
+
+    Returns:
+        提交后从数据库读回的最新行程详情。
+    """
     with session_scope() as session:
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
         message = itinerary_chat.require_pending_action(

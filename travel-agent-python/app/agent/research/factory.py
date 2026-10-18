@@ -210,6 +210,17 @@ def _finalize_pack(state: UnifiedAgentState) -> dict:
 
 
 def build_research_graph(domain: ResearchDomain):
+    """构建领域研究子图，以充分性评估驱动有界补查。
+
+    检索不足时先修订关键词再检索；达到轮次上限直接汇总现有证据，
+    避免为追求充分性无限消耗模型与外部服务额度。
+
+    Args:
+        domain: 研究领域标识；领域配置由节点通过任务读取。
+
+    Returns:
+        可由 Supervisor 并行调用的已编译研究子图。
+    """
     graph = StateGraph(UnifiedAgentState)
     graph.add_node("plan_query", _plan_node)
     graph.add_node("search", _run_search)

@@ -242,6 +242,19 @@ def plan_days(
     # 路由解析先于 with 单独兜 ApiError：密文解不开（加密 key 轮换）若从 route_scope
     # 直接抛出，会绕过下方 try 的失败收尾（fail_trip / SSE 错误 / finally 解注册），
     # 路由失败也要释放规划租约。timing 从共享预算的提交时刻起算，包含排队耗时。
+    """执行研究、整趟流式生成与违规日期补齐，统一收敛交付状态。
+
+    研究上下文仅在需求指纹一致时复用；终检重置的日期进入单日图，
+    其余已交付日期保留。core_ready 先于后台富化发布，失败走既有
+    PARTIAL/FAILED 收敛并保留错误信息。
+
+    Args:
+        user_id: 行程所有者，用于选择模型路由与费用归属。
+        itinerary_id: 已创建的行程标识。
+        command: 本次生成的固定需求快照。
+        context: 可复用的研究上下文；过期时重新研究。
+        limits: 从提交时刻延续的共享预算；缺省时取得任务预算。
+    """
     limits = (
         limits
         if limits is not None

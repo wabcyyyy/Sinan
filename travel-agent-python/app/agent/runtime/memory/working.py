@@ -17,6 +17,17 @@ _norm = norm_ws_key
 
 @dataclass
 class WorkingMemory:
+    """保存一次规划中的去重集合、酒店选择与修复反馈。
+
+    请求内状态与用户长期偏好分开，避免把本次已经使用的点位污染到
+    下一次旅行；候选耗尽由调用方处理，不自动放回已用地点。
+
+    Attributes:
+        used_names: 当前规划已经使用的地点名。
+        chosen_hotel: 首次选定后供后续日期沿用的酒店。
+        feedback: 最近一次校验反馈。
+    """
+
     used_names: set[str] = field(default_factory=set)
     chosen_hotel: str | None = None
     feedback: str = ""

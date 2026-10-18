@@ -135,7 +135,11 @@ class _DayAssembly:
 
 
 class TripPlanStreamParser:
-    """整趟 JSON 的增量解析器：feed 文本块 → 产出完整闭合的候选条目。"""
+    """将流式 JSON 折叠为归属明确的完整候选条目。
+
+    词法状态交给 ijson 跨 chunk 保存；条目闭合并通过基础形状检查后
+    才可发布。候选属于预览，整日权威结果仍需上层校验与落库。
+    """
 
     def __init__(self) -> None:
         self._events: ijson.sendable_list = ijson.sendable_list()
@@ -154,7 +158,14 @@ class TripPlanStreamParser:
     # ---- 对外接口 ----
 
     def feed(self, chunk: str | bytes) -> list[CandidateItem]:
-        """推入一段文本增量，返回本段新完成的候选条目（归属已确定）。"""
+        """接收模型文本增量，发布本次新完成且日期已确定的候选。
+
+        Args:
+            chunk: 任意切分的 UTF-8 文本或字节块，无需对齐 JSON 边界。
+
+        Returns:
+            本块内完成解析的候选；日期尚未确定的条目继续缓冲。
+        """
         self._events.clear()
         self._consumed = 0
         if isinstance(chunk, str):
@@ -163,7 +174,14 @@ class TripPlanStreamParser:
         return self._drain_events()
 
     def finish(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], set[int]]:
-        """EOF：返回 (days, suggestions, seen_day_nos)；顶层未闭合抛 TruncatedTripPlanError。"""
+        """结束解析并检查顶层闭合，防止截断输出冒充完整行程。
+
+        Returns:
+            已组装日期、备选列表和已见日期编号，交给上层做契约校验。
+
+        Raises:
+            TruncatedTripPlanError: 输入结束时 JSON 仍不完整。
+        """
         self._events.clear()
         self._consumed = 0
         try:

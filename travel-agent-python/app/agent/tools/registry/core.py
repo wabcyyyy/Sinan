@@ -51,6 +51,16 @@ class RunContext:
 
 @dataclass(frozen=True)
 class ToolSpec:
+    """声明工具的参数契约与执行边界，供统一派发器消费。
+
+    Attributes:
+        parameters: Function Calling 参数 schema。
+        max_calls: 单次运行中该工具的调用上限。
+        requires_confirmation: 调用方是否必须显式提供确认信号。
+        idempotent: 是否允许按 retry_policy 执行有界重试。
+        handler: 实际执行入口，应在调用期解析可替换的数据适配器。
+    """
+
     name: str
     version: str
     description: str
@@ -142,6 +152,8 @@ def _validate_parameters(spec: ToolSpec, params: dict[str, Any]) -> None:
 
 
 class ToolRegistry:
+    """集中校验、计量并派发工具，避免各 Agent 各自绕过调用边界。"""
+
     def __init__(self) -> None:
         self._specs: dict[str, ToolSpec] = {}
 
@@ -194,6 +206,20 @@ class ToolRegistry:
     def invoke(
         self, name: str, params: dict[str, Any] | None = None, *, confirmed: bool = False, action_id: str | None = None
     ) -> Any:
+        """通过参数、确认与调用预算检查后执行已注册工具。
+
+        Args:
+            name: 注册表中的工具名。
+            params: 待校验的参数对象。
+            confirmed: 调用方提供的确认信号，供需确认的工具检查。
+            action_id: 关联业务动作的轨迹标识。
+
+        Returns:
+            handler 的原始结果，供上层判断证据是否可用。
+
+        Raises:
+            ToolInvocationError: 工具不可用、参数非法、未确认或预算耗尽。
+        """
         spec = self.get(name)
         params = params or {}
         # 门控钩子（G-1.4 机制，G-3.1 接消费方）：关闭的工具与未注册工具同话术，

@@ -80,7 +80,20 @@ def _is_terminal(envelope: str) -> bool:
 async def event_frames(
     itinerary_id: int, subscription: Any, snapshot: str | None = None, last_event_id: int | None = None
 ) -> AsyncIterator[str]:
-    """进度事件帧：先补发断线期间错过的帧（有 last_event_id 时），再接实时流或终态快照。"""
+    """衔接有界事件回放与实时订阅，断线后显式提示无法补齐的缺口。
+
+    回放不完整时发 resync，由客户端回源详情；终态快照避免重连后
+    永远等待结束帧。连接退出时无论成功与否都注销订阅。
+
+    Args:
+        itinerary_id: 事件所属行程。
+        subscription: 已注册的实时事件订阅。
+        snapshot: 订阅时已知的终态信封，可为空。
+        last_event_id: 客户端最后收到的事件编号，可为空。
+
+    Yields:
+        带 SSE 分隔符的事件帧，包括必要的回放、同步提示与心跳。
+    """
     try:
         replayed_upto = 0
         replayed_terminal = False
