@@ -6,6 +6,10 @@
 .vscode/
 .env
 !.env.example
+# 本地配置变体一律忽略；模板和静态展示开关允许入仓。
+.env.*
+!.env*.example
+!/travel-frontend-react/.env.demo
 logs/
 *.log
 .pnpm-store/
@@ -28,7 +32,26 @@ travel-agent-python/.repro/
 travel-agent-python/models/
 sql/__pycache__/
 **/__pycache__/
+*.py[cod]
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+# 本地业务库、LangGraph 检查点及 SQLite sidecar；迁移 SQL 仍入仓。
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite*-journal
+*.sqlite*-wal
+*.sqlite*-shm
+# 私钥与本地凭据文件不入仓。
+*.pem
+*.key
+*.p12
+*.pfx
 
 # 敏感/本地测试产物
 .test-report/

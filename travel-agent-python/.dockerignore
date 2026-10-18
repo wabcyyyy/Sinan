@@ -10,6 +10,8 @@ models/
 *.log
 # 密钥：运行时经 compose env_file 注入，绝不烘焙进镜像
 .env
+.env.*
+!.env.example
 # 开发杂物
 .pyright-baseline.txt
 tests/agent_eval/report/
