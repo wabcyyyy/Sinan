@@ -1,9 +1,9 @@
 # SOURCES.md — 外源清单（单一真源）
 
-外接数据源与深链出口的唯一登记处（LA1）。判定口径（Hotellook 事故教训）：
-**401/403 是活着（缺 key），404 才是死了**；连不上只说明本机网络层问题——本机
-DNS 走 fake-IP 代理，须 DoH（`https://dns.google/resolve?name=<host>&type=A`）
-取真实 IP 后 `curl --resolve <host>:443:<ip> <url>` 直连复核，排除代理假象再下结论。
+外接数据源与深链出口的唯一登记处。401/403 记录为需要鉴权，404 记录为当前端点不可用；
+连接失败不能直接判定服务退役。使用代理或 fake-IP DNS 时，可通过 DoH
+（`https://dns.google/resolve?name=<host>&type=A`）取得真实 IP，再用
+`curl --resolve <host>:443:<ip> <url>` 复核。下表状态是对应日期的历史观测，不代表当前可用性。
 
 - 探针：`uv run python scripts/probe_sources.py`（手工 / 夜间跑；**不进 just check**，
   CI 无外网是既有假设）；
@@ -48,12 +48,6 @@ tourism/leisure/historic）与 jsonv2 主分类同样只做**原样搬运**成�
 | 源 | 用途 | 端点 | 额度 | 不探针的理由 |
 |---|---|---|---|---|
 | DashScope 联网搜索 | 研究证据/备选池补齐（`enable_search` 插件） | `llm_base_url`（`app/common/config.py`，不在 data 域） | LLM 按 token 计费 | 探针需真实计费调用；通道没有该插件（DeepSeek 官方等）时按「未联网」如实降级并留一条可定位 warning（`web_search.search_channel_ready`），不再拿模型记忆冒充检索结果——能力判否一次外呼都不发，没有"mock 盲区" |
-
-## 候选源（已侦察未接入；接入时补"结论/最后验证"列）
-
-| 源 | 用途 | 端点 | 免费额度 | 计划卡 |
-|---|---|---|---|---|
-| openrouteservice | 城内交通真路线 | `https://api.openrouteservice.org/v2/directions`（…`/{profile}`） | 免费 2,000 次/天、40/分钟；高校/非营利可申请提额 | LA5 |
 
 ## 已退役（勿再考虑）
 

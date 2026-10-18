@@ -166,8 +166,7 @@ time C stop
 C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 了
 ```
 
-带**在跑生成任务**时的排空（SIGTERM 后能不能等到全局 30s 排空预算耗尽）需要真实模型额度才能制造，
-本切片没演，属 T9；这里只证明了配置上限大于排空预算、空闲停止干净、`StopTimeout` 确实落到容器上。
+空闲栈的停止检查不能替代带生成任务时的排空验证。后者会消耗真实模型额度，需在部署环境单独安排。
 
 ## 5. 脏工作树与"这台机器不是构建机"
 
@@ -189,58 +188,20 @@ C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 
   SHA 标签，宿主重装即丢，`rollback` 只在本机可用。
 - `SINAN_DOMAIN` 是占位符/DNS 未指向本机 → Caddy 的 ACME 签发失败（80 必须对本域名公网可达）。
   无 DNS 的演练请用 `SINAN_TLS_DIRECTIVE=tls internal`。
-- 无 SMTP 配置键（本仓根本没有）→ 账号找回类邮件流程属 T7；告警唯一出口是
-  `LLM_ALERT_WEBHOOK_URL`，属 T8b。
-- 异地备份桶、外部拨测、依赖/镜像漏洞扫描、CSP 全量收紧：属 T8b / T9。
+- 当前没有 SMTP 配置或邮件找回流程；告警出口为 `LLM_ALERT_WEBHOOK_URL`。
+- 异地备份、外部拨测、依赖与镜像漏洞扫描需要在部署环境配置。
 
-## 7. 本目录被实测到什么程度
+## 7. 部署验收与已知边界
 
-实现对话（2026-10-16 夜，Windows/Docker 29.8.2 + Compose v5.5.1）在**隔离端口集
-14443/18080、一次性命名卷、一次性库名 `sinan_drill`、一次性口令、`tls internal` 自签**上
-真跑过一遍，完整输出归档在 `docs/evidence/launch-v1-hardening-2026-10-16.md`。跑过并且通过的：
+部署后按第 4 节在自己的环境验证数据库权限、内部端点隔离、TLS、登录 Cookie、出网与停止行为。
+真实域名的 ACME 签发、生成任务运行时的排空、SSE 经反向代理的实际流式交付，需分别验证。
 
-- `docker compose -f deploy/docker-compose.prod.yml config` 插值与结构校验；
-- 两个镜像从 `git archive HEAD` 构建，`docker image inspect` 的
-  `org.opencontainers.image.revision` 等于该 SHA；
-- `provision.sql` 跑两遍（幂等），GRANTS 实测只有 DML / DML+结构两类，无 `*.*`、无 GRANT OPTION；
-- 迁移账号跑 `ensure_schema` → V1…V16 建表成功；随后应用以运行账号启动（启动期 lifespan 里的
-  `ensure_schema()` 在无 DDL 权限下是无副作用的通过路径）；
-- `up -d --wait` 全栈 healthy；`/api/agent/health/deep` 经 Caddy 内部探测面返回
-  `mysql=up redis=up`；公网侧 `/api/agent/health`、`/api/agent/health/deep`、
-  `/api/agent/v1/metrics`、`/mcp` 全部 403，匿名业务面 401，SPA 首页 200；
-- TLS 1.3 握手 + 登录响应 `Set-Cookie: ... Secure` + 明文 80 的 308 跳转；
-- 伪造 `X-Forwarded-For` 打不散按 IP 的登录限速（32 次各不相同的假 IP，第 6 次起 429）；
-- 运行账号执行 `CREATE TABLE` / `DROP TABLE` 得到 MySQL 1142 权限拒绝；
-- 后端容器仍能 HTTPS 出网（`sinan-data` internal 不切断出网，因为 internal 网不带网关）；
-- MySQL 主机名在 Caddy 容器里连解析都做不到；
-- `deploy.sh rollback <上一个完整 SHA>` 真跑：换回旧镜像 → `up --wait` → 深探 → 边缘检查全过；
-- `docker compose stop` 全栈 4.6s、每个容器 `Exited (0)`，后端日志走完
-  `Waiting for application shutdown → Application shutdown complete`（不是被 SIGKILL）；
-- `docker compose down -v` 后本次创建的容器、卷、归档目录与临时 env 文件全部删除。
+- `deploy.sh` 不产出发布 manifest；需要保留发布记录时，将日志、Git revision 和镜像 digest 存入自己的运维记录或 CI artifact。
+- 生产使用命名卷，`scripts/backup_restore.py` 只处理宿主数据目录；完整备份边界见下一节。
+- 指标端点与 `LLM_ALERT_WEBHOOK_URL` 需要接入自己的采集与告警系统。
+- CI 的 `release.yml` 不包含镜像构建、推送和部署；漏洞扫描、外部拨测与容量验收需在部署环境完成。
 
-**没跑过、因此不得当作已完成的**：真实域名与 ACME 签发（用的是内置 CA）、`docker push`
-（无仓库凭据）、带在跑生成任务的 SIGTERM 排空（无模型额度，150s 按 `shutdown.drain`
-的全局 30s 预算留足了余量）、SSE 经 Caddy 的实际不缓冲取证（只验证了 `flush_interval -1` 的语法）、
-备份与隔离恢复（命名卷还没接进 `scripts/backup_restore.py`）、告警投递、外部拨测、
-依赖/镜像漏洞扫描、以及在真实并发下 2G/2 核上限是否合适（只量到空闲 RSS：
-后端 183MiB、MySQL 391MiB、Redis 10MiB、Caddy 20MiB、前端 14MiB）。
-
-## 8. 交接给 T8b / T9 的缺口
-
-1. **备份**：`scripts/backup_restore.py` 按宿主 `travel-agent-python/data/` 目录工作，生产用的是
-   命名卷 `sinan-prod-app-data`；要么改成 bind 目录，要么加 `--volumes-from` 打包步骤，
-   再补 `sinan-prod-caddy-data`、`deploy/secrets/*`（或密管）、MySQL 账号、Redis 的职责说明与
-   一次隔离恢复演练。**补齐之前本目录不能称为"可恢复的部署"。**
-2. **告警与观测**：`/api/agent/v1/metrics`、`/v1/usage`、`/health/deep` 已可被内部探测面 scrape，
-   但没有任何东西在打它；`LLM_ALERT_WEBHOOK_URL` 是唯一出口。队列深度、磁盘、备份龄期都还没有指标。
-3. **CSP**：仍然只有 `frame-ancestors 'none'`（`app/api/security_headers.py:27` 的登记项）。
-4. **镜像/依赖漏洞扫描**：`pip-audit` / `npm audit` / trivy 一条都没有；CI 的 release.yml 也没有
-   build/push/deploy job（本切片只交付本机可复现的发布入口）。
-5. **容量**：单机准入上限、真实生成下的 RSS/CPU、以及 `stop_grace_period` 在负载下的表现属 T9。
-6. **发布证据**：`deploy.sh` 目前不产出机器可读的发布清单（manifest）。若要接进 CI 的放行证据包，
-   最小做法是把 `deploy.sh deploy` 的日志与两个镜像的 revision/digest 落到 `docs/evidence/<日期>/`。
-
-## 9. 轮换、回滚与备份边界
+## 8. 轮换、回滚与备份边界
 
 **改配置的正确姿势**（`admin off` 意味着 `caddy reload` 不可用，靠重启容器）：
 
@@ -256,7 +217,7 @@ $C up -d --force-recreate agent-python   # 改了应用 env
   口令与连接上限对齐）→ `up -d --force-recreate agent-python`。
 - **`SINAN_MYSQL_ROOT_PASSWORD`**：env 改了不会自动改库里的 root 口令（root 由镜像初始化时创建）。
   轮换要么进容器 `ALTER USER 'root'@'localhost' IDENTIFIED BY ...`，要么重建实例并恢复备份。
-  这条差异必须在运维交接里讲清，不然会出现"env 与库里不一致"的假故障。
+  轮换时须同步实际数据库账号与环境配置。
 - **`SINAN_JWT_SECRET`**：换它=所有人会话失效（预期行为）；若 BYOK 密文是从它派生的，
   用户要重录 API key。所以生产显式配 `SINAN_BYOK_ENC_KEY`。
 - **`SINAN_AGENT_INTERNAL_TOKEN`**：换它之前确认没有外部脚本还在用旧值（`/mcp`、运维 curl）。
@@ -271,7 +232,7 @@ deploy/deploy.sh rollback <上一个可发布的完整 40 位 SHA>
 迁移是 append-only 且没有 down 路径。如果目标 SHA 早于当前 schema，缺列写入会以权限错误或
 500 现身——那属于"从备份恢复"，见下一段，不要指望本命令。
 
-**备份边界（T8b 的活，这里只把职责说清）**：
+**备份边界**：
 `scripts/backup_restore.py` 现在按宿主目录 `travel-agent-python/data/` 工作，而生产用命名卷
 `sinan-prod-app-data`；它也不含 Redis、env 密钥与 MySQL 账号。所以生产要能恢复，至少还需要：
 命名卷的 tar（`docker run --rm -v sinan-prod-app-data:/d alpine tar`）或把这里换成 bind 目录、

@@ -27,7 +27,6 @@ The [Chinese README](README.md) is the primary guide. See [architecture](docs/pu
 [configuration](docs/public/configuration.md), [development](docs/public/development.md),
 [pre-departure care and travel memory](docs/public/care-and-memory.md),
 [troubleshooting](docs/public/troubleshooting.md), and [contributing](.github/CONTRIBUTING.md).
-The 2026-10-11 open-source preview acceptance record is archived in [docs/evidence](docs/evidence/preview-acceptance-2026-10-11.md); its numbers describe that historical batch, not the current version.
 Use the private channel in [SECURITY.md](.github/SECURITY.md) for vulnerabilities.
 
 Project code is MIT licensed. Photographs and fonts retain separate licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

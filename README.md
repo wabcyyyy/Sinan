@@ -9,8 +9,6 @@
 
 个人作品展示可使用 [Vercel 免费展示版](docs/public/vercel-demo.md)：复用完整正式前端页面，以本地样例体验规划、地图与编辑确认，无需后端或模型 Key。
 
-2026-10-11 开源预览批次的历史验收记录在 [证据目录](docs/evidence/preview-acceptance-2026-10-11.md)，其中的数字不代表当前版本。
-
 ## 先体验：不需要模型密钥
 
 准备 Docker Engine/Desktop 与 Compose 2.20+，在项目根目录执行：

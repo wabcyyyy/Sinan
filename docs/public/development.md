@@ -32,6 +32,11 @@ uv run python scripts/eval_ratchet.py
 schema 变更执行 `uv run python scripts/export_contracts.py`，生成产物随同批提交。迁移只追加，门禁不放宽。
 真实 API 测试、nightly 和生成压测可能调用模型，不属于默认离线门禁。
 
+题集、校准数据、golden 快照与 `tests/agent_eval/metrics_baseline.json` 入仓；
+`tests/agent_eval/report/`、`tests/experience_cases/report/` 和 `tests/perf/report/` 是本地生成输出，不入仓。
+全新 clone 运行上面的评测命令后再运行 `scripts/eval_ratchet.py`，报告缺失仍会报错，不能用历史输出替代本次评测。
+CI 将运行报告保存为 artifact。个人计划、AI 交接、审查与原始验收包也只在本地保留；公开文档放在 `docs/public/`。
+
 业务生成任务从提交起共享 `ITINERARY_DEADLINE_SECONDS`（默认 300 秒），研究段另受
 `RESEARCH_DEADLINE_SECONDS`（默认 60 秒）约束。整段生成、逐日修复和富化共用调用、检索和
 token 预算；排队也计时。同一用户同时只能有一个规划任务，持久化预算与 checkpoint 共用

@@ -76,7 +76,7 @@ services:
       driver: json-file
       options:
         # 20m×5 = 单容器日志上限 100MB（预览面是 50m×5）。日志不是备份：写满就滚，
-        # 需要留证的日志按 request_id 在滚动前捞走（T8b 负责外送）。
+        # 需要保留的日志应按 request_id 在滚动前采集到外部日志系统。
         max-size: "20m"
         max-file: "5"
 

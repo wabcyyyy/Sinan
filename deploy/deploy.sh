@@ -374,10 +374,10 @@ operator_gaps() {
      签发一定失败（80 要对本域名公网可达）。入库值是占位符。
   2) 镜像仓库：设 SINAN_REGISTRY 并 docker login；否则发布记录只在本机。
   3) SMTP / 告警目标：本仓没有任何 SMTP 配置键，唯一告警出口是 LLM_ALERT_WEBHOOK_URL
-     （travel-agent-python/app/common/config.py）。属 T8b。
+     （travel-agent-python/app/common/config.py），需要自行配置接收目标。
   4) 异地备份与恢复演练：scripts/backup_restore.py 按宿主 data/ 目录工作，而生产用
-     命名卷 sinan-prod-app-data，需要 T8b 适配后再演练。
-  5) 外部拨测、容量上限、依赖漏洞扫描：属 T8b / T9。
+     命名卷 sinan-prod-app-data，需要单独备份该卷并验证恢复。
+  5) 外部拨测、容量上限、依赖漏洞扫描：需在部署环境单独验证。
 EOF
 }
 

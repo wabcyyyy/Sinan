@@ -1,7 +1,7 @@
 """生成改走全局 low 思考后的输出预算与后处理回归（2026-10-12）。
 
 思考 token 计入 completion（max_tokens）：小额度调用会被思考吃满、正文为空
-（finish_reason=length）。真实量测见 docs/evidence/generation-low-thinking-2026-10-12.md。
+（finish_reason=length）。本文件验证调用预算及后处理行为，不衡量真实模型质量。
 同批修的判重误删：同一检索里两家不同餐厅相距 <80m 时，晚餐被当成重复删掉且不补。
 """
 

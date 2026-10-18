@@ -34,7 +34,7 @@
 	# 语义，上游同名头在这里被覆盖而不是叠加，两处不会打架）。
 	# HSTS 有意不带 includeSubDomains：v1 只有一个源，子域策略属于运营决定。
 	# CSP 仍缺（app/api/security_headers.py:27 的登记项）：完整 CSP 要拿真实
-	# 瓦片/worker/字体源调，属 T8b，不在这份文件里假装收紧。
+	# 瓦片/worker/字体源配置，再验证实际浏览器行为。
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"

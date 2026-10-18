@@ -1,4 +1,4 @@
-"""Agent 评测指标：把“能生成”拆成可回答面试追问的质量指标。"""
+"""Agent 离线评测的交付、约束履约与轨迹指标。"""
 
 from __future__ import annotations
 

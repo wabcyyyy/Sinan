@@ -125,7 +125,7 @@ jobs:
         # 收紧。现在逐指标双向棘轮（scripts/eval_ratchet.py + tests/agent_eval/
         # metrics_baseline.json）：回归红、显著变好也逼 --update 认账收紧、未冻结指标红；
         # 报告可复现性拆给 eval-determinism job（同 fixture 两遍 SHA256）单独把关。
-        # 指标口径见 tests/agent_eval/report/offline/report.md。
+        # 指标口径见 tests/agent_eval/metrics.py，门限见 metrics_baseline.json。
         env:
           LLM_API_KEY: ''
         run: |

@@ -10,7 +10,7 @@
 - 首次偏离：`reflect.validate_plans` 的路线间隔检查。
 - 根因：坐标距离估算无法表达跨区域/道路绕行。
 - 修复：`RouteService` 提供真实路线适配层，`Schedule Optimizer` 将交通时间纳入时间轴，并保留 `source`/`degraded`。
-- 回放：`tests/agent_eval/replay.py` 的 `route` 案例；路线/优化器对照见 `report/offline/baseline_report.md`。
+- 回放：`tests/agent_eval/replay.py` 的 `route` 案例；运行 `uv run python tests/agent_eval/eval_baselines.py` 生成路线/优化器对照报告 `report/offline/baseline_report.md`。
 
 ## B：异步生成响应丢失导致重复落库
 

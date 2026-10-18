@@ -124,9 +124,13 @@ def test_main_fails_when_baseline_missing(tmp_path: Path) -> None:
 
 def test_coordinate_improvement_cannot_fall_back_to_old_floor():
     baseline = json.loads(eval_ratchet.BASELINE.read_text(encoding="utf-8"))
-    current = eval_ratchet.load_reports(baseline, eval_ratchet.BASELINE.parent)
+    # 验证入仓的下限，不依赖某次评测生成的本地报告。
+    bounds = baseline["reports"][REPORT]
+    metrics = {key: bound["min"] if "min" in bound else bound["max"] for key, bound in bounds.items()}
+    current = _current(metrics)
+    assert eval_ratchet.check(current, _baseline({REPORT: bounds})) == []
     for metric in ("coord_valid_rate", "poi_grounded_rate"):
         current[REPORT]["metrics"][metric] = 0.6528
-    problems = eval_ratchet.check(current, baseline)
+    problems = eval_ratchet.check(current, _baseline({REPORT: bounds}))
     for metric in ("coord_valid_rate", "poi_grounded_rate"):
         assert any(metric in problem and "回归" in problem for problem in problems)

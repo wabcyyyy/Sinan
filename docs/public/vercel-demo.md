@@ -26,20 +26,18 @@ npm run preview
 
 ## 发布到 Vercel
 
-当前个人展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)，项目 `wabcy/sinan-demo`，使用 Hobby 套餐。2026-10-16 展示适配迁移到远端 master `eb151681d71c3addacf620b1283faa4f07078a04`，保留该版本的首页照片拼贴、Motion 动效和详情页重排。Git 自动部署已连接 `wabcyyyy/Sinan`，生产分支为 `master`；完整展示适配已从 `codex/vercel-latest-frontend` 合并到该分支。
+公开展示站：[sinan-demo.vercel.app](https://sinan-demo.vercel.app)。部署自己的实例时，在 Vercel 中导入你的 Sinan Fork，并使用下方构建设置。
 
 ### 自动发布更新
 
-将通过验证的修改合并并推送到 GitHub 的 `master` 分支，Vercel 会自动构建，成功后更新 `sinan-demo.vercel.app`。其他分支的推送用于预览；要更新公开展示站，需合并到 `master`。没有推送的本地修改不会上线。
-
-整合分支已合并到 `master`，Vercel 跟随 GitHub 的 `master` 自动部署。后续在 `master` 提交并推送经过验证的改动即可触发更新，无需上传本地构建目录。
+启用 Git 集成并选择生产分支后，将通过验证的修改推送到该分支即可触发构建，成功后更新你的展示站。其他分支可用于预览，无需上传本地构建目录。
 
 Vercel 项目设置：
 
 | 设置 | 值 |
 | --- | --- |
-| Git repository | `wabcyyyy/Sinan` |
-| Production branch | `master` |
+| Git repository | 你的 Sinan Fork |
+| Production branch | 你的发布分支（默认 `master`） |
 | Root Directory | `travel-frontend-react` |
 | Framework | Vite |
 | Build Command | `npm run build:demo` |
@@ -47,7 +45,7 @@ Vercel 项目设置：
 
 `build:demo` 读取入仓的 `.env.demo`，其中仅含公开开关 `VITE_DEMO_MODE=true`。不需要数据库密码、JWT 或模型 Key，也无需购买域名。`.vercel/` 与 `.env.local` 是本机配置，不入仓。
 
-在 [Vercel 项目部署列表](https://vercel.com/wabcy/sinan-demo/deployments) 查看对应 Git 提交的状态。失败时检查日志，站点继续使用上一版成功部署；需要重试时在部署详情中使用 Redeploy。Git 集成必须保留对 `Sinan` 仓库的授权。
+在自己的 Vercel 项目部署列表中查看对应 Git 提交的状态。失败时检查日志，站点继续使用上一版成功部署；需要重试时在部署详情中使用 Redeploy。Git 集成需保留对所选仓库的授权。
 
 发布成功后仍须验证公开 URL 和目标网络体验；构建通过本身不能说明浏览器交互或外部地图正常。
 

@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "D:\wcy\project\Sinan\.tmp-release-audit\recheck_live.py", line 55, in <module>
-    assert req["maxAttractionsPerDay"] == 2 and req["dietaryRequirement"] == "vegetarian", req
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: {'schemaVersion': 1, 'dayWindows': [], 'requiredPlaces': [], 'excludedPlaces': [], 'excludedCategories': [], 'pace': None, 'maxAttractionsPerDay': None, 'dietaryRequirement': None, 'diningEvidencePolicy': None, 'transportPreference': None, 'maxWalkMinutesPerLeg': None, 'budgetPolicy': None, 'lodging': None, 'unresolvedRequests': []}

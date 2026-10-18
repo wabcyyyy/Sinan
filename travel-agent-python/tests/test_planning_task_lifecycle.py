@@ -12,7 +12,7 @@
    一天没交付才 FAILED；执行态收 CANCELLED。
 
 全离线：LLM/研究入口在编排模块名字上打桩，业务库是每用例一份临时 SQLite
-（生产用 MySQL，同一套模型；迁移在 MySQL 上的实际执行见 handoffs/T1.md 的隔离 smoke）。
+（生产用 MySQL，同一套模型；这里不验证 MySQL 上的实际迁移执行）。
 """
 
 from __future__ import annotations
