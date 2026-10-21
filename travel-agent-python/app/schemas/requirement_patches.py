@@ -336,7 +336,7 @@ def _apply_day_window(req: TripRequirements, patch: RequirementPatch, rejected: 
         return
     field = {"day_not_before": "not_before", "day_finish_by": "finish_by", "day_window_kind": "kind"}[patch.target]
     existing = next((window for window in req.day_windows if window.day_no == patch.day_no), None)
-    payload = existing.model_dump() if existing else {"day_no": patch.day_no}
+    payload: dict[str, Any] = existing.model_dump() if existing else {"day_no": patch.day_no}
     payload[field] = ("full" if field == "kind" else None) if patch.op == "unset" else patch.value
     try:
         window = DayWindow.model_validate(payload)

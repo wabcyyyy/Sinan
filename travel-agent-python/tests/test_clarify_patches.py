@@ -81,6 +81,7 @@ def test_arrival_departure_windows_and_budget_scope_survive_clarify(monkeypatch)
     )
     first, second = res.state.requirements.day_windows
     assert (first.not_before, first.kind, second.finish_by, second.kind) == ("14:00", "arrival", "16:00", "departure")
+    assert res.state.requirements.budget_policy is not None
     assert res.state.requirements.budget_policy.include_intercity_transport is False
     updated = _run(
         monkeypatch,

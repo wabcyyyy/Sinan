@@ -296,6 +296,7 @@ def test_fork_does_not_read_private_source_fields_after_publication(alice, bob, 
     _publish(alice)
     with db_session.session_scope() as session:
         source = session.get(ItineraryMain, 1)
+        assert source is not None
         source.days = 7
         source.persons = 9
         source.budget = Decimal("999999")
@@ -304,6 +305,7 @@ def test_fork_does_not_read_private_source_fields_after_publication(alice, bob, 
     assert response.status_code == 200
     with db_session.session_scope() as session:
         copied = session.get(ItineraryMain, response.json()["data"]["itineraryId"])
+        assert copied is not None
         assert copied.days == 2 and copied.persons == 2
         assert copied.start_date is None and copied.end_date is None and copied.budget is None
         assert copied.cover_url is None and copied.gen_state == "COMPLETED"
@@ -333,5 +335,7 @@ def test_editorial_copy_is_independent_and_share_copy_respects_revocation(alice,
 
 def test_partial_trip_cannot_be_published(alice):
     with db_session.session_scope() as session:
-        session.get(ItineraryMain, 1).gen_state = "PARTIAL"
+        main = session.get(ItineraryMain, 1)
+        assert main is not None
+        main.gen_state = "PARTIAL"
     assert alice.post("/api/itinerary/1/template").status_code == 400
