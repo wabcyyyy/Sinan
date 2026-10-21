@@ -139,7 +139,10 @@ def _mentioned_hotel_names(message: str, hotels: list[dict]) -> tuple[str, ...]:
 
 
 #: 「酒店不动」短路（M4 §9.1）：用户明确保留住宿时，名词"酒店"不得劫持进候选流
-_KEEP_HOTEL_RE = re.compile(r"酒店[^。？！.]{0,8}(不动|不换|不变|不调整|不修改|不升级|保留)|保留[^。？！.]{0,8}酒店")
+_KEEP_HOTEL_RE = re.compile(
+    r"酒店[^。？！.]{0,8}(不动|不换|不变|不调整|不修改|不升级|保留)|保留[^。？！.]{0,8}酒店|"
+    r"(?:酒店|住宿)[^。？！.;；]*(?:保持不变|维持原样)"
+)
 
 
 def _is_hotel_request(req: ChatTurnRequest, hotels: list[dict] | None = None) -> bool:

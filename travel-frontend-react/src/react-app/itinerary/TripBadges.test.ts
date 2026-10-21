@@ -108,4 +108,6 @@ it('开放来源原文可查看，未知和危险链接不冒充核实', () => {
   expect(render('https://museum.example/visit')).toContain('不代表实时开放或官方保证')
   expect(render('javascript:alert(1)', 'unknown')).not.toContain('href=')
   expect(render('javascript:alert(1)', 'unknown')).toContain('开放资料待确认')
+  expect(render('https://museum.example/visit', 'unknown')).toContain('<p>日期不明</p>')
+  expect(render('https://museum.example/visit', 'unknown')).toContain('<details><summary>查看取回的网页片段</summary>')
 })
