@@ -16,6 +16,7 @@ def _report(**overrides) -> dict:
     base = {
         "mode": "real-llm",
         "generation_path": "stream",
+        "path_identity": eval_gate.PRODUCT_PATH_IDENTITY,
         "prompt_version": eval_gate.EXPECTED_PROMPT_VERSION,
         "open_day_prompt_version": eval_gate.EXPECTED_OPEN_DAY_PROMPT_VERSION,
         "open_trip_prompt_version": eval_gate.EXPECTED_OPEN_TRIP_PROMPT_VERSION,
@@ -36,6 +37,11 @@ def _report(**overrides) -> dict:
 
 def test_gate_passes_on_baseline_report() -> None:
     assert eval_gate.check(_report()) == []
+
+
+def test_gate_rejects_old_intermediate_stream_report() -> None:
+    for identity in (None, "agent-face direct (run_plan_context + run_generate_trip_stream)"):
+        assert any("path_identity" in issue for issue in eval_gate.check(_report(path_identity=identity)))
 
 
 def test_degraded_is_never_treated_as_failure() -> None:

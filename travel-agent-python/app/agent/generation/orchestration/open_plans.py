@@ -1,13 +1,13 @@
 """整段开放模式的草案生成与降级（G-2.4 自 workflow 拆出）。
 
-generate_open_plans 分三段（原 152 行单函数按阶段拆开，行为不变）：
+generate_open_plans 按草案生成与后处理分段：
 1. `_generate_drafts`：LLM 生成 + 参考落地 + 边判去重（多日走 open_trip，单日/
    缺口天走 open_day；整段调用失败或截断时对缺口天逐日兜底——PR-4：suggestions
    随天收集，截断不再可能丢建议池）；
 2. `_postprocess_drafts`：酒店摊铺 / 0 价补水 / 备选池地板 / 遥测（同日/跨天
    去重已统一为生成期边判 PoiSeenRegistry，原批处理 drop_cross_day_duplicates
    退场——流式逐天 yield 不可回收，边判是两条链通用的唯一语义）；
-3. `draft_state`：整段失败或重试耗尽时返回「待研究草案」（不冒充成功）。
+整段失败或重试耗尽时，由 graph_nodes 构造「待研究草案」，不冒充成功。
 
 **可 mock 契约（勿随意搬移）**：单测经 `open_plans.llm_open_day`、
 `open_plans.llm_open_trip`、`open_plans.open_trip_streamed`、
@@ -28,6 +28,7 @@ generation_core；不 import workflow（禁反向）。
 
 import copy
 import logging
+import threading
 from collections.abc import Callable
 
 from app.agent.core.poi_identity import PoiSeenRegistry
@@ -40,7 +41,6 @@ from app.agent.generation.content.trip_stream import open_trip_streamed
 from app.agent.generation.orchestration.day_stream import llm_open_day
 from app.agent.generation.output.facts import field_fact_evidence
 from app.agent.generation.rules.generation_core import (
-    draft_day_plans,
     fill_zero_costs,
     spread_hotels,
     stay_nights,
@@ -54,21 +54,6 @@ from app.schemas.trip import GenerateDayRequest, GenerateRequest
 logger = logging.getLogger(__name__)
 
 
-def draft_state(req: GenerateRequest, reason: str, schedule_report: dict | None = None) -> dict:
-    """结构化"待研究"草案：如实标注降级，不冒充生成结果。"""
-    plans = draft_day_plans(req.city, req.days, reason)
-    report = dict(schedule_report or {})
-    report["destination_status"] = "draft_only"
-    report["research_mode"] = "open"
-    return {
-        "daily_plans": plans,
-        "budget_estimate": {},
-        "error": None,
-        "schedule_report": report,
-        "degraded_reason": reason,
-    }
-
-
 def _generate_drafts(
     req: GenerateRequest,
     feedback: str,
@@ -78,6 +63,7 @@ def _generate_drafts(
     on_day: Callable[[int, dict], None] | None = None,
     on_item_preview: Callable[[int, int, dict], None] | None = None,
     on_item_withdrawn: Callable[[int, int, str], None] | None = None,
+    cancel: threading.Event | None = None,
 ) -> tuple[list[dict], list[dict], list[str]]:
     """第一段（草案生成）：LLM 生成 + 参考落地 + 边判去重 + 矛盾点位出局。
 
@@ -123,7 +109,9 @@ def _generate_drafts(
             if on_item_preview is not None:
                 # M5a 流式腿：候选闭合即回调（预览先于正式 day 事件），final 段
                 # 与阻塞腿完全同一后续（plans_by_day/落地/去重/摊铺都不分叉）。
-                trip_plans, trip_suggestions = open_trip_streamed(trip_req, on_item_preview, published_previews)
+                trip_plans, trip_suggestions = open_trip_streamed(
+                    trip_req, on_item_preview, published_previews, cancel=cancel
+                )
             else:
                 trip_plans, trip_suggestions = llm_open_trip(trip_req)
             # 模型可能返回重复/越界的 day_no；字典推导会静默后覆盖前，
@@ -318,6 +306,7 @@ def generate_open_plans(
     on_patch: Callable[[dict], None] | None = None,
     on_item_preview: Callable[[int, int, dict], None] | None = None,
     on_item_withdrawn: Callable[[int, int, str], None] | None = None,
+    cancel: threading.Event | None = None,
 ) -> tuple[dict | None, list[str]]:
     """开放模式生成（三段编排：草案生成 → 后处理 → 失败即降级）。
 
@@ -354,6 +343,7 @@ def generate_open_plans(
             on_day=on_day,
             on_item_preview=on_item_preview,
             on_item_withdrawn=on_item_withdrawn,
+            cancel=cancel,
         )
         if research_errors and not any(p.get("items") for p in plans):
             # 整段开放研究失败：交由调用方降级，避免把候选库城市打成空草案。

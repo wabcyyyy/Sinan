@@ -237,6 +237,15 @@ def fixture_open_trip(req) -> tuple[list[dict], list[dict]]:
     return plans, []
 
 
+def fixture_trip_stream(trip_req, *, cancel=None):
+    """与阻塞腿同一内容的离线流式替身；仅由离线评测注入。"""
+    plans, suggestions = fixture_open_trip(trip_req)
+    for plan in plans:
+        for ordinal, item in enumerate(plan.get("items") or [], start=1):
+            yield ("item_preview", int(plan["day_no"]), ordinal, dict(item))
+    yield ("final", plans, suggestions)
+
+
 # ---- editing 域替身（PR-8）：editing 流程的 LLM 出口替身（raw JSON，契约形状） ----
 
 

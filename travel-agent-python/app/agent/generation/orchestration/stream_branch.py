@@ -188,6 +188,7 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
                 on_patch=on_patch,
                 on_item_preview=on_item_preview,
                 on_item_withdrawn=on_item_withdrawn,
+                cancel=cancel,
             )
         else:
             increment, research_errors = open_plans.generate_open_plans(
@@ -199,6 +200,7 @@ def stream_generate(state: UnifiedAgentState, config: RunnableConfig) -> dict:
                 weather=context.get("weather") or [],
                 on_day=on_day,
                 on_patch=on_patch,
+                cancel=cancel,
             )
     except StreamCancelled:
         logger.info("trip stream cancelled for %s after %d day(s)", req.city, len(emitted))

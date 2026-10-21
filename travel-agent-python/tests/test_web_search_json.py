@@ -19,9 +19,15 @@ from tests.llm_binding import FakeBinding
 
 
 @pytest.fixture(autouse=True)
-def _reset_search_client_runtime_state():
+def _reset_search_client_runtime_state(monkeypatch):
     """清车道时间戳：BACKGROUND 车道 1.0s 间隔会把用例串成真实秒级等待。"""
     web_search._search_client.reset_runtime_state()
+    from app.common.model_registry import Provider, RoleBinding
+
+    bound = RoleBinding(
+        "search", Provider("dashscope", "https://dashscope.example/v1", "example", frozenset({"search"})), "qwen-plus"
+    )
+    monkeypatch.setattr(web_search, "binding", lambda role: bound)
 
 
 def test_parse_llm_json_success_shapes_unchanged():

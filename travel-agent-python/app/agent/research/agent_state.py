@@ -77,7 +77,8 @@ class UnifiedAgentState(BaseModel):
     research_plan: dict = Field(default_factory=dict)
     items: list[dict] = Field(default_factory=list)
     round: int = 0
-    sufficient: bool = True
+    sufficient: bool | None = None
+    evaluation_note: str = ""
     extra_keywords: list[str] = Field(default_factory=list)
     quota_note: str = ""
     pack: EvidencePack | None = None

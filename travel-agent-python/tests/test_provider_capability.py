@@ -171,7 +171,7 @@ def test_validate_warns_when_search_role_cannot_search(monkeypatch, caplog):
     import logging
 
     monkeypatch.setattr(settings, "agent_host", "0.0.0.0")
-    monkeypatch.setattr(settings, "llm_base_url", "https://api.deepseek.com")
+    monkeypatch.setattr(settings, "llm_base_url", BYOK)
     for role in ("main", "fast", "vision", "judge", "search", "stt"):
         monkeypatch.setattr(settings, f"llm_role_{role}", "")
 
@@ -210,8 +210,10 @@ def test_byok_route_overrides_every_role(monkeypatch):
 # ---------- 3. 联网搜索 / 实时价：判否即降级，不发外呼 ----------
 
 
-def test_search_channel_ready_is_false_on_deepseek_and_warns_once(monkeypatch, caplog):
-    monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
+def test_search_channel_ready_is_false_on_unsupported_gateway_and_warns_once(monkeypatch, caplog):
+    monkeypatch.setattr(settings, "llm_base_url", BYOK)
+    monkeypatch.setattr(settings, "llm_role_search", "")
+    monkeypatch.setattr(settings, "llm_role_main", "")
 
     assert web_search.search_channel_ready() is False
     assert "联网搜索不可用" in caplog.text
@@ -230,7 +232,9 @@ def test_search_channel_ready_true_when_role_points_at_dashscope(monkeypatch):
 
 def test_web_search_entrypoints_degrade_without_calling_llm(monkeypatch):
     """判否 → 空结果，且一次 LLM 调用都不发（旧行为是发出去、拿记忆冒充检索）。"""
-    monkeypatch.setattr(settings, "llm_base_url", DEEPSEEK)
+    monkeypatch.setattr(settings, "llm_base_url", BYOK)
+    monkeypatch.setattr(settings, "llm_role_search", "")
+    monkeypatch.setattr(settings, "llm_role_main", "")
     monkeypatch.setattr(settings, "web_search_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "configured")
     monkeypatch.setattr(web_search, "get_llm_client", lambda _role: _ForbiddenClient())
@@ -242,7 +246,7 @@ def test_web_search_entrypoints_degrade_without_calling_llm(monkeypatch):
 
 def test_live_price_degrades_without_calling_llm(monkeypatch):
     monkeypatch.setattr(pricing, "search_channel_ready", lambda: False)
-    monkeypatch.setattr(pricing, "get_llm_client", lambda _role: _ForbiddenClient())
+    monkeypatch.setattr(pricing, "get_llm_client", lambda *args: pytest.fail("不支持的通道不能外呼"))
 
     assert pricing.query_live_price("成都", "某某酒店", None) is None
     assert pricing.query_live_food_price("成都", "某某餐厅") is None

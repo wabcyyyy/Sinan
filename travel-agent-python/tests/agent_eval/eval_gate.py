@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from app.common.config import settings
+from tests.agent_eval.product_path import PRODUCT_PATH_IDENTITY
 from tests.agent_eval.prompt_digest import prompt_text_sha256
 
 REPORT_DIR = Path(__file__).with_name("report") / "nightly"
@@ -154,6 +155,8 @@ def check(report: dict, *, expected_path: str = "stream") -> list[str]:
         )
 
     actual_path = report.get("generation_path")
+    if expected_path == "stream" and report.get("path_identity") != PRODUCT_PATH_IDENTITY:
+        problems.append("path_identity 漂移：stream 必须是 plan_days 最终交付报告，旧中间产物报告需重跑")
     if actual_path != expected_path:
         problems.append(
             f"generation_path 漂移：期望 {expected_path!r}，报告 {actual_path!r}"

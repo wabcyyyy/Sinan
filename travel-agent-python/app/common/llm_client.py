@@ -436,12 +436,16 @@ class LLMClient:
                 remaining = limits.remaining()
                 timeout = min(timeout, max(0.1, remaining))
             for attempt in range(self._max_attempts):
+                attempt_started = time.monotonic()
+                estimated = len(json.dumps(payload, ensure_ascii=False).encode("utf-8")) + 256
+                reservation = None
+                usage_id = None
+                issued = False
+                attempt_usage = {}
                 try:
                     # 每次真实 HTTP 调用都消耗 run 预算，重试同样受限额约束。
                     if limits and attempt > 0:
                         limits.check("llm")
-                    attempt_started = time.monotonic()
-                    estimated = len(json.dumps(payload, ensure_ascii=False).encode("utf-8")) + 256
                     reservation = limits.reserve_llm(estimated, max_tokens) if limits else None
                     timeout = min(self._timeout, max(0.001, limits.remaining())) if limits else self._timeout
                     usage_id = _record_usage(
@@ -454,6 +458,7 @@ class LLMClient:
                         provider=self._base_url,
                     )
                     with trial_billing.billable_call(self._base_url, payload, user_funded=self._user_funded) as charge:
+                        issued = True
                         with self._http().stream(
                             "POST",
                             url,
@@ -464,6 +469,7 @@ class LLMClient:
                         ) as resp:
                             resp.raise_for_status()
                             body = json.loads(b"".join(bounded_chunks(resp, limits)))
+                            attempt_usage = body.get("usage") or {}
                         if charge is not None:
                             charge.settle(body.get("usage"))
                     usage = body.get("usage")
@@ -477,27 +483,46 @@ class LLMClient:
                         attempt_started,
                         True,
                         provider=self._base_url,
-                        usage_complete=bool(usage and "prompt_tokens" in usage and "completion_tokens" in usage),
+                        usage_complete=bool(
+                            usage and all(usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens"))
+                        ),
                         record_id=usage_id,
                     )
                     if limits:
                         limits.check("deadline")
                     break
-                except RunLimitExceeded:
-                    raise
                 except Exception as exc:
                     if limits and reservation:
-                        limits.settle_llm(reservation, None)
-                    _record_usage(
-                        model or self._model,
-                        estimated,
-                        max_tokens,
-                        attempt_started,
-                        False,
-                        _describe_error(exc),
-                        provider=self._base_url,
-                        record_id=usage_id,
-                    )
+                        limits.settle_llm(reservation, attempt_usage or None)
+                    if issued:
+                        record_event(
+                            "llm",
+                            "llm.request",
+                            status="error",
+                            error=_describe_error(exc),
+                            metadata={
+                                "model": model or self._model,
+                                "attempt": attempt + 1,
+                                "prompt_tokens": attempt_usage.get("prompt_tokens"),
+                                "completion_tokens": attempt_usage.get("completion_tokens"),
+                                "usage_complete": all(
+                                    attempt_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")
+                                ),
+                            },
+                        )
+                    if usage_id is not None:
+                        _record_usage(
+                            model or self._model,
+                            attempt_usage.get("prompt_tokens", estimated),
+                            attempt_usage.get("completion_tokens", max_tokens),
+                            attempt_started,
+                            False,
+                            _describe_error(exc),
+                            provider=self._base_url,
+                            record_id=usage_id,
+                        )
+                    if isinstance(exc, RunLimitExceeded):
+                        raise
                     # 瞬时错误（超时/429/5xx）指数退避后重试一次；其余直接上抛。
                     if attempt + 1 >= self._max_attempts or not _is_retryable(exc):
                         raise
@@ -516,7 +541,7 @@ class LLMClient:
             # 成功收到响应：通道健康——清零连续失败计数；若此前开窗 = 半开探测通过，关窗
             llm_breaker.note_success(self._base_url)
         except RunLimitExceeded as exc:
-            record_event("llm", "llm.request", status="error", error=str(exc), metadata={"budget_exhausted": True})
+            record_event("decision", "llm.budget_exhausted", status="error", error=str(exc))
             raise
         except Exception as exc:
             if _is_retryable(exc):
@@ -537,6 +562,7 @@ class LLMClient:
                 "model": model or self._model,
                 "prompt_tokens": usage.get("prompt_tokens"),
                 "completion_tokens": usage.get("completion_tokens"),
+                "usage_complete": all(usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")),
                 "finish_reason": choice.get("finish_reason"),
                 "content_chars": len((choice.get("message") or {}).get("content") or ""),
                 "reasoning_tokens": (usage.get("completion_tokens_details") or {}).get("reasoning_tokens"),
@@ -615,7 +641,6 @@ class LLMClient:
         usage_id = _record_usage(
             model or self._model, estimated, max_tokens, started, False, "inflight", provider=self._base_url
         )
-        expiry_timer: threading.Timer | None = None
         stream_usage: dict = {}
         finish_reason = None
         content_length = 0
@@ -632,10 +657,6 @@ class LLMClient:
                 ) as resp,
             ):
                 resp.raise_for_status()
-                if limits:
-                    expiry_timer = threading.Timer(max(0.001, limits.remaining()), resp.close)
-                    expiry_timer.daemon = True
-                    expiry_timer.start()
                 for line in bounded_lines(resp, limits):
                     if limits:
                         limits.check("deadline")
@@ -676,13 +697,40 @@ class LLMClient:
                     charge.settle(stream_usage)
         except StreamCancelled:
             raise
+        except GeneratorExit:
+            record_event(
+                "llm",
+                "llm.stream_request",
+                status="cancelled",
+                metadata={
+                    "model": model or self._model,
+                    "prompt_tokens": stream_usage.get("prompt_tokens"),
+                    "completion_tokens": stream_usage.get("completion_tokens"),
+                    "usage_complete": all(
+                        stream_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")
+                    ),
+                },
+            )
+            raise
         except Exception as exc:
+            record_event(
+                "llm",
+                "llm.stream_request",
+                status="error",
+                error=_describe_error(exc),
+                metadata={
+                    "model": model or self._model,
+                    "prompt_tokens": stream_usage.get("prompt_tokens"),
+                    "completion_tokens": stream_usage.get("completion_tokens"),
+                    "usage_complete": all(
+                        stream_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")
+                    ),
+                },
+            )
             if _is_retryable(exc):
                 llm_breaker.note_failure(self._base_url, retryable=True)
             raise
         finally:
-            if expiry_timer is not None:
-                expiry_timer.cancel()
             if limits and reservation:
                 limits.settle_llm(reservation, stream_usage or None)
             _record_usage(
@@ -693,13 +741,11 @@ class LLMClient:
                 False,
                 "stream-ended",
                 provider=self._base_url,
-                usage_complete=bool(stream_usage),
+                usage_complete=all(stream_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")),
                 record_id=usage_id,
             )
         # 整段收流成功：通道健康——半开探测通过则关窗并发恢复事件
         llm_breaker.note_success(self._base_url)
-        if expiry_timer is not None:
-            expiry_timer.cancel()
         if limits:
             limits.check("deadline")
         prompt = int(stream_usage.get("prompt_tokens") or 0)
@@ -712,7 +758,7 @@ class LLMClient:
             started,
             True,
             provider=self._base_url,
-            usage_complete=bool(stream_usage),
+            usage_complete=all(stream_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")),
             record_id=usage_id,
         )
 
@@ -724,6 +770,7 @@ class LLMClient:
                 "content_length": content_length,
                 "prompt_tokens": prompt,
                 "completion_tokens": completion,
+                "usage_complete": all(stream_usage.get(k) is not None for k in ("prompt_tokens", "completion_tokens")),
                 # 与阻塞式 llm.request 同口径：思考占 completion 预算，截断要能从轨迹看出来
                 "finish_reason": finish_reason,
                 "reasoning_tokens": (stream_usage.get("completion_tokens_details") or {}).get("reasoning_tokens"),

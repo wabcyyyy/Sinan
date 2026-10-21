@@ -17,6 +17,7 @@
 
 | 源 | 用途 | 端点 | 免费额度 | 结论 | 最后验证 | 验证方式 |
 |---|---|---|---|---|---|---|
+| DeepSeek Search | 真实网页检索与候选来源（不证明地点字段正确） | `https://api.deepseek.com/v1/tools/search` | 当前官方按成功且非空请求 5 元/千次；与模型 Token 分开 | `ok`（200，4 条含正文结果） | 2026-10-21 | 手工单次契约调用，查询“杭州 西湖 官方 游览”；需要配置通道 key，因计费不做自动探针 |
 | open-meteo | 城市级天气预报 | `https://api.open-meteo.com/v1/forecast` | 无 key 免费（非商用） | `ok`（200） | 2026-09-25 | 探针 |
 | nominatim | 点名→坐标兜底（地理编码） | `https://nominatim.openstreetmap.org/search` | 无 key；政策 1 rps + 可联系 UA | `ok`（200） | 2026-09-25 | 探针报 unreachable（代理 SSL 断连）→ DoH 直连复核 200，不判死 |
 | overpass | 按 OSM 标签检索（diet:vegetarian/vegan 餐饮池，饮食证据检索面） | `https://overpass-api.de/api/interpreter` | 无 key 免费；自约束 1.1s 间隔 + 单次 25s timeout | `ok`（200） | 2026-10-11 | 隔离验收实测：新宿 bbox diet 检索 6 行（curl POST form） |
@@ -47,7 +48,7 @@ tourism/leisure/historic）与 jsonv2 主分类同样只做**原样搬运**成�
 
 | 源 | 用途 | 端点 | 额度 | 不探针的理由 |
 |---|---|---|---|---|
-| DashScope 联网搜索 | 研究证据/备选池补齐（`enable_search` 插件） | `llm_base_url`（`app/common/config.py`，不在 data 域） | LLM 按 token 计费 | 探针需真实计费调用；通道没有该插件（DeepSeek 官方等）时按「未联网」如实降级并留一条可定位 warning（`web_search.search_channel_ready`），不再拿模型记忆冒充检索结果——能力判否一次外呼都不发，没有"mock 盲区" |
+| DashScope 联网搜索 | 研究证据/备选池补齐（`enable_search` 插件） | `llm_base_url`（`app/common/config.py`，不在 data 域） | LLM 按 token 计费 | 探针需真实计费调用；通道既没有该插件也没有独立 Search API 时按「未联网」如实降级并留一条可定位 warning（`web_search.search_channel_ready`），不再拿模型记忆冒充检索结果——能力判否一次外呼都不发，没有"mock 盲区" |
 
 ## 已退役（勿再考虑）
 

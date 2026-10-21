@@ -119,6 +119,8 @@ def _run_search(state: UnifiedAgentState) -> dict:
     if not _spend_research(limits, task.domain):
         return {"items": state.items or [], "round": state.round + 1, "quota_note": "研究额度已用完"}
     items = registry.invoke(config.tool_name, params) or []
+    if state.items:
+        items = _merge_supplement(state.items, items)
     extras = list(dict.fromkeys((plan.get("extra_keywords") or []) + (state.extra_keywords or [])))
     # M3-②（AD5）最小增量：任务卡携带的意图关键词并入补池链（新旧行为兼容，仅追加）
     extras = list(dict.fromkeys(extras + list(task.intent_keywords or [])))
@@ -157,8 +159,12 @@ def _evaluate_node(state: UnifiedAgentState) -> dict:
     items = state.items or []
     round_no = state.round
     verdict = reasoning.evaluate_research(task, items, round_no)
+    sufficient = verdict.get("sufficient")
+    if not isinstance(sufficient, bool):
+        sufficient = None
     return {
-        "sufficient": bool(verdict.get("sufficient", True)),
+        "sufficient": sufficient,
+        "evaluation_note": str(verdict.get("reason") or "研究证据充分性未验证") if sufficient is None else "",
         "extra_keywords": [str(x) for x in (verdict.get("extra_keywords") or []) if x],
     }
 
@@ -178,7 +184,7 @@ def _route_after_search(state: UnifiedAgentState) -> str:
 
 
 def _route_after_evaluate(state: UnifiedAgentState) -> str:
-    if state.sufficient:
+    if state.sufficient is not False:
         return "finalize"
     record_event("decision", f"research.{_require_task(state).domain}.refine", metadata={"round": state.round})
     return "refine"
@@ -202,8 +208,8 @@ def _finalize_pack(state: UnifiedAgentState) -> dict:
         items=items,
         confidence=confidence,
         rounds=state.round,
-        gaps=[note for note in (gap, quota_note) if note],
-        degraded=not items,
+        gaps=[note for note in (gap, quota_note, state.evaluation_note) if note],
+        degraded=not items or bool(state.evaluation_note),
     )
     record_event("decision", f"research.{task.domain}", metadata=pack.to_dict())
     return {"pack": pack}

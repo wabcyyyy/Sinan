@@ -16,14 +16,14 @@ from typing import cast
 
 from app.agent.generation.content.reflect import build_feedback, validate_plans
 from app.agent.generation.content.route_matrix import route_matrix_for_plans
-from app.agent.generation.orchestration.open_plans import draft_state, generate_open_plans
+from app.agent.generation.orchestration.open_plans import generate_open_plans
 from app.agent.generation.output.assembly import (
     format_output as format_output,  # 门面转发（trip_graph 经 workflow.format_output 调用）
 )
 from app.agent.generation.output.assembly import (
     generation_attempt_limit,
 )
-from app.agent.generation.rules.generation_core import MAX_GENERATION_ATTEMPTS, MAX_REFILLS
+from app.agent.generation.rules.generation_core import MAX_GENERATION_ATTEMPTS, MAX_REFILLS, draft_day_plans
 from app.agent.research import merge_candidates, run_refill, run_research_context
 from app.agent.research.agent_state import UnifiedAgentState
 from app.agent.research.evidence import ResearchDomain
@@ -35,6 +35,21 @@ from app.common.model_registry import configured
 from app.schemas.trip import GenerateRequest
 
 logger = logging.getLogger(__name__)
+
+
+def _draft_state(req: GenerateRequest, reason: str, schedule_report: dict | None = None) -> dict:
+    """结构化"待研究"草案：如实标注降级，不冒充生成结果。"""
+    plans = draft_day_plans(req.city, req.days, reason)
+    report = dict(schedule_report or {})
+    report["destination_status"] = "draft_only"
+    report["research_mode"] = "open"
+    return {
+        "daily_plans": plans,
+        "budget_estimate": {},
+        "error": None,
+        "schedule_report": report,
+        "degraded_reason": reason,
+    }
 
 
 @traced("node", "parse")
@@ -103,7 +118,7 @@ def generate_itinerary(state: UnifiedAgentState) -> dict:
         if attempts + 1 >= MAX_GENERATION_ATTEMPTS:
             # 重试耗尽：草案必须可达（多日行程此前因 attempts 预算与 days
             # 挂钩而直接落到空 plans，草案分支成为死代码）。
-            return draft_state(req, detail, schedule_report)
+            return _draft_state(req, detail, schedule_report)
         record_event("route", "retry", metadata={"reason": "open_research_failed", "error": detail[:160]})
         return {"error": detail, "attempts": attempts + 1, "schedule_report": schedule_report}
 
@@ -112,7 +127,7 @@ def generate_itinerary(state: UnifiedAgentState) -> dict:
         if not configured("main")
         else str(state.error or "开放研究重试耗尽，已返回待研究草案")
     )
-    return draft_state(req, reason, schedule_report)
+    return _draft_state(req, reason, schedule_report)
 
 
 @traced("node", "reflect")

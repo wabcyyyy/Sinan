@@ -76,6 +76,10 @@ uv run python scripts/eval_ratchet.py
 
 `eval_agent.py` 默认走业务层产品路径（`plan_days` 在临时 SQLite 上真跑，按落库读回的交付结果计分）；`--path graph` 跑 Agent 面的 trip 分支作对照，报告另存 `report_graph.*`，不进棘轮。评测期间 LLM HTTP 出口有哨兵，任何真实调用都会让该用例报错。
 
+真实模型评测 `tests/agent_eval/llm_eval.py --path stream` 也走同一业务路径，包含研究、整段流式、逐日修复与最终落库，排除目的地预检和交付后的后台富化。该驱动不会注入固定生成结果，离线替身只由离线调用方安装。轨迹统计包含阻塞/流式调用和失败尝试；缺少完整 usage 的调用单列为未知用量，不能把已知 Token 小计当作总费用。研究候选一致性也不等于独立事实正确率。
+
+stream 报告增加 `path_identity`，门禁与样本带拒绝将旧中间产物报告当作最终交付。旧报告须重新运行；已有样本带需要保留，改用 `sample_band.py --samples <新文件>` 记录新口径，不能覆盖历史或直接沿用旧质量/性能结论。
+
 schema 变更执行 `uv run python scripts/export_contracts.py`，生成产物随同批提交。迁移只追加，门禁不放宽。
 真实 API 测试、nightly 和生成压测可能调用模型，不属于默认离线门禁。
 
@@ -86,8 +90,8 @@ CI 将运行报告保存为 artifact。个人计划、AI 交接、审查与原�
 
 业务生成任务从提交起共享 `ITINERARY_DEADLINE_SECONDS`（默认 300 秒），研究段另受
 `RESEARCH_DEADLINE_SECONDS`（默认 60 秒）约束。整段生成、逐日修复和富化共用调用、检索和
-token 预算；排队也计时。同一用户同时只能有一个规划任务，持久化预算与 checkpoint 共用
-SQLite，恢复时延续已消耗额度。单独 Agent 图运行仍用 `AGENT_DEADLINE_SECONDS`（默认 240 秒）。
+token 预算；排队也计时。同一用户同时只能有一个规划任务，任务预算持久化在业务库，图的
+checkpoint 使用 SQLite；恢复时延续已消耗额度。单独 Agent 图运行仍用 `AGENT_DEADLINE_SECONDS`（默认 240 秒）。
 
 外部事实由数据适配器签发字段快照，`factEvidence.sourceRef` 引用该次取回的证据 ID。
 名称、来源及字段必须与快照相符，模型补的坐标、费用和时间不能仅凭同名地点继承背书。

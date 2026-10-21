@@ -13,8 +13,8 @@ web.search）、qwen-vl-plus 与 qwen-max 打到根本不提供它们的网关�
 - **role** = 一次用途（`main` / `fast` / `vision` / `judge` / `search` / `stt`），
   `LLM_ROLE_<ROLE>` 的值是 `provider:model`；**裸模型名 = 走 default provider**，
   **留空 = 复用 main**（除 main 自己）。
-- **能力**由 provider 决定，本表只承载有消费方的三项：联网搜索（`search`，只有百炼兼容层
-  有 `enable_search`）、语音（`audio`，目前只有 MiMo）、json_schema 强约束档
+- **能力**由 provider 决定，本表只承载有消费方的能力：联网搜索（`search` 为百炼兼容层
+  `enable_search`，`web_search_api` 为 DeepSeek 独立 Search API）、语音（`audio`，目前只有 MiMo）、json_schema 强约束档
   （`json_schema`，DeepSeek 官方 2026-10-05 起对该档 400，见 `_capabilities`），
   调用点问 `binding(role).capabilities()`。视觉不经本表——闸在 `llm_client.require_model_served`
   按模型名判，DeepSeek 官方 2026-08 起 deepseek-flash 直接收图，主模型即看图。
@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from app.common.config import settings
 from app.common.config_primitives import LOCAL_HOSTS
@@ -85,7 +86,7 @@ class RoleBinding:
 
 
 def _capabilities(name: str, base_url: str) -> frozenset[str]:
-    """provider 会什么。search 只在百炼兼容层，audio 目前只在 MiMo（视觉不经本表，见模块 docstring）。
+    """search 为百炼插件，web_search_api 为 DeepSeek 独立 API；audio 目前只在 MiMo。
 
     `json_schema`（response_format 强约束档）：DeepSeek 官方 2026-10-05 实测对该档
     返回 400（同 key 同模型 json_object 200，夜审 R2-F1），上游较 PR-5 spike
@@ -100,6 +101,18 @@ def _capabilities(name: str, base_url: str) -> frozenset[str]:
         caps |= {"json_schema"}
     if name == "dashscope" or "dashscope" in low:
         caps |= {"search"}
+    parsed = urlsplit(base_url)
+    if (
+        parsed.scheme == "https"
+        and parsed.hostname == "api.deepseek.com"
+        and parsed.port in (None, 443)
+        and parsed.username is None
+        and parsed.password is None
+        and not parsed.query
+        and not parsed.fragment
+        and parsed.path.rstrip("/") in ("", "/v1")
+    ):
+        caps |= {"web_search_api"}
     if name == "mimo":
         caps |= {"audio"}
     return frozenset(caps)
@@ -228,10 +241,10 @@ def validate() -> None:
     # 走的就是这个降级口径）。缺口在运维看不见：日志不提示就以为联网开着，实际每个行程
     # 都按无检索产出。与 main 同口径只警告不 fail——自托管离线部署是有意形态。
     search_bound = binding("search")
-    if settings.agent_host not in LOCAL_HOSTS and "search" not in search_bound.capabilities():
+    if settings.agent_host not in LOCAL_HOSTS and not {"search", "web_search_api"} & search_bound.capabilities():
         logger.warning(
             "AGENT_HOST=%s 绑定非回环但 search 角色指向的 provider %s 没有联网能力"
-            "（网关不带 enable_search，只有百炼兼容层有）：联网补池与实时价将按「未联网」"
+            "（网关不带搜索插件或独立搜索 API）：联网补池与实时价将按「未联网」"
             "降级，行程按无检索口径产出；需要联网请设 LLM_ROLE_SEARCH=dashscope:<模型> 并配"
             " LLM_PROVIDER_DASHSCOPE_BASE_URL/API_KEY",
             settings.agent_host,

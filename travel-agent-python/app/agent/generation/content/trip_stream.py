@@ -36,7 +36,7 @@ from app.agent.generation.content.incremental_plans import TripPlanStreamParser,
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_trip_output
 from app.agent.generation.content.narrative import assemble_trip_output
 from app.common.config import settings
-from app.common.llm_client import get_llm_client
+from app.common.llm_client import StreamCancelled, get_llm_client
 from app.schemas.trip import GenerateDayRequest
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,8 @@ def llm_open_trip_stream(
         parts.append(delta)
         for candidate in parser.feed(delta):
             yield ("item_preview", candidate.day_no, candidate.item_ordinal, candidate.item)
+    if cancel is not None and cancel.is_set():
+        raise StreamCancelled("客户端已断开，不再修复行程输出")
     raw = "".join(parts)
     try:
         # EOF 顶层完整性门：未闭合 = TruncatedTripPlanError。此处只记日志不直接
@@ -108,13 +110,15 @@ def open_trip_streamed(
     trip_req: GenerateDayRequest,
     on_item_preview: Callable[[int, int, dict], None],
     published: list[tuple[int, int]],
+    *,
+    cancel: threading.Event | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """M5a 流式整段腿的候选泵：逐候选回调，final 段原样返回给调用方。
 
     `published` 由本函数回填（day_no, item_ordinal）序——整段腿失败时调用方
     据此逐个撤回已发布候选（spec §10.2：淘汰候选显式撤回，不静默换成别的地点）。
     """
-    for message in llm_open_trip_stream(trip_req):
+    for message in llm_open_trip_stream(trip_req, cancel=cancel):
         match message:
             case ("item_preview", day_no, item_ordinal, item):
                 published.append((int(day_no), int(item_ordinal)))
