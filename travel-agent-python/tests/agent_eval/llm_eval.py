@@ -5,13 +5,10 @@ temperature、知识库城市和两遍结果签名，供分析稳定性、反思
 
 两条生成路径，用 `--path` 选（默认 `stream`）：
 
-- `stream`：**用户在产品里走的那条**——`run_plan_context` 先做研究，然后
-  `run_generate_trip_stream` 逐日产事件，评测把 `day`/`day_patch`/`suggestions`/`done`
-  收割回 `GenerateResponse` 再算指标。与研究"分开包 run"的形状是刻意复刻的：生产里
-  `run_plan_context` 就不在 `observe_run` 内（`app/services/itinerary_generation.py`
-  注 3），所以研究不受 RunLimits/deadline 记账，生成有自己的一份 deadline（默认 240s）。
-  因此报告里 `research_rounds` / `research_pack` 恒为 0：那是"研究不在这个 run 里"
-  的事实，不是丢数。
+- `stream`：临时 SQLite 上真跑生产 `plan_days`，从落库详情读取最终交付；
+  合并研究、整段流式与逐日修复的轨迹，记录核心交付耗时与调用/Token 用量。
+  目的地预检与交付后的后台富化不在本次范围内；字段参照使用本次研究候选，
+  不额外发起一轮作为参照的检索，也不把候选一致性当独立事实正确率。
 - `graph`：同步 `/v1/generate` 的一张图（研究+生成+反思+落地共用一个 run 与一份
   预算）。它是遗留面，但仍是公开入口，所以留着随时可测。
 """
@@ -21,26 +18,23 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from app.agent.generation.content.day_prompts import GENERATION_TEMPERATURE
 from app.agent.generation.orchestration import workflow
-from app.agent.generation.orchestration.plan_context import run_plan_context
-from app.agent.generation.orchestration.stream_branch import run_generate_trip_stream
-from app.agent.generation.rules.generation_core import estimate_plans_total, stay_nights
 from app.agent.runtime.observability import observe_run
 from app.agent.tools import impl as tools
 from app.common.config import settings
 from app.prompts.open_generation import OPEN_DAY_PROMPT_VERSION, OPEN_TRIP_PROMPT_VERSION
-from app.schemas.trip import DailyPlan, GenerateDayRequest, GenerateRequest, GenerateResponse, Suggestion
-from app.schemas.trip_requirements import TripRequirements
+from app.schemas.trip import GenerateRequest
 from tests.agent_eval.dataset_schema import load_dataset
 from tests.agent_eval.metrics import evaluate_depth, evaluate_narrative, evaluate_response
+from tests.agent_eval.product_path import PRODUCT_PATH_IDENTITY, run_product_path
 from tests.agent_eval.prompt_digest import prompt_text_sha256
 
 CASES_PATH = Path(__file__).with_name("cases.json")
@@ -79,18 +73,24 @@ def _signature(response) -> str:
 
 def _trace_stats(trace: dict) -> dict:
     events = trace.get("events") or []
-    prompt_tokens = sum(
-        int((event.get("metadata") or {}).get("prompt_tokens") or 0)
+    llm_events = [
+        event
         for event in events
-        if event.get("name") == "llm.request"
-    )
-    completion_tokens = sum(
-        int((event.get("metadata") or {}).get("completion_tokens") or 0)
-        for event in events
-        if event.get("name") == "llm.request"
-    )
+        if event.get("kind") == "llm" and event.get("name") in ("llm.request", "llm.stream_request")
+    ]
+    prompt_tokens = sum(int((event.get("metadata") or {}).get("prompt_tokens") or 0) for event in llm_events)
+    completion_tokens = sum(int((event.get("metadata") or {}).get("completion_tokens") or 0) for event in llm_events)
     return {
-        "llm_calls": sum(event.get("kind") == "llm" and event.get("name") == "llm.request" for event in events),
+        "llm_calls": len(llm_events),
+        "usage_unknown_calls": sum(
+            not (event.get("metadata") or {}).get(
+                "usage_complete",
+                all(
+                    (event.get("metadata") or {}).get(key) is not None for key in ("prompt_tokens", "completion_tokens")
+                ),
+            )
+            for event in llm_events
+        ),
         "tool_calls": sum(event.get("kind") == "tool" for event in events),
         "retry_count": sum(event.get("kind") == "route" and event.get("name") in ("fix", "retry") for event in events),
         "fallback_count": sum(event.get("kind") == "route" and event.get("name") == "fallback" for event in events),
@@ -108,6 +108,7 @@ def _run_record(case: dict, catalog: dict, response, trace_data: dict) -> tuple[
         "status_reason": response.status_reason,
         "stats": _trace_stats(trace_data),
         "trace": trace_data,
+        "duration_ms": trace_data.get("duration_ms"),
         "quality": evaluate_response(response, case, catalog, trace_data),
         # M5 叙事化指标：与质量指标并列落报告，主题化评测的核心观测面
         "narrative": evaluate_narrative(response, case),
@@ -133,184 +134,35 @@ def _run_graph_once(case: dict, suffix: str, catalog: dict) -> tuple[dict, str]:
     """同步图路径：研究 + 生成 + 反思 + 落地共用一个 run、一份预算。"""
     response = None
     failure: Exception | None = None
+    started = time.perf_counter()
     with observe_run(f"llm-{case['city']}-{case['days']}-{suffix}") as trace:
         try:
             response = workflow.run_generate(build_generate_request(case))
         except Exception as exc:
             failure = exc
     trace_data = trace.to_dict()
+    trace_data["duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
     if failure is not None:
         return _failed_record(trace_data["run_id"], trace_data, failure)
     assert response is not None
     return _run_record(case, catalog, response, trace_data)
 
 
-def _stream_request(case: dict, context: dict) -> GenerateDayRequest:
-    """case + 研究上下文 → 整段流式请求（字段对齐 `itinerary_generation._plan_whole_trip`）。
-
-    刻意不自己发明形状：产品怎么拼这个请求，评测就怎么拼，否则量到的不是同一条路。
-
-    M7（spec §13.3）入参遗漏修复：生产请求带 `preferences` 与 `requirements_struct`
-    （`_plan_whole_trip` 同款），此前评测漏带——preferences 影响生成指令与排除类别，
-    requirements_struct 是 M1a 起硬约束的单一真源；漏带会让 nightly 量到一条比生产
-    弱约束的路径。`origin_city` 不是 GenerateDayRequest 字段（生产同样不带），出发地
-    在研究请求（下方 `_run_stream_once`）进入。
-    """
-    days = max(int(case.get("days") or 1), 1)
-    requirements_struct = case.get("requirements_struct")
-    return GenerateDayRequest(
-        city=case["city"],
-        persons=case.get("persons", 1),
-        budget=case.get("budget"),
-        start_date=case.get("start_date"),
-        day_no=1,
-        days=days,
-        used_names=[],
-        hotel_tier=case.get("hotel_tier"),
-        preferences=case.get("preferences") or [],
-        chosen_hotel=None,
-        needs_hotel=stay_nights(days) > 0,
-        requirements=case.get("requirements"),
-        intent=case.get("intent"),
-        # M1a 结构化需求贯通（与 _plan_whole_trip 一致；case 未带时为 None = 旧口径）
-        requirements_struct=(
-            TripRequirements.model_validate(requirements_struct) if isinstance(requirements_struct, dict) else None
-        ),
-        region_hint=case.get("region_hint"),
-        request_id=f"eval-{case['city']}-{days}d",
-        context=context,
-    )
-
-
-def _harvest_stream(
-    events: list[dict],
-) -> tuple[list[DailyPlan], list[Suggestion], dict | None, str | None]:
-    """把 NDJSON 事件收成（逐日计划, 备选池, done, error）。
-
-    `day_patch` 按 day_no 覆盖同一天（酒店摊铺等确定性修补的语义，与服务层落库一致）。
-    """
-    by_day_no: dict[int, DailyPlan] = {}
-    suggestions: list[Suggestion] = []
-    done: dict | None = None
-    error: str | None = None
-    for event in events:
-        event_type = str(event.get("type") or "")
-        if event_type in ("day", "day_patch"):
-            plan = event.get("plan")
-            if plan:
-                # 走一遍真模型：流里出的东西必须过 DailyPlan 契约，否则评测替产品吞了脏数据
-                parsed = DailyPlan.model_validate(plan)
-                by_day_no[int(parsed.day_no)] = parsed
-        elif event_type == "suggestions":
-            # 同上：备选池条目也过一遍契约（它带着 poiId/坐标，是前端打点的输入）
-            suggestions = [Suggestion.model_validate(row) for row in event.get("items") or []]
-        elif event_type == "done":
-            done = event
-        elif event_type == "error":
-            error = str(event.get("message") or "流式生成报错")
-    return list(by_day_no.values()), suggestions, done, error
-
-
-def _stream_status(
-    plans: list[DailyPlan], days: int, done: dict | None, error: str | None
-) -> tuple[Literal["success", "degraded", "failed"], str | None]:
-    """流式路径的状态口径（graph 路径由图给，这里必须自己定，所以要写明）。
-
-    - error 事件或一天都没出 → `failed`（没有任何可交付，不冒充降级成功）；
-    - 没有 done / 天数不齐 / 有天空点位 → `degraded`（如实说明缺哪一段）；
-    - 其余 → `success`。
-    """
-    if error:
-        return "failed", error
-    if not plans:
-        return "failed", "流式未产出任何一天"
-    empty_days = [int(plan.day_no) for plan in plans if not plan.items]
-    if done is None:
-        return "degraded", f"流式未收到 done 事件（已产出 {len(plans)}/{days} 天）"
-    if not done.get("complete") or len(plans) < days:
-        return "degraded", str(done.get("message") or f"仅产出 {len(plans)}/{days} 天")
-    if empty_days:
-        return "degraded", f"第 {'、'.join(str(day) for day in empty_days)} 天没有可交付点位"
-    return "success", None
-
-
-def _run_stream_once(case: dict, suffix: str, catalog: dict) -> tuple[dict, str]:
-    """产品同构的一次流式生成：研究在 run 外、生成在自己的 run 内（预算各一份）。
-
-    与 `itinerary_generation` 一致：研究炸了就没有可生成的上下文，此时如实记一条
-    failed（带合成 run_id，不假装有 run），而不是让评测抛异常。
-    """
-    city = case["city"]
-    days = max(int(case.get("days") or 1), 1)
-    run_id = f"llm-{city}-{days}-{suffix}-stream"
-    empty_trace = {"run_id": run_id, "events": []}
+def _run_product_once(case: dict, suffix: str) -> tuple[dict, str]:
+    """真跑生产 plan_days，按最终落库结果与全阶段轨迹计算指标。"""
+    run_id = f"llm-{case['city']}-{case['days']}-{suffix}-product"
+    trace = {"run_id": run_id, "events": []}
     try:
-        # M7（spec §13.3）入参遗漏修复：研究请求此前只带 city/days/start_date/preferences，
-        # persons/budget/hotel_tier/intent/requirements/origin_city/requirements_struct 全部
-        # 漏带——研究层永远看见 persons=1、无预算无档次，量到的不是生产那条研究路径
-        # （生产经 GenerateCommand.to_generate_request() 带完整参数）。字段对齐 _plan_whole_trip
-        # 的研究口径；case 未带的字段仍为缺省（老题集行为不回退）。
-        requirements_struct = case.get("requirements_struct")
-        context = run_plan_context(
-            GenerateRequest(
-                city=city,
-                days=days,
-                persons=case.get("persons", 1),
-                budget=case.get("budget"),
-                start_date=case.get("start_date"),
-                preferences=case.get("preferences") or [],
-                hotel_tier=case.get("hotel_tier"),
-                requirements=case.get("requirements"),
-                intent=case.get("intent"),
-                origin_city=case.get("origin_city"),
-                region_hint=case.get("region_hint"),
-                requirements_struct=(
-                    TripRequirements.model_validate(requirements_struct)
-                    if isinstance(requirements_struct, dict)
-                    else None
-                ),
-            )
-        )
+        with run_product_path(case, run_id) as (response, trace, catalog):
+            return _run_record(case, catalog, response, trace)
     except Exception as exc:
-        return _failed_record(run_id, empty_trace, exc)
-
-    request = _stream_request(case, context)
-    failure: Exception | None = None
-    events: list[dict] = []
-    with observe_run(run_id) as trace:
-        try:
-            events = [dict(event) for event in run_generate_trip_stream(request)]
-        except Exception as exc:
-            failure = exc
-    trace_data = trace.to_dict()
-    if failure is not None:
-        return _failed_record(trace_data["run_id"], trace_data, failure)
-    plans, suggestions, done, error = _harvest_stream(events)
-    status, reason = _stream_status(plans, days, done, error)
-    response = GenerateResponse(
-        city=city,
-        days=days,
-        title=str((done or {}).get("trip_theme") or f"{city}{days}日行程"),
-        trip_theme=(done or {}).get("trip_theme"),
-        daily_plans=plans,
-        suggestions=suggestions,
-        budget_estimate=estimate_plans_total(
-            [plan.model_dump() for plan in plans], case.get("persons", 1), days, context.get("consumption")
-        ),
-        # 研究发生在这个 run 之外（与服务一致），所以没有 schedule_report 可带：
-        # 报告里 research_rounds/research_pack 为 0 是这条路径的事实，不是丢数。
-        schedule_report={},
-        destination_status="researched" if context.get("candidates") else "draft_only",
-        status=status,
-        status_reason=reason,
-    )
-    return _run_record(case, catalog, response, trace_data)
+        return _failed_record(run_id, trace, exc)
 
 
 def _run_once(case: dict, suffix: str, path: str) -> tuple[dict, str]:
-    catalog = _catalog(case["city"])
-    runner = _run_stream_once if path == "stream" else _run_graph_once
-    return runner(case, suffix, catalog)
+    if path == "stream":
+        return _run_product_once(case, suffix)
+    return _run_graph_once(case, suffix, _catalog(case["city"]))
 
 
 def _report_markdown(report: dict) -> str:
@@ -330,10 +182,12 @@ def _report_markdown(report: dict) -> str:
         f"open_day prompt：`{report['open_day_prompt_version']}` ｜ "
         f"open_trip prompt：`{report['open_trip_prompt_version']}`",
         f"- 用例数：{report['case_count']} ｜ 两遍一致率：{report['consistency_rate']:.2%}",
-        "- 两个口径别混读：`route_violation_rate` 量的是**业务终检前**的中间产物"
-        "（评测只调 run_generate_trip_stream，不跑落库后的 validate_plans）；"
-        "`terminal_reset_day_rate` 用生产同一判官算「生产会重置几成天」——"
-        "那才是用户实际会撞到的缺口信号（重置天要重烧一次 LLM，或最终落 PENDING）。",
+        (
+            "- stream 指标来自落库终检与逐日补齐后的最终交付；耗时与用量覆盖核心交付，"
+            "不含目的地预检和后台富化。字段参照来自本次研究候选，非独立事实真值。"
+            if report.get("generation_path") == "stream"
+            else "- graph 指标来自 Agent 图的结果，不经过业务落库与逐日补齐。"
+        ),
         "",
     ]
     for detail in report["details"]:
@@ -350,6 +204,9 @@ def _report_markdown(report: dict) -> str:
             f"- prompt_version：`{case.get('prompt_version')}` ｜ "
             f"run1 status：{run1['status']} ｜ run2 status：{run2['status']} ｜ "
             f"两遍一致：{'是' if detail['consistent'] else '否'}",
+            f"- 核心交付耗时 ms：run1={run1.get('duration_ms')} / run2={run2.get('duration_ms')}；"
+            f"用量不完整调用数：run1={run1['stats'].get('usage_unknown_calls', 0)} / "
+            f"run2={run2['stats'].get('usage_unknown_calls', 0)}",
             "",
             "| 指标 | 结果 |",
             "| --- | ---: |",
@@ -395,7 +252,7 @@ def main() -> int:
         "--path",
         choices=("stream", "graph"),
         default="stream",
-        help="stream=产品走的逐日流式（研究另算一个 run）；graph=同步 /v1/generate 那张共用预算的图",
+        help="stream=plan_days 最终落库交付（含研究和逐日修复）；graph=同步 /v1/generate 图",
     )
     parser.add_argument(
         "--cases", default=str(CASES_PATH), help="用例文件：默认 cases.json；主题化同题评测传 themed_cases.json"
@@ -420,6 +277,7 @@ def main() -> int:
     status_counts = {"success": 0, "degraded": 0, "failed": 0}
     aggregate_stats = {
         "llm_calls": 0,
+        "usage_unknown_calls": 0,
         "retry_count": 0,
         "fallback_count": 0,
         "prompt_tokens": 0,
@@ -458,13 +316,8 @@ def main() -> int:
         "dataset": dataset,
         # 口径的一部分：同一条 case 在两条路径上的预算形状不同，数值不可跨路径比较
         "generation_path": args.path,
-        # M7（spec §13.3）路径身份标注：本报告是「直调 agent 面」路径，不等于生产链路——
-        # 不经 services.itinerary_generation 的建壳/落库/终检/修复循环；与业务路径的
-        # 对比只读 `tests/experience_cases/runner.py` + `eval_experience.py` 的业务面数字。
         "path_identity": (
-            "agent-face direct (run_plan_context + run_generate_trip_stream)"
-            if args.path == "stream"
-            else "agent-face direct (workflow.run_generate graph)"
+            PRODUCT_PATH_IDENTITY if args.path == "stream" else "agent-face direct (workflow.run_generate graph)"
         ),
         "model": settings.llm_model,
         # 与开放模式真实生成调用同源（day_prompts.GENERATION_TEMPERATURE）
@@ -505,7 +358,7 @@ def main() -> int:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     # 报告文件名：主题化同题评测（--cases themed_cases.json）输出 themed_report.json+md，
     # 不覆盖既有 llm_report.json；`--out-stem` 供按**路径**分别落盘——nightly 现在同时
-    # 跑 stream（产品路径）与 graph（trip 图路径，唯一带终检的链），两份报告的深度口径
+    # 跑 stream（产品路径）与 graph（trip 图路径），两份报告的深度口径
     # 不可混用，必须各存各的（审查 P2-6）。
     if args.out_stem:
         report_stem = args.out_stem

@@ -6,7 +6,7 @@
 
 设计要点：
 - LLM-only 口径不破：规划/评估只决定"查什么、够不够"，绝不生成行程内容；
-- 任何异常（未配置 LLM / 网络 / 解析失败）都回退到确定性默认值，绝不阻塞研究；
+- 评估未配置/失败时保留未验证状态；取消与失权继续向上传播；
 - 证据为空时确定性判定"不足"并给默认补充词，省一次模型调用；
 - 统一走可配置 fast 通道（llm_fast_model）；默认与主模型同款（config.py），
   切档才省钱——模块级函数可被单测 patch 注入 fixture。
@@ -19,6 +19,7 @@ import logging
 
 from app.agent.core.json_utils import parse_llm_json_or_none
 from app.agent.research.evidence import ResearchTask
+from app.agent.runtime.run_limits import TaskStopped
 from app.common.llm_client import get_llm_client
 from app.common.model_registry import configured
 
@@ -34,7 +35,8 @@ _PLAN_SYSTEM = (
 _EVAL_SYSTEM = (
     "你是旅行信息评估员。判断检索结果是否满足研究任务（数量、与偏好/预算/档位的匹配度），"
     "只输出 JSON："
-    '{"sufficient":true或false,"reason":"一句话","extra_keywords":["不足时建议补充的检索词(可空数组)"]}。'
+    '{"sufficient":true或false或null,"reason":"一句话","extra_keywords":["不足时建议补充的检索词(可空数组)"]}。'
+    "候选缺少判断所需字段时返回 null，不能凭地点名称猜测价格、档次或偏好匹配。"
     "只评估证据充分性，不生成行程。"
 )
 
@@ -71,6 +73,8 @@ def plan_research(task: ResearchTask) -> dict:
             "extra_keywords": [str(x) for x in (data.get("extra_keywords") or []) if x],
             "limit": int(data.get("limit") or 0) or 0,
         }
+    except TaskStopped:
+        raise
     except Exception as exc:
         logger.warning("research plan failed for %s/%s: %s", task.domain, task.city, exc)
         return {}
@@ -92,7 +96,7 @@ def _intent_keywords_covered(task: ResearchTask, items: list[dict]) -> bool:
 
 
 def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> dict:
-    """评估证据充分性 {sufficient, extra_keywords}；异常按充分处理（不无限补查）。
+    """评估证据充分性；无法判断时 sufficient=None，保留原因且不增加补查。
 
     证据为空时确定性返回"不足"+默认补充词（省一次模型调用）；第 1 轮且任务卡
     携带意图关键词时，先做确定性的「意图关键词覆盖」检查——证据完全未命中任何
@@ -106,13 +110,14 @@ def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> d
         merged = list(dict.fromkeys(list(task.intent_keywords) + _default_extra_keywords(task)))
         return {"sufficient": False, "extra_keywords": merged}
     if not configured("main"):
-        return {"sufficient": True, "extra_keywords": []}
-    names = [str(p.get("name") or "") for p in items[:12]]
+        return {"sufficient": None, "extra_keywords": [], "reason": "未配置研究评估模型，证据充分性未验证"}
+    fields = ("name", "category", "ticket_price", "avg_cost", "tags", "remark", "dietary_options", "category_tags")
+    candidates = [{key: p[key] for key in fields if p.get(key) is not None} for p in items[:12]]
     try:
         raw = get_llm_client("fast").complete(
             f"研究域={task.domain}；城市={task.city}；任务要求：偏好={task.preferences}，"
             f"预算={task.budget}，酒店档位={task.hotel_tier}。\n"
-            f"第 {round_no} 轮检索到 {len(items)} 条：{json.dumps(names, ensure_ascii=False)}。"
+            f"第 {round_no} 轮检索到 {len(items)} 条：{json.dumps(candidates, ensure_ascii=False)}。"
             "判断是否足够，不足请给出补充检索词。",
             system_prompt=_EVAL_SYSTEM,
             temperature=0.1,
@@ -120,10 +125,15 @@ def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> d
             json_mode=True,
         )
         data = parse_llm_json_or_none(raw) or {}
+        sufficient = data.get("sufficient")
+        if not isinstance(sufficient, bool):
+            return {"sufficient": None, "extra_keywords": [], "reason": "研究评估未给出有效结论，证据充分性未验证"}
         return {
-            "sufficient": bool(data.get("sufficient", True)),
+            "sufficient": sufficient,
             "extra_keywords": [str(x) for x in (data.get("extra_keywords") or []) if x],
         }
+    except TaskStopped:
+        raise
     except Exception as exc:
         logger.warning("research evaluate failed for %s/%s: %s", task.domain, task.city, exc)
-        return {"sufficient": True, "extra_keywords": []}
+        return {"sufficient": None, "extra_keywords": [], "reason": "研究评估失败，证据充分性未验证"}

@@ -362,7 +362,7 @@ class TestOpenPlansPreviewHooks:
         """on_item_preview 非 None 且多日：整段腿走流式，候选逐个回调，final 走同一后续。"""
         _stub_offline(monkeypatch)
 
-        def fake_stream(trip_req):
+        def fake_stream(trip_req, *, cancel=None):
             yield ("item_preview", 1, 0, {"item_type": "attraction", "poi_name": "西湖"})
             yield ("item_preview", 1, 1, {"item_type": "food", "poi_name": "楼外楼"})
             yield ("item_preview", 2, 0, {"item_type": "attraction", "poi_name": "灵隐寺"})
@@ -395,7 +395,7 @@ class TestOpenPlansPreviewHooks:
         """整段腿失败：已发布候选逐个显式撤回，缺口天交逐日兜底重生成。"""
         _stub_offline(monkeypatch)
 
-        def boom_stream(trip_req):
+        def boom_stream(trip_req, *, cancel=None):
             yield ("item_preview", 1, 0, {"item_type": "attraction", "poi_name": "西湖"})
             raise RuntimeError("upstream truncated")
 
@@ -450,7 +450,9 @@ class TestOpenPlansPreviewHooks:
         monkeypatch.setattr(
             open_plans,
             "open_trip_streamed",
-            lambda trip_req, on_preview, published: (_ for _ in ()).throw(AssertionError("默认路径不得走流式腿")),
+            lambda trip_req, on_preview, published, *, cancel=None: (_ for _ in ()).throw(
+                AssertionError("默认路径不得走流式腿")
+            ),
         )
         increment, errors = open_plans.generate_open_plans(_trip_req(), "", None)
         assert errors == [] and increment is not None
@@ -470,7 +472,7 @@ class TestStreamBranchPreviewEvents:
         """开关开：候选先于同 day 正式 day 事件，wire 形状走模型 dump；day/done 序列不变。"""
         self._env(monkeypatch)
 
-        def fake_stream(trip_req):
+        def fake_stream(trip_req, *, cancel=None):
             yield ("item_preview", 1, 0, {"item_type": "attraction", "poi_name": "西湖"})
             yield ("item_preview", 1, 1, {"item_type": "food", "poi_name": "楼外楼"})
             yield ("item_preview", 2, 0, {"item_type": "attraction", "poi_name": "灵隐寺"})
@@ -506,7 +508,9 @@ class TestStreamBranchPreviewEvents:
         monkeypatch.setattr(
             open_plans,
             "open_trip_streamed",
-            lambda trip_req, on_preview, published: (_ for _ in ()).throw(AssertionError("未开启开关不得走流式腿")),
+            lambda trip_req, on_preview, published, *, cancel=None: (_ for _ in ()).throw(
+                AssertionError("未开启开关不得走流式腿")
+            ),
         )
         events = list(run_generate_trip_stream(_day_req(2)))
         types = [e["type"] for e in events]
@@ -517,7 +521,7 @@ class TestStreamBranchPreviewEvents:
         """流式腿失败：撤回事件先行，随后逐日兜底的 day/done 照常收尾。"""
         self._env(monkeypatch)
 
-        def boom_stream(trip_req):
+        def boom_stream(trip_req, *, cancel=None):
             yield ("item_preview", 1, 0, {"item_type": "attraction", "poi_name": "西湖"})
             raise RuntimeError("upstream truncated")
 

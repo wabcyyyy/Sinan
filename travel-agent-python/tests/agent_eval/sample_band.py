@@ -30,6 +30,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from tests.agent_eval.product_path import PRODUCT_PATH_IDENTITY
+
 SAMPLES_PATH = Path(__file__).resolve().parent / "report" / "nightly" / "band_samples.jsonl"
 
 
@@ -43,6 +45,8 @@ def build_row(report: dict, expected_cases: int | None = None) -> dict:
         raise ValueError("报告缺 details：不是 llm_eval 的产物")
     if not report.get("generation_path"):
         raise ValueError("报告缺 generation_path：stream/graph 深度口径不可混用，拒绝采样")
+    if report["generation_path"] == "stream" and report.get("path_identity") != PRODUCT_PATH_IDENTITY:
+        raise ValueError("path_identity 不匹配：旧 stream 中间产物不能作为最终交付样本")
     if expected_cases is None:
         from tests.agent_eval.eval_agent import CASES_PATH
 
@@ -62,6 +66,7 @@ def build_row(report: dict, expected_cases: int | None = None) -> dict:
         "generated_at": report["generated_at"],
         "prompt_version": report["prompt_version"],
         "generation_path": report["generation_path"],
+        "path_identity": report.get("path_identity"),
         "case_count": report["case_count"],
         "coord_valid_rate": depth.get("coord_valid_rate"),
         "deeplink_resolvable_rate": depth.get("deeplink_resolvable_rate"),
@@ -78,6 +83,10 @@ def append_sample(samples_path: Path, row: dict) -> bool:
             if not line.strip():
                 continue
             old = json.loads(line)
+            if old.get("generation_path") == row["generation_path"] and old.get("path_identity") != row.get(
+                "path_identity"
+            ):
+                raise ValueError("样本带包含不同 path_identity；请用 --samples 指定新文件，保留旧口径历史")
             if old.get("generated_at") == row["generated_at"] and old.get("generation_path") == row["generation_path"]:
                 return False
     samples_path.parent.mkdir(parents=True, exist_ok=True)

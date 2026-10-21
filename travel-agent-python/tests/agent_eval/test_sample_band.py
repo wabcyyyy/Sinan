@@ -1,7 +1,10 @@
 """sample_band 的口径测试：全量闸门、run1 聚合、generation_path 闸门、重复采样拒绝、LF 字节形态。"""
 
+import json
+
 import pytest
 
+from tests.agent_eval.product_path import PRODUCT_PATH_IDENTITY
 from tests.agent_eval.sample_band import append_sample, build_row
 
 # 夹具是 2 例小样本：显式告诉 build_row 期望值，绕开"标准数据集全量"闸门
@@ -17,6 +20,7 @@ def _report(**over):
         "generated_at": "2026-10-08T00:00:00+00:00",
         "prompt_version": "p1",
         "generation_path": "stream",
+        "path_identity": PRODUCT_PATH_IDENTITY,
         "case_count": 2,
         "depth_metrics": {
             "coord_valid_rate": 0.8,
@@ -42,6 +46,18 @@ def test_build_row_uses_run1_aggregates_and_report_depth():
     assert row["terminal_reset_reasons"] == {"无餐饮": 1, "行程过满": 3}
     assert row["coord_valid_rate"] == 0.8
     assert row["generation_path"] == "stream"
+    assert row["path_identity"] == PRODUCT_PATH_IDENTITY
+
+
+def test_rejects_old_stream_report_and_mixed_sample_history(tmp_path):
+    with pytest.raises(ValueError, match="path_identity"):
+        _row(_report(path_identity="agent-face direct"))
+    samples = tmp_path / "mixed.jsonl"
+    old = _row(_report())
+    old.pop("path_identity")
+    samples.write_text(json.dumps(old), encoding="utf-8")
+    with pytest.raises(ValueError, match="path_identity"):
+        append_sample(samples, _row(_report(generated_at="2026-10-21T00:00:00+00:00")))
 
 
 def test_build_row_treats_failed_run1_as_zero_like_depth_metrics():

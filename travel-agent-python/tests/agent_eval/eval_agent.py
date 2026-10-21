@@ -138,6 +138,7 @@ def _enter_offline_mocks(stack: ExitStack, coords: bool) -> None:
     enter(patch.object(grounding, "resolve_poi", lambda name, city: mock_llm.resolve_poi(name, city, coords=coords)))
     enter(patch.object(open_plans, "llm_open_day", mock_llm.fixture_open_day))
     enter(patch.object(open_plans, "llm_open_trip", mock_llm.fixture_open_trip))
+    enter(patch("app.agent.generation.content.trip_stream.llm_open_trip_stream", mock_llm.fixture_trip_stream))
     # 逐日补齐（day 分支）经 day_stream 自己的模块绑定取 llm_open_day，与整段腿不是同一个名字
     enter(patch.object(day_stream, "llm_open_day", mock_llm.fixture_open_day))
 
@@ -181,7 +182,7 @@ def run_case(case: dict, path: str = "stream") -> dict:
         # 目录在护栏之后建：它会签发证据票，必须落进本次评测所用的缓存
         fixture = mock_llm.catalog(case["city"], coords=coords)
         if path == "stream":
-            response, trace = product_path.run_product_path(case, run_id)
+            response, trace, _catalog = stack.enter_context(product_path.run_product_path(case, run_id))
         else:
             recorder = stack.enter_context(trace_run(run_id))
             response = workflow.run_generate(build_generate_request(case))

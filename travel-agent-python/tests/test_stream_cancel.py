@@ -77,6 +77,21 @@ def _llm_lines(count: int = 5) -> list[str]:
 
 
 class TestStreamChatDeltasCancel:
+    @pytest.mark.parametrize("usage", [None, {"prompt_tokens": 10, "completion_tokens": 2}])
+    def test_stream_trace_records_usage_completeness(self, monkeypatch, usage):
+        metrics.reset()
+        cancel = threading.Event()
+        lines = _llm_lines(1)
+        if usage is not None:
+            lines.append(_sse({"choices": [], "usage": usage}))
+        response = _FakeStreamResponse(lines, cancel, None)
+        monkeypatch.setattr(llm_client, "_get_http_client", lambda: _FakeHttpClient(response))
+        with observe_run("stream-usage"):
+            list(llm_client.LLMClient().stream_chat_deltas([{"role": "user", "content": "hi"}]))
+        trace = metrics.get_trace("stream-usage")
+        event = next(e for e in trace["events"] if e["name"] == "llm.stream_request")
+        assert event["metadata"]["usage_complete"] is (usage is not None)
+
     def test_cancel_before_request_skips_http_call(self, monkeypatch):
         cancel = threading.Event()
         cancel.set()
@@ -113,10 +128,33 @@ def _req(days: int = 3) -> GenerateDayRequest:
 def stream_env(monkeypatch):
     monkeypatch.setattr(settings, "llm_api_key", "test-key")
     monkeypatch.setattr(settings, "llm_generation_web_search", False)
+    monkeypatch.setattr("app.agent.data.web_search.web_search_enabled", lambda: False)
     monkeypatch.setattr("app.agent.generation.content.landing.local_ground", lambda item, city: None)
 
 
 class TestTripStreamCancel:
+    def test_preview_stream_cancel_before_first_complete_item(self, stream_env, monkeypatch):
+        metrics.reset()
+        cancel = threading.Event()
+        chunks = ['{"daily_plans":[{"day_no":1,"items":[{"poi_name":"西', "湖", '"}]}]}']
+        lines = [_sse({"choices": [{"delta": {"content": chunk}}]}) for chunk in chunks]
+        response = _FakeStreamResponse(lines, cancel, cancel_at=1)
+        monkeypatch.setattr(llm_client, "_get_http_client", lambda: _FakeHttpClient(response))
+        fallback_calls = []
+        monkeypatch.setattr(
+            "app.agent.generation.orchestration.open_plans.llm_open_day",
+            lambda *a, **k: fallback_calls.append(True),
+        )
+        with observe_run("cancel-partial-item"):
+            events = list(run_generate_trip_stream(_req(2), cancel=cancel, item_previews=True))
+        assert events == []
+        assert response.consumed == 2
+        assert response.closed
+        assert fallback_calls == []
+        trace = metrics.get_trace("cancel-partial-item")
+        assert any(e["name"] == "llm.stream_request" and e["status"] == "cancelled" for e in trace["events"])
+        assert metrics.snapshot()["cancelled_runs"] == 1
+
     def test_pre_cancelled_returns_empty_without_llm_call(self, stream_env):
         metrics.reset()
         cancel = threading.Event()
@@ -133,7 +171,17 @@ class TestTripStreamCancel:
         cancel = threading.Event()
         from app.agent.generation.orchestration import open_plans
 
-        def drive(req, feedback, context_hotels, candidates=None, foods=None, weather=None, on_day=None, on_patch=None):
+        def drive(
+            req,
+            feedback,
+            context_hotels,
+            candidates=None,
+            foods=None,
+            weather=None,
+            on_day=None,
+            on_patch=None,
+            cancel=None,
+        ):
             assert on_day is not None
             on_day(1, {"day_no": 1, "items": [{"item_type": "attraction", "poi_name": "西湖"}]})
             cancel.set()  # 第一天落地后客户端断开

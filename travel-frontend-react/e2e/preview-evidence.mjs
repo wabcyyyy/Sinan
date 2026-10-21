@@ -55,8 +55,8 @@ function installOfflineFixture({ scenario, failure, regression }) {
       const encoder = new TextEncoder()
       return new Response(new ReadableStream({ start(controller) {
         const send = (type, data = {}) => controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, itineraryId: 701, data })}\n\n`))
-        setTimeout(() => send('item_preview', { runId: 'offline', previewId: 'offline:1:1', dayNo: 1, itemOrdinal: 1, item: { itemType: 'attraction', poiName: '候选地点' } }), 80)
-        setTimeout(() => send('item_preview', { runId: 'offline', previewId: 'offline:1:2', dayNo: 1, itemOrdinal: 2, item: { itemType: 'attraction', poiName: '有效候选' } }), 250)
+        setTimeout(() => send('item_preview', { runId: 'offline', previewId: 'offline:1:1', dayNo: 1, itemOrdinal: 1, item: { item_type: 'attraction', poi_name: '候选地点' } }), 80)
+        setTimeout(() => send('item_preview', { runId: 'offline', previewId: 'offline:1:2', dayNo: 1, itemOrdinal: 2, item: { item_type: 'attraction', poi_name: '有效候选' } }), 250)
         setTimeout(() => send('item_preview_withdrawn', { runId: 'offline', previewId: 'offline:1:2', dayNo: 1, itemOrdinal: 2, reason: 'offline-withdrawal' }), 650)
         setTimeout(() => {
           detail = { ...detail, status: failure ? 3 : 2, genState: failure ? 'FAILED' : 'COMPLETED', coreReady: !failure,

@@ -105,20 +105,23 @@ def test_evaluate_intent_hit_via_tags_keeps_llm_verdict(monkeypatch):
     assert verdict["extra_keywords"] == []
 
 
-def test_evaluate_empty_intent_keywords_keeps_legacy_behavior(monkeypatch):
-    """intent_keywords 为空 → 行为与旧版完全一致（未配置 LLM 时直接判充分）。"""
-    monkeypatch.setattr(settings, "llm_api_key", "")
+def test_evaluate_empty_intent_without_model_is_unknown(monkeypatch):
+    """无意图且未配置评估模型时，不能把未评估当成充分。"""
+    monkeypatch.setattr(reasoning, "configured", lambda _role: False)
     task = ResearchTask(domain="food", city="杭州")
     verdict = reasoning.evaluate_research(task, [{"name": "楼外楼"}], 1)
-    assert verdict == {"sufficient": True, "extra_keywords": []}
+    assert verdict["sufficient"] is None
+    assert verdict["extra_keywords"] == []
+    assert "未验证" in verdict["reason"]
 
 
 def test_evaluate_intent_check_only_on_round_one(monkeypatch):
     """意图覆盖检查仅第 1 轮生效：第 2 轮不再短路（保证补查轮可收敛）。"""
-    monkeypatch.setattr(settings, "llm_api_key", "")
+    monkeypatch.setattr(reasoning, "configured", lambda _role: False)
     task = ResearchTask(domain="attraction", city="杭州", intent_keywords=["千恋万花"])
     verdict = reasoning.evaluate_research(task, [{"name": "西湖"}], 2)
-    assert verdict == {"sufficient": True, "extra_keywords": []}
+    assert verdict["sufficient"] is None
+    assert verdict["extra_keywords"] == []
 
 
 # ---------- 4. factory._run_search：intent_keywords 并入补池 extras ----------

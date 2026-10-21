@@ -19,6 +19,7 @@ from app.agent.research.evidence import ResearchDomain
 from app.agent.research.reasoning import (
     evaluate_research as _real_evaluate,
 )
+from app.agent.research.reasoning import plan_research as _real_plan
 from app.agent.runtime.run_limits import begin_limits, current_limits, end_limits
 from app.agent.runtime.trace import trace_run
 from app.agent.tools import impl as tools
@@ -215,6 +216,86 @@ def test_reasoning_evaluate_empty_is_deterministic_insufficient(monkeypatch):
     verdict = _real_evaluate(ResearchTask(domain="food", city="杭州"), [], 1)
     assert verdict["sufficient"] is False
     assert any("美食" in kw for kw in verdict["extra_keywords"])
+
+
+@pytest.mark.parametrize("answer", ["{}", "not json", '{"sufficient":"false"}', '{"sufficient":null}'])
+def test_research_invalid_evaluation_is_degraded_without_extra_round(monkeypatch, answer):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(reasoning, "configured", lambda _role: True)
+    monkeypatch.setattr(reasoning, "evaluate_research", _real_evaluate)
+    monkeypatch.setattr(reasoning, "get_llm_client", lambda _role: SimpleNamespace(complete=lambda *a, **k: answer))
+    monkeypatch.setattr(tools, "search_attractions", mock_llm.search_attractions)
+    pack = run_research(ResearchTask(domain="attraction", city="杭州"))
+    assert pack.items
+    assert pack.rounds == 1
+    assert pack.degraded is True
+    assert any("充分性未验证" in gap for gap in pack.gaps)
+
+
+def test_research_evaluation_timeout_is_unknown(monkeypatch):
+    monkeypatch.setattr(reasoning, "configured", lambda _role: True)
+
+    def unavailable(_role):
+        raise TimeoutError("upstream timeout")
+
+    monkeypatch.setattr(reasoning, "get_llm_client", unavailable)
+    verdict = _real_evaluate(ResearchTask(domain="hotel", city="杭州"), [{"name": "酒店A"}], 1)
+    assert verdict["sufficient"] is None
+    assert verdict["extra_keywords"] == []
+    assert "未验证" in verdict["reason"]
+
+
+def test_research_evaluation_receives_candidate_attributes(monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    prompts = []
+
+    def complete(prompt, **kwargs):
+        prompts.append(prompt)
+        return '{"sufficient":false,"extra_keywords":[]}'
+
+    monkeypatch.setattr(reasoning, "configured", lambda _role: True)
+    monkeypatch.setattr(reasoning, "get_llm_client", lambda _role: SimpleNamespace(complete=complete))
+    verdict = _real_evaluate(
+        ResearchTask(domain="hotel", city="杭州", budget=1000),
+        [{"name": "酒店A", "ticket_price": 9999, "tags": ["奢华"]}],
+        1,
+    )
+    assert verdict["sufficient"] is False
+    assert '"ticket_price": 9999' in prompts[0]
+    assert json.dumps(["奢华"], ensure_ascii=False) in prompts[0]
+
+
+@pytest.mark.parametrize("refill", [[], [{"name": "首轮景点"}, {"name": "补充景点"}]])
+def test_research_refill_preserves_first_round_evidence(monkeypatch, refill):
+    results = iter([[{"name": "首轮景点", "ticket_price": 20}], refill])
+    monkeypatch.setattr(tools, "search_attractions", lambda *a, **k: next(results))
+    monkeypatch.setattr(reasoning, "evaluate_research", lambda *a: {"sufficient": False, "extra_keywords": []})
+    pack = run_research(ResearchTask(domain="attraction", city="杭州"))
+    assert pack.rounds == 2
+    assert pack.items[0] == {"name": "首轮景点", "ticket_price": 20}
+    assert len(pack.items) == (2 if refill else 1)
+
+
+@pytest.mark.parametrize("stage", ["plan", "evaluate"])
+def test_research_cannot_downgrade_task_stop(monkeypatch, stage):
+    from types import SimpleNamespace
+
+    from app.agent.runtime.run_limits import TaskStopped
+
+    def stopped(*args, **kwargs):
+        raise TaskStopped("synthetic cancelled task")
+
+    monkeypatch.setattr(reasoning, "configured", lambda role: True)
+    monkeypatch.setattr(reasoning, "get_llm_client", lambda role: SimpleNamespace(complete=stopped))
+    task = ResearchTask(domain="attraction", city="杭州")
+    with pytest.raises(TaskStopped):
+        if stage == "plan":
+            _real_plan(task)
+        else:
+            _real_evaluate(task, [{"name": "西湖"}], 1)
 
 
 # ---------- 阶段二：Supervisor 缺口补查 ----------

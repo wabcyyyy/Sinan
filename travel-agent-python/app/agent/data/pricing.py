@@ -2,7 +2,7 @@
 
 查询失败一律返回 None，由调用方回退到知识库价或城市均价。
 
-没有 search 插件的通道（如 DeepSeek 官方）直接返回 None：**不发那次注定不联网的
+没有 search 插件的通道（包括仅有独立 Search API 的通道）直接返回 None：**不发那次注定不联网的
 调用**——模型会拿自己的记忆报一个"挂牌价"，比查不到更危险（假价被当成 realtime）。
 """
 
@@ -13,6 +13,7 @@ from app.agent.data.web_search import search_channel_ready
 from app.agent.runtime.run_limits import RunLimitExceeded, current_limits
 from app.common.external_client import BACKGROUND, ExternalClient
 from app.common.llm_client import get_llm_client
+from app.common.model_registry import binding
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ def query_live_price(city: str, hotel_name: str, checkin_date: str | None) -> di
     G-3.2：经外部调用基类——成功缓存 1h（价格日内基本稳定）、**负结果 3min**
     （查不到要能较快重试）、后台车道节流（价格核验是补强而非主链路）。
     """
-    if not search_channel_ready():
+    if not search_channel_ready() or "search" not in binding("search").capabilities():
         return None
     question = f"{city}「{hotel_name}」标准房型 目前一晚 网络挂牌价大约多少人民币？只报一个有代表性的每晚价格。"
 
@@ -85,7 +86,7 @@ def query_live_price(city: str, hotel_name: str, checkin_date: str | None) -> di
 
 def query_live_food_price(city: str, restaurant_name: str) -> dict | None:
     """餐饮人均实时价；失败返回 None，由调用方钳制/回落城市均价（G-3.2 同上）。"""
-    if not search_channel_ready():
+    if not search_channel_ready() or "search" not in binding("search").capabilities():
         return None
     question = f"{city}「{restaurant_name}」正常一餐人均消费大约多少人民币？只报一个有代表性的人均价格，已换算人民币。"
 
