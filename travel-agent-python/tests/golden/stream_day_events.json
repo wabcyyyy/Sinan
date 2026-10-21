@@ -36,7 +36,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "coordinates": {
             "sourceRef": "evidence-1",
@@ -47,7 +49,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "cost": {
             "sourceRef": null,
@@ -58,7 +62,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "open_time": {
             "sourceRef": null,
@@ -69,7 +75,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           }
         }
       },
@@ -106,7 +114,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "coordinates": {
             "sourceRef": "evidence-2",
@@ -117,7 +127,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "cost": {
             "sourceRef": null,
@@ -128,7 +140,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "open_time": {
             "sourceRef": null,
@@ -139,7 +153,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           }
         }
       },
@@ -176,7 +192,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "coordinates": {
             "sourceRef": "evidence-3",
@@ -187,7 +205,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "cost": {
             "sourceRef": null,
@@ -198,7 +218,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "open_time": {
             "sourceRef": null,
@@ -209,7 +231,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           }
         }
       },
@@ -246,7 +270,9 @@
             "verificationStatus": "verified",
             "valueKind": "observed",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           },
           "cost": {
             "sourceRef": null,
@@ -257,7 +283,9 @@
             "verificationStatus": "unverified",
             "valueKind": "generated",
             "freshnessStatus": "unknown",
-            "reviewRequirement": "before_departure"
+            "reviewRequirement": "before_departure",
+            "excerpt": null,
+            "openingHours": null
           }
         }
       }

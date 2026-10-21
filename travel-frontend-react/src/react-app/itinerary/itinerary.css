@@ -173,6 +173,8 @@
 .day-note p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.75; color: var(--sinan-muted); }
 .day-note.is-tips { border: 1px solid var(--sinan-line-soft); border-left-width: 1px; background: var(--sinan-paper); box-shadow: none; }
 .day-note.is-tips > svg { color: var(--sinan-teal); }
+.opening-evidence { grid-column: 1 / -1; min-width: 0; }
+.opening-evidence > div { min-width: 0; overflow-wrap: anywhere; }
 .toast-note, .share-result { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: var(--sinan-z-modal); display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); padding: 14px 18px; border-radius: var(--sinan-radius-sm); background: var(--sinan-accent); color: var(--sinan-on-image); box-shadow: var(--sinan-shadow); font-size: 13px; line-height: 1.7; }
 .toast-note button, .share-result button { display: grid; place-items: center; border: 0; background: transparent; color: inherit; padding: 3px; }
 .share-result { bottom: 90px; }

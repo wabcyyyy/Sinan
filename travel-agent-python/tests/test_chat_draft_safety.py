@@ -808,3 +808,17 @@ def test_vague_request_does_not_propose_requirement_changes():
     baseline = TripRequirements(required_places=[RequiredPlace(constraint_id="p1", name="灵隐寺", day_no=2)])
     req = ChatTurnRequest(city="杭州", days=2, persons=2, message="上午删掉一些吧", requirements_struct=baseline)
     assert _proposed_requirements_from_decision({"patches": []}, req) is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "只移除第二天15:10的外婆家（之江银泰店），不要补其他安排。第一天、酒店及第二天其他地点、时间、主题和提示都保持不变。",
+        "只删第二天晚餐，住宿及其余所有地点的安排维持原样。",
+    ],
+)
+def test_coordinated_keep_hotel_does_not_hijack_plan_edit(message):
+    req = ChatTurnRequest(city="杭州", days=2, persons=2, message=message, plans=[])
+    assert _is_hotel_request(req, []) is False
+    req.message = "酒店换成舒适型，其他地点、时间、主题和提示都保持不变。"
+    assert _is_hotel_request(req, []) is True

@@ -795,6 +795,29 @@
           ],
           "title": "Reviewrequirement",
           "type": "string"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Excerpt"
+        },
+        "openingHours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OpeningHours"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "title": "FactEvidence",
@@ -808,8 +831,164 @@
         "verificationStatus",
         "valueKind",
         "freshnessStatus",
-        "reviewRequirement"
+        "reviewRequirement",
+        "excerpt",
+        "openingHours"
       ]
+    },
+    "OpeningHours": {
+      "properties": {
+        "status": {
+          "default": "unknown",
+          "enum": [
+            "known",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/OpeningRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "validFrom": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validfrom"
+        },
+        "validTo": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validto"
+        }
+      },
+      "title": "OpeningHours",
+      "type": "object",
+      "required": [
+        "status",
+        "rules",
+        "reason",
+        "validFrom",
+        "validTo"
+      ]
+    },
+    "OpeningInterval": {
+      "properties": {
+        "start": {
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$",
+          "title": "End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "OpeningInterval",
+      "type": "object"
+    },
+    "OpeningRule": {
+      "properties": {
+        "weekdays": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 6,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weekdays"
+        },
+        "intervals": {
+          "items": {
+            "$ref": "#/$defs/OpeningInterval"
+          },
+          "title": "Intervals",
+          "type": "array"
+        },
+        "closed": {
+          "default": false,
+          "title": "Closed",
+          "type": "boolean"
+        },
+        "lastAdmission": {
+          "anyOf": [
+            {
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lastadmission"
+        },
+        "exceptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exceptions",
+          "type": "array"
+        },
+        "sourceText": {
+          "title": "Sourcetext",
+          "type": "string"
+        }
+      },
+      "required": [
+        "weekdays",
+        "intervals",
+        "closed",
+        "lastAdmission",
+        "exceptions",
+        "sourceText"
+      ],
+      "title": "OpeningRule",
+      "type": "object"
     },
     "PhotoSpot": {
       "properties": {

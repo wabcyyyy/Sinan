@@ -1,11 +1,11 @@
 """研究 Agent 的 LLM 推理：检索规划 + 证据充分性评估（阶段二）。
 
-规划（plan_research）：根据研究任务卡输出检索策略——扩展偏好、补充自由关键词
-（如具体景点/菜系/酒店品牌）、检索规模；评估（evaluate_research）：判断证据是否
+规划（plan_research）：沿用规范化任务中的偏好与规模，不额外调用模型；
+评估（evaluate_research）：判断实际检索证据是否
 足够，不足时给出补充检索词，驱动子图最多再补一轮。
 
 设计要点：
-- LLM-only 口径不破：规划/评估只决定"查什么、够不够"，绝不生成行程内容；
+- 查询参数来自用户需求；模型只评估实际候选并建议缺口补查，绝不生成行程内容；
 - 评估未配置/失败时保留未验证状态；取消与失权继续向上传播；
 - 证据为空时确定性判定"不足"并给默认补充词，省一次模型调用；
 - 统一走可配置 fast 通道（llm_fast_model）；默认与主模型同款（config.py），
@@ -24,13 +24,6 @@ from app.common.llm_client import get_llm_client
 from app.common.model_registry import configured
 
 logger = logging.getLogger(__name__)
-
-_PLAN_SYSTEM = (
-    "你是旅行信息研究员。根据研究任务输出检索计划 JSON，只规划检索不生成行程："
-    '{"reasoning":"一句话说明检索思路","preferences":["扩展的偏好关键词(可空数组)"],'
-    '"extra_keywords":["补充自由检索词(可空数组，如具体景点名/菜系/酒店品牌)"],'
-    '"limit":数字(检索规模)}。字段缺失给 null。'
-)
 
 _EVAL_SYSTEM = (
     "你是旅行信息评估员。判断检索结果是否满足研究任务（数量、与偏好/预算/档位的匹配度），"
@@ -52,32 +45,12 @@ def _default_extra_keywords(task: ResearchTask) -> list[str]:
 
 
 def plan_research(task: ResearchTask) -> dict:
-    """输出检索计划 {preferences, extra_keywords, limit}；失败/未配置 LLM 返回空计划。
+    """直接使用已规范化任务；不再为每个域额外调用模型改写检索参数。
 
-    空计划等价于阶段一的确定性检索参数，保证降级链路与旧行为一致。
+    意图词及必去名由检索节点统一追加，避免模型扩词重复消耗检索额度。
+    模型仍评估实际检索结果，存在缺口时有界补查。
     """
-    if not configured("main"):
-        return {}
-    try:
-        raw = get_llm_client("fast").complete(
-            f"研究任务：域={task.domain}，城市={task.city}，偏好={task.preferences}，"
-            f"预算={task.budget}，酒店档位={task.hotel_tier}。请规划检索策略。",
-            system_prompt=_PLAN_SYSTEM,
-            temperature=0.2,
-            max_tokens=300,
-            json_mode=True,
-        )
-        data = parse_llm_json_or_none(raw) or {}
-        return {
-            "preferences": [str(x) for x in (data.get("preferences") or []) if x],
-            "extra_keywords": [str(x) for x in (data.get("extra_keywords") or []) if x],
-            "limit": int(data.get("limit") or 0) or 0,
-        }
-    except TaskStopped:
-        raise
-    except Exception as exc:
-        logger.warning("research plan failed for %s/%s: %s", task.domain, task.city, exc)
-        return {}
+    return {"preferences": list(task.preferences or []), "extra_keywords": [], "limit": task.limit}
 
 
 def _intent_keywords_covered(task: ResearchTask, items: list[dict]) -> bool:

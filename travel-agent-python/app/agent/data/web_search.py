@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import UTC, datetime
 
 from app.agent.data.deepseek_search import matched_source, search_pages
 from app.agent.runtime.run_limits import RunLimitExceeded, TaskStopped, current_limits
@@ -198,6 +199,28 @@ def web_search_json(question: str, *, schema_hint: str, max_tokens: int = 800) -
     if limits:
         limits.check("http")
     return answer
+
+
+def web_search_sources(question: str) -> list[dict]:
+    """复用联网通道的原始网页；插件不给正文时保持空，不用聊天结果替代来源。"""
+    if not web_search_enabled() or not search_channel_ready() or not question.strip():
+        return []
+    bound = binding("search")
+    if "web_search_api" not in bound.capabilities():
+        record_event("retrieval", "opening.sources_unavailable", status="degraded")
+        return []
+
+    def load():
+        # ExternalClient 在 cache miss 外呼前已原子预占一次检索，不再重复扣数。
+        rows = search_pages(question, bound)
+        observed = datetime.now(UTC).isoformat(timespec="seconds")
+        return [{**row, "retrieved_at": observed} for row in rows]
+
+    rows = _search_client.call(f"pages:{bound.base_url}:{question.strip()[:128]}", load, lane=BACKGROUND)
+    limits = current_limits()
+    if limits:
+        limits.check("http")
+    return rows or []
 
 
 #: 尾逗号是 LLM 产 JSON 最常见的轻微畸变（json_mode 也挡不住模型在截断处补逗号）

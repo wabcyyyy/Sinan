@@ -24,13 +24,13 @@
 - **要求能核对**：确认卡显示服务端实际提取的必去日、排除项、到离时间与预算范围。生成结果经确定性规则检查，不合格的日期单独重试；部分完成会明确显示，候选不等于交付。
 - **修改能确认**：自然语言调整先生成差异草稿；用户确认后才保存。服务端检查归属、版本与修改范围，保留未改日期的内容与提示，刷新后读取同一份行程。
 
-这两项是相对直接聊天可观察的产品能力，不是“规划质量优于通用模型”的对照结论。地图按点位连线，不代表真实交通路线已验证。真实运行案例和失败边界见下方演示材料。
+这两项是相对直接聊天可观察的产品能力，不是“规划质量优于通用模型”的对照结论。地图按点位连线，不代表真实交通路线已验证。开放资料按原文规则检查日期与时段，无法确定时明确提示；地点详情可展开查看资料来源与获取日期。真实运行案例和失败边界见下方演示材料。
 
 ## 1. 核心痛点与架构亮点（Key Features & Technical Highlights）
 
 | 业务难点 | 实现机制 | 核心源码 |
 | --- | --- | --- |
-| 一次检索难以覆盖景点、美食与住宿，证据不足时容易凭空补齐 | Supervisor 用线程池并行派发三域 LangGraph 研究子图；域内执行检索计划 → 搜索 → 充分性评估 → 关键词补查。Agent API 的 trip 分支还可按已识别的景点证据缺口定向重派研究 | [研究编排](travel-agent-python/app/agent/research/supervisor.py)、[研究子图](travel-agent-python/app/agent/research/factory.py)、[补查路由](travel-agent-python/app/agent/generation/orchestration/graph_nodes.py) |
+| 一次检索难以覆盖景点、美食与住宿，证据不足时容易凭空补齐 | Supervisor 用线程池并行派发三域 LangGraph 研究子图；域内沿用需求参数直接检索 → 充分性评估 → 缺口关键词补查；查询参数不额外调用模型。Agent API 的 trip 分支还可按已识别的景点证据缺口定向重派研究 | [研究编排](travel-agent-python/app/agent/research/supervisor.py)、[研究子图](travel-agent-python/app/agent/research/factory.py)、[补查路由](travel-agent-python/app/agent/generation/orchestration/graph_nodes.py) |
 | 长 JSON 必须等完整响应才能显示，备选富化拖长主流程 | ijson 增量解析完整条目，经 SSE 发布可撤回的候选；逐日结果落库后终检，全部日期交付后发布 `core_ready`；主流程收尾后异步补充备选与介绍 | [增量解析器](travel-agent-python/app/agent/generation/content/incremental_plans.py)、[流式分支](travel-agent-python/app/agent/generation/orchestration/stream_branch.py)、[业务交付](travel-agent-python/app/services/itinerary_generation.py) |
 | “只改第二天”可能误改其他日期，旧建议可能覆盖新行程 | 草稿阶段逐字段校验修改范围与保留项；LangGraph `interrupt` 等待确认；应用时只读服务端草稿，校验内容指纹及整数修订号，快照、写入与草稿消费在同一事务内完成 | [范围校验](travel-agent-python/app/agent/editing/chat_draft/validate.py)、[HITL 确认图](travel-agent-python/app/agent/editing/chat_draft/confirm_graph.py)、[事务应用](travel-agent-python/app/services/itinerary_plan_apply.py) |
 | 模型排程可能违反必去、排除、时间窗、去重与预算要求 | 共享确定性约束与单日交付规则；业务层终检后仅重置违规日期，用反馈驱动单日图重新生成；保留已成功日期，未完成显式收敛为 `PARTIAL` / `FAILED` | [约束规则](travel-agent-python/app/agent/generation/rules/constraint_checks.py)、[交付门](travel-agent-python/app/services/day_delivery_gate.py)、[单日修复图](travel-agent-python/app/agent/generation/orchestration/trip_graph.py) |
@@ -68,7 +68,7 @@ flowchart TD
     R -.-> Q
     RF -.-> Q
     subgraph Research["领域研究子图：景点 / 美食 / 酒店"]
-        Q["plan_query"] --> SE["search"]
+        Q["plan_query: 用户需求参数"] --> SE["search"]
         SE -->|尚可评估| EV["evaluate"]
         SE -->|已达轮次上限| FN["finalize: EvidencePack"]
         EV -->|证据充分或停止条件满足| FN

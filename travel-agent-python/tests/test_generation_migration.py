@@ -182,6 +182,19 @@ def _run_inline(monkeypatch):
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", inline)
 
 
+def test_closed_day_feedback_reaches_first_daily_repair(client: TestClient, monkeypatch):
+    raw = _wire_plan(1, ["中国丝绸博物馆"])
+    raw["items"][0]["remark"] = "周一闭馆，出发前核实"
+    calls = _fake_agents(monkeypatch, [_plan(1, ["西湖"])], [{"type": "day", "plan": raw}])
+    _run_inline(monkeypatch)
+    detail = _trip(client, {"city": CITY, "days": 1, "startDate": "2026-11-02"})
+    assert len(calls["day"]) == 1
+    assert "闭馆日冲突" in calls["day"][0].feedback
+    main, days = _rows(detail["id"])
+    assert main.gen_state == "COMPLETED" and days[0].generation_status == "SUCCEEDED"
+    assert "中国丝绸博物馆" not in [item.poi_name for item in _items(days[0].id)]
+
+
 def _trip(client: TestClient, body: dict) -> dict:
     response = client.post("/api/itinerary/generate", json=body)
     assert response.status_code == 200, response.json()

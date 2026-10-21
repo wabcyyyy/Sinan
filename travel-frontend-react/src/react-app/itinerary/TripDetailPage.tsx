@@ -29,6 +29,7 @@ import { SmartImg } from '../shared/SmartImg'
 import { PublishItineraryPanel } from '../templates/PublishItineraryPanel'
 import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
+import { OpeningEvidence } from './OpeningEvidence'
 import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
@@ -482,6 +483,7 @@ export function TripDetailPage({ path }: { path: string }) {
               <div className="day-item-media" aria-hidden="true">
                 <SmartImg src={itemImg} alt={item.poiName || '地点实景'} ratio="1 / 1" />
               </div>
+              {isExpanded && <OpeningEvidence item={item} />}
             </article>
             {nextItem && (
               <div className="day-transit-row" aria-label="前往下一站建议">

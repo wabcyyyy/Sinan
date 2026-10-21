@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.agent import check_constraints, day_policy_for, hard_day_issues
+from app.agent import check_constraints, day_policy_for, hard_day_issues, validate_plans
 from app.schemas.trip import DailyPlan
 from app.schemas.trip_requirements import TripRequirements
 
@@ -32,6 +32,7 @@ def _rule_item(item: Any) -> dict[str, Any]:
         "end_time": item.end_time,
         "duration_min": item.duration_min,
         "open_time": item.open_time,
+        "remark": item.remark,
         "cost": float(item.cost) if item.cost is not None else None,
         "latitude": float(item.latitude) if item.latitude is not None else None,
         "longitude": float(item.longitude) if item.longitude is not None else None,
@@ -44,6 +45,7 @@ def hard_delivery_blockers(
     requirements: TripRequirements | None = None,
     locked_names: set[str] | None = None,
     strict_budget: float | None = None,
+    travel_date: str | None = None,
 ) -> list[str]:
     """单天初版的不可交付硬伤清单；空=可交付。空天同样算硬伤。
 
@@ -53,7 +55,11 @@ def hard_delivery_blockers(
     - 需求违例（ConstraintReport）：指定日必去/排除点类别/明确窗口/锁定条目/
       strict 预算/时间冲突——判 status/blocking，不再靠中文子串。
     """
-    plan_dict = {"day_no": day_no, "items": [_rule_item(item) for item in plan.items]}
+    plan_dict = {"day_no": day_no, "travel_date": travel_date, "items": [_rule_item(item) for item in plan.items]}
+    _, notes = validate_plans([plan_dict], requirements=requirements)
+    for note in notes:
+        if note.startswith("开放安排待确认") and note not in plan.practical_notes:
+            plan.practical_notes.append(note)
     report = check_constraints(
         plan_dict,
         requirements,

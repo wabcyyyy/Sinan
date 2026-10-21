@@ -8456,6 +8456,27 @@
             ],
             "title": "Reviewrequirement",
             "default": "before_departure"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt"
+          },
+          "openingHours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpeningHours"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -10469,6 +10490,143 @@
         },
         "type": "object",
         "title": "NlEditBody"
+      },
+      "OpeningHours": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "known",
+              "unknown"
+            ],
+            "title": "Status",
+            "default": "unknown"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/OpeningRule"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "validFrom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validfrom"
+          },
+          "validTo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validto"
+          }
+        },
+        "type": "object",
+        "title": "OpeningHours"
+      },
+      "OpeningInterval": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "OpeningInterval"
+      },
+      "OpeningRule": {
+        "properties": {
+          "weekdays": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 6.0,
+                  "minimum": 0.0
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekdays"
+          },
+          "intervals": {
+            "items": {
+              "$ref": "#/components/schemas/OpeningInterval"
+            },
+            "type": "array",
+            "title": "Intervals"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed",
+            "default": false
+          },
+          "lastAdmission": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastadmission"
+          },
+          "exceptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exceptions"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sourceText"
+        ],
+        "title": "OpeningRule"
       },
       "OptimizeDayBody": {
         "properties": {

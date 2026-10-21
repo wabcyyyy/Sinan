@@ -171,3 +171,46 @@ def test_json_cache_respects_schema_and_provider(monkeypatch, native):
     monkeypatch.setattr(web_search, "binding", lambda role: other)
     assert web_search.web_search_json("杭州", schema_hint="schema-one")
     assert len(prompts) == 3
+
+
+def test_raw_sources_use_cache_and_last_reserved_retrieval_without_llm(monkeypatch, native):
+    from app.agent.runtime.run_limits import RunLimits, _active_limits
+
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "title": "杭州测试博物馆",
+                        "url": "https://museum.example/visit",
+                        "content": "开放时间09:00-17:00",
+                    }
+                ]
+            },
+        )
+
+    limits = RunLimits(max_retrievals=1)
+    token = _active_limits.set(limits)
+    try:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            monkeypatch.setattr(deepseek_search, "api_client", lambda: client)
+            monkeypatch.setattr(web_search, "get_llm_client", lambda role: pytest.fail("来源提取不应调用模型"))
+            first = web_search.web_search_sources("测试博物馆开放信息")
+            assert first and first[0]["retrieved_at"] and first[0]["content"]
+            assert web_search.web_search_sources("测试博物馆开放信息") == first
+            assert web_search.web_search_sources("另一次取证") == []
+            assert limits.retrievals == 1 and len(calls) == 1
+    finally:
+        _active_limits.reset(token)
+
+
+def test_plugin_without_original_pages_returns_no_sources(monkeypatch, native):
+    plugin = RoleBinding("search", Provider("proxy", "https://proxy.example", "key", frozenset({"web_search"})), "m")
+    monkeypatch.setattr(web_search, "binding", lambda role: plugin)
+    monkeypatch.setattr(web_search, "search_pages", lambda *args: pytest.fail("非原生通道不能取原始网页"))
+    monkeypatch.setattr(web_search, "search_channel_ready", lambda: True)
+    assert web_search.web_search_sources("开放时间") == []

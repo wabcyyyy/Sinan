@@ -24,7 +24,7 @@ def test_validate_ok():
     ]
     issues, log = validate_plans(plans)
     assert issues == []
-    assert len(log) == 1
+    assert any("开放安排待确认" in line for line in log)
 
 
 def test_validate_flags_day_without_attractions():

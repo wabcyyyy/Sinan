@@ -98,6 +98,30 @@ export interface FactEvidence {
   valueKind: "observed" | "estimated" | "generated"
   freshnessStatus: "fresh" | "stale" | "unknown"
   reviewRequirement: "none" | "before_departure"
+  excerpt: string | null
+  openingHours: OpeningHours | null
+}
+
+export interface OpeningHours {
+  status: "known" | "unknown"
+  rules: OpeningRule[]
+  reason: string | null
+  validFrom: string | null
+  validTo: string | null
+}
+
+export interface OpeningInterval {
+  start: string
+  end: string
+}
+
+export interface OpeningRule {
+  weekdays: number[] | null
+  intervals: OpeningInterval[]
+  closed: boolean
+  lastAdmission: string | null
+  exceptions: string[]
+  sourceText: string
 }
 
 export interface PhotoSpot {

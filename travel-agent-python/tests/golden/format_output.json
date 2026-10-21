@@ -35,8 +35,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -46,8 +48,10 @@
                 "verification_status": "verified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -57,8 +61,10 @@
                 "verification_status": "verified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -68,8 +74,10 @@
                 "verification_status": "verified"
               },
               "open_time": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -105,8 +113,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -116,8 +126,10 @@
                 "verification_status": "verified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -127,8 +139,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -278,7 +292,8 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "开放安排待确认：楼外楼；缺少完整开放资料或规则存在条件，出发前核实",
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "02_authoritative_missing_coords": {
@@ -317,8 +332,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -328,8 +345,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -339,8 +358,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "before_departure",
@@ -376,8 +397,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -387,8 +410,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -398,8 +423,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -435,8 +462,10 @@
             "end_time": "16:20",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -446,8 +475,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -457,8 +488,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -623,7 +656,8 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "开放安排待确认：灵隐寺、素斋、永福寺；缺少完整开放资料或规则存在条件，出发前核实",
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "03_open_mode_llm": {
@@ -662,8 +696,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -673,8 +709,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -684,8 +722,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -721,8 +761,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -732,8 +774,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -743,8 +787,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -780,8 +826,10 @@
             "end_time": "16:10",
             "fact_evidence": {
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -791,8 +839,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -949,7 +999,8 @@
     "title": "杭州1日游",
     "trip_theme": "慢游杭州",
     "validation_log": [
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "开放安排待确认：小众码头、社区面馆、旧仓库；缺少完整开放资料或规则存在条件，出发前核实",
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "04_hotel_live_price": {
@@ -988,8 +1039,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -999,8 +1052,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1010,8 +1065,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1047,8 +1104,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1058,8 +1117,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1069,8 +1130,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1106,8 +1169,10 @@
             "end_time": "16:20",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1117,8 +1182,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1128,8 +1195,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1284,7 +1353,8 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "开放安排待确认：西溪湿地、农家菜、福堤；缺少完整开放资料或规则存在条件，出发前核实",
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "05_hotel_season_estimate": {
@@ -1323,8 +1393,10 @@
             "end_time": "14:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1334,8 +1406,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1345,8 +1419,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1382,8 +1458,10 @@
             "end_time": "15:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1393,8 +1471,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1404,8 +1484,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1561,6 +1643,7 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
+      "开放安排待确认：玉龙雪山、云雪丽；缺少完整开放资料或规则存在条件，出发前核实",
       "发现 1 个问题：",
       "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 597 分钟（含 10 分钟固定缓冲和 25% 容错）",
       "第 1 天路线时间不足：玉龙雪山 → 云雪丽 仅留 40 分钟，按坐标估算需约 597 分钟（含 10 分钟固定缓冲和 25% 容错）"
@@ -1602,8 +1685,10 @@
             "end_time": "11:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1613,8 +1698,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1624,8 +1711,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1661,8 +1750,10 @@
             "end_time": "13:10",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1672,8 +1763,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1683,8 +1776,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1720,8 +1815,10 @@
             "end_time": "14:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1731,8 +1828,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1768,8 +1867,10 @@
             "end_time": "17:10",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1779,8 +1880,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1790,8 +1893,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -1957,6 +2062,7 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
+      "开放安排待确认：河坊街、杭州本地餐厅1、无名小馆、南宋官窑；缺少完整开放资料或规则存在条件，出发前核实",
       "发现 1 个问题：",
       "第 1 天出现两顿午餐（杭州本地餐厅1、无名小馆），请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐",
       "第 1 天出现两顿午餐（杭州本地餐厅1、无名小馆），请将其中一餐改到晚餐时段（17:00 后），保证午、晚各至多一餐"
@@ -1998,8 +2104,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -2009,8 +2117,10 @@
                 "verification_status": "verified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -2020,8 +2130,10 @@
                 "verification_status": "verified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -2057,8 +2169,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2068,8 +2182,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2079,8 +2195,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2116,8 +2234,10 @@
             "end_time": "18:30",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -2127,8 +2247,10 @@
                 "verification_status": "verified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2138,8 +2260,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -2189,8 +2313,10 @@
             "end_time": "13:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2200,8 +2326,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2211,8 +2339,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2248,8 +2378,10 @@
             "end_time": "14:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2259,8 +2391,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2270,8 +2404,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2321,8 +2457,10 @@
             "end_time": "15:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2332,8 +2470,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2343,8 +2483,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2535,6 +2677,9 @@
     "title": "杭州3日游",
     "trip_theme": null,
     "validation_log": [
+      "开放安排待确认：西湖、楼外楼；缺少完整开放资料或规则存在条件，出发前核实",
+      "开放安排待确认：灵隐寺、素斋；缺少完整开放资料或规则存在条件，出发前核实",
+      "开放安排待确认：宋城；缺少完整开放资料或规则存在条件，出发前核实",
       "发现 2 个问题：",
       "第 1 天路线时间不足：西湖 → 楼外楼 仅留 40 分钟，按坐标估算需约 156 分钟（含 10 分钟固定缓冲和 25% 容错）",
       "第 3 天未安排餐饮",
@@ -2578,8 +2723,10 @@
             "end_time": "11:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2589,8 +2736,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2600,8 +2749,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2637,8 +2788,10 @@
             "end_time": null,
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2648,8 +2801,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2659,8 +2814,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2696,8 +2853,10 @@
             "end_time": null,
             "fact_evidence": {
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -2881,6 +3040,7 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
+      "开放安排待确认：丝绸店、龙井采茶、未定；缺少完整开放资料或规则存在条件，出发前核实",
       "第 2 天无行程项",
       "发现 2 个问题：",
       "第 1 天时间冲突：龙井采茶(None-None) 与 未定(None) 重叠",
@@ -3023,7 +3183,7 @@
     "trip_theme": null,
     "validation_log": [
       "第 1 天无行程项",
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "10_no_items": {
@@ -3162,7 +3322,7 @@
     "trip_theme": null,
     "validation_log": [
       "第 1 天无行程项",
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   },
   "11_suggestions_research": {
@@ -3201,8 +3361,10 @@
             "end_time": "12:00",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -3212,8 +3374,10 @@
                 "verification_status": "verified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -3223,8 +3387,10 @@
                 "verification_status": "verified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "fresh",
+                "opening_hours": null,
                 "provider": "opentripmap",
                 "retrieved_at": "2026-08-01T00:00:00Z",
                 "review_requirement": "none",
@@ -3260,8 +3426,10 @@
             "end_time": "13:40",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3271,8 +3439,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3282,8 +3452,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3319,8 +3491,10 @@
             "end_time": "16:10",
             "fact_evidence": {
               "coordinates": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3330,8 +3504,10 @@
                 "verification_status": "unverified"
               },
               "cost": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": null,
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3341,8 +3517,10 @@
                 "verification_status": "unverified"
               },
               "identity": {
+                "excerpt": null,
                 "expires_at": null,
                 "freshness_status": "unknown",
+                "opening_hours": null,
                 "provider": "llm.open_day",
                 "retrieved_at": null,
                 "review_requirement": "before_departure",
@@ -3514,7 +3692,8 @@
     "title": "杭州1日游",
     "trip_theme": null,
     "validation_log": [
-      "校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常"
+      "开放安排待确认：西湖、知味观、柳浪闻莺；缺少完整开放资料或规则存在条件，出发前核实",
+      "校验通过：已知资料内无排程冲突；未知开放安排不计为已核实"
     ]
   }
 }

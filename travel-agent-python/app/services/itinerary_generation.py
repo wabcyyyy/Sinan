@@ -344,11 +344,20 @@ def plan_days(
                         if chosen_hotel is None:
                             chosen_hotel = day_persistence.existing_hotel(day.id)
                         continue
+                    repair_feedback = day.generation_error
                     day_persistence.mark_running(day.id, action_id, fingerprint)
                     generation_events.day_start(itinerary_id, day_no)
                     try:
                         plan = _generate_day_with_trace(
-                            itinerary_id, command, context, day_no, used_names, chosen_hotel, action_id, fingerprint
+                            itinerary_id,
+                            command,
+                            context,
+                            day_no,
+                            used_names,
+                            chosen_hotel,
+                            action_id,
+                            fingerprint,
+                            feedback=repair_feedback,
                         )
                         timing.mark("first_day")
                         if day_no == 1:
@@ -431,6 +440,7 @@ def _generate_day_with_trace(
     action_id: str,
     fingerprint: str,
     used_points: list[tuple[str, str, float | None, float | None]] | None = None,
+    feedback: str | None = None,
 ) -> DailyPlan:
     retained_points = _other_completed_points(itinerary_id, day_no)
     # 坐标随请求进 context（P1-B）：单日重试时已成功天的真实坐标参与近距离判重，
@@ -462,6 +472,7 @@ def _generate_day_with_trace(
         request_id=f"itinerary-{itinerary_id}",
         action_id=action_id,
         context=request_context,
+        feedback=feedback or "",
     )
     # days 用于预算分档；per_day_chain=True 保留逐日修复的反思重试预算。
     with use_scene("generate"), observe_run(request_id=f"itinerary-{itinerary_id}", action_id=action_id):
@@ -887,6 +898,39 @@ class DeliveryCheckIncomplete(RuntimeError):
     """
 
 
+def _read_stream_day_checks(itinerary_id: int) -> list[tuple[ItineraryDay, dict[str, Any]]]:
+    """在短事务里读取逐日检查输入，规则与修复在事务外执行。"""
+    with session_scope() as session:
+        days = (
+            session.execute(
+                select(ItineraryDay).where(
+                    ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.generation_status == "SUCCEEDED"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not days:
+            return []
+        rows = (
+            session.execute(
+                select(ItineraryItem)
+                .where(ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.deleted == 0)
+                .order_by(ItineraryItem.day_id, ItineraryItem.sort_no)
+            )
+            .scalars()
+            .all()
+        )
+        items_by_day: dict[int, list[dict[str, Any]]] = {}
+        for row in rows:
+            items_by_day.setdefault(row.day_id, []).append(_item_rule_dict(row))
+        checks = [
+            (day, {"day_no": day.day_no, "travel_date": day.travel_date, "items": items_by_day.get(day.id, [])})
+            for day in days
+        ]
+    return checks
+
+
 def _revalidate_stream_days(itinerary_id: int, command: GenerateCommand, fingerprint: str) -> None:
     """整段流式落库天的后置终检（validate_plans 的生产主路径调用点）。
 
@@ -900,31 +944,9 @@ def _revalidate_stream_days(itinerary_id: int, command: GenerateCommand, fingerp
     本次流式；终检自身失败不推翻已交付的结果，放弃本轮复检只留警告。
     """
     try:
-        with session_scope() as session:
-            days = (
-                session.execute(
-                    select(ItineraryDay).where(
-                        ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.generation_status == "SUCCEEDED"
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            if not days:
-                return
-            rows = (
-                session.execute(
-                    select(ItineraryItem)
-                    .where(ItineraryItem.itinerary_id == itinerary_id, ItineraryItem.deleted == 0)
-                    .order_by(ItineraryItem.day_id, ItineraryItem.sort_no)
-                )
-                .scalars()
-                .all()
-            )
-            items_by_day: dict[int, list[dict[str, Any]]] = {}
-            for row in rows:
-                items_by_day.setdefault(row.day_id, []).append(_item_rule_dict(row))
-            checks = [(day, {"day_no": day.day_no, "items": items_by_day.get(day.id, [])}) for day in days]
+        checks = _read_stream_day_checks(itinerary_id)
+        if not checks:
+            return
         budget = float(command.budget) if settings.budget_hard_constraint and command.budget else None
         requirements = command.requirements_struct
         budget_issues = _trip_budget_issues(checks, budget, command.persons, requirements)
@@ -1028,6 +1050,7 @@ def _item_rule_dict(row: ItineraryItem) -> dict[str, Any]:
         "end_time": _clock(row.end_time),
         "duration_min": row.duration_min,
         "open_time": row.open_time,
+        "remark": row.remark,
         "cost": _money(row.cost),
         "latitude": _money(row.latitude),
         "longitude": _money(row.longitude),

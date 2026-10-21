@@ -156,6 +156,15 @@ def test_workflow_search_node_writes_research_report(monkeypatch):
 # ---------- 阶段二：研究 Agent LLM 推理循环 ----------
 
 
+def test_default_query_plan_preserves_request_without_model_call(monkeypatch):
+    def forbidden(*args):
+        pytest.fail("查询参数不应额外调用模型")
+
+    monkeypatch.setattr(reasoning, "get_llm_client", forbidden)
+    task = ResearchTask(domain="attraction", city="杭州", preferences=["自然风光"], limit=30)
+    assert _real_plan(task) == {"preferences": ["自然风光"], "extra_keywords": [], "limit": 30}
+
+
 def test_research_planner_expands_attraction_preferences(monkeypatch):
     """规划输出扩展偏好与规模 → 检索节点按其执行。"""
     captured = {}
@@ -279,8 +288,7 @@ def test_research_refill_preserves_first_round_evidence(monkeypatch, refill):
     assert len(pack.items) == (2 if refill else 1)
 
 
-@pytest.mark.parametrize("stage", ["plan", "evaluate"])
-def test_research_cannot_downgrade_task_stop(monkeypatch, stage):
+def test_research_cannot_downgrade_task_stop(monkeypatch):
     from types import SimpleNamespace
 
     from app.agent.runtime.run_limits import TaskStopped
@@ -292,10 +300,7 @@ def test_research_cannot_downgrade_task_stop(monkeypatch, stage):
     monkeypatch.setattr(reasoning, "get_llm_client", lambda role: SimpleNamespace(complete=stopped))
     task = ResearchTask(domain="attraction", city="杭州")
     with pytest.raises(TaskStopped):
-        if stage == "plan":
-            _real_plan(task)
-        else:
-            _real_evaluate(task, [{"name": "西湖"}], 1)
+        _real_evaluate(task, [{"name": "西湖"}], 1)
 
 
 # ---------- 阶段二：Supervisor 缺口补查 ----------

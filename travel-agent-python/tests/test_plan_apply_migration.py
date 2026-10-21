@@ -225,18 +225,19 @@ def _operations(trip_id: int) -> list[str]:
 # ---------- apply-plans ----------
 
 
-def test_local_edit_preserves_unmodified_day_metadata(client: TestClient) -> None:
+@pytest.mark.parametrize("day_index", [0, 1])
+def test_local_edit_preserves_unmentioned_day_metadata(client: TestClient, day_index: int) -> None:
     from app.services import itinerary_chat
 
     trip_id = _trip_id(client)
     plans = json.loads(itinerary_chat.canonical_json(itinerary_chat.current_plans(trip_id)))
-    plans[1]["items"][0]["start_time"] = "15:00"
+    plans[day_index]["items"][0]["start_time"] = "09:05" if day_index == 0 else "15:00"
     message_id, revision = _draft(trip_id, plans)
     result = client.post(
         f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
     ).json()
     assert result["code"] == 200, result
-    # 读回与刷新走同一详情接口，普通草稿不带元数据也不能清掉无关日期。
+    # 读回与刷新走同一详情接口，纯条目补丁不能清掉未提案的主题与提示。
     first = client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]
     assert first["theme"] == "旧主题"
     assert first["backupPlan"] == [{"name": "下雨就去博物馆"}]
