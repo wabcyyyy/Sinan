@@ -1,15 +1,15 @@
-"""研究 Agent 工厂：一个子图，三个域实例（阶段二：带 LLM 推理循环）。
+"""研究 Agent 工厂：一个子图，三个域实例（直接检索 + 有界模型评估）。
 
 职责：
 - build_research_graph(domain)：为单个研究域构建 LangGraph 子图
-  规划(LLM) → 检索(工具) → 评估(LLM) → 不足则补查一轮 → 评估收尾；
+  任务参数 → 检索(工具) → 评估(LLM) → 不足则补查一轮 → 评估收尾；
 - run_research(task)：执行一次研究任务，返回 EvidencePack。
 
 实现要点：
 - 三域共用同一张图结构，差异全部收在 DomainConfig（检索工具/参数/缺口判定）；
 - 检索经工具注册表统一派发（G-1.4），registry handler 调用期解析 tools 模块属性，
   单测 patch.object(tools, ...) 持续生效；
-- LLM 规划/评估在 research.reasoning 模块级函数内实现，测试直接 patch 该模块；
+- 查询沿用任务参数；LLM 只评估实际候选，失败/未知不会冒充充分；
 - 补查轮次上限 RESEARCH_LLM_ROUNDS=2：规划+检索为第 1 轮，评估不足时再补 1 轮；
 - 研究取数另受 `run_limits` 的 research 道（`settings.research_call_limit`）约束：
   主检索照记但不停，补池/兜底在额度用完后停下并把原因写进证据包 gaps——研究
@@ -83,7 +83,7 @@ def _spend_research(limits, domain: ResearchDomain) -> bool:
 
 
 def _plan_node(state: UnifiedAgentState) -> dict:
-    """规划节点：LLM 决定检索策略；失败/未配置返回空计划（退化确定性检索）。"""
+    """查询参数节点：直接使用已规范化任务，不先付费让模型重写参数。"""
     # 运行时经 reasoning 模块属性解析，保证单测 patch 注入生效（与 tools 同一约定）。
     return {"research_plan": reasoning.plan_research(_require_task(state))}
 
