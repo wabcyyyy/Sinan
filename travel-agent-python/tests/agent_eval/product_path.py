@@ -72,7 +72,7 @@ def _isolated_database() -> Iterator[None]:
         planning_tasks.reset()
         try:
             with db_session.session_scope() as session:
-                session.add(SysUser(id=EVAL_USER_ID, username="eval-user", password="evaluation-only-no-login"))
+                session.add(SysUser(id=EVAL_USER_ID, username="eval-user", password="example-evaluation-no-login"))
                 session.flush()
                 open_wallet(session, EVAL_USER_ID)
             yield
