@@ -10,7 +10,7 @@ export function OpeningEvidence({ item }: { item: TripItem }) {
   } catch { /* 缺少可打开的来源时只显示待核实说明。 */ }
   const excerpt = fact.excerpt ? fact.excerpt.slice(0, 400) + (fact.excerpt.length > 400 ? '…' : '') : null
   const known = fact.openingHours.status === 'known'
-  return <aside className="day-note is-tips" aria-label="开放资料"><div>
+  return <aside className="day-note is-tips opening-evidence" aria-label="开放资料" onClick={(event) => event.stopPropagation()}><div>
     <strong>{known ? '开放资料 · 网页规则' : '开放资料待确认'}</strong>
     <p>{(known ? excerpt : fact.openingHours.reason) || '没有可确认的开放规则。'}</p>
     {!known && excerpt && <details><summary>查看取回的网页片段</summary><p>{excerpt}</p></details>}

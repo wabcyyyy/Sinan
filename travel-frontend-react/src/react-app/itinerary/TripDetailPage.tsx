@@ -474,7 +474,6 @@ export function TripDetailPage({ path }: { path: string }) {
                           <button className="item-map-link is-locate" type="button" onClick={() => locateOnMap(itemKey)}><Icon name="arrow" size={13} className="is-up" />在上方地图中定位</button>
                         </> : <span className="item-expand-note">这个地点暂时没有坐标，可以在地图 App 里搜索「{item.poiName}」核实位置。</span>}
                       </div>
-                      <OpeningEvidence item={item} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -484,6 +483,7 @@ export function TripDetailPage({ path }: { path: string }) {
               <div className="day-item-media" aria-hidden="true">
                 <SmartImg src={itemImg} alt={item.poiName || '地点实景'} ratio="1 / 1" />
               </div>
+              {isExpanded && <OpeningEvidence item={item} />}
             </article>
             {nextItem && (
               <div className="day-transit-row" aria-label="前往下一站建议">
