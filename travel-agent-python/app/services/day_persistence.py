@@ -18,7 +18,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.agent import check_task_write, current_limits, sync_schedule_summary
+from app.agent import check_task_write, current_limits, enrich_opening_hours, sync_schedule_summary
 from app.common.envelope import FAIL_TRIP_NOTE, ApiError
 from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
@@ -53,6 +53,18 @@ def persist(
 ) -> None:
     """把一天的完整结果写库：清旧 item → 写新 item → 置 SUCCEEDED。"""
     check_task_write()
+    # 在外呼前拒绝失效/已完成动作；HTTP 后的写事务仍重新校验，防止并发变更。
+    with session_scope() as session:
+        day = _require_day(session, itinerary_id, day_no)
+        generation_gate.verify_action(day, action_id, fingerprint)
+        if day.generation_status == "SUCCEEDED" and not allow_overwrite:
+            return
+    requirements = getattr(request, "requirements_struct", None)
+    enrich_opening_hours(
+        plan,
+        city=str(getattr(request, "city", "")),
+        required_names=[place.name for place in requirements.required_places] if requirements else [],
+    )
     with session_scope() as session:
         day = _require_day(session, itinerary_id, day_no)
         generation_gate.verify_action(day, action_id, fingerprint)
@@ -77,7 +89,12 @@ def persist(
         for sort_no, item in enumerate(plan.items or []):
             session.add(_build_item(itinerary_id, day.id, item, sort_no))
 
-        blockers = hard_delivery_blockers(day_no, plan, requirements=getattr(request, "requirements_struct", None))
+        blockers = hard_delivery_blockers(
+            day_no,
+            plan,
+            requirements=getattr(request, "requirements_struct", None),
+            travel_date=day.travel_date.isoformat() if day.travel_date else None,
+        )
         day.metadata_json = _day_metadata_json(plan)
         if blockers:
             logger.warning("day %s kept PENDING (hard blockers): %s", f"{itinerary_id}.{day_no}", blockers)
@@ -370,7 +387,7 @@ def _fact_evidence_json(evidence: dict[str, Any]) -> str | None:
     if not evidence:
         return None
     payload = {
-        key: (value.model_dump(by_alias=True) if isinstance(value, FactEvidence) else _plain(value))
+        key: (value.model_dump(mode="json", by_alias=True) if isinstance(value, FactEvidence) else _plain(value))
         for key, value in evidence.items()
     }
     try:

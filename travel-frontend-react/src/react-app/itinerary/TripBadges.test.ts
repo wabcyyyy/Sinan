@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ItineraryDetail, TripItem } from '../../types/itinerary'
+import { OpeningEvidence } from './OpeningEvidence'
 import { budgetCaption, DietaryEvidenceNotice, DraftOnlyBanner, DRAFT_ONLY_TEXT, ItemEvidence, itemEvidenceText, TripMetrics } from './TripBadges'
 
 /**
@@ -95,4 +96,16 @@ describe('详情页核实提示合并与空日期（视觉体检 2026-10-11）',
     expect(html).toContain('日期未定 · 路线草案')
     expect(html).toContain(budgetCaption())
   })
+})
+
+
+it('开放来源原文可查看，未知和危险链接不冒充核实', () => {
+  const render = (sourceUrl: string, status = 'known') => renderToStaticMarkup(createElement(OpeningEvidence, {
+    item: item({ factEvidence: { open_time: { openingHours: { status, reason: '日期不明' },
+      excerpt: '周一闭馆', sourceUrl, retrievedAt: '2026-10-21T08:00:00Z' } } } as unknown as Partial<TripItem>),
+  }))
+  expect(render('https://museum.example/visit')).toContain('查看来源原文')
+  expect(render('https://museum.example/visit')).toContain('不代表实时开放或官方保证')
+  expect(render('javascript:alert(1)', 'unknown')).not.toContain('href=')
+  expect(render('javascript:alert(1)', 'unknown')).toContain('开放资料待确认')
 })

@@ -19,6 +19,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BeforeValidator, Field, model_validator
 
 from app.schemas.common import WireModel
+from app.schemas.opening_hours import OpeningHours
 from app.schemas.trip_requirements import (
     MAX_TRIP_DAYS,  # 常量真源在 trip_requirements（M1a），trip.py 引用并保持既有导入路径可用
     IntakeState,
@@ -73,6 +74,8 @@ class FactEvidence(WireModel):
     value_kind: Literal["observed", "estimated", "generated"] = "generated"
     freshness_status: Literal["fresh", "stale", "unknown"] = "unknown"
     review_requirement: Literal["none", "before_departure"] = "before_departure"
+    excerpt: str | None = None
+    opening_hours: OpeningHours | None = None
 
 
 class SourceRecord(WireModel):

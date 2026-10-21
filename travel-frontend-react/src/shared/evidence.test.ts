@@ -25,6 +25,8 @@ describe('证据徽标', () => {
       provider: null,
       retrievedAt: null,
       expiresAt: null,
+      excerpt: null,
+      openingHours: null,
       verificationStatus: overrides.verificationStatus,
       valueKind: overrides.valueKind,
       freshnessStatus: 'unknown' as const,

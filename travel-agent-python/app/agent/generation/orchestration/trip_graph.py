@@ -109,10 +109,11 @@ def day_reflect(state: UnifiedAgentState) -> dict:
     # reflect 节点全量校验。本节点维持时间/营业时段/饱和度的单天规则。
     # M3：结构化需求进单日校验（到达/返程日不凑 240、慢游上限、rooms 口径）
     requirements = getattr(request, "requirements_struct", None)
-    issues, log = validate_plans([raw], persons=persons, requirements=requirements)
+    start_date = getattr(request, "start_date", None)
+    issues, log = validate_plans([raw], persons=persons, requirements=requirements, start_date=start_date)
     # 图内修复与落库交付门同源：空天、结构伤和明确需求违例都进入修复反馈，
     # 最后一次采样也保留反馈；仍不可交付则 run_day 响亮失败。
-    issues = list(dict.fromkeys([*issues, *hard_day_issues(raw, requirements)]))
+    issues = list(dict.fromkeys([*issues, *hard_day_issues(raw, requirements, start_date=start_date)]))
     record_event(
         "decision",
         "day.reflect_result",
@@ -346,7 +347,7 @@ def run_day(req: GenerateDayRequest, *, thread_id: str | None = None) -> DailyPl
     result = unified_agent_graph.invoke(empty_day_state(req), config)
     if result.get("plan") is None or not result["plan"].items:
         raise ValueError(result.get("error") or "单日行程生成失败")
-    blockers = hard_day_issues(result["plan"].model_dump(), req.requirements_struct)
+    blockers = hard_day_issues(result["plan"].model_dump(), req.requirements_struct, start_date=req.start_date)
     if blockers:
         raise ValueError(build_feedback(blockers))
     return result["plan"]
@@ -383,6 +384,8 @@ def resume_day(thread_id: str) -> DayResume | None:
     context = day_request.context if day_request is not None else None
     plan = result.get("plan")
     requirements = day_request.requirements_struct if day_request is not None else None
-    if plan is not None and hard_day_issues(plan.model_dump(), requirements):
+    if plan is not None and hard_day_issues(
+        plan.model_dump(), requirements, start_date=getattr(day_request, "start_date", None)
+    ):
         plan = None  # 不可交付的旧检查点交回补齐路径，不能当作已经续完。
     return DayResume(plan=plan, context=context)

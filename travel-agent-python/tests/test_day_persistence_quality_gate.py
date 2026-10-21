@@ -7,6 +7,9 @@
 
 from __future__ import annotations
 
+import json
+from datetime import date
+
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -262,3 +265,73 @@ def test_build_item_persists_cost_currency() -> None:
     undeclared = day_persistence._build_item(1, 1, TripItem(poi_name="拉面店", cost=60), 1)
     assert declared.cost_currency == "CNY"
     assert undeclared.cost_currency is None
+
+
+@pytest.mark.parametrize(
+    "hours,remark,expected", [(None, "周一闭馆，出发前核实", "闭馆日冲突"), ("10:00-17:00", None, "开放时间不符")]
+)
+def test_opening_conflict_cannot_be_persisted_as_succeeded(db, hours, remark, expected):
+    with db_session.session_scope() as session:
+        day = session.get(ItineraryDay, 2)
+        assert day is not None
+        day.travel_date = date(2026, 11, 2)
+    plan = _healthy_plan().model_copy(update={"day_no": 2})
+    plan.items[0].open_time, plan.items[0].remark = hours, remark
+    day_persistence.persist(1, _Request(), 2, plan, "day-1-2", "fp", allow_overwrite=True)
+    status, error = _day_status(2)
+    assert status == "PENDING" and expected in error
+
+
+def test_unknown_opening_remains_visible_in_saved_day_notes(db):
+    plan = _healthy_plan().model_copy(update={"day_no": 2})
+    day_persistence.persist(1, _Request(), 2, plan, "day-1-2", "fp", allow_overwrite=True)
+    with db_session.session_scope() as session:
+        day = session.get(ItineraryDay, 2)
+        assert day is not None and day.metadata_json is not None
+        assert "开放安排待确认" in day.metadata_json
+
+
+@pytest.mark.parametrize("prefix", ["", "自2020年1月1日起。"])
+def test_sourced_opening_survives_storage_and_blocks_closed_day(db, monkeypatch, prefix):
+    from app.agent.generation.content import opening_evidence
+
+    monkeypatch.setattr(opening_evidence, "web_search_enabled", lambda: True)
+    monkeypatch.setattr(
+        opening_evidence,
+        "web_search_sources",
+        lambda query: [
+            {
+                "title": "成都测试博物馆参观须知",
+                "content": prefix + "成都测试博物馆周二至周日开放09:00-17:00。周一闭馆。",
+                "url": "https://museum.example/visit",
+                "retrieved_at": "2026-10-21T08:00:00+00:00",
+            }
+        ],
+    )
+    with db_session.session_scope() as session:
+        day = session.get(ItineraryDay, 2)
+        assert day is not None
+        day.travel_date = date(2026, 11, 2)
+    plan = _healthy_plan().model_copy(update={"day_no": 2})
+    plan.items[0].poi_name = "测试博物馆"
+    request = type("Request", (), {"days": 4, "stay_nights": 3, "city": "成都"})()
+    day_persistence.persist(1, request, 2, plan, "day-1-2", "fp", allow_overwrite=True)
+    assert _day_status(2)[0] == "PENDING" and "闭馆日冲突" in (_day_status(2)[1] or "")
+    with db_session.session_scope() as session:
+        item = session.execute(select(ItineraryItem).where(ItineraryItem.poi_name == "测试博物馆")).scalar_one()
+        assert item.fact_evidence_json is not None
+        fact = json.loads(item.fact_evidence_json)["open_time"]
+        assert fact["sourceUrl"] == "https://museum.example/visit"
+        assert fact["openingHours"]["status"] == "known"
+        assert fact["openingHours"]["rules"][1]["closed"] is True
+    detail = build_detail(1, 1)
+    saved = next(item for day in detail["dayList"] for item in day["items"] if item["poiName"] == "测试博物馆")
+    assert saved["factEvidence"]["open_time"] == fact
+
+
+def test_idempotent_save_does_not_pay_for_opening_queries(db, monkeypatch):
+    day_persistence.persist(1, _Request(), 2, _healthy_plan(), "day-1-2", "fp", allow_overwrite=True)
+    monkeypatch.setattr(
+        day_persistence, "enrich_opening_hours", lambda *args, **kwargs: pytest.fail("已保存动作不重复检索")
+    )
+    day_persistence.persist(1, _Request(), 2, _healthy_plan(), "day-1-2", "fp")

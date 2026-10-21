@@ -29,6 +29,7 @@ import { SmartImg } from '../shared/SmartImg'
 import { PublishItineraryPanel } from '../templates/PublishItineraryPanel'
 import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
+import { OpeningEvidence } from './OpeningEvidence'
 import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
@@ -473,6 +474,7 @@ export function TripDetailPage({ path }: { path: string }) {
                           <button className="item-map-link is-locate" type="button" onClick={() => locateOnMap(itemKey)}><Icon name="arrow" size={13} className="is-up" />在上方地图中定位</button>
                         </> : <span className="item-expand-note">这个地点暂时没有坐标，可以在地图 App 里搜索「{item.poiName}」核实位置。</span>}
                       </div>
+                      <OpeningEvidence item={item} />
                     </motion.div>
                   )}
                 </AnimatePresence>

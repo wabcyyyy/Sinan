@@ -153,6 +153,7 @@ def reflect(state: UnifiedAgentState) -> dict:
             consumption=state.consumption,
             budget_overage_ratio=settings.budget_overage_ratio,
             requirements=getattr(req, "requirements_struct", None),
+            start_date=getattr(req, "start_date", None),
         )
     record_event(
         "decision",

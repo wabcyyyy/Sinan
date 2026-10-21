@@ -30,11 +30,11 @@ from app.agent.generation.rules.generation_core import (
     has_double_lunch,
     meal_slot_of,
 )
+from app.agent.generation.rules.opening_hours import opening_checks
 from app.agent.generation.rules.transfer_time import (
     estimate_transfer_minutes,
     item_end,
     item_start,
-    parse_open_window,
     parse_time,
 )
 from app.schemas.trip_requirements import TripRequirements
@@ -45,7 +45,7 @@ BUDGET_OVERAGE_MARK = "超出预算"
 
 # 餐次过晚：餐厅大多已打烊，属于不可执行的安排，与"未安排景点"同级阻断交付
 LATE_MEAL_MARK = "餐饮安排过晚"
-_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀", LATE_MEAL_MARK)
+_HARD_DELIVERY_TAGS = ("未安排任何景点", "安排过稀", LATE_MEAL_MARK, "闭馆日冲突", "开放时间不符")
 
 
 def is_late_meal(start_time: str | None) -> bool:
@@ -64,12 +64,13 @@ def hard_day_issues(
     *,
     locked_names: set[str] | None = None,
     strict_budget: float | None = None,
+    start_date: str | None = None,
 ) -> list[str]:
     """图的最后一次尝试与业务落库共用的单日交付闸，不放宽已有判据。"""
     day_no = plan["day_no"]
     if not plan.get("items"):
         return [f"第 {day_no} 天没有生成任何条目"]
-    issues, _log = validate_plans([plan], requirements=requirements)
+    issues, _log = validate_plans([plan], requirements=requirements, start_date=start_date)
     structural = [issue for issue in issues if any(tag in issue for tag in _HARD_DELIVERY_TAGS)]
     report = check_constraints(
         plan,
@@ -116,6 +117,7 @@ def validate_plans(
     consumption: dict | None = None,
     budget_overage_ratio: float = 0.08,
     requirements: "TripRequirements | None" = None,
+    start_date: str | None = None,
 ) -> tuple[list[str], list[str]]:
     issues: list[str] = []
     log: list[str] = []
@@ -177,18 +179,11 @@ def validate_plans(
                     f"仅留 {available_gap} 分钟，按{source_label}需约 {required_transfer} 分钟{buffer_note}"
                 )
 
-        for it in items:
-            if it.get("item_type") != "attraction":
-                continue
-            start = item_start(it)
-            window = parse_open_window(it.get("open_time"))
-            end = item_end(it)
-            if window and not (window[0] <= start and end <= window[1]):
-                issues.append(
-                    f"第 {day_no} 天开放时间不符：{it.get('poi_name')} 计划 "
-                    f"{it.get('start_time')}-{it.get('end_time')}，"
-                    f"开放时间 {it.get('open_time')}"
-                )
+        checks = opening_checks(plan, start_date)
+        issues.extend(f"第 {day_no} 天 {c['poi_name']} {c['reason']}" for c in checks if c["status"] == "violation")
+        pending = [c["poi_name"] for c in checks if c["status"] == "unknown"]
+        if pending:
+            log.append(f"开放安排待确认：{'、'.join(pending)}；缺少完整开放资料或规则存在条件，出发前核实")
 
         attractions = [it for it in items if it.get("item_type") == "attraction"]
         foods = [it for it in items if it.get("item_type") == "food"]
@@ -269,7 +264,7 @@ def validate_plans(
         log.append(f"发现 {len(issues)} 个问题：")
         log.extend(issues)
     else:
-        log.append("校验通过：无时间冲突 / 路线可达 / 营业时间覆盖 / 单日饱和度正常")
+        log.append("校验通过：已知资料内无排程冲突；未知开放安排不计为已核实")
     return issues, log
 
 

@@ -28,6 +28,7 @@ _FIELDS = (
     "ticket_price",
     "avg_cost",
     "open_time",
+    "opening_hours",
     "duration_min",
     "address",
     "source_updated_at",
