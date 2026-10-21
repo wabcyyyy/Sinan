@@ -23,6 +23,7 @@ from app.agent.generation.rules.generation_core import PRICE_ESTIMATE_NOTE_SUFFI
 from app.agent.runtime.trace import record_event
 from app.common.vo_json import iso_time, parse_time_safe
 from app.schemas.trip import DailyPlan
+from app.schemas.trip_requirements import TripRequirements
 
 
 def sync_schedule_summary(plan: DailyPlan, *, estimated: bool = True) -> None:
@@ -46,6 +47,16 @@ def sync_schedule_summary(plan: DailyPlan, *, estimated: bool = True) -> None:
         times = "–".join(time for time in (item.start_time, item.end_time) if time)
         parts.append(f"{times} {item.poi_name}".strip())
     plan.note = "；".join(parts) + (PRICE_ESTIMATE_NOTE_SUFFIX if estimated else "")
+
+
+def record_grounded_name(
+    item: dict, original: str, requirements: TripRequirements | None, aliases: dict[str, str]
+) -> None:
+    """保留用户必去原名；其他落地名称登记别名，供叙事字段同步。"""
+    if requirements and any(place.name == original for place in requirements.required_places):
+        item["poi_name"] = original
+    if original and item.get("poi_name") != original:
+        aliases[original] = item["poi_name"]
 
 
 def normalize_name_mentions(plan: dict, aliases: dict[str, str]) -> None:

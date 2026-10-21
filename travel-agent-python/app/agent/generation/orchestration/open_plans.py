@@ -31,9 +31,9 @@ import logging
 from collections.abc import Callable
 
 from app.agent.core.poi_identity import PoiSeenRegistry
+from app.agent.generation.content import narrative
 from app.agent.generation.content.day_prompts import llm_open_trip
 from app.agent.generation.content.landing import drop_refuted_items, filter_plan_items, ground_item
-from app.agent.generation.content.narrative import normalize_name_mentions
 from app.agent.generation.content.reference_pool import ReferencePool
 from app.agent.generation.content.suggestions import activity_floor, floor_suggestions
 from app.agent.generation.content.trip_stream import open_trip_streamed
@@ -198,11 +198,7 @@ def _generate_drafts(
                 record_event("decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name})
                 continue
             ground_item(item, city=req.city, ref_pool=ref_pool)
-            # 已匹配实体的展示别名不应覆盖用户指定的必去名称，否则终检会误判缺失。
-            if req.requirements_struct and any(p.name == name for p in req.requirements_struct.required_places):
-                item["poi_name"] = name
-            if name and item.get("poi_name") != name:
-                name_aliases[name] = item["poi_name"]
+            narrative.record_grounded_name(item, name, req.requirements_struct, name_aliases)
             entity = ref_pool.entity_of(item)
             if name and seen.is_duplicate(name, item_type, item.get("latitude"), item.get("longitude"), entity):
                 # 落地后坐标通道判重命中（名称变体指向同一地点）
@@ -213,7 +209,7 @@ def _generate_drafts(
             if name:
                 seen.register(name, item_type, item.get("latitude"), item.get("longitude"), entity)
             kept_items.append(item)
-        normalize_name_mentions(plan, name_aliases)
+        narrative.normalize_name_mentions(plan, name_aliases)
         # 与本次行程矛盾的点位（解析到别处 / 权威源否证）在这里出局，剩下
         # 的"未判定"项保留——09-19 复评：免费源的"查不到"不足以删用户的点。
         plan["items"] = drop_refuted_items(kept_items, city=req.city, report=schedule_report)
