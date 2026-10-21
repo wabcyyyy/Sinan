@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import patch
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -63,7 +64,9 @@ def _isolated_database() -> Iterator[None]:
         Base.metadata.create_all(engine)
         db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
         connection = sqlite3.connect(str(Path(tmp) / "checkpoints.db"), check_same_thread=False)
-        saver = SqliteSaver(connection, serde=unified_agent_graph.checkpointer.serde)
+        previous_saver = unified_agent_graph.checkpointer
+        assert isinstance(previous_saver, BaseCheckpointSaver)
+        saver = SqliteSaver(connection, serde=previous_saver.serde)
         checkpoint = patch.object(unified_agent_graph, "checkpointer", saver)
         checkpoint.start()
         planning_tasks.reset()

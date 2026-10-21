@@ -89,6 +89,7 @@ class TestStreamChatDeltasCancel:
         with observe_run("stream-usage"):
             list(llm_client.LLMClient().stream_chat_deltas([{"role": "user", "content": "hi"}]))
         trace = metrics.get_trace("stream-usage")
+        assert trace is not None
         event = next(e for e in trace["events"] if e["name"] == "llm.stream_request")
         assert event["metadata"]["usage_complete"] is (usage is not None)
 
@@ -152,6 +153,7 @@ class TestTripStreamCancel:
         assert response.closed
         assert fallback_calls == []
         trace = metrics.get_trace("cancel-partial-item")
+        assert trace is not None
         assert any(e["name"] == "llm.stream_request" and e["status"] == "cancelled" for e in trace["events"])
         assert metrics.snapshot()["cancelled_runs"] == 1
 
@@ -184,6 +186,7 @@ class TestTripStreamCancel:
         ):
             assert on_day is not None
             on_day(1, {"day_no": 1, "items": [{"item_type": "attraction", "poi_name": "西湖"}]})
+            assert cancel is not None
             cancel.set()  # 第一天落地后客户端断开
             on_day(2, {"day_no": 2, "items": [{"item_type": "attraction", "poi_name": "灵隐寺"}]})
             return {"daily_plans": []}, []

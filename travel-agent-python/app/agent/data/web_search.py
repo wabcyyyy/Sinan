@@ -183,12 +183,14 @@ def web_search_json(question: str, *, schema_hint: str, max_tokens: int = 800) -
     prompt = question.strip()[:500]
 
     def _load() -> dict | list | None:
-        return _search_answer(
+        result = _search_answer(
             question,
             f"你是旅行资料检索助手。基于联网搜索结果回答，不要编造。只输出 JSON，结构：{schema_hint}",
             max_tokens,
             as_json=True,
         )
+        assert result is None or isinstance(result, (dict, list))
+        return result
 
     bound = binding("search")
     answer = _search_client.call(f"json:{bound.base_url}:{bound.model}:{schema_hint}:{prompt}", _load, lane=BACKGROUND)

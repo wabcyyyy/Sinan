@@ -112,6 +112,7 @@ def test_product_eval_retains_trace_when_result_read_fails(monkeypatch):
     monkeypatch.setattr(itinerary_generation, "generate", broken_generate)
     with run_product_path({"city": "杭州", "days": 1}, "failed") as (response, trace, _):
         assert response.status == "failed"
+        assert response.status_reason is not None
         assert "database failure" in response.status_reason
         assert _trace_stats(trace)["total_tokens"] == 15
 
