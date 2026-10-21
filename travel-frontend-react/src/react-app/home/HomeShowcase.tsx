@@ -10,9 +10,7 @@ import { SmartImg } from '../shared/SmartImg'
  * 2026-10-03 视觉迭代：3/2 大图优先、城名压图（墨色 scrim 渐变），描述两行定高。 */
 export const SHOWCASE_CITIES = destinations.slice(0, 6)
 
-/** 灵感起点小卡行：inspirationTemplates 后 4 条，避开 greeting 开场 chips 已占用的
- * 前 4 条（ChatIntake GREETING_TEMPLATES = slice(0, 4)），点击走与 IdeaTab.fill
- * 同格式的 /?template= 深链。 */
+/** 保留原有四张灵感卡片，绑定与城市、天数及主题一致的完整编辑规划。 */
 export const SHOWCASE_TEMPLATES = inspirationTemplates.slice(-4)
 
 /** 城市深链拼串。导出仅供测试（深链格式是探索页/首页共用的入口契约）。 */
@@ -20,10 +18,10 @@ export function showcaseCityHref(city: string): string {
   return `/?city=${encodeURIComponent(city)}`
 }
 
-/** 模板深链拼串：与 IdeaTab.fill 逐段同构（/?template=&city=&days=&intent=）。
- * 导出仅供测试。 */
-export function showcaseTemplateHref(item: Pick<InspirationTemplate, 'id' | 'city' | 'days' | 'intent'>): string {
-  return `/?template=${encodeURIComponent(item.id)}&city=${encodeURIComponent(item.city)}&days=${item.days}&intent=${encodeURIComponent(item.intent)}`
+/** 首页灵感直接查看已编写的路线，不再将文案预填成生成请求。 */
+export function showcaseTemplateHref(item: Pick<InspirationTemplate, 'id' | 'itineraryId'>): string {
+  if (item.itineraryId == null) throw new Error(`灵感 ${item.id} 尚未绑定完整行程`)
+  return `/itineraries/${item.itineraryId}`
 }
 
 /** 自动平滑滚动挂钩：定时按步进自动推进，悬停或触控交互时暂停，循环无缝回弹 */
@@ -64,9 +62,7 @@ function useAutoScroll(ref: { current: HTMLDivElement | null }, step: number, in
   }, [ref, step, intervalMs])
 }
 
-/** idle 态对话卡下方的轻展示区（PLAN 2026-10-03 §2.2 + 同日视觉迭代）：两行真横向
- * 自动滚动陈列（大卡溢出产生翻页感，scroll-snap 对齐，悬停暂停），行头右侧给分区入口与翻页微控；
- * 全部复用静态 data.ts 与现有令牌，图片走 SmartImg lazy，零重依赖。 */
+/** 首页保留热门城市与灵感卡片；灵感扩充为完整路线，支持查看后复制微调。 */
 export function HomeShowcase() {
   const citiesRef = useRef<HTMLDivElement>(null)
   const ideasRef = useRef<HTMLDivElement>(null)
@@ -125,7 +121,7 @@ export function HomeShowcase() {
       </div>
       <div className="showcase-row">
         <div className="showcase-row-head">
-          <div><h2>灵感起点</h2><p>套一条现成的说法，开聊只要一句话</p></div>
+          <div><h2>灵感起点</h2><p>看看完整路线，复制一份，再按自己的节奏微调</p></div>
           <div className="showcase-row-actions">
             <div className="showcase-scroll-controls" aria-label="灵感滚动翻页">
               <button
@@ -162,7 +158,7 @@ export function HomeShowcase() {
                   <span className="card-kicker">{item.city} · {item.days} 天</span>
                   <strong>{item.title}</strong>
                   <span className="showcase-idea-desc">{item.description}</span>
-                  <span className="showcase-idea-cta">用这句开场<Icon name="arrow" size={13} /></span>
+                  <span className="showcase-idea-cta">查看完整行程<Icon name="arrow" size={13} /></span>
                 </span>
               </button>
             ))}

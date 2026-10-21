@@ -194,6 +194,17 @@ def render_ts() -> str:
     emit(models_json_schema_definitions(tuple(members)))
     sections.append("export type StreamEvent = " + " | ".join(m.__name__ for m in members) + "\n")
 
+    # 静态展示与真实后端共用编辑规划的唯一 JSON 源，随契约重导出并校验漂移。
+    from app.services.template_catalog import curated_templates
+
+    catalog = [row.model_dump() for row in curated_templates()]
+    sections.append("// 编辑规划参考；唯一数据源 app/services/curated_itineraries.json。")
+    sections.append(
+        "export const CURATED_ITINERARIES: TemplateDetailVO[] = "
+        + json.dumps(catalog, ensure_ascii=False, indent=2)
+        + "\n"
+    )
+
     return "\n".join(sections)
 
 

@@ -867,6 +867,8 @@ export interface TemplateItemVO {
   endTime: string | null
   latitude: number | null
   longitude: number | null
+  address: string | null
+  tip: string | null
 }
 
 export interface TemplateDayVO {
@@ -883,11 +885,15 @@ export interface TemplateSummaryVO {
   intro: string
   costTiers: TemplateCostTier[]
   dayList: TemplateDayVO[]
+  coverUrl: string | null
+  sourceType: "editorial" | "community"
+  notes: string[]
+  references: string[]
 }
 
 export interface TemplatePublishVO {
   itineraryId: number
-  publishedAt: string
+  publishedAt: string | null
   summary: TemplateSummaryVO
 }
 
@@ -899,6 +905,9 @@ export interface TemplateCardVO {
   coverUrl: string | null
   costTiers: TemplateCostTier[]
   publishedAt: string
+  intro: string
+  persons: number
+  sourceType: "editorial" | "community"
 }
 
 export interface TemplateDetailVO {
@@ -909,6 +918,9 @@ export interface TemplateDetailVO {
   coverUrl: string | null
   costTiers: TemplateCostTier[]
   publishedAt: string
+  intro: string
+  persons: number
+  sourceType: "editorial" | "community"
   summary: TemplateSummaryVO
 }
 
@@ -1039,3 +1051,1210 @@ export interface ItemPreviewWithdrawnEvent {
 }
 
 export type StreamEvent = StartEvent | DayEvent | DayPatchEvent | SuggestionsEvent | DoneEvent | ErrorEvent | ItemPreviewEvent | ItemPreviewWithdrawnEvent
+
+// 编辑规划参考；唯一数据源 app/services/curated_itineraries.json。
+export const CURATED_ITINERARIES: TemplateDetailVO[] = [
+  {
+    "id": -1,
+    "title": "杭州两日 · 沿湖散步，去茶山坐坐",
+    "city": "杭州",
+    "days": 2,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "第一天沿西湖北线慢走，第二天走进茶文化。每天下午保留休息时间，不把环湖当成打卡任务。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "杭州两日 · 沿湖散步，去茶山坐坐",
+      "city": "杭州",
+      "days": 2,
+      "persons": 2,
+      "intro": "第一天沿西湖北线慢走，第二天走进茶文化。每天下午保留休息时间，不把环湖当成打卡任务。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "从断桥到南山路，挑喜欢的湖岸走",
+          "items": [
+            {
+              "poiName": "断桥残雪",
+              "itemType": "attraction",
+              "startTime": "09:00",
+              "endTime": "09:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州西湖北岸",
+              "tip": "从北岸开始；人多时只在附近看湖，不必挤上桥。"
+            },
+            {
+              "poiName": "白堤与孤山",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州西湖白堤、孤山",
+              "tip": "白堤到孤山分段走，累了在湖边坐一会儿。"
+            },
+            {
+              "poiName": "北山街附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州北山街",
+              "tip": "按口味和现场排队情况选店，不绑定虚构餐厅。"
+            },
+            {
+              "poiName": "曲院风荷",
+              "itemType": "attraction",
+              "startTime": "13:30",
+              "endTime": "15:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州西湖西岸",
+              "tip": "从北线转到西岸；季节不同景观不同，不承诺荷花花期。"
+            },
+            {
+              "poiName": "苏堤南段",
+              "itemType": "attraction",
+              "startTime": "15:30",
+              "endTime": "17:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州苏堤",
+              "tip": "可乘公交接驳后挑一段步行，不要求走完整条堤。"
+            },
+            {
+              "poiName": "南山路附近晚餐（自行选店）",
+              "itemType": "food",
+              "startTime": "17:30",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州南山路",
+              "tip": "晚餐后结束当天路线，住宿按个人预算自行预订。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "双峰茶文化与老城街巷",
+          "items": [
+            {
+              "poiName": "中国茶叶博物馆双峰馆区",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州龙井路88号",
+              "tip": "先确认具体馆区与开放安排，闭馆时改为附近茶村散步。"
+            },
+            {
+              "poiName": "双峰村附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州双峰村",
+              "tip": "喝茶与餐饮消费先看价目，不将参考路线视为团购或预订。"
+            },
+            {
+              "poiName": "龙井村",
+              "itemType": "attraction",
+              "startTime": "14:00",
+              "endTime": "15:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州龙井村",
+              "tip": "留出接驳时间；以村内散步为主，不安排未经核实的山野路线。"
+            },
+            {
+              "poiName": "河坊街",
+              "itemType": "attraction",
+              "startTime": "16:30",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "杭州上城区河坊街",
+              "tip": "从茶山片区回到老城；返程较早时删去这一段。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "适合两天一晚的路线参考；到达日较晚时，从白堤或孤山开始即可。",
+        "阴雨天缩短湖岸步行，优先确认馆区后再调整；不强行补满所有景点。"
+      ],
+      "references": [
+        "https://www.teamuseum.cn/"
+      ]
+    }
+  },
+  {
+    "id": -2,
+    "title": "成都两日 · 茶馆、公园与草堂",
+    "city": "成都",
+    "days": 2,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "把人民公园、城市博物馆与西侧草堂串成两天，午餐与转场留足时间，街区用餐自行选择。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "成都两日 · 茶馆、公园与草堂",
+      "city": "成都",
+      "days": 2,
+      "persons": 2,
+      "intro": "把人民公园、城市博物馆与西侧草堂串成两天，午餐与转场留足时间，街区用餐自行选择。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "先坐下来，再认识这座城",
+          "items": [
+            {
+              "poiName": "人民公园",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都市青羊区人民公园",
+              "tip": "公园散步后可自行选择茶馆坐坐，茶位与消费到店确认。"
+            },
+            {
+              "poiName": "少城附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都少城片区",
+              "tip": "按饮食禁忌与口味选店，四川菜也可主动要求少辣。"
+            },
+            {
+              "poiName": "成都博物馆",
+              "itemType": "attraction",
+              "startTime": "13:30",
+              "endTime": "16:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都天府广场西侧",
+              "tip": "通过官方入口核实预约和开放安排；闭馆时留作休息或街区漫步。"
+            },
+            {
+              "poiName": "宽窄巷子",
+              "itemType": "attraction",
+              "startTime": "16:30",
+              "endTime": "17:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都宽窄巷子",
+              "tip": "不强求逐条逛完，客流大时缩短停留。"
+            },
+            {
+              "poiName": "奎星楼街附近晚餐（自行选店）",
+              "itemType": "food",
+              "startTime": "18:00",
+              "endTime": "19:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都奎星楼街片区",
+              "tip": "晚餐自行选店；不将某条街的热度当作店铺质量保证。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "草堂与浣花溪，把下午留给武侯片区",
+          "items": [
+            {
+              "poiName": "杜甫草堂博物馆",
+              "itemType": "attraction",
+              "startTime": "09:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都青华路片区",
+              "tip": "提前核实门票与参观安排，给庭园和展陈留出时间。"
+            },
+            {
+              "poiName": "青华路附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都青华路",
+              "tip": "用餐后再决定是否继续步行。"
+            },
+            {
+              "poiName": "浣花溪公园",
+              "itemType": "attraction",
+              "startTime": "13:00",
+              "endTime": "14:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都浣花溪公园",
+              "tip": "与草堂相邻片区慢走；下雨可删去，不要求凑景点。"
+            },
+            {
+              "poiName": "武侯祠",
+              "itemType": "attraction",
+              "startTime": "15:00",
+              "endTime": "16:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都武侯祠大街",
+              "tip": "预留跨片区交通；参观资格与票务以官方信息为准。"
+            },
+            {
+              "poiName": "锦里",
+              "itemType": "attraction",
+              "startTime": "16:45",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "成都武侯祠旁锦里",
+              "tip": "返程时间紧可跳过，晚餐不必固定在景区内。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "住宿自行选择少城或公共交通方便的片区；本路线不包含可预订酒店。",
+        "第二天下午跨片区，如带老人或下雨，可只保留草堂与浣花溪。"
+      ],
+      "references": [
+        "https://www.cdmuseum.com/daolan/",
+        "https://www.cddfct.cn/"
+      ]
+    }
+  },
+  {
+    "id": -3,
+    "title": "北京两日 · 宫城与胡同的步行尺度",
+    "city": "北京",
+    "days": 2,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "一天留给故宫与景山，一天串联天坛与前门街巷。不跨越全城追赶景点，预约失败就调整当天主题。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "北京两日 · 宫城与胡同的步行尺度",
+      "city": "北京",
+      "days": 2,
+      "persons": 2,
+      "intro": "一天留给故宫与景山，一天串联天坛与前门街巷。不跨越全城追赶景点，预约失败就调整当天主题。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "宫城一整段，景山一小段",
+          "items": [
+            {
+              "poiName": "故宫博物院",
+              "itemType": "attraction",
+              "startTime": "09:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京故宫博物院",
+              "tip": "建议参观窗口；先确认预约、开放及入院路线。未约到时不要照此硬走。"
+            },
+            {
+              "poiName": "景山东侧附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "13:30",
+              "endTime": "14:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京景山东侧片区",
+              "tip": "根据实际出院位置选择用餐与转场，不将步行时间当成保证。"
+            },
+            {
+              "poiName": "景山公园",
+              "itemType": "attraction",
+              "startTime": "15:00",
+              "endTime": "16:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京景山公园",
+              "tip": "登高为可选项，按体力决定；雨雪或步行较多时可只在园内休息。"
+            },
+            {
+              "poiName": "地安门附近散步与晚餐（自行选店）",
+              "itemType": "food",
+              "startTime": "17:00",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京地安门片区",
+              "tip": "不再叠加远距离景点，住宿按自己的交通需求选择。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "天坛公园到前门街巷",
+          "items": [
+            {
+              "poiName": "天坛公园",
+              "itemType": "attraction",
+              "startTime": "09:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京天坛公园",
+              "tip": "园区与院落开放安排可能不同，出发前核实所需票种与入口。"
+            },
+            {
+              "poiName": "前门附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:15",
+              "endTime": "13:15",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京前门片区",
+              "tip": "天坛到前门预留交通时间，按当天拥堵情况调整。"
+            },
+            {
+              "poiName": "前门大街",
+              "itemType": "attraction",
+              "startTime": "13:30",
+              "endTime": "14:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京前门大街",
+              "tip": "主街短逛，不把购物安排当作必须消费。"
+            },
+            {
+              "poiName": "杨梅竹斜街",
+              "itemType": "attraction",
+              "startTime": "15:00",
+              "endTime": "16:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "北京杨梅竹斜街",
+              "tip": "以街巷散步为主，尊重居民生活；提前返程时可直接删去。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "这条路线不含天安门广场参观安排；相关区域通行与预约须另外核实。",
+        "故宫未预约成功时，先调整日期或改为周边公园路线；不要将示例时间理解为已预约。"
+      ],
+      "references": [
+        "https://www.dpm.org.cn/"
+      ]
+    }
+  },
+  {
+    "id": -4,
+    "title": "去大理过一半日子",
+    "city": "大理",
+    "days": 4,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "苍山洱海之间，把行程留白一半。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "去大理过一半日子",
+      "city": "大理",
+      "days": 4,
+      "persons": 2,
+      "intro": "苍山洱海之间，把行程留白一半。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "抵达古城，慢慢进入大理的节奏",
+          "items": [
+            {
+              "poiName": "大理古城南门",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "10:45",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城南门",
+              "tip": "到达较晚可跳过，先安顿行李。"
+            },
+            {
+              "poiName": "复兴路与人民路",
+              "itemType": "attraction",
+              "startTime": "11:00",
+              "endTime": "12:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城",
+              "tip": "只选一小段街巷，不追求逛完整座古城。"
+            },
+            {
+              "poiName": "古城午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城",
+              "tip": "可尝试米线或白族家常菜，先确认口味和价格。"
+            },
+            {
+              "poiName": "古城附近自由休息",
+              "itemType": "rest",
+              "startTime": "14:00",
+              "endTime": "17:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城附近",
+              "tip": "这一段留白，不绑定酒店或消费项目。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "洱海西岸，只挑一段廊道",
+          "items": [
+            {
+              "poiName": "龙龛生态廊道",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理洱海西岸龙龛片区",
+              "tip": "选择公共开放的步行段；骑行按现场规则，不安排下水。"
+            },
+            {
+              "poiName": "龙龛片区午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理龙龛片区",
+              "tip": "临湖餐饮先看价目，午后留足回程时间。"
+            },
+            {
+              "poiName": "返回住处午休",
+              "itemType": "rest",
+              "startTime": "14:00",
+              "endTime": "16:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城附近",
+              "tip": "下午不再跨湖赶路，可直接结束当天安排。"
+            },
+            {
+              "poiName": "人民路短段散步（可选）",
+              "itemType": "attraction",
+              "startTime": "17:00",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城人民路",
+              "tip": "有体力再出门，随时可以取消。"
+            }
+          ]
+        },
+        {
+          "dayNo": 3,
+          "theme": "喜洲古镇，半天看白族街巷",
+          "items": [
+            {
+              "poiName": "喜洲古镇",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "12:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理喜洲古镇",
+              "tip": "从古城出发预留接驳时间，尊重居民生活，不闯入私宅。"
+            },
+            {
+              "poiName": "喜洲午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理喜洲古镇",
+              "tip": "可自选喜洲粑粑等小吃，不绑定具体店铺。"
+            },
+            {
+              "poiName": "古镇公共街巷短逛",
+              "itemType": "attraction",
+              "startTime": "13:00",
+              "endTime": "14:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理喜洲古镇",
+              "tip": "不把田野当作可随意进入的拍照区，景色随季节变化。"
+            },
+            {
+              "poiName": "回城后自由安排",
+              "itemType": "rest",
+              "startTime": "15:00",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城附近",
+              "tip": "不叠加双廊或环海行程，留出休息时间。"
+            }
+          ]
+        },
+        {
+          "dayNo": 4,
+          "theme": "苍山山脚，给返程留出余量",
+          "items": [
+            {
+              "poiName": "苍山山脚公共开放片区",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理苍山东麓古城一侧",
+              "tip": "仅走现场允许开放的公共道路，不进入山野步道；雨天改为古城休息。"
+            },
+            {
+              "poiName": "古城早午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "11:30",
+              "endTime": "12:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城",
+              "tip": "按返程时间提前结束用餐。"
+            },
+            {
+              "poiName": "古城附近自由休息",
+              "itemType": "rest",
+              "startTime": "13:00",
+              "endTime": "14:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理古城附近",
+              "tip": "取行李和整理物品，不再安排远距离景点。"
+            },
+            {
+              "poiName": "返程机动时间",
+              "itemType": "transport",
+              "startTime": "15:00",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大理，按实际车站或机场安排",
+              "tip": "这是留白窗口，不代表班次或确定的接驳时长。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "每天只安排半天主线，下午留给休息或自行探索；不安排一天环洱海。",
+        "苍山仅安排山脚公共开放区域，不安排野路或保护区穿越；如需索道，另行核实天气与开放情况。"
+      ],
+      "references": [
+        "https://www.dali.gov.cn/dlzrmzf/c101679/pc/content/2047230416648200192/content_2047230416648200192.html"
+      ]
+    }
+  },
+  {
+    "id": -5,
+    "title": "首尔的坡道与霓虹",
+    "city": "首尔",
+    "days": 3,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "白天逛传统市场，晚上沿汉江或街区走走。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "首尔的坡道与霓虹",
+      "city": "首尔",
+      "days": 3,
+      "persons": 2,
+      "intro": "白天逛传统市场，晚上沿汉江或街区走走。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "景福宫到仁寺洞，走一段旧城",
+          "items": [
+            {
+              "poiName": "景福宫",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔钟路区景福宫",
+              "tip": "出发前确认开放与票务；闭馆时改为光化门广场周边散步。"
+            },
+            {
+              "poiName": "仁寺洞午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔仁寺洞",
+              "tip": "选择适合饮食习惯的餐食，预留排队余量。"
+            },
+            {
+              "poiName": "仁寺洞街区",
+              "itemType": "attraction",
+              "startTime": "13:30",
+              "endTime": "15:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔仁寺洞",
+              "tip": "逛小店和巷子，午后可找地方休息。"
+            },
+            {
+              "poiName": "北村韩屋村公共开放段（可选）",
+              "itemType": "attraction",
+              "startTime": "15:30",
+              "endTime": "16:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔北村",
+              "tip": "以当天允许参观的路段为准；限制开放时留在仁寺洞，不进入居民私宅。"
+            },
+            {
+              "poiName": "清溪川短段夜间散步",
+              "itemType": "attraction",
+              "startTime": "18:30",
+              "endTime": "19:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔清溪川钟路附近",
+              "tip": "下雨或现场封闭时取消，不沿封闭河道行走。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "广藏市场与东大门，午后留白",
+          "items": [
+            {
+              "poiName": "广藏市场",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔钟路区广藏市场",
+              "tip": "以市场街区为主，各摊营业不同，先看菜单与标价。"
+            },
+            {
+              "poiName": "广藏市场午餐（自行选摊）",
+              "itemType": "food",
+              "startTime": "11:30",
+              "endTime": "12:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔广藏市场",
+              "tip": "小份选择适合自己的小吃，注意过敏与饮食禁忌。"
+            },
+            {
+              "poiName": "东大门设计广场外部公共区",
+              "itemType": "attraction",
+              "startTime": "13:30",
+              "endTime": "15:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔东大门设计广场",
+              "tip": "仅安排外部建筑散步；展览开放与票务另行确认。"
+            },
+            {
+              "poiName": "东大门片区休息与晚餐",
+              "itemType": "food",
+              "startTime": "17:00",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔东大门片区",
+              "tip": "下午先休息，晚餐自行选店，不把深夜购物列为必做。"
+            }
+          ]
+        },
+        {
+          "dayNo": 3,
+          "theme": "延南洞到汉江，留一个轻松的傍晚",
+          "items": [
+            {
+              "poiName": "京义线林荫道延南洞段",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔延南洞",
+              "tip": "只挑短段步行，街区小店不保证营业。"
+            },
+            {
+              "poiName": "弘大附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔弘大入口附近",
+              "tip": "午餐后留出交通和午休时间。"
+            },
+            {
+              "poiName": "弘大街区自由逛",
+              "itemType": "attraction",
+              "startTime": "14:00",
+              "endTime": "15:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔弘大街区",
+              "tip": "以散步和休息为主，不安排必须消费的项目。"
+            },
+            {
+              "poiName": "汝矣岛汉江公园",
+              "itemType": "attraction",
+              "startTime": "17:00",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "首尔汝矣岛汉江公园",
+              "tip": "单独预留转场时间；风雨或提前返程时取消，不承诺日落时刻。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "以街区和市场为主，不承诺店铺营业与夜景天气；餐饮价格、支付和交通自行确认。",
+        "北村是居住街区，出发前确认当日参观限制，遵守现场时段与安静通行要求。"
+      ],
+      "references": [
+        "https://english.visitseoul.net/attractions"
+      ]
+    }
+  },
+  {
+    "id": -6,
+    "title": "厦门的海风傍晚",
+    "city": "厦门",
+    "days": 3,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "环岛路的骑行和老城的巷子，把傍晚留给海。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "厦门的海风傍晚",
+      "city": "厦门",
+      "days": 3,
+      "persons": 2,
+      "intro": "环岛路的骑行和老城的巷子，把傍晚留给海。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "八市与老城，傍晚走到海边",
+          "items": [
+            {
+              "poiName": "第八市场周边街巷",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门八市片区",
+              "tip": "轻装逛街，市场各摊营业不同，拍照不要影响经营。"
+            },
+            {
+              "poiName": "八市附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门八市片区",
+              "tip": "可选择沙茶面等本地餐食，海鲜先确认品类与计价。"
+            },
+            {
+              "poiName": "中山路步行街",
+              "itemType": "attraction",
+              "startTime": "14:00",
+              "endTime": "15:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门中山路",
+              "tip": "沿骑楼短逛，午后安排室内休息。"
+            },
+            {
+              "poiName": "沙坡尾与演武大桥观景平台",
+              "itemType": "attraction",
+              "startTime": "17:00",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门沙坡尾附近",
+              "tip": "预留转场，按现场开放与天气决定是否前往观景平台。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "鼓浪屿一天，街巷与海岸慢慢走",
+          "items": [
+            {
+              "poiName": "鼓浪屿登岛与街巷散步",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门鼓浪屿",
+              "tip": "先确认船票、实际登船码头及航线；不按示例时刻直接赶船。"
+            },
+            {
+              "poiName": "龙头路附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门鼓浪屿龙头路附近",
+              "tip": "先看价目，午餐后避开最晒时段休息。"
+            },
+            {
+              "poiName": "港仔后海滨公共开放段",
+              "itemType": "attraction",
+              "startTime": "14:30",
+              "endTime": "16:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门鼓浪屿港仔后片区",
+              "tip": "以岸边散步为主，不安排下水；不包含付费景点门票。"
+            },
+            {
+              "poiName": "返程轮渡机动窗口",
+              "itemType": "transport",
+              "startTime": "16:30",
+              "endTime": "18:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "鼓浪屿，码头按实际船票确定",
+              "tip": "按所购航线提前候船；风浪停航时遵从官方调整。"
+            }
+          ]
+        },
+        {
+          "dayNo": 3,
+          "theme": "环岛路海风，把下午交给自己的节奏",
+          "items": [
+            {
+              "poiName": "白城沙滩岸边",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "10:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门白城沙滩公共区",
+              "tip": "仅安排公共海岸，不把厦门大学校内参观算进行程。"
+            },
+            {
+              "poiName": "环岛路白城至黄厝片区（选一段）",
+              "itemType": "attraction",
+              "startTime": "11:00",
+              "endTime": "12:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门环岛路",
+              "tip": "步行或在允许路段短途骑行，先确认租车规则，不要求走完整段。"
+            },
+            {
+              "poiName": "黄厝附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门黄厝片区",
+              "tip": "用餐后休息，按返程时间决定是否继续。"
+            },
+            {
+              "poiName": "黄厝海滨短段散步（可选）",
+              "itemType": "attraction",
+              "startTime": "16:30",
+              "endTime": "17:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "厦门黄厝海滨公共区",
+              "tip": "提前返程可删去；日落和海况随季节天气变化。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "鼓浪屿单列一天，登船码头、航线与返程时间需提前核实，示例时段不是船票。",
+        "海边骑行仅走允许通行路段，不把沙滩或木栈道当骑行道；天气不好时缩短户外安排。"
+      ],
+      "references": [
+        "https://fgw.fujian.gov.cn/zwgk/xwdt/sxdt/202408/t20240808_6499632.htm"
+      ]
+    }
+  },
+  {
+    "id": -7,
+    "title": "大阪，认真吃三天",
+    "city": "大阪",
+    "days": 4,
+    "coverUrl": null,
+    "costTiers": [],
+    "publishedAt": "2026-10-18T00:00:00",
+    "intro": "从市场到深夜小馆，把厨房之城吃出层次。",
+    "persons": 2,
+    "sourceType": "editorial",
+    "summary": {
+      "title": "大阪，认真吃三天",
+      "city": "大阪",
+      "days": 4,
+      "persons": 2,
+      "intro": "从市场到深夜小馆，把厨房之城吃出层次。",
+      "costTiers": [],
+      "dayList": [
+        {
+          "dayNo": 1,
+          "theme": "黑门市场到道顿堀，先认识南区",
+          "items": [
+            {
+              "poiName": "黑门市场",
+              "itemType": "attraction",
+              "startTime": "10:00",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪黑门市场",
+              "tip": "先看看再决定买什么，摊位营业不一。"
+            },
+            {
+              "poiName": "日本桥附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪日本桥附近",
+              "tip": "市场小吃可替代午餐，按份量与过敏情况选择。"
+            },
+            {
+              "poiName": "法善寺横丁",
+              "itemType": "attraction",
+              "startTime": "14:00",
+              "endTime": "15:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪难波法善寺横丁",
+              "tip": "短段街巷散步，不打扰寺院与店家。"
+            },
+            {
+              "poiName": "道顿堀晚餐与河岸夜景",
+              "itemType": "food",
+              "startTime": "17:30",
+              "endTime": "19:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪道顿堀",
+              "tip": "自行选店吃章鱼烧或大阪烧，先看菜单；不保证特定店营业。"
+            }
+          ]
+        },
+        {
+          "dayNo": 2,
+          "theme": "大阪城公园到天满，把转场留宽",
+          "items": [
+            {
+              "poiName": "大阪城公园",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪城公园",
+              "tip": "以公园散步为主；天守阁入场、票务和开放另行确认。"
+            },
+            {
+              "poiName": "森之宫附近午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪森之宫附近",
+              "tip": "用餐后安排交通与休息，不连走到天满。"
+            },
+            {
+              "poiName": "天神桥筋商店街短段",
+              "itemType": "attraction",
+              "startTime": "15:00",
+              "endTime": "16:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪天神桥筋商店街",
+              "tip": "选择靠近车站的一段，不要求走完整条商店街。"
+            },
+            {
+              "poiName": "天满附近晚餐（自行选店）",
+              "itemType": "food",
+              "startTime": "17:00",
+              "endTime": "18:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪天满片区",
+              "tip": "自选家常餐食，小店可能只收特定支付方式。"
+            }
+          ]
+        },
+        {
+          "dayNo": 3,
+          "theme": "新世界与难波，认真吃但不赶场",
+          "items": [
+            {
+              "poiName": "新世界街区",
+              "itemType": "attraction",
+              "startTime": "10:30",
+              "endTime": "11:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪新世界",
+              "tip": "街区短逛；不包含通天阁登塔票务。"
+            },
+            {
+              "poiName": "新世界午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "12:00",
+              "endTime": "13:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪新世界",
+              "tip": "可选串炸或其他餐食，点餐前确认价格和过敏原。"
+            },
+            {
+              "poiName": "难波公园公共区域",
+              "itemType": "attraction",
+              "startTime": "14:30",
+              "endTime": "16:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪难波公园",
+              "tip": "预留接驳与休息，公共区域开放以现场为准。"
+            },
+            {
+              "poiName": "难波附近晚餐（自行选店）",
+              "itemType": "food",
+              "startTime": "17:30",
+              "endTime": "19:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪难波片区",
+              "tip": "把最后一顿留给喜欢的味道，不安排跨城赶店。"
+            }
+          ]
+        },
+        {
+          "dayNo": 4,
+          "theme": "中之岛与北滨，半天河岸后返程",
+          "items": [
+            {
+              "poiName": "中之岛公园",
+              "itemType": "attraction",
+              "startTime": "09:30",
+              "endTime": "11:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪中之岛公园",
+              "tip": "沿河短走，花期和天气不作承诺。"
+            },
+            {
+              "poiName": "北滨早午餐（自行选店）",
+              "itemType": "food",
+              "startTime": "11:30",
+              "endTime": "12:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪北滨片区",
+              "tip": "自选咖啡馆或定食店，排队过长就换一家。"
+            },
+            {
+              "poiName": "北滨河岸自由休息",
+              "itemType": "rest",
+              "startTime": "13:00",
+              "endTime": "14:00",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪北滨附近",
+              "tip": "下午不再叠加景点，提前返程可直接取消。"
+            },
+            {
+              "poiName": "返程机动时间",
+              "itemType": "transport",
+              "startTime": "14:30",
+              "endTime": "17:30",
+              "latitude": null,
+              "longitude": null,
+              "address": "大阪，按实际车站或机场安排",
+              "tip": "按车票或机票另算交通时间，这不是已预订接驳。"
+            }
+          ]
+        }
+      ],
+      "coverUrl": null,
+      "sourceType": "editorial",
+      "notes": [
+        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
+        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
+        "沿用原卡片的四天设置：前三天以美食为主，第四天留给河岸与返程。",
+        "市场、餐馆的营业和售罄情况不同，不提供已核实店单、实时价格或预订。"
+      ],
+      "references": [
+        "https://www.osaka-info.jp/en/spot/",
+        "https://www.osaka-info.jp/spot/dotonbori/"
+      ]
+    }
+  }
+]

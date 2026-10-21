@@ -25,6 +25,7 @@ import logging
 
 from app.agent.data import pricing as live_pricing
 from app.agent.data.weather import day_clause as weather_day_clause
+from app.agent.generation.content import narrative
 from app.agent.generation.content.day_prompts import (
     DAY_ATTRACTION_CONTEXT_LIMIT,
     DAY_FOOD_CONTEXT_LIMIT,
@@ -41,9 +42,8 @@ from app.agent.generation.content.day_prompts import (
 from app.agent.generation.content.generators import pick_hotels
 from app.agent.generation.content.json_output import parse_llm_json_with_repair, validate_day_output
 from app.agent.generation.content.landing import drop_refuted_items, drop_used_items, require_playable_items
-from app.agent.generation.content.narrative import normalize_name_mentions, sanitize_narrative, sync_schedule_summary
 from app.agent.generation.content.reference_pool import ReferencePool
-from app.agent.generation.content.suggestions import build_suggestions, fill_suggestion_gaps
+from app.agent.generation.content.suggestions import build_suggestions
 from app.agent.generation.orchestration.plan_context import filter_used, parse_date
 from app.agent.generation.output.facts import field_fact_evidence, pool_row_for
 from app.agent.generation.rules.budget import budget_tier, clamp_meal_cost, pricing_clause
@@ -176,7 +176,7 @@ def llm_open_day(req: GenerateDayRequest, used: set[str]) -> dict:
     # open_plans 兜底；叙事字段轻量清洗（超限截断/类型降级），骨架照常交付。
     # AICHAIN-3：修复重试补传 response_format——与正调同档，守约网关下修复产物
     # 同样受 schema 约束（闭合、禁产坐标），不再退回 json_object
-    plan = sanitize_narrative(
+    plan = narrative.sanitize_narrative(
         parse_llm_json_with_repair(
             raw,
             client,
@@ -226,8 +226,8 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             allow_external=True,
             dest_city=req.city,
         )
-        tier_label, _g, _ppd = budget_tier(req.budget, req.persons or 1, req.days or 1)
-        suggestion_rows = fill_suggestion_gaps(suggestion_rows, req.city, budget_tier=tier_label or None)
+        # 单日补齐优先交付行程；保留已有候选与模型建议，不在每个修复日另搜四类
+        # 「发现更多」。这些可选搜索会占用后续未完成天的同一份 Token 预算。
     except Exception as e:
         logger.warning("day %s open llm failed: %s", req.day_no, e)
         raise
@@ -276,9 +276,8 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
             pass  # 权威背书：字段与来源已由参考资料落地
         elif source == "open":
             local_ground(item, req.city)
-        if item.get("poi_name") != original_name:
-            name_aliases[original_name] = item["poi_name"]
-    normalize_name_mentions(plan, name_aliases)
+        narrative.record_grounded_name(item, original_name, req.requirements_struct, name_aliases)
+    narrative.normalize_name_mentions(plan, name_aliases)
     # 与本次行程矛盾的点位（解析到别处 / 有否证资格的源明确说没有）先出局，
     # 再进装配：留在行程里把一个名字指到别的城市，比少一个点更糟（G5）。
     before_filter = [item["poi_name"] for item in drafts]
@@ -388,7 +387,7 @@ def generate_day_once(req: GenerateDayRequest, *, force_fallback: bool = False) 
         trip_theme=plan.get("trip_theme") or plan.get("tripTheme"),
         suggestions=[Suggestion(**row) for row in suggestion_rows],
     )
-    sync_schedule_summary(result)
+    narrative.sync_schedule_summary(result)
     return result, source
 
 

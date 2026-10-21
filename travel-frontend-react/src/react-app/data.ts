@@ -53,6 +53,7 @@ export const destinations: DestinationCard[] = [
 
 export interface InspirationTemplate {
   id: string
+  itineraryId?: number
   title: string
   city: string
   theme: string
@@ -77,10 +78,10 @@ export const inspirationTemplates: InspirationTemplate[] = [
   { id: 'singapore-family', title: '带孩子玩新加坡', city: '新加坡', theme: '亲子', description: '花园、动物园与食阁，适合全家的小尺度城市。', days: 4, image: singapore, tags: ['花园', '动物园'], intent: '带孩子去新加坡 4 天，想看花园和动物园，行程不要太赶' },
   { id: 'chongqing-night', title: '重庆的坡与灯', city: '重庆', theme: '城市漫游', description: '白天看山城层次，晚上去吃一顿热气腾腾的火锅。', days: 3, image: chongqing, tags: ['夜景', '火锅'], intent: '去重庆 3 天，想看夜景、吃火锅，安排一些城市漫游' },
   { id: 'kyoto-slow', title: '京都的一寺一庭', city: '京都', theme: '慢旅行', description: '每天只安排一两个去处，把时间留给庭园与石板路。', days: 3, image: kyoto, tags: ['古寺', '散步'], intent: '两个人去京都 3 天，喜欢古寺和庭园，想走得慢一些' },
-  { id: 'dali-slow', title: '去大理过一半日子', city: '大理', theme: '慢旅行', description: '苍山洱海之间，把行程留白一半。', days: 4, image: dali, tags: ['洱海', '留白'], intent: '去大理 4 天，两个人，想看洱海和苍山，行程只安排一半，剩下随意' },
-  { id: 'seoul-walk', title: '首尔的坡道与霓虹', city: '首尔', theme: '城市漫游', description: '白天逛传统市场，晚上沿汉江或街区走走。', days: 3, image: seoul, tags: ['街区', '夜游'], intent: '去首尔 3 天，两个人，喜欢逛街区和市场小吃，晚上想看夜景' },
-  { id: 'xiamen-breeze', title: '厦门的海风傍晚', city: '厦门', theme: '自然', description: '环岛路的骑行和老城的巷子，把傍晚留给海。', days: 3, image: xiamen, tags: ['海边', '骑行'], intent: '去厦门 3 天，想看海边和老街区，喜欢傍晚散步，节奏松弛' },
-  { id: 'osaka-food', title: '大阪，认真吃三天', city: '大阪', theme: '美食', description: '从市场到深夜小馆，把厨房之城吃出层次。', days: 4, image: osaka, tags: ['市场', '街食'], intent: '两个人去大阪 4 天，以吃为主线，也想沿河和城堡公园走走' },
+  { id: 'dali-slow', itineraryId: -4, title: '去大理过一半日子', city: '大理', theme: '慢旅行', description: '苍山洱海之间，把行程留白一半。', days: 4, image: dali, tags: ['洱海', '留白'], intent: '去大理 4 天，两个人，想看洱海和苍山，行程只安排一半，剩下随意' },
+  { id: 'seoul-walk', itineraryId: -5, title: '首尔的坡道与霓虹', city: '首尔', theme: '城市漫游', description: '白天逛传统市场，晚上沿汉江或街区走走。', days: 3, image: seoul, tags: ['街区', '夜游'], intent: '去首尔 3 天，两个人，喜欢逛街区和市场小吃，晚上想看夜景' },
+  { id: 'xiamen-breeze', itineraryId: -6, title: '厦门的海风傍晚', city: '厦门', theme: '自然', description: '环岛路的骑行和老城的巷子，把傍晚留给海。', days: 3, image: xiamen, tags: ['海边', '骑行'], intent: '去厦门 3 天，想看海边和老街区，喜欢傍晚散步，节奏松弛' },
+  { id: 'osaka-food', itineraryId: -7, title: '大阪，认真吃三天', city: '大阪', theme: '美食', description: '从市场到深夜小馆，把厨房之城吃出层次。', days: 4, image: osaka, tags: ['市场', '街食'], intent: '两个人去大阪 4 天，以吃为主线，也想沿河和城堡公园走走' },
 ]
 
 export interface GuideContent {

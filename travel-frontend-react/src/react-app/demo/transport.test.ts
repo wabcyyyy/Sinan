@@ -9,6 +9,20 @@ const request = async (path: string, body?: unknown, method = 'POST') => {
   return { response, ...(await response.json()) }
 }
 
+it('copies editorial routes into separate tab-local trips and edits only the confirmed copy', async () => {
+  const before = (await request('/templates/-1')).data
+  const copy = (await request('/templates/-1/fork', {})).data
+  const originalCopy = (await request(`/itinerary/${copy.itineraryId}`)).data
+  expect(originalCopy.city).toBe('杭州')
+  const draft = (await request(`/itinerary/${copy.itineraryId}/chat-edit`, { message: '把第二天安排松一点' })).data
+  const applied = (await request(`/itinerary/${copy.itineraryId}/apply-plans`, { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })).data
+  expect(applied.dayList[0]).toEqual(originalCopy.dayList[0])
+  expect(applied.dayList[1].items.length).toBe(originalCopy.dayList[1].items.length - 1)
+  expect((await request('/templates/-1')).data).toEqual(before)
+  vi.resetModules()
+  expect((await request(`/itinerary/${copy.itineraryId}`)).data.dayList[1].items).toEqual(applied.dayList[1].items)
+})
+
 describe('真实页面的固定样例数据入口', () => {
   it('复用路由并隔离演示身份与草稿，不覆盖已有账号', () => {
     localStorage.setItem('sinan-username', 'real-user')
@@ -67,12 +81,13 @@ describe('真实页面的固定样例数据入口', () => {
 
   it('编辑先产生差异草稿，确认后只改第二天；预算重算且过期确认被拒绝', async () => {
     const before = (await request('/itinerary/101')).data
+    expect(before.totalAmount).toBe(1180)
     const draft = (await request('/itinerary/101/chat-edit', { message: '把第二天安排松一点' })).data
     expect((await request('/itinerary/101')).data).toEqual(before)
     const applied = (await request('/itinerary/101/apply-plans', { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })).data
     expect(applied.dayList[0]).toEqual(before.dayList[0])
     expect(applied.dayList[1].items.some((item: { poiName: string }) => item.poiName === '杜甫草堂')).toBe(false)
-    expect(applied.totalAmount).toBe(before.totalAmount - 50)
+    expect(applied.totalAmount).toBe(1080)
     expect((await request('/itinerary/101/apply-plans', { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })).response.status).toBe(409)
     vi.resetModules()
     expect((await request('/itinerary/101')).data.totalAmount).toBe(applied.totalAmount)

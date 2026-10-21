@@ -16,6 +16,7 @@ import { navigate, useLocation } from './router'
 import { ErrorBlock, LoadingBlock, NotFoundBlock, ScreenState } from './shared/States'
 import { SharePage } from './shared/SharePage'
 import { PrivacyPage } from './shared/PrivacyPage'
+import { PublicItineraries, PublicItineraryDetail } from './templates/PublicItineraries'
 import '../styles/trial.css'
 const AdminPage = lazy(() => import('./admin/AdminPage').then((module) => ({ default: module.AdminPage })))
 
@@ -31,6 +32,7 @@ function pageTitle(path: string) {
   if (path === '/explore' || path.startsWith('/explore/')) return '探索 · 司南 Sinan'
   if (path === '/trips' || path.startsWith('/trips/')) return '我的行程 · 司南 Sinan'
   if (path === '/settings') return '设置 · 司南 Sinan'
+  if (path.startsWith('/itineraries')) return '行程库 · 司南 Sinan'
   if (path === '/login') return '登录 · 司南 Sinan'
   return '司南 Sinan'
 }
@@ -115,9 +117,11 @@ function BusinessApp() {
   if (status === 'check-error') return <ScreenState><ErrorBlock title="暂时没有连上司南" message="无法确认登录状态，检查网络后再试一次。" retryLabel="重试" onRetry={() => window.location.reload()} /></ScreenState>
   const username = user?.username ?? ''
   if (location.path === '/login' && !demo) return <LoginPage onAuthenticated={authenticated} />
-  if (location.path.startsWith('/s/')) return <SharePage path={location.path} />
+  if (location.path.startsWith('/s/')) return <SharePage path={location.path} signedIn={Boolean(username)} />
   let page: ReactNode
   if (location.path === '/') page = <HomePage signedIn={Boolean(username)} />
+  else if (location.path === '/itineraries') page = <PublicItineraries />
+  else if (/^\/itineraries\/-?\d+$/.test(location.path)) page = <PublicItineraryDetail key={location.path} id={Number(location.path.split('/').pop())} signedIn={Boolean(username)} />
   else if (location.path === '/admin') page = <AdminPage />
   else if (location.path === '/privacy') page = <PrivacyPage />
   else if (location.path === '/explore' || location.path === '/explore/') page = <ExplorePage />

@@ -26,6 +26,7 @@ import { loginRedirect, navigate, routeId } from '../router'
 import { safeAppLink } from '../../shared/map-link'
 import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
+import { PublishItineraryPanel } from '../templates/PublishItineraryPanel'
 import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
 import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
@@ -62,21 +63,10 @@ function displayDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
-function getExperienceTag(item: DayPlan['items'][0]): string | null {
-  const text = `${item.poiName} ${item.remark || ''} ${item.whyThis || ''}`
-  if (text.includes('日落') || (item.startTime && item.startTime >= '17:00' && item.startTime <= '19:30')) return '🌅 绝美日落'
-  if (text.includes('夜景') || (item.startTime && item.startTime > '19:30')) return '✨ 浪漫夜色'
-  if (text.includes('咖啡') || text.includes('茶馆') || text.includes('甜品')) return '☕ 慢调闲坐'
-  if (text.includes('古') || text.includes('寺') || text.includes('博物馆') || text.includes('历史') || text.includes('城墙')) return '🏛️ 历史人文'
-  if (text.includes('海') || text.includes('湖') || text.includes('山') || text.includes('自然') || text.includes('公园')) return '🌿 湖山漫步'
-  if (item.itemType === 'food') return '🍜 巷弄私藏'
-  return null
-}
-
 /** 价格只说有数据的事：没有 cost 时不再补「特色美食/精选打卡」这类无出处的装饰词。 */
 function getItemPriceTag(item: DayPlan['items'][0]): string | null {
-  if (item.cost === 0) return '免费开放'
-  if (item.cost && item.cost > 0) return `￥${item.cost}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
+  if (item.cost === 0) return '费用参考 ￥0 · 待核实'
+  if (item.cost && item.cost > 0) return `参考 ￥${item.cost}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
   return null
 }
 
@@ -365,6 +355,7 @@ export function TripDetailPage({ path }: { path: string }) {
     </div>
     {offline && <div className="detail-offline"><span>示例状态</span> 这是本地预览，服务恢复后可打开真实行程。</div>}
     {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />{detailGeneratingCopy(trip.coreReady)}</div>}
+    {(trip.genState === 'PARTIAL' || trip.genState === 'FAILED') && <div className="detail-offline" role="status"><strong>行程尚未完整交付</strong> · 已完成 {trip.dayList.filter((day) => day.generationStatus === 'SUCCEEDED').length}/{trip.days} 天。未完成日期的内容仅为草案，请切换到该日，点击「重新生成这一天」。</div>}
     <section className="detail-hero">
       <motion.div variants={staggerChildren(0.07)} initial="hidden" animate="show">
         <motion.span className="section-eyebrow" variants={fadeUp}>{trip.city} · {trip.days} 天 · {trip.persons} 人</motion.span>
@@ -457,7 +448,6 @@ export function TripDetailPage({ path }: { path: string }) {
                 <div className="item-heading">
                   <span className={`item-type item-type-${item.itemType}`}><Icon name={ITEM_TYPE_ICONS[item.itemType] || 'pin'} size={12} strokeWidth={2} />{ITEM_TYPE_LABELS[item.itemType] || '安排'}</span>
                   <h3>{item.poiName}</h3>
-                  {getExperienceTag(item) && <span className="item-tag-exp">{getExperienceTag(item)}</span>}
                 </div>
                 <p>{item.remark || item.whyThis || '为这一段旅程保留一点自由。'}</p>
                 <div className="item-meta">
@@ -504,7 +494,7 @@ export function TripDetailPage({ path }: { path: string }) {
             )}
           </div>
         })}</div>
-        {day.generationStatus === 'PENDING' && day.items.length > 0 && (
+        {(day.generationStatus === 'PENDING' || day.generationStatus === 'FAILED') && day.items.length > 0 && (
           <div className="day-note" role={trip.status === 1 ? 'status' : 'note'}>
             <Icon name="alert" size={17} />
             <div>
@@ -553,10 +543,11 @@ export function TripDetailPage({ path }: { path: string }) {
             </div>
           </div>
         )}
-        {day.practicalNotes?.length ? <div className="day-note is-tips"><Icon name="compass" size={17} /><div><strong>出发前看一眼</strong>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
+        {day.practicalNotes?.length ? <div className="day-note is-tips"><Icon name="compass" size={17} /><div><strong>出发前核实清单</strong><p>以下为规划建议；开放、预约、营业与班次信息请以官方当日公告为准。</p>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
         </motion.div>
       </> : <EmptyBlock title="这一天还没有安排" description="可以先切换到其他天，或重新生成当天内容。" />}</section>
     </div>
+    <PublishItineraryPanel key={trip.id} trip={trip} />
     {shareUrl && <div className="share-result"><span>分享链接</span>{safeShareUrl ? <a href={safeShareUrl} target="_blank" rel="noreferrer">{safeShareUrl}</a> : <span>{shareUrl}</span>}<button type="button" onClick={() => setShareUrl('')} aria-label="关闭分享链接"><Icon name="close" size={15} /></button></div>}
     {downloadUrl && <div className="download-result"><span>PDF 已就绪</span>{safeDownloadUrl ? <a className="button button-primary" href={safeDownloadUrl} download>下载 PDF<Icon name="download" size={15} /></a> : <span>下载 PDF</span>}<button type="button" onClick={() => setDownloadUrl('')} aria-label="关闭下载提示"><Icon name="close" size={15} /></button></div>}
     {notice && <div className="toast-note" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="关闭提示"><Icon name="close" size={14} /></button></div>}

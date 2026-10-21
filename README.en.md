@@ -1,6 +1,8 @@
 # Sinan
 
-Sinan is an AI travel planning application with React and a single FastAPI backend.
+Sinan helps travelers turn a 2–3 day city break into an editable itinerary draft.
+Confirm must-see places, arrival/departure windows and budget scope before planning; review changes before saving them.
+It uses React and a single FastAPI backend.
 A constrained LangGraph workflow creates daily itineraries, streams progress, and presents edits for confirmation.
 Estimated facts require verification before departure.
 
@@ -16,6 +18,8 @@ Map tiles require internet access; the itinerary and navigation links remain ava
 | Run the fixed demo locally | [Frontend only](#frontend-only) | Node 22.12+ |
 | Run the full application | [Full local stack](#full-local-stack) | Docker; a model key for real planning |
 | Change the code | [Development guide, Chinese](docs/public/development.md) | Python 3.12, uv, Node 22.12+, Docker |
+
+A [documented local browser case](docs/public/product-case-20261021.md) distinguishes real-model runs, partial delivery and recovery from the fixed demo. It is functional evidence, not a quality or speed benchmark. There is currently no public real-model trial endpoint.
 
 ## Get the code
 

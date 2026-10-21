@@ -8,6 +8,7 @@ import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
 import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
+import { RequirementSummary } from './RequirementSummary'
 
 /** 长期记忆的边界（与后端 preferences 服务同一规则，仅前端提示用）：
  * 每项 trim 后 1–32 字符，正负合计最多 20 项。 */
@@ -241,14 +242,7 @@ export function IntakeConfirm({
         </div>
       </div>
 
-      {requirements && <div className="plan-brief-pills" aria-label="明确要求">
-        {requirements.maxAttractionsPerDay != null && <span className="plan-brief-pill">每天最多 {requirements.maxAttractionsPerDay} 个景点</span>}
-        {requirements.excludedCategories?.includes('temple') && <span className="plan-brief-pill">不去寺庙/神社</span>}
-        {requirements.dietaryRequirement && <span className="plan-brief-pill">
-          {requirements.dietaryRequirement === 'vegan' ? '纯素（不含蛋奶）' : '素食（可含蛋奶）'} ·
-          {requirements.diningEvidencePolicy === 'review_candidates' ? '餐饮候选需自行核实' : '只安排有饮食依据的餐厅'}
-        </span>}
-      </div>}
+      <RequirementSummary requirements={requirements} />
 
       {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
       <button

@@ -10,6 +10,7 @@ import { isDemoMode, resetDemo } from '../../demoMode'
 const links = [
   { label: '首页', path: '/' },
   { label: '探索', path: '/explore' },
+  { label: '行程库', path: '/itineraries' },
 ]
 
 export function TopNav({ onLogin, onLogout, username }: { onLogin?: () => void; onLogout?: () => void; username?: string }) {

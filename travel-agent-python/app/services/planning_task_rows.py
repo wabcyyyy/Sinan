@@ -38,7 +38,7 @@ CANCELLED = "CANCELLED"
 EXPIRED = "EXPIRED"
 LIVE_STATES = (QUEUED, RUNNING)
 
-#: 当前 attempt 快照里的计数器 → 本责任累计账本列（只增，负增量不入账）
+#: 当前 attempt 快照里的计数器 → 本责任累计账本列（含 Token 结算释放的预留）
 LIFETIME_COLUMNS = {
     "llm_calls": "consumed_llm_calls",
     "prompt_tokens": "consumed_prompt_tokens",

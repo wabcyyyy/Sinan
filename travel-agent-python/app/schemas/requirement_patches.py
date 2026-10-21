@@ -17,20 +17,21 @@
 
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 from app.schemas.common import WireModel
 from app.schemas.trip_requirements import (
     MAX_TRIP_DAYS,
     SUPPORTED_EXCLUDED_CATEGORIES,
     BudgetPolicy,
+    DayWindow,
     IntakeState,
     LodgingRequirements,
     RequiredPlace,
     TripRequirements,
 )
 
-#: patch 操作目标预定义枚举；day_windows 暂不开放 patch（到离时间协商在 M3 接入）。
+#: patch 操作目标预定义枚举；日时间窗口按 day_no 定位，仍只接受标量更新。
 PatchTarget = Literal[
     "city",
     "days",
@@ -50,6 +51,9 @@ PatchTarget = Literal[
     "dining_evidence_policy",
     "transport_preference",
     "max_walk_minutes_per_leg",
+    "day_not_before",
+    "day_finish_by",
+    "day_window_kind",
     "budget_policy_mode",
     "budget_policy_include_intercity",
     "lodging_rooms",
@@ -326,6 +330,25 @@ def _apply_scalar_op(state: IntakeState, req: TripRequirements, patch: Requireme
     _reject(rejected, patch, "未知目标")
 
 
+def _apply_day_window(req: TripRequirements, patch: RequirementPatch, rejected: list[str]) -> None:
+    if patch.day_no is None or patch.op not in ("set", "unset"):
+        _reject(rejected, patch, "日时间窗口需要 day_no，且仅支持 set/unset")
+        return
+    field = {"day_not_before": "not_before", "day_finish_by": "finish_by", "day_window_kind": "kind"}[patch.target]
+    existing = next((window for window in req.day_windows if window.day_no == patch.day_no), None)
+    payload: dict[str, Any] = existing.model_dump() if existing else {"day_no": patch.day_no}
+    payload[field] = ("full" if field == "kind" else None) if patch.op == "unset" else patch.value
+    try:
+        window = DayWindow.model_validate(payload)
+    except ValidationError:
+        _reject(rejected, patch, "时间须为 HH:MM；日类型须为 full/arrival/departure")
+        return
+    req.day_windows = [old for old in req.day_windows if old.day_no != patch.day_no]
+    if window.not_before or window.finish_by or window.kind != "full":
+        req.day_windows.append(window)
+        req.day_windows.sort(key=lambda entry: entry.day_no)
+
+
 def apply_intake_patches(state: IntakeState, patches: list[RequirementPatch]) -> list[str]:
     """把抽取 patch 确定性应用到累计状态，返回被拒绝的描述列表。
 
@@ -335,7 +358,9 @@ def apply_intake_patches(state: IntakeState, patches: list[RequirementPatch]) ->
     rejected: list[str] = []
     req = state.requirements
     for patch in patches:
-        if patch.op in ("add", "remove"):
+        if patch.target in ("day_not_before", "day_finish_by", "day_window_kind"):
+            _apply_day_window(req, patch, rejected)
+        elif patch.op in ("add", "remove"):
             _apply_element_op(state, req, patch, rejected)
         elif patch.target in _COLLECTION_TARGETS:
             _apply_collection_set_unset(state, req, patch, rejected)

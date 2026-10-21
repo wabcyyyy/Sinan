@@ -65,11 +65,14 @@ export function TripMetrics({
 }): ReactNode {
   const budgetWarning = [...(trip.qualityReport?.warnings || []), ...(trip.qualityReport?.blockingIssues || [])]
     .find(issue => issue.code === 'BUDGET_EXCEEDED')
+  const items = (trip.dayList || []).flatMap(day => day.items)
+  const hasCost = trip.totalAmount > 0 || (trip.budgetList || []).some(row => row.amount > 0) || items.some(item => item.cost != null)
+  const missingCost = items.some(item => item.cost == null)
   return (
     <div className="detail-metrics">
       <span>
-        <strong><CountUp value={trip.totalAmount || trip.budget || 0} prefix="￥" /></strong>
-        <small>{budgetCaption()}</small>
+        <strong>{hasCost ? <CountUp value={trip.totalAmount ?? 0} prefix="￥" /> : '待估算'}</strong>
+        <small>{hasCost ? (missingCost ? '部分费用估算 · 尚有条目未计价' : budgetCaption()) : '费用尚未填写'}</small>
         {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>
       {dateText && <span>

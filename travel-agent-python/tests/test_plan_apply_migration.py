@@ -225,6 +225,24 @@ def _operations(trip_id: int) -> list[str]:
 # ---------- apply-plans ----------
 
 
+def test_local_edit_preserves_unmodified_day_metadata(client: TestClient) -> None:
+    from app.services import itinerary_chat
+
+    trip_id = _trip_id(client)
+    plans = json.loads(itinerary_chat.canonical_json(itinerary_chat.current_plans(trip_id)))
+    plans[1]["items"][0]["start_time"] = "15:00"
+    message_id, revision = _draft(trip_id, plans)
+    result = client.post(
+        f"/api/itinerary/{trip_id}/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision}
+    ).json()
+    assert result["code"] == 200, result
+    # 读回与刷新走同一详情接口，普通草稿不带元数据也不能清掉无关日期。
+    first = client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]
+    assert first["theme"] == "旧主题"
+    assert first["backupPlan"] == [{"name": "下雨就去博物馆"}]
+    assert first["note"] == "旧备注"
+
+
 def test_apply_plans_replaces_items_keeps_identity_and_soft_deletes_rest(client: TestClient) -> None:
     trip_id = _trip_id(client)
     xihu = _item_ids(trip_id)["西湖"]

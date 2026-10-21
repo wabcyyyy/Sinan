@@ -50,7 +50,7 @@ const previewFrame = (previewId: string, dayNo: number, ordinal: number, poiName
   itineraryId: 7,
   seq: 1,
   ts: '2026-10-09T00:00:00Z',
-  data: { runId, previewId, dayNo, itemOrdinal: ordinal, item: { itemType: 'attraction', poiName } },
+  data: { runId, previewId, dayNo, itemOrdinal: ordinal, item: { item_type: 'attraction', poi_name: poiName, why_this: '候选推荐理由' } },
 })
 
 const withdrawFrame = (previewId: string, dayNo: number, ordinal: number, runId = 'run-1'): ItineraryStreamEvent => ({
@@ -71,6 +71,7 @@ describe('itemPreviews reducer（M5a 候选状态机）', () => {
     state = reduceItemPreviewEvent(state, previewFrame('run-1:1:1', 1, 1, '宽窄巷子'))
     state = reduceItemPreviewEvent(state, previewFrame('run-1:1:2', 1, 2, '人民公园'))
     expect(namesOf(state)).toEqual(['宽窄巷子', '人民公园'])
+    expect(state.candidates[0].item).toMatchObject({ itemType: 'attraction', whyThis: '候选推荐理由' })
     // 同一候选帧重放（断线重连/转发重复）：身份去重，引用不变不触发多余渲染
     const before = state
     state = reduceItemPreviewEvent(state, previewFrame('run-1:1:1', 1, 1, '宽窄巷子'))

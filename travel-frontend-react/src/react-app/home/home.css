@@ -553,11 +553,15 @@
 /* 方案概览卡片（Plan Brief Card）：杂志化排版，呈现对话成果，减负免点 */
 .plan-brief-card { display: grid; gap: 14px; padding: 18px; border-radius: var(--sinan-radius); background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); }
 .plan-brief-card.has-cover { overflow: hidden; padding-top: 0; }
-.plan-brief-cover { position: relative; margin: 0 -18px -26px; }
+.plan-brief-cover { position: relative; margin: 0 -18px -26px; max-height: 150px; overflow: hidden; }
 .plan-brief-cover .smart-img { border-radius: 0; }
 .plan-brief-cover-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, var(--sinan-paper) 96%); }
 .plan-brief-card.has-cover .plan-brief-hero { position: relative; }
 .plan-brief-card.has-cover .plan-brief-city { font-size: 28px; }
+.requirement-summary { padding: 14px 18px; border: 1px solid var(--sinan-line-soft); border-radius: var(--sinan-radius); background: var(--sinan-paper); }
+.requirement-summary h4 { margin: 0 0 8px; font-size: 14px; }
+.requirement-summary ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; }
+.requirement-summary p { margin: 10px 0 0; color: var(--sinan-muted); font-size: 12px; line-height: 1.6; }
 .plan-brief-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--sinan-line-soft); }
 .plan-brief-dest { display: flex; align-items: baseline; gap: 10px; }
 .plan-brief-city { font-size: 22px; font-weight: 750; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); }
@@ -739,7 +743,7 @@
 .board-day-chip.is-active strong { color: var(--sinan-accent-dark); }
 .board-day-chip.is-active small { color: var(--sinan-ink-soft); }
 .board-day-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--sinan-ink); letter-spacing: var(--lp-track-display); }
-.board-day-empty { margin: 0; padding: 14px; border: 1px dashed var(--sinan-line); border-radius: var(--sinan-radius-sm); color: var(--sinan-muted); font-size: 12px; line-height: 1.7; }
+.board-day-empty, .board-fact-notice { margin: 0; padding: 14px; border: 1px dashed var(--sinan-line); border-radius: var(--sinan-radius-sm); color: var(--sinan-muted); font-size: 12px; line-height: 1.7; }
 /* 紧凑化：详情页时间线是阅读版式（大标题/32px 底距），预览板要一屏多排几条并带有精致微图 */
 .trip-board .day-item { grid-template-columns: 48px 20px minmax(0, 1fr) 56px; gap: 10px; align-items: center; }
 .trip-board .day-item-media { width: 56px; height: 56px; border-radius: var(--sinan-radius-xs); overflow: hidden; border: 1px solid var(--sinan-line-soft); box-shadow: var(--sinan-shadow-soft); flex-shrink: 0; }

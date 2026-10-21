@@ -42,6 +42,7 @@ def db(monkeypatch, tmp_path):
     db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
     monkeypatch.setattr(settings, "jwt_secret", JWT_MATERIAL)
     monkeypatch.setattr(settings, "redis_url", "redis://127.0.0.1:1/0")
+    monkeypatch.setattr(settings, "template_community_enabled", False)
     cache_store.reset_for_tests()
     monkeypatch.setattr(addons, "_cache", {})
     monkeypatch.setattr(addons, "_TABLE_READY", False)
@@ -184,7 +185,7 @@ def test_square_gated_by_addon(alice, bob, monkeypatch):
     assert bob.post("/api/templates/1/fork").status_code == 404
 
     monkeypatch.setattr(addons, "is_enabled", lambda key: key == "template_community")
-    listed = _square(bob).json()["data"]
+    listed = [row for row in _square(bob).json()["data"] if row["sourceType"] == "community"]
     assert len(listed) == 1 and listed[0]["id"] == 1 and listed[0]["coverUrl"] is None
     detail = bob.get("/api/templates/1").json()["data"]
     assert detail["summary"]["city"] == "杭州"
@@ -259,10 +260,82 @@ def test_forked_trip_is_independently_editable(alice, bob, monkeypatch):
 
     # owner 还能下架；下架后广场清空，fork 出的行程不受影响
     assert alice.delete("/api/itinerary/1/template").status_code == 200
-    assert _square(alice).json()["data"] == []
+    assert all(row["sourceType"] == "editorial" for row in _square(alice).json()["data"])
     assert bob.get("/api/templates/1").status_code == 404
     assert bob.get(f"/api/itinerary/{forked['itineraryId']}").status_code == 200
     with db_session.session_scope() as session:
         row = session.get(ItineraryMain, 1)
         assert row is not None
         assert row.template_summary is None and row.template_published_at is None
+
+
+def test_anonymous_catalog_is_read_only_and_has_complete_editorial_routes(alice, monkeypatch):
+    monkeypatch.setattr(addons, "is_enabled", lambda _key: True)
+    anonymous = TestClient(alice.app)
+    cards = anonymous.get("/api/templates")
+    assert cards.status_code == 200 and cards.headers["cache-control"] == "no-store"
+    rows = cards.json()["data"]
+    assert {row["city"] for row in rows} == {"杭州", "成都", "北京", "大理", "首尔", "厦门", "大阪"}
+    assert all(row["sourceType"] == "editorial" and row["id"] < 0 for row in rows)
+    for row in rows:
+        summary = anonymous.get(f"/api/templates/{row['id']}").json()["data"]["summary"]
+        assert len(summary["dayList"]) == row["days"]
+        assert [day["dayNo"] for day in summary["dayList"]] == list(range(1, row["days"] + 1))
+        assert all(day["items"] for day in summary["dayList"])
+    assert anonymous.post("/api/templates/-1/fork").status_code == 401
+    assert anonymous.post("/api/itinerary/1/template").status_code == 401
+    assert anonymous.delete("/api/itinerary/1/template").status_code == 401
+    assert anonymous.post("/api/itinerary/from-share/invalid").status_code == 401
+    assert anonymous.get("/api/templates/-999").status_code == 404
+    assert anonymous.get("/api/templates/999999999999999999999").status_code == 400
+    assert anonymous.get("/api/itinerary/1/template").status_code == 401
+
+
+def test_fork_does_not_read_private_source_fields_after_publication(alice, bob, monkeypatch):
+    monkeypatch.setattr(addons, "is_enabled", lambda _key: True)
+    _publish(alice)
+    with db_session.session_scope() as session:
+        source = session.get(ItineraryMain, 1)
+        assert source is not None
+        source.days = 7
+        source.persons = 9
+        source.budget = Decimal("999999")
+        source.cover_url = "/api/uploads/private-new-cover.jpg"
+    response = bob.post("/api/templates/1/fork")
+    assert response.status_code == 200
+    with db_session.session_scope() as session:
+        copied = session.get(ItineraryMain, response.json()["data"]["itineraryId"])
+        assert copied is not None
+        assert copied.days == 2 and copied.persons == 2
+        assert copied.start_date is None and copied.end_date is None and copied.budget is None
+        assert copied.cover_url is None and copied.gen_state == "COMPLETED"
+        assert copied.requirements_json is None and copied.share_token is None
+    public = bob.get("/api/templates/1").json()["data"]
+    assert public["coverUrl"] is None
+    preview = alice.get("/api/itinerary/1/template?current=true").json()["data"]
+    assert preview["summary"]["persons"] == 9
+
+
+def test_editorial_copy_is_independent_and_share_copy_respects_revocation(alice, bob, monkeypatch):
+    monkeypatch.setattr(addons, "is_enabled", lambda _key: True)
+    editorial = bob.post("/api/templates/-1/fork")
+    assert editorial.status_code == 200
+    copied = bob.get(f"/api/itinerary/{editorial.json()['data']['itineraryId']}").json()["data"]
+    assert copied["city"] == "杭州" and len(copied["dayList"]) == 2
+    assert copied["dayList"][0]["items"][0]["reviewRequirement"] == "before_departure"
+    share = alice.post("/api/itinerary/1/share", json={"expireDays": 7}).json()["data"]["shareToken"]
+    result = bob.post(f"/api/itinerary/from-share/{share}")
+    assert result.status_code == 200
+    detail = bob.get(f"/api/itinerary/{result.json()['data']['itineraryId']}").json()["data"]
+    assert detail["startDate"] is None and detail["budget"] is None
+    assert "私有备注" not in json.dumps(detail, ensure_ascii=False)
+    assert alice.delete("/api/itinerary/1/share").status_code == 200
+    assert bob.post(f"/api/itinerary/from-share/{share}").status_code == 404
+
+
+def test_partial_trip_cannot_be_published(alice):
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, 1)
+        assert main is not None
+        main.gen_state = "PARTIAL"
+    assert alice.post("/api/itinerary/1/template").status_code == 400

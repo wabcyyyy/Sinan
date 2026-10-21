@@ -10,6 +10,8 @@ agent 路由不在此列：它是内部调用面（服务间/运维直调），�
 
 from __future__ import annotations
 
+import re
+
 from fastapi import HTTPException, Request, status
 
 from app.api.deps import AuthUser, authenticate, extract_token
@@ -56,7 +58,10 @@ def enforce_business_auth(request: Request) -> AuthUser | None:
     token, _source = extract_token(request.headers.get("Authorization"), request.cookies)
     user = authenticate(token)
 
-    if user is None and not is_public_path(path):
+    public_template_read = request.method == "GET" and re.fullmatch(
+        r"/api/templates(?:/(?:capability|-?[0-9]+))?", path
+    )
+    if user is None and not (is_public_path(path) or public_template_read):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     if path.startswith(ADMIN_PATHS) and (user is None or not user.is_admin):

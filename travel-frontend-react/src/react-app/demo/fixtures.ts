@@ -1,6 +1,7 @@
 /** 合成样例，仅供正式页面的静态交互展示；不是模型运行记录。 */
 import type { DayPlan, ItineraryDetail, TripItem } from '../../types/itinerary'
 import type { ChatDayPlan } from '../../types/chat'
+import type { TemplateDetailVO } from '../../types/generated/contracts'
 
 function item(id: number, itemType: string, poiName: string, startTime: string, endTime: string, cost: number, latitude: number, longitude: number, remark: string): TripItem {
   return { id, itemType, poiName, startTime, endTime, cost, latitude, longitude, address: '成都 · 样例位置待核实', remark,
@@ -14,7 +15,9 @@ export function recalculate(trip: ItineraryDetail): ItineraryDetail {
   for (const day of trip.dayList) for (const point of day.items) {
     const category = categories[point.itemType] || '其他'
     const row = amounts.get(category) || { category, amount: 0, itemCount: 0 }
-    row.amount += point.cost || 0
+    // 与页面单价单位一致：普通条目按人、住宿按每间两人；不虚构未列出的交通费。
+    const units = point.itemType === 'hotel' ? Math.ceil(trip.persons / 2) : trip.persons
+    row.amount += (point.cost || 0) * units
     row.itemCount += 1
     amounts.set(category, row)
   }
@@ -42,7 +45,7 @@ const dayList: DayPlan[] = [
       item(23, 'attraction', '宽窄巷子', '14:00', '15:30', 0, 30.663, 104.052, '按体力选一段老街，不以打卡数量为目标。'),
       item(24, 'activity', '街角咖啡与自由散步（示例）', '16:00', '17:00', 35, 30.664, 104.053, '可以坐下来整理照片，也可以回到喜欢的小巷。'),
       item(25, 'food', '返程前晚餐（示例）', '17:30', '18:30', 80, 30.662, 104.054, '按返程时间调整用餐，车站交通时间请另行核实。'),
-    ], practicalNotes: ['这是完整产品界面的固定样例，交通、门票与营业状态均未实时查询。'],
+    ], practicalNotes: ['这是固定样例，门票与营业状态未实时查询；费用小计按两人计算，不含未列出的交通费。'],
     backupPlan: [{ if: '体力不足', action: '在对话栏选择“把第二天安排松一点”，确认后移除上午的杜甫草堂。' }], photoSpots: [],
   },
 ]
@@ -59,8 +62,21 @@ export function makeDemoTrip(id = 101): ItineraryDetail {
 
 export function relaxedPlans(trip: ItineraryDetail): ChatDayPlan[] {
   const day = trip.dayList[1]
-  return [{ day_no: day.dayNo, items: day.items.filter((point) => point.poiName !== '杜甫草堂').map((point) => ({
+  const remove = day.items.find((point) => point.poiName === '杜甫草堂') || [...day.items].reverse().find((point) => point.itemType === 'attraction')
+  return [{ day_no: day.dayNo, items: day.items.filter((point) => point !== remove).map((point) => ({
     poi_name: point.poiName, item_type: point.itemType, start_time: point.startTime, end_time: point.endTime,
     cost: point.cost, latitude: point.latitude, longitude: point.longitude, remark: point.remark,
   })) }]
+}
+
+export function makeTemplateTrip(template: TemplateDetailVO, id: number): ItineraryDetail {
+  return recalculate({ id, title: `模板:${template.title}`, city: template.city, days: template.days, stayNights: Math.max(template.days - 1, 0), persons: template.summary.persons,
+    status: 2, genState: 'COMPLETED', destinationStatus: 'draft_only', qualityStatus: 'READY_WITH_WARNINGS', favorite: false,
+    planNote: '从编辑规划复制，日期、住宿与预算需自行设置；本标签页内的修改不影响公开参考路线。',
+    dayList: template.summary.dayList.map((day) => ({ dayId: id * 10 + day.dayNo, dayNo: day.dayNo, theme: day.theme, generationStatus: 'SUCCEEDED', items: day.items.map((point, index) => ({
+      id: id * 100 + day.dayNo * 10 + index, itemType: point.itemType || 'attraction', poiName: point.poiName, address: point.address,
+      startTime: point.startTime, endTime: point.endTime, latitude: point.latitude, longitude: point.longitude, remark: point.tip,
+      verificationStatus: 'unverified', valueKind: 'estimated', freshnessStatus: 'unknown', reviewRequirement: 'before_departure',
+    })) })), budgetList: [], totalAmount: 0,
+  })
 }

@@ -4,9 +4,26 @@ mock 手法对齐 tests/test_clarify_intake.py：monkeypatch clarify.get_llm_cli
 """
 
 from app.agent.editing import clarify as clarify_mod
+from app.schemas.requirement_patches import RequirementPatch, apply_intake_patches
 from app.schemas.trip import ClarifyRequest
-from app.schemas.trip_requirements import IntakeState
+from app.schemas.trip_requirements import IntakeState, intake_state_issues
 from tests.llm_binding import FakeBinding
+
+
+def test_day_window_patch_rejects_invalid_time_and_can_remove_bound() -> None:
+    state = IntakeState(city="杭州", days=2, persons=2)
+
+    def patch(target: str, value: str | None, op: str = "set") -> RequirementPatch:
+        return RequirementPatch.model_validate({"target": target, "value": value, "op": op, "day_no": 1})
+
+    assert apply_intake_patches(state, [patch("day_not_before", "25:00")])
+    assert state.requirements.day_windows == []
+    assert not apply_intake_patches(state, [patch("day_not_before", "14:00"), patch("day_finish_by", "12:00")])
+    assert intake_state_issues(state)
+    assert not apply_intake_patches(state, [patch("day_finish_by", None, "unset")])
+    assert not intake_state_issues(state)
+    assert not apply_intake_patches(state, [patch("day_not_before", None, "unset")])
+    assert state.requirements.day_windows == []
 
 
 class _FakeClient(FakeBinding):
@@ -46,6 +63,34 @@ def test_state_days_eight_survives_round_and_stays_blocked(monkeypatch) -> None:
     assert res.ready is False
     assert res.slots["days"] == 8, "slots 兼容投影同步携带 8，老前端不回退"
     assert res.question is not None and "7 天" in res.question
+
+
+def test_arrival_departure_windows_and_budget_scope_survive_clarify(monkeypatch) -> None:
+    res = _run(
+        monkeypatch,
+        """{"patches":[
+      {"op":"set","target":"day_not_before","day_no":1,"value":"14:00"},
+      {"op":"set","target":"day_window_kind","day_no":1,"value":"arrival"},
+      {"op":"set","target":"day_finish_by","day_no":2,"value":"16:00"},
+      {"op":"set","target":"day_window_kind","day_no":2,"value":"departure"},
+      {"op":"set","target":"budget_policy_include_intercity","value":false}
+    ]}""",
+        ClarifyRequest(
+            message="首日14点后开始，次日16点结束，不含往返大交通", state=IntakeState(city="杭州", days=2, persons=2)
+        ),
+    )
+    first, second = res.state.requirements.day_windows
+    assert (first.not_before, first.kind, second.finish_by, second.kind) == ("14:00", "arrival", "16:00", "departure")
+    assert res.state.requirements.budget_policy is not None
+    assert res.state.requirements.budget_policy.include_intercity_transport is False
+    updated = _run(
+        monkeypatch,
+        '{"patches":[{"op":"set","target":"day_not_before","day_no":1,"value":"15:00"}]}',
+        ClarifyRequest(message="第一天改15点开始", state=res.state),
+    )
+    assert updated.state.requirements.day_windows[0].not_before == "15:00"
+    assert updated.state.requirements.day_windows[1] == second
+    assert not intake_state_issues(updated.state)
 
 
 def test_museum_category_patch_lands_in_requirements(monkeypatch) -> None:

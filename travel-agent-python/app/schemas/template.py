@@ -22,6 +22,8 @@ class TemplateItemVO(BaseModel):
     endTime: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    address: str | None = None
+    tip: str | None = None
 
 
 class TemplateDayVO(BaseModel):
@@ -40,11 +42,15 @@ class TemplateSummaryVO(BaseModel):
     intro: str
     costTiers: list[TemplateCostTier]
     dayList: list[TemplateDayVO]
+    coverUrl: str | None = None
+    sourceType: Literal["editorial", "community"] = "community"
+    notes: list[str] = Field(default_factory=list)
+    references: list[str] = Field(default_factory=list)
 
 
 class TemplatePublishVO(BaseModel):
     itineraryId: int
-    publishedAt: str
+    publishedAt: str | None
     summary: TemplateSummaryVO
 
 
@@ -58,6 +64,9 @@ class TemplateCardVO(BaseModel):
     coverUrl: str | None = None
     costTiers: list[TemplateCostTier]
     publishedAt: str
+    intro: str = ""
+    persons: int = 1
+    sourceType: Literal["editorial", "community"] = "community"
 
 
 class TemplateDetailVO(TemplateCardVO):

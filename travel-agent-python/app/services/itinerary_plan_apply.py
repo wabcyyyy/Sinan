@@ -7,7 +7,7 @@
    做乐观并发（四道 409 见 `itinerary_chat.require_pending_action`）。迁移时若"顺手"改成信任
    `plans`，等于把「AI 建议 → 用户确认」这条审计链关掉：客户端可以借 apply 接口写任意点位。
 2. 应用是**整份替换**：草稿里没出现的行程项软删、天数变少则尾部日期软删；日元数据（主题/
-   迷你路线/备选/机位/实用提示）按草稿整份覆盖，草稿没带就清空，不给上一版留残影。
+   迷你路线/备选/机位/实用提示）在日期内容变化时按草稿覆盖；未改日期保留缺省的日信息。
 3. 项上的 `id` 是**身份校验**：带 id 表示「改这一条」，名称与库里不一致即整单 400、什么都不写。
 
 模块布局：条目级落地与共享标量 helper 在 `itinerary_plan_apply_items`，酒店选项落地在
@@ -199,6 +199,12 @@ def _apply_days(
     existing_items: dict[int, ItineraryItem],
     retained_item_ids: set[int],
 ) -> None:
+    # 普通聊天精简草稿不携带日元数据。按完整条目比较，避免只改第二天却清空
+    # 第一天的主题/提示；JSON 读回将 Decimal 转成与服务端草稿相同的数值。
+    before = {
+        plan["day_no"]: plan
+        for plan in json.loads(itinerary_chat.canonical_json(itinerary_chat.current_plans(itinerary_id)))
+    }
     for plan in plans:
         day = day_by_no.get(_as_int(plan.get("day_no")) or 0)
         if day is None:
@@ -206,7 +212,9 @@ def _apply_days(
         note = plan.get("note")
         if isinstance(note, str) and note.strip():
             day.note = note
-        _persist_day_metadata(day, plan)
+        original = before.get(day.day_no, {})
+        unchanged = plan.get("items") == original.get("items") and day.note == original.get("note")
+        _persist_day_metadata(day, plan, preserve_missing=unchanged)
         sort_no = 0
         for raw_item in plan.get("items") or []:
             if not isinstance(raw_item, dict):
@@ -330,8 +338,10 @@ _METADATA_KEYS = {
 }
 
 
-def _persist_day_metadata(day: ItineraryDay, plan: dict[str, Any]) -> None:
-    """草稿是该日期的完整替代读模型：未携带的元数据要清掉，不留上一版本。"""
+def _persist_day_metadata(day: ItineraryDay, plan: dict[str, Any], *, preserve_missing: bool = False) -> None:
+    """改动日整份替换；未改动日且草稿未指定元数据时保留原值。"""
+    if preserve_missing and not any(key in plan for keys in _METADATA_KEYS.items() for key in keys):
+        return
     metadata: dict[str, Any] = {}
     for source_key, output_key in _METADATA_KEYS.items():
         value = plan.get(source_key)

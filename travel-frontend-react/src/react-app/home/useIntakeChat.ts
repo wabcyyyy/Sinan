@@ -96,7 +96,7 @@ export function useIntakeChat() {
 
   /** 每轮 clarify 的公共通道（用户消息与表单重验共用）：返回本轮后端是否就绪。
    * 迟到响应（seq 过期）与被 abort 的请求一律按未就绪处理且不落任何状态。 */
-  const ask = useCallback(async (rawText: string): Promise<boolean> => {
+  const ask = useCallback(async (rawText: string, resumePending = false): Promise<boolean> => {
     const trimmed = rawText.trim()
     if (!trimmed || controller.current) return false
     setError('')
@@ -104,7 +104,9 @@ export function useIntakeChat() {
     setSending(true)
     const askController = (controller.current = new AbortController())
     const mySeq = ++seq.current
-    setMessages((list) => [...list, { id: nextMessageId(), role: 'user', text: trimmed }])
+    setMessages((list) => resumePending && list.at(-1)?.role === 'user' && list.at(-1)?.text === trimmed
+      ? list
+      : [...list, { id: nextMessageId(), role: 'user', text: trimmed }])
     setFirstMessage((current) => current || trimmed)
 
     try {
@@ -169,8 +171,8 @@ export function useIntakeChat() {
     if (!pending) return
     if (!hasIntakeUser()) return
     clearPendingMessage()
-    window.setTimeout(() => { if (intakeOwnerIsCurrent(ownerEpoch)) void send(pending) }, 0)
-  }, [send])
+    window.setTimeout(() => { if (intakeOwnerIsCurrent(ownerEpoch)) void ask(pending, true) }, 0)
+  }, [ask])
 
   /** 确认卡表单编辑（M2）：内容一改，后端就绪作废——ready 落 false、标记待重验；
    * 顺带自增 seq 让在途 clarify 响应整体作废（迟到响应不得覆盖新修改）。 */

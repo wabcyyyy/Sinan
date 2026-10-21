@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from datetime import time as dt_time
 from decimal import Decimal
 from typing import Any
 
@@ -23,9 +22,9 @@ from app.common.envelope import ApiError
 from app.common.vo_json import iso_datetime
 from app.db.models import BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
-from app.services import itinerary_query
-
-FORK_TITLE_PREFIX = "模板:"
+from app.schemas.template import TemplateSummaryVO
+from app.services import itinerary_query, share_service, template_copy
+from app.services.template_catalog import curated_templates
 
 #: 花费档位映射（C2.4：档位文案写在投影器内）。key = BudgetDetail.category；
 #: 值 = [(单均上限, 文案)]，升序匹配，超出取最后一档。单均 = 类目预算 / item_count。
@@ -95,6 +94,7 @@ def _build_summary(
                 "endTime": item.end_time.isoformat() if item.end_time else None,
                 "latitude": float(item.latitude) if item.latitude is not None else None,
                 "longitude": float(item.longitude) if item.longitude is not None else None,
+                "address": item.address,
             }
             for item in sorted(items_by_day.get(day.id, []), key=lambda i: i.sort_no)
         ]
@@ -122,12 +122,16 @@ def _build_summary(
         "intro": intro,
         "costTiers": cost_tiers,
         "dayList": day_list,
+        "coverUrl": main.cover_url,
+        "sourceType": "community",
+        "notes": [],
+        "references": [],
     }
 
 
 def _require_published(session, template_id: int) -> ItineraryMain:
     main = session.get(ItineraryMain, template_id)
-    if main is None or main.template_published_at is None or not main.template_summary:
+    if main is None or main.archived or main.template_published_at is None or not main.template_summary:
         raise ApiError(404, "模板不存在")
     return main
 
@@ -135,10 +139,15 @@ def _require_published(session, template_id: int) -> ItineraryMain:
 def publish(user_id: int, itinerary_id: int) -> dict[str, Any]:
     with session_scope() as session:
         main = itinerary_query.require_owned_main(session, user_id, itinerary_id)
+        if main.archived or main.status != 2 or main.gen_state in ("GENERATING", "CORE_READY", "PARTIAL", "FAILED"):
+            raise ApiError(400, "请先完成行程，再发布公开规划")
         days = session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id)).all()
         items = session.scalars(select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)).all()
         budgets = session.scalars(select(BudgetDetail).where(BudgetDetail.itinerary_id == itinerary_id)).all()
         summary = _build_summary(main, list(days), list(items), list(budgets))
+        if len(days) != main.days or not all(day["items"] for day in summary["dayList"]):
+            raise ApiError(400, "请先补齐每天的路线，再发布公开规划")
+        summary = TemplateSummaryVO.model_validate(summary).model_dump()
         main.template_summary = summary
         main.template_published_at = datetime.now()
         session.flush()
@@ -147,18 +156,18 @@ def publish(user_id: int, itinerary_id: int) -> dict[str, Any]:
     return {"itineraryId": itinerary_id, "publishedAt": iso_datetime(published_at), "summary": summary}
 
 
-def template_view(user_id: int, itinerary_id: int) -> dict[str, Any]:
+def template_view(user_id: int, itinerary_id: int, *, current: bool = False) -> dict[str, Any]:
     """owner 视角：已发布→物化快照；未发布→即时构建的预览（不落库）。"""
     with session_scope() as session:
         main = itinerary_query.require_owned_main(session, user_id, itinerary_id)
-        if main.template_published_at is not None and main.template_summary:
+        if not current and main.template_published_at is not None and main.template_summary:
             published_at = main.template_published_at
-            summary: dict[str, Any] = main.template_summary
+            summary: dict[str, Any] = TemplateSummaryVO.model_validate(main.template_summary).model_dump()
         else:
             days = session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id)).all()
             items = session.scalars(select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)).all()
             budgets = session.scalars(select(BudgetDetail).where(BudgetDetail.itinerary_id == itinerary_id)).all()
-            published_at = None
+            published_at = main.template_published_at
             summary = _build_summary(main, list(days), list(items), list(budgets))
     return {"itineraryId": itinerary_id, "publishedAt": iso_datetime(published_at), "summary": summary}
 
@@ -177,16 +186,26 @@ def list_templates() -> list[dict[str, Any]]:
     with session_scope() as session:
         rows = session.scalars(
             select(ItineraryMain)
-            .where(ItineraryMain.template_published_at.is_not(None), ItineraryMain.template_summary.is_not(None))
+            .where(
+                ItineraryMain.template_published_at.is_not(None),
+                ItineraryMain.template_summary.is_not(None),
+                ItineraryMain.archived.is_(False),
+            )
             .order_by(ItineraryMain.template_published_at.desc())
+            .limit(60)
         ).all()
-        return [_card(row) for row in rows]
+        return [_card(row) for row in rows] + [row.model_dump(exclude={"summary"}) for row in curated_templates()]
 
 
 def get_template(template_id: int) -> dict[str, Any]:
+    if template_id < 0:
+        for row in curated_templates():
+            if row.id == template_id:
+                return row.model_dump()
+        raise ApiError(404, "模板不存在")
     with session_scope() as session:
         main = _require_published(session, template_id)
-        return {**_card(main), "summary": main.template_summary}
+        return {**_card(main), "summary": TemplateSummaryVO.model_validate(main.template_summary).model_dump()}
 
 
 def _card(main: ItineraryMain) -> dict[str, Any]:
@@ -196,81 +215,35 @@ def _card(main: ItineraryMain) -> dict[str, Any]:
         "title": summary.get("title", main.title),
         "city": summary.get("city", main.city),
         "days": summary.get("days", main.days),
-        "coverUrl": main.cover_url,
+        "coverUrl": summary.get("coverUrl"),
+        "intro": summary.get("intro", ""),
+        "persons": summary.get("persons", 1),
+        "sourceType": "community",
         "costTiers": summary.get("costTiers", []),
         "publishedAt": iso_datetime(main.template_published_at),
     }
 
 
-def _parse_time(value: Any) -> dt_time | None:
-    """快照里的 "HH:MM"/"HH:MM:SS" → time；坏值置 None 而不是让 fork 整体失败。"""
-    if not isinstance(value, str) or not value.strip():
-        return None
-    parts = value.strip().split(":")
-    try:
-        hour, minute = int(parts[0]), int(parts[1])
-        second = int(parts[2]) if len(parts) > 2 else 0
-        return dt_time(hour, minute, second)
-    except (ValueError, IndexError):
-        return None
-
-
 def fork(user_id: int, template_id: int) -> dict[str, Any]:
-    """从已发布快照复制出新行程；源模板零改动，新行程与普通行程无差别。"""
-    with session_scope() as session:
-        source = _require_published(session, template_id)
-        summary: dict[str, Any] = source.template_summary or {}
-        title = f"{FORK_TITLE_PREFIX}{summary.get('title', source.title)}"
+    """复制公开时的快照；后续作者编辑不改变复制依据。"""
+    return template_copy.copy_summary(user_id, get_template(template_id)["summary"])
 
-        copy = ItineraryMain(
-            user_id=user_id,
-            title=title[:128],
-            city=summary.get("city", source.city),
-            start_date=source.start_date,
-            end_date=source.end_date,
-            days=source.days,
-            persons=source.persons,
-            budget=source.budget,
-            hotel_tier=source.hotel_tier,
-            stay_nights=source.stay_nights,
-            status=2,
-            trip_theme=source.trip_theme,
-        )
-        session.add(copy)
-        session.flush()
 
-        for day_summary in summary.get("dayList", []):
-            day_no = int(day_summary.get("dayNo") or 0)
-            if day_no < 1:
-                continue
-            new_day = ItineraryDay(
-                itinerary_id=copy.id,
-                day_no=day_no,
-                generation_status="SUCCEEDED",
-                metadata_json=json.dumps({"theme": day_summary["theme"]}, ensure_ascii=False)
-                if day_summary.get("theme")
-                else None,
-            )
-            session.add(new_day)
-            session.flush()
-            for sort_no, item_summary in enumerate(day_summary.get("items", [])):
-                poi_name = str(item_summary.get("poiName") or "").strip()
-                if not poi_name:
-                    continue
-                session.add(
-                    ItineraryItem(
-                        day_id=new_day.id,
-                        itinerary_id=copy.id,
-                        item_type=str(item_summary.get("itemType") or "attraction"),
-                        poi_name=poi_name[:128],
-                        latitude=item_summary.get("latitude"),
-                        longitude=item_summary.get("longitude"),
-                        start_time=_parse_time(item_summary.get("startTime")),
-                        end_time=_parse_time(item_summary.get("endTime")),
-                        sort_no=sort_no,
-                        source="template",
-                        value_kind="generated",
-                    )
-                )
-        session.flush()
-        return {"itineraryId": copy.id, "title": copy.title}
+def fork_shared(user_id: int, token: str) -> dict[str, Any]:
+    """持有效分享链接也可复制；只取公开字段，不携带私人日期或金额。"""
+    shared = share_service.view_shared(token)
+    summary = {key: shared[key] for key in ("title", "city", "persons", "coverUrl")}
+    summary["dayList"] = [
+        {
+            "theme": day.get("theme"),
+            "items": [
+                {
+                    key: item.get(key)
+                    for key in ("poiName", "itemType", "address", "startTime", "endTime", "latitude", "longitude")
+                }
+                for item in day["items"]
+            ],
+        }
+        for day in shared["dayList"]
+    ]
+    return template_copy.copy_summary(user_id, summary)

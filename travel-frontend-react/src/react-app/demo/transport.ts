@@ -1,7 +1,8 @@
 /** 展示专用数据入口。只响应固定脚本，永不转发到真实 API 或模型。 */
 import type { ItineraryDetail, ItinerarySummary } from '../../types/itinerary'
 import type { ItineraryChatMessage } from '../../types/chat'
-import { makeDemoTrip, recalculate, relaxedPlans } from './fixtures'
+import { makeDemoTrip, makeTemplateTrip, recalculate, relaxedPlans } from './fixtures'
+import { CURATED_ITINERARIES } from '../../types/generated/contracts'
 
 const KEY = 'sinan-demo:trips-v1'
 interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number }
@@ -18,8 +19,9 @@ function save() {
 }
 
 function snapshot(record: RecordState): ItineraryDetail {
-  const completed = record.startedAt === undefined ? 2 : Math.min(2, Math.floor((Date.now() - record.startedAt) / 2200))
-  const done = completed === 2
+  const total = record.trip.dayList.length
+  const completed = record.startedAt === undefined ? total : Math.min(total, Math.floor((Date.now() - record.startedAt) / 2200))
+  const done = completed === total
   return recalculate({ ...structuredClone(record.trip), status: done ? 2 : 1, genState: done ? 'COMPLETED' : 'GENERATING', qualityStatus: done ? record.trip.qualityStatus : 'DRAFT',
     dayList: record.trip.dayList.map((day, index) => index < completed ? structuredClone(day)
       : { ...structuredClone(day), items: [], generationStatus: index === completed ? 'RUNNING' : 'PENDING' }) })
@@ -67,11 +69,13 @@ function clarify(body: { message?: string; slots?: Record<string, unknown> }): R
 
 function edit(record: RecordState, text: string): ItineraryChatMessage {
   const relaxed = /第二天|第\s*2\s*天/.test(text) && /松|轻松|少|留白|草堂/.test(text)
-    && record.trip.dayList[1].items.some((point) => point.poiName === '杜甫草堂')
+    && record.trip.dayList[1]?.items.some((point) => point.itemType === 'attraction')
   const plans = relaxed ? relaxedPlans(record.trip) : undefined
   for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
   const reply: ItineraryChatMessage = { id: Date.now(), role: 'ai',
-    content: relaxed ? '展示编辑建议：第二天移除杜甫草堂，保留第一天与住宿。确认后才修改行程，预算相应减少 50 元。'
+    content: relaxed ? (record.trip.dayList[1].items.some((point) => point.poiName === '杜甫草堂')
+      ? `展示编辑建议：第二天移除杜甫草堂，保留第一天与住宿。确认后才修改行程，费用小计减少 ${(record.trip.dayList[1].items.find((point) => point.poiName === '杜甫草堂')?.cost ?? 0) * record.trip.persons} 元。`
+      : '固定脚本建议：第二天少安排一处景点，保留第一天与其他安排；确认后只修改当前标签页内的副本。')
       : '这是固定脚本展示，不会调用真实模型。你可以发送“把第二天安排松一点”，查看正式页面中的差异卡，并确认应用。',
     ...(plans ? { plans, baseRevision: String(record.revision), changed: true } : {}) }
   record.messages.push({ id: Date.now() - 1, role: 'user', content: text }, reply)
@@ -86,6 +90,20 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   const method = init.method || 'GET'
   const body = typeof init.body === 'string' ? JSON.parse(init.body) : {}
   if (path === '/user/info') return json({ id: 0, username: '演示访客', nickname: '演示访客', role: 'user' })
+  if (path === '/templates' && method === 'GET') return json(CURATED_ITINERARIES.map(({ summary: _summary, ...card }) => card))
+  const templateMatch = path.match(/^\/templates\/(-\d+)(\/fork)?$/)
+  if (templateMatch) {
+    const template = CURATED_ITINERARIES.find((row) => row.id === Number(templateMatch[1]))
+    if (!template) return json(null, 404, '这条参考路线不存在')
+    if (!templateMatch[2] && method === 'GET') return json(template)
+    if (templateMatch[2] && method === 'POST') {
+      const id = Math.max(200, ...Object.keys(records()).map(Number)) + 1
+      const trip = makeTemplateTrip(template, id)
+      records()[String(id)] = { trip, messages: [], revision: 1 }
+      save()
+      return json({ itineraryId: id, title: trip.title })
+    }
+  }
   if (path === '/itinerary/supported-cities') return json(['成都'])
   if (path === '/llm-gateway' && method === 'GET') return json([])
   if (path === '/user/trial-wallet') return json({ userId: 0, balanceCny: 0, spentCny: 0, entries: [] })
@@ -135,7 +153,10 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   if (action === '/apply-plans') {
     const draft = record.messages.find((msg) => msg.id === body.actionMessageId && msg.plans?.length)
     if (!draft || body.baseRevision !== String(record.revision)) return json(null, 409, '演示草稿已失效，请重新发送编辑指令。')
-    record.trip.dayList[1].items = record.trip.dayList[1].items.filter((point) => point.poiName !== '杜甫草堂')
+    const items = draft.plans?.[0]?.items
+    if (!items) return json(null, 409, '演示草稿不完整，请重新生成建议。')
+    const names = new Set(items.map((point) => point.poi_name))
+    record.trip.dayList[1].items = record.trip.dayList[1].items.filter((point) => names.has(point.poiName))
     record.trip.dayList[1].theme = '少赶一站，把上午留白'
     record.trip = recalculate(record.trip)
     record.revision += 1

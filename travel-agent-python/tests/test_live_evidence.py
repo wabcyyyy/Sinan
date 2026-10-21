@@ -42,7 +42,7 @@ def no_model(monkeypatch):
     monkeypatch.setattr(LLMClient, "stream_chat_deltas", forbidden)
 
 
-def test_resolution_unknown_regression_and_uninvolved_days():
+def test_resolution_single_bound_regression_and_uninvolved_days():
     before = plans()
     before[1]["items"][1]["start_time"] = "10:30"
     after = plans()
@@ -58,7 +58,8 @@ def test_resolution_unknown_regression_and_uninvolved_days():
     assert "day:2:time:day:2" in result["resolved"]
     assert "day:1:required:anchor" in result["new_violations"]
     assert result["required_retention"] == {"eligible": 1, "retained": 0}
-    assert result["before"]["counts"]["unknown"] == 1
+    assert result["before"]["checks"]["day:1:window:day:1"]["status"] == "pass"
+    assert result["before"]["counts"].get("unknown", 0) == 0
     assert result["uninvolved_days"] == [{"day_no": 1, "preserved": False}]
 
 
@@ -85,8 +86,11 @@ def test_numeric_time_normalization_and_global_required():
 def test_missing_time_is_unknown_not_pass():
     draft = plans()
     draft[0]["items"][0]["start_time"] = None
-    result = evidence.checks_for(draft, {"days": 2})
+    result = evidence.checks_for(
+        draft, {"days": 2, "requirementsStruct": {"dayWindows": [{"dayNo": 1, "notBefore": "09:00"}]}}
+    )
     assert result["checks"]["day:1:time:day:1"]["status"] == "unknown"
+    assert result["checks"]["day:1:window:day:1"]["status"] == "unknown"
 
 
 def test_missing_cost_does_not_prove_hard_cap():

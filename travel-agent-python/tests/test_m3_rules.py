@@ -6,6 +6,8 @@ day_policy / constraint_checks / reflect / day_delivery_gate），本文件只�
 常量与断言按公式实算核对（数值漂移即红，属门禁只升不降）。
 """
 
+import pytest
+
 from app.agent.data.route_service import MODE_SPEED_KMH, estimate_duration_minutes
 from app.agent.generation.content.reflect import BUDGET_OVERAGE_MARK, validate_plans
 from app.agent.generation.output.schedule_optimizer import (
@@ -206,6 +208,25 @@ def test_arrival_day_with_explicit_150min_window_is_not_flagged_thin():
 
 
 # ---- §8.3 ⑥：普通全天下限不变 ----
+
+
+@pytest.mark.parametrize(
+    "kind,bounds,start,end,expected",
+    [
+        ("arrival", {"not_before": "14:00"}, "13:00", "15:00", "violation"),
+        ("arrival", {"not_before": "14:00"}, "14:00", "15:00", "pass"),
+        ("departure", {"finish_by": "16:00"}, "15:00", "17:00", "violation"),
+        ("departure", {"finish_by": "16:00"}, "15:00", "16:00", "pass"),
+        ("departure", {"finish_by": "16:00"}, "23:00", "24:00", "violation"),
+        ("departure", {"finish_by": "16:00"}, None, None, "unknown"),
+    ],
+)
+def test_explicit_single_bound_is_checked(kind, bounds, start, end, expected):
+    req = TripRequirements(day_windows=[DayWindow(day_no=1, kind=kind, **bounds)])
+    plan = {"items": [{"poi_name": "西湖", "start_time": start, "end_time": end}]}
+    report = check_constraints(plan, req, 1, day_policy_for(req, 1))
+    window = next(check for check in report.checks if check.kind == "day_window")
+    assert window.status == expected
 
 
 def test_normal_full_day_thresholds_unchanged_without_requirements():
