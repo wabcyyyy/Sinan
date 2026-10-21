@@ -61,7 +61,7 @@ export function TripPanel({ planning, chat, onStart }: {
   const showConfirm = state === 'confirm' || (state === 'error' && (chat.ready || chat.needsReconfirm))
   const contentKey = showBoard ? 'board' : state === 'error' && showConfirm ? 'error-confirm' : state
   return <section className="trip-panel" aria-label="行程工作面板" aria-busy={planning.busy}>
-    <TripSteps step={step} busy={planning.busy} />
+    <TripSteps step={step} busy={planning.busy} partial={planning.draft?.genState === 'PARTIAL'} />
     <motion.div className="trip-panel-body" key={contentKey} variants={fadeUp} initial="hidden" animate="show">
       {state === 'collecting' && <SlotChecklist slots={chat.slots} onSelectPrompt={(text) => void chat.send(text)} />}
       {showConfirm && (
@@ -91,7 +91,7 @@ export function TripPanel({ planning, chat, onStart }: {
 /** 四步 stepper：底轨 + 随步推进的填充轨（弹簧），当前步圆点带呼吸环；
  * 外层 wrap 吸顶（顶栏下方），右栏内容长时进度总览常驻。
  * 类名契约：ol.trip-steps、li.is-done / li.is-current、aria-current="step"。 */
-function TripSteps({ step, busy }: { step: number; busy: boolean }) {
+function TripSteps({ step, busy, partial }: { step: number; busy: boolean; partial: boolean }) {
   const fill = `${(step / (STEPS.length - 1)) * 100}%`
   // 轨道排在 ol 之前：两者都是定位元素，后者叠在上层，节点圆盖住轨道
   return <div className="trip-steps-wrap">
@@ -108,7 +108,7 @@ function TripSteps({ step, busy }: { step: number; busy: boolean }) {
               ? <motion.span className="trip-step-check" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING_POP}><Icon name="check" size={12} strokeWidth={2.6} /></motion.span>
               : <span className={current && busy ? 'trip-step-dot is-busy' : 'trip-step-dot'} />}
           </span>
-          <span className="trip-step-label">{label}</span>
+          <span className="trip-step-label">{index === 3 && partial ? '待补齐' : label}</span>
         </li>
       })}
     </ol>

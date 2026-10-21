@@ -80,7 +80,15 @@ _EXTRACT_SPEC = (
     "dining_evidence_policy(verified_only=只安排有饮食依据的餐厅；review_candidates=用户明确接受"
     "先给餐饮候选并自行核实。仅在用户明确选择后输出，不能因为说素食或直接开始就默认接受候选)、"
     "max_walk_minutes_per_leg(单段步行分钟上限，正整数)、"
+    "day_not_before(指定日最早开始时间，value=HH:MM，必须给day_no)、"
+    "day_finish_by(指定日最晚结束时间，value=HH:MM，必须给day_no)、"
+    "day_window_kind(指定日类型，value=arrival到达日/departure离开日/full普通日，必须给day_no)。"
+    "例如两天行程首日14点后开始、次日16点前结束：set day_not_before value=14:00 day_no=1，"
+    "set day_window_kind value=arrival day_no=1，set day_finish_by value=16:00 day_no=2，"
+    "set day_window_kind value=departure day_no=2。日期按start_date换算到day_no；取消时间限制用unset。"
     "budget_policy_mode(值 target/hard_cap，「预算不限制了」用 op=unset)、"
+    "budget_policy_include_intercity(布尔值，含往返大交通=true，不含=false)、"
+    "lodging_rooms(房间数，正整数)、"
     "lodging_locked_hotel(锁定酒店名)。没提到的需求不要编 patch。"
 )
 _SYSTEM_PROMPT = (

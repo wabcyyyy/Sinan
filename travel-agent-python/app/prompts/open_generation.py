@@ -24,13 +24,13 @@ import json
 # 不可信分区渲染（reference_pool.block），两套生成 Prompt 的实际正文随之变化。
 # 2026-10-12 v1.6/v1.7：条目新增 cost_currency（cost 数字的币种），系统按固定汇率确定性
 # 换算成人民币，取代「按金额大小猜币种」（data.fx.normalize_item_cost）。
-OPEN_DAY_PROMPT_VERSION = "v1.6.localized"
+OPEN_DAY_PROMPT_VERSION = "v1.7.fact-caution"
 # 2026-10-09 v1.5/v1.4（M5b，spec §11）：整趟主输出不再要求 suggestions 长备选数组
 # （24-40 条 × 60-100 字是主 JSON 截断的头号税源）；备选池改由研究候选池确定性构建
 # （open_plans.floor_suggestions / build_suggestions），缺口经既有有界富化补齐。
 # 2026-10-12 v1.6（open_trip）：命名优先级（参考资料餐厅照抄店名）+ 删与结构化上限冲突的
 # 密度示例 + 每天午晚餐各一 + 合并重复条款（见 open_trip_system_prompt docstring）。
-OPEN_TRIP_PROMPT_VERSION = "v1.7.localized"
+OPEN_TRIP_PROMPT_VERSION = "v1.8.fact-caution"
 
 
 def open_day_system_prompt(
@@ -142,7 +142,9 @@ def open_day_system_prompt(
         "theme 必须与当天实际安排的点位一致：theme 中出现的地名只能是当天 items 里的地点，"
         "并按游玩顺序概括当天主线；"
         "theme 必须是叙事句：点出当天游玩主线或氛围，禁止「A→B→C」纯路径串；"
-        "practical_notes 每日必填 2-4 条，每条都要可执行（写明怎么预约/穿什么/怎么走），禁止空话；"
+        "practical_notes 每日必填 2-4 条，每条都要可执行（穿什么/怎么走/需核实什么），禁止空话；"
+        "没有本次参考资料支持时，不得断言必须预约、免预约、开放时刻、闭馆日或免费寄存；"
+        "这些信息写成出发前核实项，不得把模型记忆当作当前官方规定。"
         "photo_spots 每日 0-4 个，每处写清拍摄建议与最佳时段；"
         "backup_plan 每日 0-3 条，if 写具体触发条件，action 写可直接执行的替换动作；"
         "day_options 每日 0-2 组，当天存在明显取舍分叉时应当输出而非省略"
@@ -217,7 +219,9 @@ def open_trip_system_prompt(*, days: int, hotel_clause: str, min_active_minutes:
         "禁止「某商场美食层」等笼统称呼，禁止套用其它城市的知名餐厅。"
         "免费景点 cost 写 0，餐饮/酒店/付费景点必须写合理估算并在 cost_currency 写明币种，禁止写 0。"
         "trip_theme 只在顶层输出一次。theme 是叙事句，只提当天 items 里的地点并按游玩顺序概括主线，"
-        "禁止写成「A→B→C」纯路径串。practical_notes 每日 2-4 条，每条可执行（怎么预约/穿什么/怎么走），禁止空话；"
+        "禁止写成「A→B→C」纯路径串。practical_notes 每日 2-4 条，每条可执行（穿什么/怎么走/需核实什么），禁止空话；"
+        "没有本次参考资料支持时，不得断言必须预约、免预约、开放时刻、闭馆日或免费寄存；"
+        "这些信息写成出发前核实项，不得把模型记忆当作当前官方规定。"
         "photo_spots 每日 0-4 个，backup_plan 每日 0-3 条，day_options 每日 0-2 组（当天有明显取舍分叉时输出）；"
         "用户未提供旅行意图时，photo_spots 与 day_options 可整体省略，禁止为凑数编造。"
     )

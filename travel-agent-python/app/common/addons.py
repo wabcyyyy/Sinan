@@ -40,8 +40,8 @@ ADDONS: dict[str, dict[str, str]] = {
     "mcp": {"env": "mcp_enabled", "label": "MCP 只读工具出口"},
     # MCP 行程写入（C3.3）：默认关闭——读面开不足以写行程，写面单独显式打开
     "mcp_write": {"env": "mcp_write_enabled", "label": "MCP 行程写入"},
-    # 模板广场（C2.4）：默认关闭——自托管私有部署不默认开放社区面
-    "template_community": {"env": "template_community_enabled", "label": "模板广场"},
+    # 公开行程库：只展示显式发布的脱敏快照；私有部署仍可主动关闭。
+    "template_community": {"env": "template_community_enabled", "label": "公开行程库"},
     # 条目对/错反馈（C3.5）：默认关闭——读面开不足以开反馈面，增强能力单独显式打开
     "item_feedback": {"env": "item_feedback_enabled", "label": "条目对/错反馈"},
 }

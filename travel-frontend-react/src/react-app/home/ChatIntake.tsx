@@ -102,11 +102,11 @@ export function ChatIntake({
           <header className="intake-hero">
             <div className="intake-hero-brand">
               <HeroLogo />
-              <span className="intake-hero-badge">✦ AI 目的地探索与智能编排</span>
+              <span className="intake-hero-badge">✦ 给周末与短假的城市旅行规划</span>
             </div>
             {/* 分段 inline-block：窄屏只在段间换行，不把「行程」这类词拆到两行 */}
-            <h1 className="intake-hero-title"><span>去哪里？</span><span className="intake-hero-accent">说一句话，行程就有了</span></h1>
-            <p className="intake-hero-subtitle"><span>信息不够司南会问你，不会瞎猜</span><span>随时调整路线与偏好</span></p>
+            <h1 className="intake-hero-title"><span>去一座城，</span><span className="intake-hero-accent">按你的节奏安排</span></h1>
+            <p className="intake-hero-subtitle"><span>先确认必去、预算与时间，再排每天的路线</span><span>想改一处？先看差异，确认后保存</span></p>
           </header>
         )}
 

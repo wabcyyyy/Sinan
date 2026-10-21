@@ -278,6 +278,34 @@ export function getSharedItinerary(token: string) {
   }>(`/share/${encodeURIComponent(token)}`)
 }
 
+export function listPublicItineraries() {
+  return apiRequest<Contracts.TemplateCardVO[]>('/templates')
+}
+
+export function getPublicItinerary(id: number) {
+  return apiRequest<Contracts.TemplateDetailVO>(`/templates/${id}`)
+}
+
+export function copyPublicItinerary(id: number) {
+  return apiRequest<Contracts.TemplateForkVO>(`/templates/${id}/fork`, { method: 'POST' })
+}
+
+export function copySharedItinerary(token: string) {
+  return apiRequest<Contracts.TemplateForkVO>(`/itinerary/from-share/${encodeURIComponent(token)}`, { method: 'POST' })
+}
+
+export function previewPublicItinerary(id: number) {
+  return apiRequest<Contracts.TemplatePublishVO>(`/itinerary/${id}/template?current=true`)
+}
+
+export function publishPublicItinerary(id: number) {
+  return apiRequest<Contracts.TemplatePublishVO>(`/itinerary/${id}/template`, { method: 'POST' })
+}
+
+export function unpublishPublicItinerary(id: number) {
+  return apiRequest<null>(`/itinerary/${id}/template`, { method: 'DELETE' })
+}
+
 export function optimizeDay(id: number | string, dayId: number) {
   return apiRequest<ItineraryDetail>(`/itinerary/${id}/optimize`, {
     method: 'POST',

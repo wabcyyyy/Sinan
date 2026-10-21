@@ -17,6 +17,12 @@ def test_generate_request_rejects_more_than_one_week():
 
 def test_open_city_can_generate_after_workflow_enters_fallback(monkeypatch):
     """没有本地候选的城市也不能因某一天重试而中止整段行程。"""
+    from app.agent.data import web_search
+
+    def no_optional_search(*args, **kwargs):
+        raise AssertionError("逐日修复不应为发现更多额外搜索，挤占未交付天的预算")
+
+    monkeypatch.setattr(web_search, "search_places_via_web", no_optional_search)
     monkeypatch.setattr(day_stream.settings, "llm_api_key", "configured")
 
     def _no_ground(item, city):
@@ -94,7 +100,6 @@ def test_day_regeneration_drops_used_poi_after_grounding_but_keeps_shared_hotel(
 
     monkeypatch.setattr(day_stream, "local_ground", ground)
     monkeypatch.setattr(day_stream, "build_suggestions", lambda *args, **kwargs: [])
-    monkeypatch.setattr(day_stream, "fill_suggestion_gaps", lambda rows, *args, **kwargs: rows)
     monkeypatch.setattr(day_stream, "drop_refuted_items", lambda rows, **kwargs: rows)
     plan, _ = day_stream.generate_day_once(
         GenerateDayRequest(
@@ -259,7 +264,6 @@ def test_day_repair_replaces_filtered_cross_day_points(monkeypatch):
     monkeypatch.setattr(day_stream, "local_ground", lambda *args: None)
     monkeypatch.setattr(day_stream, "drop_refuted_items", lambda rows, **kwargs: rows)
     monkeypatch.setattr(day_stream, "build_suggestions", lambda *args, **kwargs: [])
-    monkeypatch.setattr(day_stream, "fill_suggestion_gaps", lambda rows, *args, **kwargs: rows)
     calls = []
 
     def generate(req, used):

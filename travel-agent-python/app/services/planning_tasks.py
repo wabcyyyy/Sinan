@@ -70,8 +70,10 @@ def _persist(itinerary_id: int, task_id: str, snapshot: dict) -> None:
     deltas = {
         column: counters[key] - int(base.get(key, 0))
         for key, column in rows.LIFETIME_COLUMNS.items()
-        if counters[key] > int(base.get(key, 0))
+        if counters[key] != int(base.get(key, 0))
     }
+    # Token 预留在完整 usage 结算后会释放未用部分；负增量也必须落库，否则重试
+    # 继承的是历次预留总和而非已结算用量。未知 usage 仍由 RunLimits 保留预占。
     # 基线只在落库成功后才推进：失权/取消时 apply_budget 抛错，这批增量必须留给下一次
     # 写入重试，否则账本会比真实花费少（T2 的费用硬顶正是绑在这些列上）。
     store.apply_budget(itinerary_id, task_id, snapshot, deltas)

@@ -53,13 +53,15 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 
 - **契约单一源**：跨端线级模型全部定义在 `travel-agent-python/app/schemas/**`（登记表 `app/schemas/contracts.py` 的 CONTRACT_GROUPS：agent_api + business_api；事件在 `stream_events.py`），`scripts/export_contracts.py` 据此导出 `contracts/*.schema.json` + `contracts/openapi.json` + 前端生成类型 `travel-frontend-react/src/types/generated/contracts.ts`（前端契约类型只准引它）。改 schema → 重新导出 → 产物随同一 commit 入仓；CI 与本地 check.ps1 都有 drift 门禁，手改 `contracts/` 或生成类型必红。
 - **后端分层有门禁**：`app.api → app.services → app.agent` 三层，api/services 只准经 `app/agent/__init__.py` 门面用 agent 能力；由 import-linter 契约机检（`pyproject.toml` 的 `[tool.importlinter]`，入 check.ps1 与 CI）。agent 层内按域分（`core → runtime → data → grounding → tools/research → generation → editing`，域地图与落位表见 `travel-agent-python/app/agent/README.md`），契约按**域级**登记——已登记域内新增模块免登记，新增域或新增平铺模块必须登记。
-- **前端消费面口径（2026-09-27 拍板）**：后端 104 paths（2026-10-08 实数）中有六域前端**不（全）消费**，这是产品阶段取舍、不是遗漏——expense（消费面是 MCP 记账，不做手工记账 UI）、collab（单人产品定位，后端设计保留）、version（后端保留；若未来补前端，最小切片=版本列表+一键恢复）、admin（运维经 curl/脚本直调，不做管理 UI）、templates（前端明确放弃，flag 默认关，sinan.ts 死函数已清）、feedback（C3.5 条目对/错 UI 已补齐，flag 默认关=前端探针自动隐藏）。各域后端端点与测试一律保留，不因前端不用而退役；翻案前先改本条。
+- **前端消费面口径（2026-09-27 拍板）**：后端 104 paths（2026-10-08 实数）中有六域前端**不（全）消费**，这是产品阶段取舍、不是遗漏——expense（消费面是 MCP 记账，不做手工记账 UI）、collab（单人产品定位，后端设计保留）、version（后端保留；若未来补前端，最小切片=版本列表+一键恢复）、admin（运维经 curl/脚本直调，不做管理 UI）、templates（2026-10-18 用户授权恢复：公开行程库、发布脱敏快照与复制微调；仅浏览匿名，发布/下架/复制须登录）、feedback（C3.5 条目对/错 UI 已补齐，flag 默认关=前端探针自动隐藏）。各域后端端点与测试一律保留，不因前端不用而退役；翻案前先改本条。
 - **Java 已退役**：`travel-backend-java/` 已删除，FastAPI 是唯一后端。不要以任何形式复活第二份后端实现。业务端点的行为基准是 `tests/api` 契约与 `tests/test_cutover_contract.py`。
 - **数据库迁移 append-only**：SQL 真相源是 `travel-agent-python/app/db/migrations/sql/V*.sql`，已入库的迁移文件禁止修改/重排，新变更只能追加新版本。
 
 2026-10-16 个人展示口径（用户明确授权）：Vercel Hobby 静态构建复用本分支的正式页面、视觉与 Motion 动效，以固定样例提供免登录交互，不接真实模型。展示身份和草稿使用独立命名空间，并只保存在当前标签页；保留正式模式的服务端会话与草稿归属逻辑。部署配置与交互边界见 `docs/public/vercel-demo.md`。
 
 2026-10-16 试用上线口径修订（用户明确授权）：admin 域开放最小试用后台（邀请码、用户余额/费用、人工赠额与禁用），复用既有管理员鉴权；其余运维能力继续经脚本直调。首版部署优先 Railway 单实例及持久卷，保留本地 Compose，不要求自管 Caddy。每位新用户一次性赠送 6 元试用额度，不自动续期、不接支付；应用按运营者配置单价记账，不冒充供应商账单。
+
+2026-10-18 公开行程口径（用户明确授权）：复用 template 快照与 fork，不公开私人行程；GET 行程库可匿名，写入继续鉴权。内置三条编辑规划供浏览和复制，标为规划参考，不冒充实地游记。公开内容按快照固定，复制不继承私人日期、预算、会话、账目或分享权限。
 
 ## 哲学（违反任何一条的 PR 请先停下来说明）
 

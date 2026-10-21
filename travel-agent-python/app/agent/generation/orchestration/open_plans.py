@@ -198,6 +198,9 @@ def _generate_drafts(
                 record_event("decision", "duplicate_dropped", metadata={"day_no": day_no, "poi_name": name})
                 continue
             ground_item(item, city=req.city, ref_pool=ref_pool)
+            # 已匹配实体的展示别名不应覆盖用户指定的必去名称，否则终检会误判缺失。
+            if req.requirements_struct and any(p.name == name for p in req.requirements_struct.required_places):
+                item["poi_name"] = name
             if name and item.get("poi_name") != name:
                 name_aliases[name] = item["poi_name"]
             entity = ref_pool.entity_of(item)

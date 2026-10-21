@@ -6,7 +6,7 @@
    过期任务终态化——判据是持久租约与 deadline，不是进程内活跃表。
 2. **所有权与失权写入**：接管会轮换 task_id；旧 worker 的下一次外呼、落库与终态写全部被拒
    （条件更新 rowcount=0 → `TaskOwnershipLost`），不会覆盖新持有者的结论。
-3. **累计预算**：接管继承已花掉的调用/token；用户显式补齐重开时间窗但累计账本只增不减，
+3. **累计预算**：接管继承已花掉的调用/token；用户显式补齐重开时间窗但不清空已结算用量，
    所以"反复重试拿不到新额度"是可查的事实（绑成费用硬顶归 T2）。
 4. **取消**：取消旗写在持久面；持有者在下一个检查点停手，已交付天保留为 PARTIAL，
    一天没交付才 FAILED；执行态收 CANCELLED。
@@ -396,6 +396,29 @@ def test_resubmit_reopens_window_not_quota(env) -> None:
     assert second.deadline_at > first_deadline, "重开的是时间窗，不是额度"
     row = _task_row(trip_id)
     assert row.attempt == 2 and row.consumed_llm_calls == 1 and row.state == "QUEUED"
+
+
+@pytest.mark.parametrize("usage", [{"prompt_tokens": 4, "completion_tokens": 6}, None])
+def test_resubmit_inherits_settled_tokens_and_keeps_unknown_reservations(env, usage) -> None:
+    """结算释放多余预留，重试不重复计入；usage 未知时仍保守保留全部预占。"""
+    trip_id = _seed_trip(delivered_days=1)
+    first = planning_tasks.acquire(1, trip_id)
+    reservation = first.reserve_llm(100, 200)
+    first.settle_llm(reservation, usage)
+    first.settle_llm(reservation, usage)  # 重放结算不二次退款。
+    expected = (4, 6) if usage else (100, 200)
+    row = _task_row(trip_id)
+    assert (row.consumed_prompt_tokens, row.consumed_completion_tokens) == expected
+    simulate_worker_exit(trip_id)
+    planning_task_convergence.terminalize_expired(trip_id, completed_days=1)
+
+    second = planning_tasks.resume_or_restart(1, trip_id)
+    assert (second.prompt_tokens, second.completion_tokens) == expected
+    next_reservation = second.reserve_llm(40, 60)
+    second.settle_llm(next_reservation, {"prompt_tokens": 2, "completion_tokens": 3})
+    row = _task_row(trip_id)
+    assert (row.consumed_prompt_tokens, row.consumed_completion_tokens) == (expected[0] + 2, expected[1] + 3)
+    assert row.consumed_llm_calls == 2
 
 
 def test_incomplete_final_check_is_not_a_budget_degradation(env) -> None:

@@ -16,6 +16,7 @@ import { HomeStudio } from './HomeStudio'
 import { clearAllIntakeSessions, listIntakeSessions } from './intakeHistory'
 import { TripBoard } from './TripBoard'
 import { TripPanel } from './TripPanel'
+import { RequirementSummary } from './RequirementSummary'
 
 /**
  * 对话壳与实时预览测试：主体是静态渲染断言（同 TripBadges.test.ts 纪律：零新依赖、
@@ -77,7 +78,7 @@ describe('HomeStudio（首页 phase 状态机）', () => {
     const html = renderToStaticMarkup(createElement(HomeStudio, { query: new URLSearchParams() }))
     expect(html).toContain('home-studio is-idle')
     expect(html).toContain('intake-centered')
-    expect(html).toContain('说一句话，行程就有了')
+    expect(html).toContain('按你的节奏安排')
     expect(html).toContain('intake-chips')
     expect(html).not.toContain('trip-preview')
   })
@@ -119,6 +120,18 @@ describe('HomeStudio（首页 phase 状态机）', () => {
 })
 
 describe('TripPanel（active 右栏容器）', () => {
+  it('确认前展示服务端要求，包括必去、时间窗与未支持项', () => {
+    const requirements = intakeState({}).requirements
+    const html = renderToStaticMarkup(createElement(RequirementSummary, { requirements: {
+      ...requirements,
+      requiredPlaces: [{ constraintId: 'p1', name: '浙江省博物馆', dayNo: 2, sourceTurnId: null }],
+      dayWindows: [{ dayNo: 1, kind: 'arrival', notBefore: '14:00', finishBy: null, sourceTurnId: null }, { dayNo: 2, kind: 'departure', notBefore: null, finishBy: '16:00', sourceTurnId: null }],
+      excludedPlaces: ['灵隐寺'], budgetPolicy: { mode: 'hard_cap', includeIntercityTransport: false },
+      unresolvedRequests: ['保证不用排队'],
+    } }))
+    for (const text of ['第 2 天必去：浙江省博物馆', '14:00 后开始', '16:00 前结束', '避开：灵隐寺', '预算不含城际交通', '尚未支持或需要澄清：保证不用排队']) expect(html).toContain(text)
+    expect(renderToStaticMarkup(createElement(RequirementSummary, { requirements }))).toBe('')
+  })
   const panel = (planningOverrides: Partial<Planning>, chatOverrides: Partial<IntakeChat>) =>
     renderToStaticMarkup(createElement(TripPanel, {
       planning: planning(planningOverrides),
@@ -211,6 +224,16 @@ describe('TripBoard（done 态只读预览板）', () => {
   } as unknown as ItineraryDetail
   const board = () => renderToStaticMarkup(createElement(TripBoard, { draft }))
 
+  it('部分完成不冒充就绪，失败日期保留重试入口但不展示为已交付路线', () => {
+    const partial = { ...draft, genState: 'PARTIAL', dayList: draft.dayList.map((d) => ({ ...d, generationStatus: 'FAILED' })) } as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(TripBoard, { draft: partial }))
+    expect(html).toContain('仅完成 0/3 天')
+    expect(html).toContain('重新生成这一天')
+    expect(html).toContain('尚未通过检查')
+    expect(html).not.toContain('行程已就绪')
+    expect(html).not.toContain('day-item-time')
+  })
+
   it('契约类：根 .trip-board、主 CTA .trip-board-cta 且 href=/trips/:id、文本含「打开完整行程」', () => {
     const html = board()
     expect(html).toContain('trip-board')
@@ -226,6 +249,8 @@ describe('TripBoard（done 态只读预览板）', () => {
     expect(html).toContain('预算小计')
     expect(html).toContain('￥2340')
     expect(html).toContain('餐饮 ￥640')
+    expect(html).toContain('这是规划草案')
+    expect(html).toContain('预约、价格与交通时间')
   })
   it('DAY chips 默认选中第一个已完成的天（第 1 天空 → 落第 2 天）+ 当天时间线只读条目', () => {
     const html = board()
@@ -604,6 +629,16 @@ describe('useIntakeChat 登录续发（F5 mock api 交互）', () => {
     await flushAutoSend()
     expect(clarifyMock).not.toHaveBeenCalled()
     expect(intakeSessionStorage.getItem(PENDING_KEY)).toBe(SENT_TEXT)
+  })
+
+  it('登录接续已有原话：请求续发，但对话不重复追加原话', async () => {
+    saveIntake({ messages: [GREETING, { id: 'before-login', role: 'user', text: SENT_TEXT }], slots: {}, firstMessage: SENT_TEXT })
+    intakeSessionStorage.setItem(PENDING_KEY, SENT_TEXT)
+    activateIntakeOwner(1, true)
+    const container = await mountHarness(true)
+    await flushAutoSend()
+    expect(clarifyMock).toHaveBeenCalledTimes(1)
+    expect([...container.querySelectorAll('li')].filter((li) => li.textContent === SENT_TEXT)).toHaveLength(1)
   })
 
   it('键已清后再挂载不补发（幂等闸的直接断言）', async () => {

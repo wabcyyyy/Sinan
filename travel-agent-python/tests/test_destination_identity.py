@@ -126,7 +126,8 @@ def test_missing_localized_alias_keeps_original_name(monkeypatch):
 
 
 @pytest.mark.parametrize("path", ["day", "trip"])
-def test_localized_names_are_consistent_in_generated_narrative(monkeypatch, path):
+@pytest.mark.parametrize("required", [False, True])
+def test_localized_names_are_consistent_in_generated_narrative(monkeypatch, path, required):
     from app.agent.generation.orchestration import day_stream, open_plans
     from app.schemas.trip import GenerateRequest
 
@@ -142,6 +143,14 @@ def test_localized_names_are_consistent_in_generated_narrative(monkeypatch, path
             latitude=35.719,
             longitude=139.776,
         ),
+    )
+
+    from app.schemas.trip_requirements import RequiredPlace, TripRequirements
+
+    requirements = (
+        TripRequirements(required_places=[RequiredPlace(constraint_id="museum", name="東京国立博物館", day_no=1)])
+        if required
+        else None
     )
 
     def draft(*args):
@@ -164,19 +173,25 @@ def test_localized_names_are_consistent_in_generated_narrative(monkeypatch, path
 
     if path == "day":
         monkeypatch.setattr(day_stream, "llm_open_day", draft)
-        plan, _ = day_stream.generate_day_once(GenerateDayRequest(city="东京", days=1, day_no=1), force_fallback=True)
+        plan, _ = day_stream.generate_day_once(
+            GenerateDayRequest(city="东京", days=1, day_no=1, requirements_struct=requirements), force_fallback=True
+        )
         data = plan.model_dump()
     else:
         monkeypatch.setattr(open_plans, "llm_open_day", draft)
         monkeypatch.setattr(open_plans, "activity_floor", lambda city: [])
-        result, errors = open_plans.generate_open_plans(GenerateRequest(city="东京", days=1), "", [])
+        result, errors = open_plans.generate_open_plans(
+            GenerateRequest(city="东京", days=1, requirements_struct=requirements), "", []
+        )
         assert not errors
         assert result is not None
         data = result["daily_plans"][0]
-    assert data["items"][0]["poi_name"] == "东京国立博物馆"
-    assert data["theme"] == ("东京国立博物馆" if path == "day" else "东京国立博物馆文化慢游")
-    assert data["photo_spots"][0]["name"] == "东京国立博物馆入口"
-    assert data["practical_notes"] == ["东京国立博物馆提前预约"]
+    expected = "東京国立博物館" if required else "东京国立博物馆"
+    assert data["items"][0]["poi_name"] == expected
+    assert data["items"][0]["latitude"] == 35.719
+    assert data["theme"] == (expected if path == "day" else f"{expected}文化慢游")
+    assert data["photo_spots"][0]["name"] == f"{expected}入口"
+    assert data["practical_notes"] == [f"{expected}提前预约"]
 
 
 def test_both_generation_prompts_require_consistent_chinese_names():

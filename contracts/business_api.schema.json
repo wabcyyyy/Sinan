@@ -3043,6 +3043,30 @@
           ],
           "default": null,
           "title": "Longitude"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "tip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tip"
         }
       },
       "required": [
@@ -3051,7 +3075,9 @@
         "startTime",
         "endTime",
         "latitude",
-        "longitude"
+        "longitude",
+        "address",
+        "tip"
       ],
       "title": "TemplateItemVO",
       "type": "object"
@@ -3125,6 +3151,41 @@
           },
           "title": "Daylist",
           "type": "array"
+        },
+        "coverUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverurl"
+        },
+        "sourceType": {
+          "default": "community",
+          "enum": [
+            "editorial",
+            "community"
+          ],
+          "title": "Sourcetype",
+          "type": "string"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "references": {
+          "items": {
+            "type": "string"
+          },
+          "title": "References",
+          "type": "array"
         }
       },
       "required": [
@@ -3134,7 +3195,11 @@
         "persons",
         "intro",
         "costTiers",
-        "dayList"
+        "dayList",
+        "coverUrl",
+        "sourceType",
+        "notes",
+        "references"
       ],
       "title": "TemplateSummaryVO",
       "type": "object"
@@ -3146,8 +3211,15 @@
           "type": "integer"
         },
         "publishedAt": {
-          "title": "Publishedat",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Publishedat"
         },
         "summary": {
           "$ref": "#/$defs/TemplateSummaryVO"
@@ -3201,6 +3273,25 @@
         "publishedAt": {
           "title": "Publishedat",
           "type": "string"
+        },
+        "intro": {
+          "default": "",
+          "title": "Intro",
+          "type": "string"
+        },
+        "persons": {
+          "default": 1,
+          "title": "Persons",
+          "type": "integer"
+        },
+        "sourceType": {
+          "default": "community",
+          "enum": [
+            "editorial",
+            "community"
+          ],
+          "title": "Sourcetype",
+          "type": "string"
         }
       },
       "required": [
@@ -3210,7 +3301,10 @@
         "days",
         "coverUrl",
         "costTiers",
-        "publishedAt"
+        "publishedAt",
+        "intro",
+        "persons",
+        "sourceType"
       ],
       "title": "TemplateCardVO",
       "type": "object"
@@ -3256,6 +3350,25 @@
           "title": "Publishedat",
           "type": "string"
         },
+        "intro": {
+          "default": "",
+          "title": "Intro",
+          "type": "string"
+        },
+        "persons": {
+          "default": 1,
+          "title": "Persons",
+          "type": "integer"
+        },
+        "sourceType": {
+          "default": "community",
+          "enum": [
+            "editorial",
+            "community"
+          ],
+          "title": "Sourcetype",
+          "type": "string"
+        },
         "summary": {
           "$ref": "#/$defs/TemplateSummaryVO"
         }
@@ -3268,6 +3381,9 @@
         "coverUrl",
         "costTiers",
         "publishedAt",
+        "intro",
+        "persons",
+        "sourceType",
         "summary"
       ],
       "title": "TemplateDetailVO",

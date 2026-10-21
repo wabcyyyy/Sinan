@@ -15,6 +15,15 @@ const item = (fields: Partial<TripItem> = {}): TripItem =>
   ({ itemType: 'attraction', poiName: '西湖', ...fields }) as TripItem
 
 describe('React 详情页文案与徽章', () => {
+  it('只有交通估算时提示缺价，不把用户预算冒充估算总额', () => {
+    const trip = { budget: 1800, totalAmount: 180, budgetList: [], dayList: [{ items: [item({ cost: null })] }] } as unknown as ItineraryDetail
+    const render = (data: ItineraryDetail) => renderToStaticMarkup(createElement(TripMetrics, { trip: data, dateText: null, weatherDays: 2, hasWeather: false }))
+    expect(render(trip)).toContain('部分费用估算 · 尚有条目未计价')
+    expect(render({ ...trip, totalAmount: 0 })).toContain('待估算')
+    const free = render({ ...trip, totalAmount: 0, dayList: [{ items: [item({ cost: 0 })] }] } as ItineraryDetail)
+    expect(free).toContain('￥0')
+    expect(free).not.toContain('￥1800')
+  })
   it('素食未验证时具体列出餐饮候选，不被一般核实横幅掩盖', () => {
     const message = '第 1 天：「餐厅」尚无素食可用性依据，不能确认满足饮食要求'
     const trip = { qualityReport: { warnings: [{ code: 'DIETARY_EVIDENCE_REVIEW', message }] } } as unknown as ItineraryDetail

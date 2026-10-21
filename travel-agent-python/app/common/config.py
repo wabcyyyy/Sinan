@@ -235,8 +235,8 @@ class Settings(BaseSettings):
     mcp_enabled: bool = False
     # MCP 行程写入（C3.3）：默认关闭——查行程/重排一天/记账写工具单独显式打开
     mcp_write_enabled: bool = False
-    # 模板广场（C2.4）：默认关闭，自托管私有部署不默认开放社区面
-    template_community_enabled: bool = False
+    # 公开行程库：默认启用，只展示主动发布的快照；私有部署可关闭。
+    template_community_enabled: bool = True
     # 条目对/错反馈（C3.5）：默认关闭——增强能力由管理员显式打开（与 mcp_write 同模式）
     item_feedback_enabled: bool = False
     # 出发前照看（个人 Agent V1）：详情页「出发前照看」面板与后台天气检查的总开关。

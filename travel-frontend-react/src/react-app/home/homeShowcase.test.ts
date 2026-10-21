@@ -3,15 +3,12 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { destinations, inspirationTemplates } from '../data'
+import { CURATED_ITINERARIES } from '../../types/generated/contracts'
 import { HomeShowcase, SHOWCASE_CITIES, SHOWCASE_TEMPLATES, showcaseCityHref, showcaseTemplateHref } from './HomeShowcase'
 import { HomeStudio } from './HomeStudio'
 import { saveIntake } from './intakeSlots'
 
-/**
- * 首页 idle 轻展示区（PLAN 2026-10-03 §2.2）静态断言：切片口径、深链拼串格式
- * （与 explore 页 DestinationsTab 城市深链 / IdeaTab.fill 模板深链逐段同构）、
- * HomeStudio 的 idle-only 挂载。renderToStaticMarkup 静态渲染，零新依赖。
- */
+/** 保留原有灵感卡片及样式，将入口绑定为完整路线，不增加第三排。 */
 
 describe('HomeShowcase（切片与静态冒烟）', () => {
   it('热门城市 = destinations 前 6；灵感起点 = inspirationTemplates 后 4', () => {
@@ -19,7 +16,7 @@ describe('HomeShowcase（切片与静态冒烟）', () => {
     expect(SHOWCASE_TEMPLATES).toEqual(inspirationTemplates.slice(-4))
   })
 
-  it('出热门城市行、灵感行与行头分区入口；封面走 SmartImg lazy 3/2', () => {
+  it('保留城市与灵感两行；灵感沿用原样式并提供完整行程入口', () => {
     const html = renderToStaticMarkup(createElement(HomeShowcase))
     expect(html).toContain('home-showcase')
     expect(html).toContain('showcase-cities')
@@ -28,6 +25,11 @@ describe('HomeShowcase（切片与静态冒烟）', () => {
     expect(html).toContain('灵感起点')
     expect(html).toContain('全部目的地')
     expect(html).toContain('更多灵感')
+    expect(html).toContain('查看完整行程')
+    expect(html).toContain('4 / 5')
+    expect(html).not.toContain('用这句开场')
+    expect(html).not.toContain('public-itineraries')
+    expect(html).not.toContain('行程分享')
     expect(html).toContain('loading="lazy"')
     expect(html).toContain('3 / 2')
   })
@@ -39,19 +41,20 @@ describe('HomeShowcase（切片与静态冒烟）', () => {
   })
 })
 
-describe('showcase 深链拼串（与 explore 页入口契约同构）', () => {
+describe('showcase 入口（城市需求预填与完整灵感行程）', () => {
   it('城市卡 /?city=<城>：与 DestinationsTab 城市 pills 深链同格式', () => {
     expect(showcaseCityHref('成都')).toBe('/?city=%E6%88%90%E9%83%BD')
   })
 
-  it('灵感卡 /?template=&city=&days=&intent=：与 IdeaTab.fill 逐段一致（含编码）', () => {
-    expect(showcaseTemplateHref({ id: 'chengdu-slow', city: '成都', days: 3, intent: '带父母去成都 3 天' })).toBe(
-      '/?template=chengdu-slow&city=%E6%88%90%E9%83%BD&days=3&intent=' + encodeURIComponent('带父母去成都 3 天'),
-    )
+  it('原有四张灵感均绑定到同标题、城市和天数的完整规划', () => {
+    expect(SHOWCASE_TEMPLATES).toHaveLength(4)
     for (const item of SHOWCASE_TEMPLATES) {
-      expect(showcaseTemplateHref(item)).toBe(
-        `/?template=${encodeURIComponent(item.id)}&city=${encodeURIComponent(item.city)}&days=${item.days}&intent=${encodeURIComponent(item.intent)}`,
-      )
+      const route = CURATED_ITINERARIES.find((row) => row.id === item.itineraryId)!
+      expect(route).toBeDefined()
+      expect([route.title, route.city, route.days]).toEqual([item.title, item.city, item.days])
+      expect(route.summary.dayList).toHaveLength(item.days)
+      expect(route.summary.dayList.every((day) => day.items.length >= 3)).toBe(true)
+      expect(showcaseTemplateHref(item)).toBe(`/itineraries/${route.id}`)
     }
   })
 })

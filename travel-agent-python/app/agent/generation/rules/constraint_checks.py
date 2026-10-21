@@ -204,34 +204,30 @@ def _check_window(plan: dict | None, policy: DayPolicy) -> ConstraintCheck:
             evidence_refs=["estimated-city-boundary"] if policy.is_transit_day else [],
             blocking=False,
         )
-    start = policy.window_start_min
-    end = policy.window_end_min
-    if start is None or end is None:
-        return ConstraintCheck(
-            constraint_id=f"window:day:{policy.day_no}",
-            kind="day_window",
-            status="unknown",
-            day_no=policy.day_no,
-            reason="窗口只有单边，无法完整验收",
-            blocking=False,
-        )
+    # 单边也是明确要求：另一侧只取自然日边界，不推断用户未给出的到离时间。
+    start = policy.window_start_min if policy.window_start_min is not None else 0
+    end = policy.window_end_min if policy.window_end_min is not None else 24 * 60
     out_of_window = []
+    missing_times = []
     for item in items:
         begin = item_start(item)
         finish = item_end(item)
         # 条目缺时间（都为 0 哨兵）时不猜：单列 unknown
-        if begin == 0 and finish == 0:
+        if not item.get("start_time") or not item.get("end_time"):
+            missing_times.append(str(item.get("poi_name") or item.get("name") or ""))
             continue
-        if begin < start or (finish > end and finish != 24 * 60):
+        if begin < start or finish > end:
             out_of_window.append(str(item.get("poi_name") or item.get("name") or ""))
     return ConstraintCheck(
         constraint_id=f"window:day:{policy.day_no}",
         kind="day_window",
-        status="violation" if out_of_window else "pass",
+        status="violation" if out_of_window else "unknown" if missing_times else "pass",
         day_no=policy.day_no,
         item_refs=out_of_window,
         reason=f"{len(out_of_window)} 条安排越出 {start // 60:02d}:{start % 60:02d}-{end // 60:02d}:{end % 60:02d} 窗口"
         if out_of_window
+        else "部分条目缺少时间，无法验收"
+        if missing_times
         else "",
         evidence_refs=["user-window"],
         blocking=True,

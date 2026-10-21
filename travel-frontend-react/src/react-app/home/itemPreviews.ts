@@ -118,12 +118,19 @@ function appendCandidate(state: ItemPreviewState, data: Record<string, unknown>,
     // 首帧前 runId 尚未确立（null），去重命中也要落 runId，否则后续撤回/换 run 判定失效
     return state.runId === runId ? state : { runId, seenRuns: state.seenRuns, candidates: state.candidates }
   }
+  // 候选沿用模型输出的 snake_case；在消费边界投影为页面使用的字段。
+  const item = (data.item ?? {}) as Record<string, unknown>
   const candidate: ItemPreviewCandidate = {
     previewId,
     runId,
     dayNo: readNumber(data, 'dayNo'),
     itemOrdinal: readNumber(data, 'itemOrdinal'),
-    item: (data.item ?? {}) as PreviewItem,
+    item: {
+      poiName: readString(item, 'poi_name'),
+      itemType: readString(item, 'item_type'),
+      whyThis: readString(item, 'why_this'),
+      remark: readString(item, 'remark'),
+    },
   }
   return { runId, seenRuns: state.seenRuns, candidates: [...state.candidates, candidate] }
 }

@@ -6309,6 +6309,16 @@
               "minimum": 1,
               "title": "Id"
             }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Current"
+            }
           }
         ],
         "responses": {
@@ -6437,7 +6447,8 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "minimum": 1,
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
               "title": "Templateid"
             }
           }
@@ -6481,7 +6492,8 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "minimum": 1,
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
               "title": "Templateid"
             }
           }
@@ -6494,6 +6506,49 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Fork Template Api Templates  Templateid  Fork Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/from-share/{token}": {
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "summary": "Fork Shared",
+        "operationId": "fork_shared_api_itinerary_from_share__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Fork Shared Api Itinerary From Share  Token  Post"
                 }
               }
             }
