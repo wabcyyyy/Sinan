@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { navigate, resetHomeSession, useLocation } from '../router'
 import { resetDemo } from '../../demoMode'
 import { createEditTour } from './transport'
@@ -7,12 +7,11 @@ import './demo.css'
 export function DemoBanner() {
   const { path, query } = useLocation()
   const entering = path === '/' && query.get('tour') === 'edit'
-  const started = useRef(false)
   useEffect(() => {
-    if (!entering) { started.current = false; return }
-    if (started.current) return
-    started.current = true
-    navigate(`/trips/${createEditTour()}?tour=edit`)
+    if (!entering) return
+    // 初次挂载时先让父级路由完成监听；StrictMode 清理取消未执行的导航。
+    const frame = requestAnimationFrame(() => navigate(`/trips/${createEditTour()}?tour=edit`))
+    return () => cancelAnimationFrame(frame)
   }, [entering])
 
   return <aside className="demo-banner" aria-label="产品演示说明">
