@@ -1082,6 +1082,7 @@ def test_user_item_create_fixed_conflict_and_undo(client):
     # 与生成前录入的已定费用形状一致；之后快照、编辑及恢复都必须可序列化。
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None and isinstance(main.requirements_json, dict)
         fixed = main.requirements_json["fixedArrangements"][0]
         main.requirements_json = {**main.requirements_json, "fixedArrangements": [{**fixed, "cost": "88.50"}]}
     assert client.post(url + "/items/action", json=body).status_code == 409
@@ -1099,10 +1100,12 @@ def test_manual_replacement_removes_old_facts_and_syncs_summary(client):
     trip_id = _trip_id(client)
     with db_session.session_scope() as session:
         item = session.get(ItineraryItem, 1)
+        assert item is not None
         item.latitude, item.longitude = Decimal("30.1"), Decimal("120.2")
         item.source, item.verification_status = "official", "verified"
         item.intro = "旧地点介绍"
         day = session.get(ItineraryDay, item.day_id)
+        assert day is not None
         day.metadata_json = json.dumps({"practicalNotes": ["西湖旧地点提示", "通用提示"]}, ensure_ascii=False)
         item.fact_evidence_json = '{"name":{"verificationStatus":"verified"}}'
     url = f"/api/itinerary/{trip_id}"
@@ -1138,11 +1141,13 @@ def test_budget_uses_explicit_room_count(client):
     trip_id = _trip_id(client)
     with db_session.session_scope() as session:
         main = session.get(ItineraryMain, trip_id)
+        assert main is not None
         main.persons = 3
         main.requirements_json = {"lodging": {"rooms": 1}}
         for hotel in session.scalars(select(ItineraryItem).where(ItineraryItem.item_type == "hotel")):
             hotel.deleted = 1
         day = session.scalar(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id, ItineraryDay.day_no == 1))
+        assert day is not None
         session.add(
             ItineraryItem(
                 itinerary_id=trip_id, day_id=day.id, item_type="hotel", poi_name="家庭房酒店", cost=Decimal("350")
