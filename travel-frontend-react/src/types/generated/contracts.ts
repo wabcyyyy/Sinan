@@ -733,6 +733,68 @@ export interface VersionBody {
   summary: string
 }
 
+export interface ItineraryVersionVO {
+  id: number
+  versionNo: number
+  parentVersionId: number | null
+  operation: string
+  summary: string
+  createdAt: string | null
+}
+
+export interface RestoreVersionBody {
+  planningRevision: number
+}
+
+export interface ScenarioBody {
+  dayNo: number
+  planningRevision: number
+  startTime: string
+  finishBy: string
+  transferMinutes: number
+  departureBufferMinutes: number
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+}
+
+export interface ScenarioSelectBody {
+  dayNo: number
+  planningRevision: number
+  startTime: string
+  finishBy: string
+  transferMinutes: number
+  departureBufferMinutes: number
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+  choice: "keep" | "omit"
+}
+
+export interface ScenarioItemVO {
+  id: number
+  name: string
+  startTime: string | null
+  endTime: string | null
+  fixed: boolean
+}
+
+export interface ScenarioOptionVO {
+  key: "keep" | "omit"
+  title: string
+  feasible: boolean
+  conflicts: string[]
+  items: ScenarioItemVO[]
+  removed: string[]
+  finishTime: string | null
+  slackMinutes: number | null
+  costDelta: number | null
+}
+
+export interface ScenarioCompareVO {
+  planningRevision: number
+  options: ScenarioOptionVO[]
+  assumptions: string[]
+}
+
 export interface OptimizeDayBody {
   dayId: number | null
 }

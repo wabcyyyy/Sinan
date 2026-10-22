@@ -91,6 +91,7 @@ export interface CoverCredit {
 }
 
 export interface ItineraryDetail {
+  planningRevision?: number
   schemaVersion?: string
   id: number
   title: string

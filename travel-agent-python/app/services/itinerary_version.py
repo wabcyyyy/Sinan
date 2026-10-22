@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.common.envelope import ApiError
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain, ItineraryVersion
 from app.db.session import session_scope
-from app.services import budget_engine, itinerary_query
+from app.services import budget_engine, itinerary_chat, itinerary_query
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ def _write_snapshot(
     # 用 build_detail 而不是 detail()：此刻外层事务尚未提交，经 detail() 会把未提交
     # 状态写进 600s 的用户详情缓存，一旦回滚就成了 10 分钟的幻影数据（快照本身仍取当前读视图）。
     detail = itinerary_query.build_detail(user_id, itinerary_id)
+    detail["_requirements"] = main.requirements_json
     version = ItineraryVersion(
         itinerary_id=itinerary_id,
         user_id=user_id,
@@ -220,16 +221,20 @@ def _day_index(days: list[dict[str, Any]]) -> dict[str, Any]:
     return {f"day:{day.get('dayNo')}": {field: day.get(field) for field in fields} for day in days}
 
 
-def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
+def restore(user_id: int, itinerary_id: int, version_id: int, planning_revision: int) -> dict[str, Any]:
     version_no: int
     with session_scope() as session:
+        itinerary_chat.lock_main_for_draft(session, itinerary_id)
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
+        if main.status == 1 or main.planning_revision != planning_revision:
+            raise ApiError(409, "行程正在生成或已被修改，请刷新后重新选择恢复版本")
         version = _require(session, itinerary_id, version_id)
         try:
             snapshot = json.loads(version.snapshot_json)
         except (ValueError, TypeError) as exc:
             raise ApiError(500, "行程版本内容损坏") from exc
         version_no = version.version_no
+        append_version_in_session(session, user_id, itinerary_id, "before_restore", "恢复前的当前行程")
 
         # 物理删除（见模块 docstring 的例外说明）：软删会让 uk_itinerary_day_no 被旧行占住
         session.execute(delete(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id))
@@ -245,6 +250,12 @@ def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
         main.preferences = snapshot.get("preferences")
         main.hotel_tier = snapshot.get("hotelTier")
         main.stay_nights = snapshot.get("stayNights")
+        main.plan_note = snapshot.get("planNote")
+        main.trip_theme = snapshot.get("tripTheme")
+        main.status = snapshot.get("status", main.status)
+        main.gen_state = snapshot.get("genState")
+        if "_requirements" in snapshot:
+            main.requirements_json = snapshot["_requirements"]
 
         for day_snapshot in snapshot.get("dayList") or []:
             day = ItineraryDay(
@@ -254,7 +265,7 @@ def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
                 city=snapshot.get("city"),
                 note=day_snapshot.get("note"),
                 metadata_json=_metadata_json(day_snapshot),
-                generation_status="SUCCEEDED",
+                generation_status=day_snapshot.get("generationStatus") or "PENDING",
             )
             session.add(day)
             session.flush()
@@ -291,11 +302,11 @@ def restore(user_id: int, itinerary_id: int, version_id: int) -> dict[str, Any]:
                 )
         session.flush()
         budget_engine.recalculate(itinerary_id)
-        bump_planning_revision(session, itinerary_id)
+        bump_planning_revision_with_cas(session, itinerary_id, planning_revision)
+        itinerary_chat.invalidate_in_session(session, user_id, itinerary_id)
+        append_version_in_session(session, user_id, itinerary_id, "restore", f"恢复到版本 {version_no}")
 
     itinerary_query.evict_detail(user_id, itinerary_id)
-    # 恢复本身已经提交：再让快照冲突把整笔操作报成 500，用户重试就是二次破坏性恢复。
-    record_snapshot_or_log(user_id, itinerary_id, "restore", f"恢复到版本 {version_no}")
     return itinerary_query.detail(user_id, itinerary_id)
 
 
@@ -303,11 +314,10 @@ def _metadata_json(day_snapshot: dict[str, Any]) -> str | None:
     metadata: dict[str, Any] = {}
     if day_snapshot.get("theme") is not None:
         metadata["theme"] = day_snapshot["theme"]
-    for key in ("miniRoute", "backupPlan", "photoSpots", "practicalNotes"):
+    for key in ("miniRoute", "backupPlan", "photoSpots", "practicalNotes", "dayOptions"):
         value = day_snapshot.get(key)
         if value:
             metadata[key] = value
-    # 与 Java 同：dayOptions 不在恢复白名单里，恢复后该槽位会丢失（已知行为，非缺陷）
     return json.dumps(metadata, ensure_ascii=False) if metadata else None
 
 

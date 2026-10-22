@@ -371,6 +371,7 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
 
     return {
         "schemaVersion": SCHEMA_VERSION,
+        "planningRevision": main.planning_revision,
         "id": main.id,
         "title": main.title,
         "city": main.city,

@@ -9,6 +9,30 @@ const request = async (path: string, body?: unknown, method = 'POST') => {
   return { response, ...(await response.json()) }
 }
 
+it('compares only the declared fixture, confirms separately and restores across reload', async () => {
+  const before = (await request('/itinerary/101')).data
+  const body = { dayNo: 2, planningRevision: before.planningRevision, startTime: '09:30', finishBy: '16:00', transferMinutes: 30, departureBufferMinutes: 30, fixedItemIds: [21], optionalItemIds: [24, 25] }
+  expect((await request('/itinerary/101/scenarios/compare', { ...body, finishBy: '18:00' })).response.status).toBe(400)
+  const compared = (await request('/itinerary/101/scenarios/compare', body)).data
+  expect(compared.options.map((option: { feasible: boolean }) => option.feasible)).toEqual([false, true])
+  expect((await request('/itinerary/101/scenarios/select', { ...body, choice: 'keep' })).response.status).toBe(400)
+  const draft = (await request('/itinerary/101/scenarios/select', { ...body, choice: 'omit' })).data
+  expect((await request('/itinerary/101')).data).toEqual(before)
+  const applied = (await request('/itinerary/101/apply-plans', { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })).data
+  expect(applied.dayList[0]).toEqual(before.dayList[0])
+  expect(applied.dayList[1].items[0]).toEqual(before.dayList[1].items[0])
+  expect(applied.dayList[1].items[2].startTime).toBe('13:30')
+  expect(applied.totalAmount).toBe(950)
+  vi.resetModules()
+  const versions = (await request('/itinerary/101/versions')).data
+  const url = `/itinerary/101/versions/${versions.at(-1).id}/restore`
+  expect((await request(url, { planningRevision: before.planningRevision })).response.status).toBe(409)
+  const restored = (await request(url, { planningRevision: applied.planningRevision })).data
+  expect(restored.dayList).toEqual(before.dayList)
+  expect(restored.totalAmount).toBe(1180)
+  expect((await request('/itinerary/101/apply-plans', { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })).response.status).toBe(409)
+})
+
 it('starts each edit tour from an independent sample without overwriting existing work', async () => {
   const { createEditTour } = await import('./transport')
   const first = createEditTour()

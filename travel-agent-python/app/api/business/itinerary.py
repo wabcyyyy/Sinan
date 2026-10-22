@@ -32,6 +32,7 @@ from app.schemas.business.itinerary import (
     UpdateDayBody,
     VersionBody,
 )
+from app.schemas.business.scenario import RestoreVersionBody, ScenarioBody, ScenarioSelectBody
 from app.services import (
     cover_service,
     itinerary_care,
@@ -44,6 +45,7 @@ from app.services import (
     itinerary_nl_edit,
     itinerary_plan_apply,
     itinerary_query,
+    itinerary_scenario,
     itinerary_version,
     planning_tasks,
     preferences,
@@ -461,6 +463,20 @@ def list_versions(id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_bu
     return ok(itinerary_version.list_versions(user.id, id))
 
 
+@router.post("/{id}/scenarios/compare")
+def compare_scenarios(
+    body: ScenarioBody, id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)
+) -> dict:
+    return ok(itinerary_scenario.compare(user.id, id, body))
+
+
+@router.post("/{id}/scenarios/select")
+def select_scenario(
+    body: ScenarioSelectBody, id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)
+) -> dict:
+    return ok(itinerary_scenario.select_option(user.id, id, body))
+
+
 @router.get("/{id}/versions/diff")
 def versions_diff(
     fromVersionId: int = Query(..., ge=1),
@@ -482,11 +498,12 @@ def create_version(
 
 @router.post("/{id}/versions/{versionId}/restore")
 def restore_version(
+    body: RestoreVersionBody,
     id: int = Path(..., ge=1),
     versionId: int = Path(..., ge=1),
     user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
-    return ok(itinerary_version.restore(user.id, id, versionId))
+    return ok(itinerary_version.restore(user.id, id, versionId, body.planningRevision))
 
 
 # ---- 封面 / 收藏 / 归档（SPEC v2.3 §6.3/§6.5，S1）----

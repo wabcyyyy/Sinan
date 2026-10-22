@@ -43,6 +43,8 @@ import { useTripChat } from './useTripChat'
 import { buildDraftPreview, itemPreviewMark } from './draftPreview'
 import { DraftReview } from './DraftReview'
 import { DemoEditGuide } from '../demo/DemoEditGuide'
+import { ScenarioPanel } from './ScenarioPanel'
+import { VersionHistory } from './VersionHistory'
 import './workbench.css'
 
 /** 时间线与类型徽章共用的图标映射（新类型先落到 pin，不裸奔）。 */
@@ -427,6 +429,8 @@ export function TripDetailPage({ path }: { path: string }) {
       {(['itinerary', 'map', 'chat'] as const).filter(item => !offline || item !== 'chat').map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)}>{item === 'itinerary' ? '行程' : item === 'map' ? '地图' : '对话'}</button>)}
       {preview && <button type="button" aria-pressed={view === 'review'} onClick={() => setView('review')}>修改预览</button>}
     </nav>
+    {!offline && <VersionHistory key={`${trip.id}-${trip.planningRevision}`} trip={trip} disabled={working || chat.sending || chat.applying || trip.status === 1} onRestored={next => { setTrip(next); setSavedEdit(true); setView('itinerary'); void chat.reload(); setNotice('已恢复历史版本，恢复前的行程也已保存') }} />}
+    {!offline && day && trip.status === 2 && <ScenarioPanel key={`${trip.id}-${trip.planningRevision}-${day.dayNo}`} trip={trip} day={day} disabled={working || chat.sending || chat.applying} onSelected={async () => { setSavedEdit(false); if (!await chat.reload()) throw new Error('方案已选定，但草稿读取失败。请重试或刷新页面查看。'); setView('review') }} />}
     <div className={`detail-workspace workbench view-${view}`}>
       <section className="day-content">
         {/* 出发前照看（个人 Agent V1）：只在真实模式挂载——离线样例与演示模式

@@ -3,9 +3,11 @@ import type { ItineraryDetail, ItinerarySummary } from '../../types/itinerary'
 import type { ItineraryChatMessage } from '../../types/chat'
 import { makeDemoTrip, makeTemplateTrip, recalculate, relaxedPlans } from './fixtures'
 import { CURATED_ITINERARIES } from '../../types/generated/contracts'
+import type { ItineraryVersionVO } from '../../types/generated/contracts'
+import { scenarioFixture } from './scenarioFixture'
 
 const KEY = 'sinan-demo:trips-v1'
-interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number }
+interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number; versions?: Array<ItineraryVersionVO & { snapshot: ItineraryDetail }>; scenarioMessageId?: number }
 let memory: Record<string, RecordState> | undefined
 
 function records(): Record<string, RecordState> {
@@ -30,13 +32,20 @@ function snapshot(record: RecordState): ItineraryDetail {
   const total = record.trip.dayList.length
   const completed = record.startedAt === undefined ? total : Math.min(total, Math.floor((Date.now() - record.startedAt) / 2200))
   const done = completed === total
-  return recalculate({ ...structuredClone(record.trip), status: done ? 2 : 1, genState: done ? 'COMPLETED' : 'GENERATING', qualityStatus: done ? record.trip.qualityStatus : 'DRAFT',
+  return recalculate({ ...structuredClone(record.trip), planningRevision: record.revision, status: done ? 2 : 1, genState: done ? 'COMPLETED' : 'GENERATING', qualityStatus: done ? record.trip.qualityStatus : 'DRAFT',
     dayList: record.trip.dayList.map((day, index) => index < completed ? structuredClone(day)
       : { ...structuredClone(day), items: [], generationStatus: index === completed ? 'RUNNING' : 'PENDING' }) })
 }
 
 function json(data: unknown, status = 200, message = 'success'): Response {
   return new Response(JSON.stringify({ code: status, message, data }), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+function remember(record: RecordState, operation: string, summary: string) {
+  const versions = record.versions ||= []
+  const previous = versions.at(-1)
+  const id = (previous?.id ?? 0) + 1
+  versions.push({ id, versionNo: id, parentVersionId: previous?.id ?? null, operation, summary, createdAt: new Date().toISOString(), snapshot: snapshot(record) })
 }
 
 function delay(ms: number, signal?: AbortSignal | null): Promise<void> {
@@ -143,6 +152,39 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   if (!record) return json(null, 404, '没有找到这条演示行程，请从“我的行程”重新打开。')
   const action = match[2]
   if (!action && method === 'GET') return json(snapshot(record))
+  if (action === '/versions' && method === 'GET') return json([...(record.versions || [])].reverse().map(({ snapshot: _snapshot, ...version }) => version))
+  const restoreMatch = action.match(/^\/versions\/(\d+)\/restore$/)
+  if (restoreMatch && method === 'POST') {
+    if (body.planningRevision !== record.revision || snapshot(record).status === 1) return json(null, 409, '行程已变化，请刷新后重新选择版本。')
+    const version = record.versions?.find(version => version.id === Number(restoreMatch[1]))
+    if (!version) return json(null, 404, '演示版本不存在')
+    remember(record, 'before_restore', '恢复前的当前行程')
+    record.trip = structuredClone(version.snapshot)
+    record.revision += 1
+    for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
+    remember(record, 'restore', `恢复到版本 ${version.versionNo}`)
+    save()
+    return json(snapshot(record))
+  }
+  if (action === '/scenarios/compare' || action === '/scenarios/select') {
+    if (body.planningRevision !== record.revision) return json(null, 409, '行程已变化，请刷新后重新比较。')
+    const original = makeDemoTrip().dayList[1].items
+    const current = record.trip.dayList[1]?.items
+    const supported = body.dayNo === 2 && record.trip.persons === 2 && body.startTime === '09:30' && body.finishBy === '16:00'
+      && body.transferMinutes === 30 && body.departureBufferMinutes === 30 && JSON.stringify(body.fixedItemIds) === '[21]'
+      && JSON.stringify(body.optionalItemIds) === '[24,25]' && current?.length === 5
+      && original.every((item, index) => item.id === current[index].id && item.poiName === current[index].poiName && item.startTime === current[index].startTime && item.endTime === current[index].endTime)
+    if (!supported) return json(null, 400, '请在未修改的成都第 2 天载入返程取舍示例；其他条件需连接真实后端。')
+    const fixture = scenarioFixture(record.trip, record.revision)
+    if (action.endsWith('/compare')) return json(fixture.comparison)
+    if (body.choice !== 'omit') return json(null, 400, '保留全部安排存在时间冲突，不能应用。')
+    for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
+    const id = Date.now()
+    record.scenarioMessageId = id
+    record.messages.push({ id, role: 'ai', content: '固定返程示例：移除咖啡与晚餐，将宽窄巷子提前到 13:30。请确认差异后保存。未调用模型。', plans: fixture.plans, changed: true, baseRevision: String(record.revision) })
+    save()
+    return json({ messageId: id, baseRevision: String(record.revision) })
+  }
   if (action === '/weather') return json({ daily: [] })
   if (action === '/feedback') return json(null, 404, '展示版未启用反馈')
   if (action === '/events') return stream([
@@ -164,10 +206,15 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
     const items = draft.plans?.[0]?.items
     if (!items) return json(null, 409, '演示草稿不完整，请重新生成建议。')
     const names = new Set(items.map((point) => point.poi_name))
+    remember(record, 'before_apply', '确认修改前的行程')
     record.trip.dayList[1].items = record.trip.dayList[1].items.filter((point) => names.has(point.poiName))
-    record.trip.dayList[1].theme = '少赶一站，把上午留白'
+    if (draft.id === record.scenarioMessageId) {
+      record.trip.dayList[1].items = record.trip.dayList[1].items.map(point => { const proposal = items.find(item => item.poi_name === point.poiName)!; return { ...point, startTime: proposal.start_time, endTime: proposal.end_time } })
+      record.trip.dayList[1].note = '固定返程取舍示例：15:00 结束，转场与返程时长为演示假设。'
+    } else record.trip.dayList[1].theme = '少赶一站，把上午留白'
     record.trip = recalculate(record.trip)
     record.revision += 1
+    remember(record, 'apply', '已确认的修改')
     delete draft.plans
     delete draft.baseRevision
     record.messages.push({ id: Date.now(), role: 'ai', content: '已应用到当前浏览器的演示行程，第一天和住宿保持不变。' })

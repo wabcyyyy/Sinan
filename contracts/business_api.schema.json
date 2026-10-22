@@ -1953,6 +1953,374 @@
         "summary"
       ]
     },
+    "ItineraryVersionVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "versionNo": {
+          "title": "Versionno",
+          "type": "integer"
+        },
+        "parentVersionId": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parentversionid"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "createdAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Createdat"
+        }
+      },
+      "required": [
+        "id",
+        "versionNo",
+        "parentVersionId",
+        "operation",
+        "summary",
+        "createdAt"
+      ],
+      "title": "ItineraryVersionVO",
+      "type": "object"
+    },
+    "RestoreVersionBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "planningRevision"
+      ],
+      "title": "RestoreVersionBody",
+      "type": "object"
+    },
+    "ScenarioBody": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "startTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Starttime",
+          "type": "string"
+        },
+        "finishBy": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Finishby",
+          "type": "string"
+        },
+        "transferMinutes": {
+          "maximum": 240,
+          "minimum": 0,
+          "title": "Transferminutes",
+          "type": "integer"
+        },
+        "departureBufferMinutes": {
+          "maximum": 480,
+          "minimum": 0,
+          "title": "Departurebufferminutes",
+          "type": "integer"
+        },
+        "fixedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Fixeditemids",
+          "type": "array"
+        },
+        "optionalItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Optionalitemids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "dayNo",
+        "planningRevision",
+        "startTime",
+        "finishBy",
+        "transferMinutes",
+        "departureBufferMinutes",
+        "fixedItemIds",
+        "optionalItemIds"
+      ],
+      "title": "ScenarioBody",
+      "type": "object"
+    },
+    "ScenarioSelectBody": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "startTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Starttime",
+          "type": "string"
+        },
+        "finishBy": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Finishby",
+          "type": "string"
+        },
+        "transferMinutes": {
+          "maximum": 240,
+          "minimum": 0,
+          "title": "Transferminutes",
+          "type": "integer"
+        },
+        "departureBufferMinutes": {
+          "maximum": 480,
+          "minimum": 0,
+          "title": "Departurebufferminutes",
+          "type": "integer"
+        },
+        "fixedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Fixeditemids",
+          "type": "array"
+        },
+        "optionalItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Optionalitemids",
+          "type": "array"
+        },
+        "choice": {
+          "enum": [
+            "keep",
+            "omit"
+          ],
+          "title": "Choice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dayNo",
+        "planningRevision",
+        "startTime",
+        "finishBy",
+        "transferMinutes",
+        "departureBufferMinutes",
+        "fixedItemIds",
+        "optionalItemIds",
+        "choice"
+      ],
+      "title": "ScenarioSelectBody",
+      "type": "object"
+    },
+    "ScenarioItemVO": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Endtime"
+        },
+        "fixed": {
+          "title": "Fixed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "startTime",
+        "endTime",
+        "fixed"
+      ],
+      "title": "ScenarioItemVO",
+      "type": "object"
+    },
+    "ScenarioOptionVO": {
+      "properties": {
+        "key": {
+          "enum": [
+            "keep",
+            "omit"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "feasible": {
+          "title": "Feasible",
+          "type": "boolean"
+        },
+        "conflicts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conflicts",
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ScenarioItemVO"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "removed": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Removed",
+          "type": "array"
+        },
+        "finishTime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finishtime"
+        },
+        "slackMinutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Slackminutes"
+        },
+        "costDelta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Costdelta"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "feasible",
+        "conflicts",
+        "items",
+        "removed",
+        "finishTime",
+        "slackMinutes",
+        "costDelta"
+      ],
+      "title": "ScenarioOptionVO",
+      "type": "object"
+    },
+    "ScenarioCompareVO": {
+      "properties": {
+        "planningRevision": {
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/ScenarioOptionVO"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "options",
+        "assumptions"
+      ],
+      "title": "ScenarioCompareVO",
+      "type": "object"
+    },
     "OptimizeDayBody": {
       "properties": {
         "dayId": {
