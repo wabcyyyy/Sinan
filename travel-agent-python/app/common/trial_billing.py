@@ -10,10 +10,11 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import ROUND_CEILING, Decimal
 from typing import cast
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -182,9 +183,18 @@ def reconcile(charge_id: str, amount: float, reason: str, operator: str) -> None
 
 
 def recover_reservations() -> None:
-    """单实例启动：上个进程未结算的调用保留冻结，进入人工对账，绝不自动退款。"""
+    """只收敛超过执行窗口的预留；另一实例启动不能改写正在执行的调用。"""
+    age = max(settings.itinerary_deadline_seconds, settings.agent_deadline_seconds, settings.llm_timeout)
     with session_scope() as session:
-        session.execute(update(TrialLedger).where(TrialLedger.status == "reserved").values(status="unknown"))
+        # created_at 由数据库默认值写入，过期比较也用数据库时钟。
+        at = session.scalar(select(func.now()))
+        assert at is not None
+        cutoff = at - timedelta(seconds=age + settings.planning_live_seconds)
+        session.execute(
+            update(TrialLedger)
+            .where(TrialLedger.status == "reserved", TrialLedger.created_at < cutoff)
+            .values(status="unknown")
+        )
 
 
 def _reserve(base_url: str, payload: dict, user_funded: bool) -> Charge | None:

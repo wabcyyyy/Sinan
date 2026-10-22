@@ -97,15 +97,16 @@ def test_revision_refuses_to_rebuild_an_existing_schema(sqlite_db) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_head_is_0020_and_linear() -> None:
-    """照看任务表（V20，个人 Agent V1）接在试用访问（V19）之后，历史链保持单一且完整。"""
+def test_head_is_0021_and_linear() -> None:
+    """独立 worker 与共享回放（V21）接在 V20 之后，历史链保持单一且完整。"""
     script = ScriptDirectory.from_config(db_migrate.alembic_config())
-    assert script.get_current_head() == "0020_itinerary_care"
+    assert script.get_current_head() == "0021_planning_dispatch"
     # 从 head 沿 down_revision 走回基线，链路上每个 revision 都必须真实存在
     chain: list[str] = []
     for revision in script.walk_revisions(base="base", head="heads"):
         chain.append(revision.revision)
     assert chain == [
+        "0021_planning_dispatch",
         "0020_itinerary_care",
         "0019_trial_access",
         "0018_seed_city_consumption",

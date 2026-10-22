@@ -70,6 +70,10 @@ fe-check:
 dev:
     cd {{py}}; uv run python main.py
 
+# 起独立规划 worker
+worker:
+    cd {{py}}; uv run python worker.py
+
 # 起前端开发服务器
 dev-fe:
     cd {{fe}}; npm run dev

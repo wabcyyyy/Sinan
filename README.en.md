@@ -2,7 +2,7 @@
 
 Sinan helps travelers turn a 2–3 day city break into an editable itinerary draft.
 Confirm must-see places, arrival/departure windows and budget scope before planning; review changes before saving them.
-It uses React and a single FastAPI backend.
+It uses React, FastAPI, and a planning worker backed by persistent MySQL tasks.
 A constrained LangGraph workflow creates daily itineraries, streams progress, and presents edits for confirmation.
 Estimated facts require verification before departure.
 
@@ -42,9 +42,11 @@ Visit `/demo` at the address printed by Vite, usually [localhost:5173/demo](http
 No Python, database, or model key is needed for this route. Real planning on the normal homepage requires the backend.
 Press Ctrl+C to stop. See [Vercel deployment, Chinese](docs/public/vercel-demo.md) for a static showcase build.
 
+Worker behavior and reproducible process-failure checks: [planning worker guide, Chinese](docs/public/planning-worker.md). The checks use MySQL and real processes with fixed model outputs; they do not measure model quality or capacity.
+
 ## Full local stack
 
-Requirements: Docker Engine/Desktop with Compose 2.20+. This starts MySQL, Redis, FastAPI, and the frontend; host Python and Node installations are unnecessary.
+Requirements: Docker Engine/Desktop with Compose 2.20+. This starts MySQL, Redis, FastAPI, the planning worker, and the frontend; host Python and Node installations are unnecessary.
 From the repository root:
 
 ```bash

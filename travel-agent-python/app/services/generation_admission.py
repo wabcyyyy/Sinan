@@ -1,4 +1,4 @@
-"""单进程试用版的用户生成准入；建壳与提交串行化，工作期只保留小型登记表。"""
+"""试用用户生成准入；数据库用户行锁覆盖检查与提交，本地登记只辅助当前进程。"""
 
 import threading
 from collections.abc import Iterator
@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.common.config import settings
 from app.common.envelope import ApiError
-from app.db.models import ItineraryMain
+from app.db.models import ItineraryMain, SysUser
 from app.db.session import session_scope
 
 _lock = threading.RLock()
@@ -21,13 +21,13 @@ def new_trip(user_id: int, replay_id: int | None) -> Iterator[None]:
     if not settings.user_generation_limit_enabled:
         yield
         return
-    with _lock:
-        with session_scope() as session:
-            active = session.scalars(
-                select(ItineraryMain.id).where(
-                    ItineraryMain.user_id == user_id, ItineraryMain.gen_state.in_(("GENERATING", "CORE_READY"))
-                )
-            ).all()
+    with _lock, session_scope() as session:
+        session.scalar(select(SysUser.id).where(SysUser.id == user_id).with_for_update())
+        active = session.scalars(
+            select(ItineraryMain.id).where(
+                ItineraryMain.user_id == user_id, ItineraryMain.gen_state.in_(("GENERATING", "CORE_READY"))
+            )
+        ).all()
         ids = {*active, *([_users[user_id]] if user_id in _users else [])}
         if any(itinerary_id != replay_id for itinerary_id in ids):
             raise ApiError(409, _BUSY)

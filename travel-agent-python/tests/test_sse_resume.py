@@ -22,6 +22,11 @@ TRIP = 77
 
 @pytest.fixture(autouse=True)
 def _isolated_hub(monkeypatch):
+    from app.common import generation_event_log
+
+    monkeypatch.setattr(generation_event_log, "append", lambda *_: None)
+    monkeypatch.setattr(generation_event_log, "next_seq", lambda *_: None)
+    monkeypatch.setattr(generation_event_log, "read_after", lambda *_: None)
     # 终态后连接要空转一个心跳周期才收尾；缩短周期让用例不必真等 15 秒
     monkeypatch.setattr(event_hub, "HEARTBEAT_SECONDS", 0.05)
     event_publisher.reset_event_publisher()

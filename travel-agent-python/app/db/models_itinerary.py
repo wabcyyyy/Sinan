@@ -75,6 +75,8 @@ class ItineraryMain(Base, SoftDelete):
     gen_started_at: Mapped[datetime | None] = mapped_column(DateTime)
     gen_finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     gen_resumed: Mapped[int] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    generation_event_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    event_wire_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     # V2（atlas_share_covers）：封面快照三列 + 署名 + 收藏/归档 + 公开分享
     cover_url: Mapped[str | None] = mapped_column(String(512))
     cover_source: Mapped[str | None] = mapped_column(String(16))

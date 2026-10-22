@@ -112,6 +112,9 @@ def _stub_orchestration(monkeypatch, captured: dict) -> None:
 
 @pytest.fixture
 def env(monkeypatch, tmp_path):
+    from tests.planning_task_probe import install_inline_worker
+
+    install_inline_worker(monkeypatch)
     engine = create_engine(f"sqlite:///{tmp_path / 'm1b.db'}")
     Base.metadata.create_all(engine)
     db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))

@@ -25,7 +25,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-  app:
+  app: &planning-backend
     build:
       context: .
       dockerfile: Dockerfile.hosted
@@ -57,6 +57,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+  planning-worker:
+    <<: *planning-backend
+    command: ["python", "worker.py"]
+    ports: []
+    stop_grace_period: 330s
+    healthcheck:
+      disable: true
+    depends_on:
+      app:
+        condition: service_healthy
+
 volumes:
   trial-mysql:
   trial-redis:

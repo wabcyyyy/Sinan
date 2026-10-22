@@ -240,6 +240,23 @@ jobs:
       - name: Cross-check schema contract (Python 只读列 vs 全部迁移)
         # 防 schema 漂移：迁移文件（V1+V*）必须覆盖查询用到的全部列（纯静态，无需 DB）
         run: python3 travel-agent-python/scripts/check_schema_contract.py
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Sync worker probe dependencies
+        working-directory: travel-agent-python
+        run: uv sync --frozen
+      - name: MySQL API and worker process-failure probe (fixed model outputs)
+        working-directory: travel-agent-python
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_USER: root
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          PYTHONUTF8: '1'
+        run: uv run python scripts/verify_planning_worker.py
 
   preview-stack:
     needs: preflight

@@ -169,6 +169,9 @@ def run_product_path(case: dict, run_id: str) -> Iterator[tuple[GenerateResponse
         started = time.perf_counter()
         try:
             created = itinerary_generation.generate(EVAL_USER_ID, _trip_request(case))
+            from app.services import planning_worker
+
+            planning_worker.poll_once()
             itinerary_query.evict_detail(EVAL_USER_ID, int(created["id"]))
             detail = itinerary_query.detail(EVAL_USER_ID, int(created["id"]))
         except Exception as exc:

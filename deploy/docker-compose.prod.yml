@@ -193,7 +193,7 @@ services:
           # 两者谁先到位都会如实报错，不会静默降级。
           memory: 384M
 
-  agent-python:
+  agent-python: &planning-backend
     build:
       # 上下文参数化只为让 deploy.sh 能从 `git archive` 的干净 SHA 构建；
       # 默认值就是工作树（与预览面同一份源码，不另开一套构建）。
@@ -293,6 +293,17 @@ services:
           # 只许往下调（收紧）或给出理由后调。
           cpus: "2.0"
           memory: 2G
+
+  planning-worker:
+    <<: *planning-backend
+    command: ["python", "worker.py"]
+    ports: []
+    stop_grace_period: 330s
+    healthcheck:
+      disable: true
+    depends_on:
+      agent-python:
+        condition: service_healthy
 
   frontend-react:
     build:

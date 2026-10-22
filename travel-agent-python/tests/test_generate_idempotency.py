@@ -25,7 +25,7 @@ from app.common.envelope import ApiError, install_exception_handlers
 from app.common.task_pool import TaskRejected
 from app.db import session as db_session
 from app.db.models import Base
-from app.services import itinerary_generation
+from app.services import itinerary_generation, planning_queue
 
 
 @pytest.fixture(autouse=True)
@@ -84,7 +84,7 @@ def test_reserve_none_value_roundtrip(monkeypatch, tmp_path):
 def test_generate_with_same_key_replays_same_itinerary(monkeypatch, tmp_path):
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     first = itinerary_generation.generate(1, body, idempotency_key="abc")
     second = itinerary_generation.generate(1, body, idempotency_key="abc")
@@ -101,7 +101,7 @@ def test_concurrent_same_key_waits_backfill_and_replays(monkeypatch, tmp_path):
 
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     # 无键先建一份真实壳，模拟「首个请求」即将回填的目标 id
     seed = itinerary_generation.generate(1, body)
@@ -127,7 +127,7 @@ def test_stale_pending_released_for_fresh_attempt(monkeypatch, tmp_path):
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
     monkeypatch.setattr(itinerary_generation, "_IDEM_BACKFILL_WAIT_SECONDS", 0.3)
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     assert cache_store.reserve(itinerary_generation._IDEM_NAMESPACE, "1:abc", "PENDING", 600)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     result = itinerary_generation.generate(1, body, idempotency_key="abc")
@@ -141,7 +141,7 @@ def test_stale_pending_released_for_fresh_attempt(monkeypatch, tmp_path):
 def test_generate_without_key_creates_each_time(monkeypatch, tmp_path):
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     first = itinerary_generation.generate(1, body)
     second = itinerary_generation.generate(1, body)
@@ -151,7 +151,7 @@ def test_generate_without_key_creates_each_time(monkeypatch, tmp_path):
 def test_generate_different_keys_are_independent(monkeypatch, tmp_path):
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     a = itinerary_generation.generate(1, body, idempotency_key="k1")
     b = itinerary_generation.generate(1, body, idempotency_key="k2")
@@ -161,7 +161,7 @@ def test_generate_different_keys_are_independent(monkeypatch, tmp_path):
 def test_generate_keys_are_scoped_per_user(monkeypatch, tmp_path):
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     a = itinerary_generation.generate(1, body, idempotency_key="shared")
     b = itinerary_generation.generate(2, body, idempotency_key="shared")
@@ -178,19 +178,19 @@ def test_queue_full_releases_key_for_fresh_retry(monkeypatch, tmp_path):
 
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", _reject)
+    monkeypatch.setattr(planning_queue, "enqueue", _reject)
     body = itinerary_generation.GenerateTripRequest(city="杭州", days=1)
     with pytest.raises(ApiError) as first:
         itinerary_generation.generate(1, body, idempotency_key="abc")
     assert first.value.status == 429
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     retry = itinerary_generation.generate(1, body, idempotency_key="abc")
     from app.db.models import ItineraryMain
 
     with db_session.session_scope() as session:
         mains = session.query(ItineraryMain).order_by(ItineraryMain.id).all()
-    assert len(mains) == 2, "429 后重试应建第二份壳（键已释放）"
-    assert retry["id"] == mains[1].id
+    assert len(mains) == 1, "拒绝入队必须回滚建壳，重试只创建一个行程"
+    assert retry["id"] == mains[0].id
 
 
 # ---------- API 层 ----------
@@ -203,7 +203,7 @@ def test_api_passes_idempotency_header(monkeypatch, tmp_path):
 
     _setup_db(tmp_path)
     cache_store.reset_for_tests()
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *a, **k: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *a, **k: None)
     # 鉴权三件套（同 test_business_api_pilot）：签名材料 + 吊销关 + 用户回查
     monkeypatch.setattr(deps.settings, "jwt_secret", "example-only-hs256-test-signing-material")
     monkeypatch.setattr(token_revocation, "is_revoked", lambda _t: False)

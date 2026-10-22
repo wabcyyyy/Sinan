@@ -35,7 +35,7 @@
 | “只改第二天”可能误改其他日期，旧建议可能覆盖新行程 | 草稿阶段逐字段校验修改范围与保留项；LangGraph `interrupt` 等待确认；应用时只读服务端草稿，校验内容指纹及整数修订号，快照、写入与草稿消费在同一事务内完成 | [范围校验](travel-agent-python/app/agent/editing/chat_draft/validate.py)、[HITL 确认图](travel-agent-python/app/agent/editing/chat_draft/confirm_graph.py)、[事务应用](travel-agent-python/app/services/itinerary_plan_apply.py) |
 | 模型排程可能违反必去、排除、时间窗、去重与预算要求 | 共享确定性约束与单日交付规则；业务层终检后仅重置违规日期，用反馈驱动单日图重新生成；保留已成功日期，未完成显式收敛为 `PARTIAL` / `FAILED` | [约束规则](travel-agent-python/app/agent/generation/rules/constraint_checks.py)、[交付门](travel-agent-python/app/services/day_delivery_gate.py)、[单日修复图](travel-agent-python/app/agent/generation/orchestration/trip_graph.py) |
 
-工程边界：单一 FastAPI 进程承载业务与 Agent API；MySQL 保存业务数据，SQLite 保存 LangGraph 检查点，Redis 承担缓存、会话吊销及事件广播等辅助职责。地点事实来自模型知识与外部数据适配器，未证实字段保留估算/待核实标记；本地不维护景点向量语料库。
+工程边界：FastAPI 承载业务与 Agent API，独立规划 worker 从 MySQL 领取整趟规划并复用 `plan_days`；MySQL 保存业务数据、任务与有界 SSE 回放，SQLite 保存 LangGraph 检查点，Redis 承担缓存、会话吊销等辅助职责。地点事实来自模型知识与外部数据适配器，未证实字段保留估算/待核实标记；本地不维护景点向量语料库。
 
 ## 2. 系统架构与工作流（System Architecture & Workflow）
 
@@ -168,6 +168,8 @@ WHERE id = :itinerary_id AND planning_revision = :expected;
 
 [立即体验固定样例](https://sinan-demo.vercel.app)：成都两天一晚，免登录、不调用真实模型；交互数据仅保存在当前标签页。
 
+独立 worker 的投递、恢复规则和可复现故障验收见 [执行说明](docs/public/planning-worker.md)。该验收使用真实进程和 MySQL、固定模型输出，不代表真实模型效果或高并发容量。
+
 本地真实模型的浏览器验收记录见 [2026-10-21 产品案例](docs/public/product-case-20261021.md)。案例保留两次部分交付、失败重试及修复后重新生成的过程，区分候选、落库和最终交付；它是小样本功能验收，不用于宣称成功率或性能提升。
 
 ![真实需求确认：指定必去日、到离时间与预算范围](docs/public/preview/constraints-20261021.jpg)
@@ -289,7 +291,7 @@ npm run dev
 
 ### 完整本地运行
 
-准备 Docker Engine/Desktop 与 Compose 2.20+。本方案启动 MySQL、Redis、FastAPI 和前端；不需要在宿主机安装 Python 或 Node。
+准备 Docker Engine/Desktop 与 Compose 2.20+。本方案启动 MySQL、Redis、FastAPI、规划 worker 和前端；不需要在宿主机安装 Python 或 Node。
 在仓库根目录执行：
 
 ```bash

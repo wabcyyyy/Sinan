@@ -6,11 +6,11 @@
 
 ## 宿主机开发
 
-在仓库根目录初始化配置。若此前已启动完整 Docker 栈，先停止它的两个应用容器，避免与本机服务争用 8000/5173；MySQL 和 Redis 继续由 Docker 提供。
+在仓库根目录初始化配置。若此前已启动完整 Docker 栈，先停止它的应用容器，避免与本机服务争用 8000/5173；MySQL 和 Redis 继续由 Docker 提供。
 
 ```bash
 docker compose -f compose.setup.yml run --rm setup
-docker compose --profile apps stop agent-python frontend-react
+docker compose --profile apps stop agent-python planning-worker frontend-react
 docker compose up -d --wait mysql redis
 ```
 
@@ -18,7 +18,7 @@ docker compose up -d --wait mysql redis
 真实生成按 [配置指南](configuration.md) 设置后端模型信息。本机 HTTP 开发在后端 `.env` 设置 `AUTH_COOKIE_SECURE=false`，HTTPS 部署保持 true。
 如果初始化后修改了根 `.env` 的数据库或 Redis 配置，还需同步后端 `.env` 中的 `DB_PORT`、`DB_PASSWORD`、`DB_NAME` 和 `REDIS_PORT`、`REDIS_PASSWORD`；MySQL 库名在根文件中叫 `MYSQL_DB`。
 
-分别打开两个终端，从仓库根目录执行：
+分别打开三个终端，从仓库根目录执行：
 
 ```bash
 # 终端一：后端
@@ -28,7 +28,13 @@ uv run python main.py
 ```
 
 ```bash
-# 终端二：前端
+# 终端二：规划 worker（API 完成迁移后启动）
+cd travel-agent-python
+uv run python worker.py
+```
+
+```bash
+# 终端三：前端
 cd travel-frontend-react
 npm ci
 npm run dev
@@ -37,6 +43,8 @@ npm run dev
 访问 Vite 输出的地址（默认 `http://localhost:5173`），注册、登录后使用真实规划；`/demo` 为免登录固定样例。
 按 Ctrl+C 停止各自的开发进程。切回完整 Docker 运行前先停止本机进程，再按 README 启动应用容器。
 端口冲突见 [排障指南](troubleshooting.md#端口冲突)。
+
+独立 worker、共享 SSE 与故障验证见 [执行说明](planning-worker.md)。
 
 ## 日常验证
 

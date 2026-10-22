@@ -162,6 +162,14 @@ def takeover(user_id: int, itinerary_id: int) -> RunLimits:
     return _register(runs.Handle(limits=limits, last_counters=rows.counters_of(snapshot)))
 
 
+def claim_queued() -> RunLimits | None:
+    claimed = store.claim_queued()
+    if claimed is None:
+        return None
+    limits, snapshot = claimed
+    return _register(runs.Handle(limits=limits, last_counters=rows.counters_of(snapshot)))
+
+
 def attach(limits: RunLimits) -> None:
     """重新绑定一个已由本 worker 持有的任务（接管后再入池的那一步）。
 

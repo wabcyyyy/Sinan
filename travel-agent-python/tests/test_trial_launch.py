@@ -436,3 +436,26 @@ def test_no_price_is_blocked_before_spending(trial_db, monkeypatch):
             pytest.fail("unpriced call must be rejected")
     assert exc.value.status == 503
     assert trial_billing.wallet_view(user_id)["balanceCny"] == 6
+
+
+def test_starting_another_instance_keeps_active_trial_reservation(trial_db):
+    from datetime import datetime, timedelta
+
+    user_id = register_trial()["id"]
+    with (
+        trial_billing.payer_scope(user_id),
+        trial_billing.billable_call(
+            "https://billing.example/v1", {"model": "sample", "messages": [], "max_tokens": 100}
+        ) as charge,
+    ):
+        assert charge is not None
+        trial_billing.recover_reservations()
+        with db_session.session_scope() as session:
+            row = session.get(TrialLedger, charge.id)
+            assert row.status == "reserved"
+            row.created_at = datetime.now() - timedelta(days=1)
+        frozen = trial_billing.wallet_view(user_id)["balanceCny"]
+        trial_billing.recover_reservations()
+        with db_session.session_scope() as session:
+            assert session.get(TrialLedger, charge.id).status == "unknown"
+        assert trial_billing.wallet_view(user_id)["balanceCny"] == frozen

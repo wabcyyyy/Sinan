@@ -39,3 +39,18 @@ def simulate_worker_exit(*itinerary_ids: int) -> None:
     """清掉本进程的句柄，并把给定行程的租约拨到已过期（= 那个 worker 不会再回来）。"""
     planning_tasks.reset()
     expire_lease(*itinerary_ids)
+
+
+def install_inline_worker(monkeypatch) -> None:
+    """旧编排单测等待同一条持久队列；仅测试驱动，不给 API 添加同步执行开关。"""
+    from app.services import itinerary_generation, itinerary_query, planning_worker
+
+    generate = itinerary_generation.generate
+
+    def inline(user_id, body, idempotency_key=None):
+        created = generate(user_id, body, idempotency_key)
+        planning_worker.poll_once()
+        itinerary_query.evict_detail(user_id, int(created["id"]))
+        return itinerary_query.detail(user_id, int(created["id"]))
+
+    monkeypatch.setattr(itinerary_generation, "generate", inline)

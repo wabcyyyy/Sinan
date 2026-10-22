@@ -79,7 +79,7 @@ services:
   # ---- 应用层（可选 profile）----
   # 镜像需自行 build；模型/密钥通过 .env 注入。未开启 apps profile 时不会启动。
 
-  agent-python:
+  agent-python: &planning-backend
     profiles: ["apps"]
     build:
       context: ./travel-agent-python
@@ -142,6 +142,18 @@ services:
       retries: 10
       start_period: 40s
     restart: unless-stopped
+
+  planning-worker:
+    <<: *planning-backend
+    command: ["python", "worker.py"]
+    ports: []
+    stop_grace_period: 330s
+    healthcheck:
+      disable: true
+    depends_on:
+      agent-python:
+        condition: service_healthy
+    container_name: ta-planning-worker
 
   frontend-react:
     profiles: ["apps"]

@@ -62,11 +62,30 @@ class PlanningTask(Base):
     consumed_existence_checks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     consumed_replans: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     budget_json: Mapped[str] = mapped_column(LongText, nullable=False, comment="当前 attempt 的 RunLimits 快照")
+    request_json: Mapped[str | None] = mapped_column(LongText, comment="待执行的完整 GenerateCommand")
+    event_start_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     result_code: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class PlanningQueueGuard(Base):
+    """串行化全局队列容量检查；只有 id=1，不承担任务或执行所有权。"""
+
+    __tablename__ = "planning_queue_guard"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+class GenerationEvent(Base):
+    """跨进程 SSE 的有界回放记录；行程行锁保证同一行程的提交顺序。"""
+
+    __tablename__ = "generation_event"
+    itinerary_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    event_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    envelope: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
 class CostLedger(Base):

@@ -1271,48 +1271,60 @@ def _create_generation(user_id: int, body: GenerateTripRequest, idempotency_key:
     replay = _replay_if_known(user_id, _reserve_idempotent(user_id, idempotency_key), idempotency_key)
     if replay is not None:
         return replay
-    with session_scope() as session:
-        main = ItineraryMain(
-            user_id=user_id,
-            title=f"{command.city}{command.days}日游",
-            city=command.city,
-            start_date=command.start_date,
-            end_date=command.end_date,
-            days=command.days,
-            persons=command.persons,
-            budget=command.budget,
-            preferences=",".join(command.preferences) if command.preferences else None,
-            hotel_tier=command.hotel_tier,
-            stay_nights=command.stay_nights,
-            # V10：用户原话参数随壳落库——僵尸续跑 rebuild_request 读回（恢复保真 P0-3）
-            intent=command.intent,
-            requirements=command.requirements,
-            # V13（M1a）：结构化需求快照随壳落库；新行程一律写（全默认也写 '{}'），
-            # NULL 与旧行程的判定信号——rebuild 据此选择 v1/v2 指纹口径
-            requirements_json=canonical_requirements_payload(command.requirements_struct),
-            # 出发地建壳即写：submit 与 plan 开跑之间崩掉也留得住用户输入的事实
-            origin_city=command.origin_city,
-            status=1,
-            # 显式状态机：建壳即入 GENERATING 并记开始时间，恢复任务据此识别生成中/僵尸
-            gen_state="GENERATING",
-            gen_started_at=datetime.now(),
-        )
-        session.add(main)
-        session.flush()
-        itinerary_id = main.id
-        for day_no in range(1, command.days + 1):
-            session.add(
-                ItineraryDay(
-                    itinerary_id=itinerary_id,
-                    day_no=day_no,
-                    city=command.city,
-                    travel_date=None if command.start_date is None else command.start_date + timedelta(days=day_no - 1),
-                    generation_status="PENDING",
-                )
+    from app.services import planning_queue
+
+    try:
+        with planning_queue.admission(), session_scope() as session:
+            main = ItineraryMain(
+                user_id=user_id,
+                title=f"{command.city}{command.days}日游",
+                city=command.city,
+                start_date=command.start_date,
+                end_date=command.end_date,
+                days=command.days,
+                persons=command.persons,
+                budget=command.budget,
+                preferences=",".join(command.preferences) if command.preferences else None,
+                hotel_tier=command.hotel_tier,
+                stay_nights=command.stay_nights,
+                # V10：用户原话参数随壳落库——僵尸续跑 rebuild_request 读回（恢复保真 P0-3）
+                intent=command.intent,
+                requirements=command.requirements,
+                # V13（M1a）：结构化需求快照随壳落库；新行程一律写（全默认也写 '{}'），
+                # NULL 与旧行程的判定信号——rebuild 据此选择 v1/v2 指纹口径
+                requirements_json=canonical_requirements_payload(command.requirements_struct),
+                # 出发地建壳即写：submit 与 plan 开跑之间崩掉也留得住用户输入的事实
+                origin_city=command.origin_city,
+                status=1,
+                # 显式状态机：建壳即入 GENERATING 并记开始时间，恢复任务据此识别生成中/僵尸
+                gen_state="GENERATING",
+                gen_started_at=datetime.now(),
             )
+            session.add(main)
+            session.flush()
+            itinerary_id = main.id
+            for day_no in range(1, command.days + 1):
+                session.add(
+                    ItineraryDay(
+                        itinerary_id=itinerary_id,
+                        day_no=day_no,
+                        city=command.city,
+                        travel_date=None
+                        if command.start_date is None
+                        else command.start_date + timedelta(days=day_no - 1),
+                        generation_status="PENDING",
+                    )
+                )
+            planning_queue.enqueue(user_id, itinerary_id, command)
+    except (TaskRejected, ApiError) as exc:
+        if idempotency_key and idempotency_key.strip():
+            cache_store.delete(_IDEM_NAMESPACE, f"{user_id}:{idempotency_key.strip()[:128]}")
+        if isinstance(exc, TaskRejected):
+            raise ApiError(429, "行程生成任务已满，系统繁忙，请稍后再试") from exc
+        raise
     # 规格 §3.1.3（个人 Agent V1）：普通建壳不再把本次偏好自动写入长期记忆——
     # 长期记忆只经 /preferences/memory 显式保存；本次偏好仍随壳存 itinerary_main.preferences。
-    # 壳已提交：这里若抛 500，submit_planning 就跑不到，留下一个 GENERATING 空壳等 5 分钟续跑扫描。
+    # 行程与投递意图已原子提交；此后 API 退出也不会丢失任务。
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "create", "创建行程草稿")
     # 建壳成功后回填幂等占位值：此后同键重试拿回这个 itinerary_id
     if idempotency_key and idempotency_key.strip():
@@ -1320,24 +1332,6 @@ def _create_generation(user_id: int, body: GenerateTripRequest, idempotency_key:
             _IDEM_NAMESPACE, f"{user_id}:{idempotency_key.strip()[:128]}", itinerary_id, IDEMPOTENCY_TTL_SECONDS
         )
 
-    try:
-        submit_planning(user_id, itinerary_id, command)
-    except (TaskRejected, ApiError) as exc:
-        # 生成池满：快速失败返回 429，绝不退回请求线程同步生成。
-        # 壳数据置为失败终态（该状态不满足自动续跑条件），用户可见并可重新创建。
-        with session_scope() as session:
-            session.execute(
-                update(ItineraryMain)
-                .where(ItineraryMain.id == itinerary_id)
-                .values(status=3, gen_state="FAILED", plan_note=QUEUE_FULL_NOTE)
-            )
-        itinerary_query.evict_detail(user_id, itinerary_id)
-        # 幂等键随本次明确失败一并释放：4xx 是"结果已知"的失败，用户重试
-        # 期望的是新一次尝试，而不是被回放到同一个 FAILED 壳。幂等只防
-        # "结果未知"（网络超时/断连）的重复——那条路径在 try 块之外，不受影响。
-        if idempotency_key and idempotency_key.strip():
-            cache_store.delete(_IDEM_NAMESPACE, f"{user_id}:{idempotency_key.strip()[:128]}")
-        raise ApiError(429, "行程生成任务已满，系统繁忙，请稍后再试") from exc
     return itinerary_query.detail(user_id, itinerary_id)
 
 

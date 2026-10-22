@@ -77,12 +77,13 @@ class _ReplayLog:
 class Subscription:
     """一条 SSE 连接。生产端可能在任意线程，消费端固定在自己的事件循环上。"""
 
-    __slots__ = ("_queue", "itinerary_id", "loop", "open")
+    __slots__ = ("_queue", "itinerary_id", "loop", "open", "rejected")
 
     def __init__(self, itinerary_id: int, loop: asyncio.AbstractEventLoop) -> None:
         self.itinerary_id = itinerary_id
         self.loop = loop
         self.open = True
+        self.rejected = False
         self._queue: asyncio.Queue[str] = asyncio.Queue(maxsize=SINK_BUFFER)
 
     async def take(self, timeout: float | None = None) -> Any:
@@ -134,6 +135,7 @@ def subscribe(itinerary_id: int, limit_envelope: str) -> tuple[Subscription, boo
         if not rejected:
             sinks.append(subscription)
     if rejected:
+        subscription.rejected = True
         # 与 Java 同：对被拒连接也先把提示写出去再收尾，前端才拿得到可读的原因
         subscription.offer(limit_envelope)
         subscription.open = False

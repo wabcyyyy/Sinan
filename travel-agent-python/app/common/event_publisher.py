@@ -10,8 +10,8 @@
 协议要点（前端 SSE 消费方依赖，不得偏离；键位单一真源见 app/schemas/stream_events.py，
 导出 contracts/stream_events.schema.json）：
 - 信封 JSON 键全部 camelCase：{"type", "itineraryId", "seq", "ts", "data"}；
-- seq 优先取 Redis ``INCR gen:seq:{itineraryId}``（每次 INCR 后 EXPIRE 7200s）；
-  Redis 不可用时退进程内自增，保证本地事件流不断；
+- 业务行程 seq 由 MySQL 分配，私有流与进度共用；回放 id 单独计数，不因私有流出现缺口；
+  无业务行程的内部流使用 Redis / 进程内计数，DB 不可用明确提示 resync；
 - ts 为东八区 ISO-8601（带时区偏移）。
 
 客户端由 `app.common.redis_client` 统一惰性创建（导入期零连接开销），带 0.5s 连接超时
@@ -98,12 +98,20 @@ def reset_event_publisher() -> None:
 
 
 def _next_seq(itinerary_id: int) -> int:
-    """事件序号：Redis INCR + 滑动 EXPIRE 7200s。
+    """业务行程使用共享 MySQL 序号，内部流以 Redis INCR + EXPIRE 兜底。
 
     Redis 不可用时退进程内自增：M7 之后订阅方与发布方同进程，
     没有 Redis 不等于没有事件流。广播副本因此也带兜底 seq——Redis 都不通时本来就没人收。
     熔断窗口内直接短路（与异常兜底同语义，省掉每条事件一次 raise/catch）。
     """
+    from app.common import generation_event_log
+
+    try:
+        shared = generation_event_log.next_seq(int(itinerary_id))
+        if shared is not None:
+            return shared
+    except Exception:
+        logger.warning("shared event sequence unavailable: itinerary=%s", itinerary_id, exc_info=True)
     key = f"gen:seq:{int(itinerary_id)}"
     if redis_client.is_down():
         return _advance_seq(int(itinerary_id), 1)
@@ -203,11 +211,25 @@ def publish_event(itinerary_id: int | None, event_type: str, data: dict, run_id:
     if not itinerary_id:
         # itineraryId 缺失意味着没有可订阅的会话通道，直接跳过
         return
-    # 先送进程内订阅者，再尽力广播到 Redis：Redis 缺席不再等于没有进度。
-    # seq 由 _next_seq 负责（Redis 共用计数器 + 进程内兜底，同 Java 的 fallbackSeq）。
-    envelope = build_envelope(itinerary_id, event_type, data, run_id=run_id)
+    # 业务帧先写共享有界日志，再唤醒本地连接；跨进程连接直接从日志读取。
+    envelope = build_envelope(itinerary_id, event_type, data, run_id=run_id, seq=0)
     # 业务进度帧进回放日志：断线重连带 Last-Event-ID 时可补发（publish_local 的会话私有帧不进）
-    event_hub.broadcast(int(itinerary_id), envelope, replayable=True)
+    from app.common import generation_event_log
+
+    try:
+        frame = generation_event_log.append(int(itinerary_id), envelope)
+        replayable = frame is None
+    except Exception:
+        logger.exception("shared generation event replay unavailable: itinerary=%s", itinerary_id)
+        event_hub.broadcast(int(itinerary_id), resync_envelope(int(itinerary_id)))
+        frame = None
+        replayable = False
+    if frame is not None:
+        envelope = frame
+        event_hub.broadcast(int(itinerary_id), frame)
+    else:
+        envelope = build_envelope(itinerary_id, event_type, data, run_id=run_id)
+        event_hub.broadcast(int(itinerary_id), envelope, replayable=replayable)
     if event_type in ("complete", "error"):
         # R3-F4：生成终态帧后主动收尾该行程的订阅——此前服务端在终态后无限心跳，
         # MAX_SUBSCRIBERS_PER_ITINERARY=5 的槽被死会话占到客户端自己断开。广播在前

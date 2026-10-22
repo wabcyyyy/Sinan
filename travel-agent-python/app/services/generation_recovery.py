@@ -1,16 +1,8 @@
-"""僵尸生成任务的自动续跑（移植自 Java `ItineraryStatusRecovery`）。
+"""独立 worker 的规划恢复：持久任务依据租约，旧数据与终态补齐保留闲置窗口。
 
-Java 用 `@Scheduled(fixedDelay=60s, initialDelay=60s)` + `ApplicationReadyEvent` 各跑一次；
-这里是**一个 daemon 线程 + 同样的节奏**，启动时在 lifespan 里先跑一次。判定口径保持逐字：
-
-- 活跃阈值 `updated_at < now - 5min`。这条完全依赖 MySQL 的
-  `ON UPDATE CURRENT_TIMESTAMP`——任何一次状态写（markRunning/markFailed/persist）都会刷新
-  `itinerary_day.updated_at`，这就是"活跃天心跳"。Python 侧同样靠列默认值，不在代码里手写时间。
-- 老数据没有 `gen_state`，所以两个分支都要带 `gen_state IS NULL AND status IN (1,3)` 的回落。
-- 终态 PARTIAL（2026-10-07，P0-3）也进失败分支：只自动补「空天」（无可见内容的未成功天），
-  有内容的天留给用户显式的一键重生成端点，防把正在编辑的行程卷进重生成。
-- `gen_resumed=1` 表示"已经自动续跑过一次"，再失败不再重拉（防失败→重生成死循环）。
-- 续跑去重锁 `gen:resume:{id}` TTL 10 分钟（大于一次生成的读超时 + 落库时间）。
+接管沿用原截止和累计预算，已成功天不覆盖。PARTIAL 自动补齐只处理空天，
+有可见草稿留给显式重生成；gen_resumed 限制失败责任的自动补齐次数。
+执行去重由 MySQL 任务租约负责，不依赖 Redis resume 锁。
 """
 
 from __future__ import annotations
@@ -40,7 +32,7 @@ from app.services import planning_task_convergence as convergence
 logger = logging.getLogger(__name__)
 
 IDLE_SECONDS = 5 * 60
-SCAN_INTERVAL_SECONDS = 60
+SCAN_INTERVAL_SECONDS = 10
 # Java 在 ApplicationReadyEvent 上立刻扫一次；这里把这趟扫描挪进线程并延后几秒，
 # 免得"启动应用"这件事依赖数据库可用（测试里 `with TestClient(app)` 会走 lifespan）。
 STARTUP_DELAY_SECONDS = 5
@@ -93,12 +85,19 @@ def recover() -> int:
     """
     active_after = datetime.now() - timedelta(seconds=IDLE_SECONDS)
     stale = ItineraryMain.updated_at < active_after
+    at = datetime.now()
+    expired_owner = and_(
+        PlanningTask.state.in_(("QUEUED", "RUNNING")),
+        or_(
+            PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at, PlanningTask.deadline_at <= at
+        ),
+    )
     # CORE_READY（M5b，spec §11）与 GENERATING 同待遇：它是生成中的过程态
     # （核心就绪、终态未写）。正常路径下 core_ready 写入后毫秒级就会被
     # complete_trip 收终态；若进程恰好死在这个窗口，状态投影停在 CORE_READY +
     # status=1，不纳入谓词这条行程就永远进不了恢复扫描。
     idle_generating = and_(
-        stale,
+        or_(expired_owner, and_(PlanningTask.itinerary_id.is_(None), stale)),
         or_(
             ItineraryMain.gen_state.in_(("GENERATING", "CORE_READY")),
             and_(ItineraryMain.gen_state.is_(None), ItineraryMain.status == 1),
@@ -116,7 +115,15 @@ def recover() -> int:
     )
     changed = 0
     with session_scope() as session:
-        generating = session.execute(select(ItineraryMain).where(idle_generating)).scalars().all()
+        generating = (
+            session.execute(
+                select(ItineraryMain)
+                .outerjoin(PlanningTask, PlanningTask.itinerary_id == ItineraryMain.id)
+                .where(idle_generating)
+            )
+            .scalars()
+            .all()
+        )
         failed = session.execute(select(ItineraryMain).where(failed_resumable)).scalars().all()
         targets = [(main.id, main.user_id, False) for main in generating] + [
             (main.id, main.user_id, True) for main in failed
@@ -158,6 +165,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             .scalars()
             .all()
         }
+        task = session.get(PlanningTask, itinerary_id)
         completed_days = sum(1 for day in days if _day_done(day, day_ids_with_items))
         if days and completed_days == len(days) and len(days) == main.days:
             # 数据其实齐了，只是终态没写上：补终态，不重跑
@@ -186,7 +194,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             if any(day.generation_status != "SUCCEEDED" and day.id in days_with_live_items for day in days):
                 return False
 
-        if any(day.generation_status == "RUNNING" and day.updated_at and day.updated_at > cutoff for day in days):
+        if task is None and any(
+            day.generation_status == "RUNNING" and day.updated_at and day.updated_at > cutoff for day in days
+        ):
             return False
         if failed_resume and not _resumable_failed_trip(days):
             return False
@@ -198,7 +208,6 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 留给用户走「重新生成这一天」端点显式自救——前提是 complete_trip 在写
             # PARTIAL 终态时不清这面旗（否则每轮扫描都重拉，白烧 LLM 成无限补齐）。
             return False
-        task = session.get(PlanningTask, itinerary_id)
         if task is not None and planning_tasks.is_cancel_pending(task):
             # 取消旗已落下、持有者却当场没了：只能由扫描收敛成 CANCELLED，不能再接管。
             # 原先这里只看租约，于是每 90s 接管一次、每次都在 TaskStopped 上退出，
@@ -212,7 +221,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
             # 重启越晚越容易判成过期——那才是 PLAN 里"默认恢复时预算已过期"的成因。
             _terminalize_expired(itinerary_id, completed_days)
             return True
-        if not generation_gate.try_resume_lock(itinerary_id):
+        from app.services import planning_worker
+
+        if not planning_worker.available():
             return False
         if failed_resume:
             session.execute(
@@ -220,7 +231,9 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
                 .where(ItineraryMain.id == itinerary_id)
                 .values(gen_resumed=True, gen_state="GENERATING", status=1)
             )
-        command = rebuild_request(main)
+        from app.services import planning_queue
+
+        command = planning_queue.command_for(itinerary_id)
         user_id = main.user_id
         pending = [day.day_no for day in days if not _day_done(day, day_ids_with_items)]
 
@@ -235,18 +248,15 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     try:
         limits = planning_tasks.resume_or_restart(user_id, itinerary_id)
     except planning_tasks.TaskWindowExpired as expired:
-        generation_gate.release_resume_lock(itinerary_id)
         _terminalize_expired(itinerary_id, completed_days)
         logger.info("planning task expired before takeover, itinerary %s: %s", itinerary_id, expired)
         return True
     except planning_tasks.LeaseHeld as held:
         # 两次读之间有人续租 = 这条任务确实还在跑：放锁让路，绝不承担第二份写权。
-        generation_gate.release_resume_lock(itinerary_id)
         logger.info("planning task still leased, skip itinerary %s: %s", itinerary_id, held)
         return False
     except ApiError as refused:
         # 用户取消过的交付责任不自动复活（resume_or_restart 的第三条口径）。
-        generation_gate.release_resume_lock(itinerary_id)
         logger.info("recovery refused for itinerary %s: %s", itinerary_id, refused)
         return False
     context: dict | None = None
@@ -256,8 +266,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     # BYOK 路由（决策 5 的依据腿）：resume_day 在恢复线程内直接跑 day_stream →
     # get_llm_client，不包 route_scope 会静默回落默认通道——续跑天与已生成天出自
     # 不同模型家族且烧运营方 key。下方 submit_planning 腿由 plan_days 内部自覆盖。
-    # 密文解不开（ApiError 409）必须就地终态化并放 resume 锁：扫描周期重拉也必败，
-    # 漏放锁则这条行程永远进不了恢复（终审补丁）。
+    # 路由不可恢复时登记执行失败并释放租约，避免持久任务悬挂。
     try:
         with llm_gateway_service.route_scope(user_id), use_task_limits(limits):
             for day_no in pending:
@@ -274,31 +283,28 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
     except TaskStopped as stopped:
         # 续跑途中又被接管/被取消：放锁退出、不写终态——结论归当前持有者，
         # 这里写只会把新 owner 的判断覆盖成旧事实。
-        generation_gate.release_resume_lock(itinerary_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
         logger.warning("resume interrupted for itinerary %s: %s", itinerary_id, stopped)
         return False
     except (ApiError, RunLimitExceeded) as exc:
-        generation_gate.release_resume_lock(itinerary_id)
-        day_persistence.fail_trip(itinerary_id, str(exc) or None, user_facing=True)
+        planning_tasks.finish_failure(itinerary_id, exc)
+        planning_tasks.release(itinerary_id, limits.task_id)
         logger.warning("byok route broken, failed itinerary %s: %s", itinerary_id, exc)
         return True
-    finally:
-        planning_tasks.release(itinerary_id, limits.task_id)
 
     if pending and not remaining:
         # 全部从检查点续完：补终态（与"数据齐了"分支同口径），不整段重排
         with session_scope() as session:
             _mark_completed(session, itinerary_id, command.city, command.days)
-        # 执行态一起收 FINISHED：`finally` 里的 release 只交还租约、不落结论，
-        # 不补这一脚，产品 COMPLETED 与执行 RUNNING 会长期不一致，扫描反复重进。
-        convergence.settle_success(itinerary_id, limits.task_id or "")
-        generation_gate.release_resume_lock(itinerary_id)
+        # 产品与执行状态一起收 FINISHED，再释放持有句柄。
+        planning_tasks.finish_success(itinerary_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
         return True
 
     try:
         itinerary_generation.submit_planning(user_id, itinerary_id, command, context=context, limits=limits)
     except itinerary_generation.TaskRejected as rejected:
-        generation_gate.release_resume_lock(itinerary_id)
+        planning_tasks.release(itinerary_id, limits.task_id)
         logger.warning("could not resume itinerary %s: %s", itinerary_id, rejected)
         return False
     # failedResume 分支返回 True（这条行程确实被重拉了）；僵尸分支保持 Java 的返回值
@@ -337,8 +343,7 @@ def _terminalize_expired(itinerary_id: int, completed_days: int) -> None:
     convergence.terminalize_expired(itinerary_id, completed_days=completed_days)
 
 
-# 周期调度统一走 app.common.cron（G-3.3）：本模块只负责"扫什么"，不负责
-# "多久扫一次/怎么停"。pytest 环境由 cron 自动 no-op（不再自己判环境）。
+# 可供维护脚本使用的周期登记；API 不再登记，worker.py 自己调度恢复。
 CRON_NAME = "generation-recovery"
 
 
