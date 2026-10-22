@@ -513,3 +513,20 @@ def test_persistence_uses_user_price_and_notes_without_external_verification():
     assert item.latitude is None and item.longitude is None
     assert item.source == "user" and item.verification_status == "unverified"
     assert other.cost == 40
+
+
+@pytest.mark.parametrize("field", ["address", "remark"])
+@pytest.mark.parametrize("kind", ["fixed", "create", "update"])
+def test_user_arrangement_text_respects_existing_storage_limits(field, kind):
+    from app.schemas.business.scenario import ItemActionBody, ItemCreateBody
+    from app.schemas.trip_requirements import FixedArrangement
+
+    base = {"dayNo": 1, "itemType": "attraction", "startTime": "14:00", "endTime": "16:00"}
+    if kind == "fixed":
+        model, body = FixedArrangement, {**base, "name": "门票"}
+    else:
+        model = ItemCreateBody if kind == "create" else ItemActionBody
+        body = {**base, "poiName": "门票", "planningRevision": 0, "action": kind}
+    model.model_validate({**body, field: "字" * 255})
+    with pytest.raises(ValidationError):
+        model.model_validate({**body, field: "字" * 256})

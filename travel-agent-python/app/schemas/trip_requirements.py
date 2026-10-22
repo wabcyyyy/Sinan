@@ -72,13 +72,13 @@ class FixedArrangement(WireModel):
     """用户固定的日期、地点身份与时段；不表示已预订或事实核实。"""
 
     day_no: int = Field(ge=1, le=MAX_TRIP_DAYS)
-    name: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=128)
     item_type: str = Field(pattern=r"^(attraction|food|hotel|transport)$")
     start_time: _TimeHhMm
     end_time: _TimeHhMm
     cost: Decimal | None = Field(default=None, ge=0, le=1_000_000, max_digits=12, decimal_places=2)
-    address: str | None = Field(default=None, max_length=500)
-    remark: str | None = Field(default=None, max_length=1000)
+    address: str | None = Field(default=None, max_length=255)
+    remark: str | None = Field(default=None, max_length=255)
 
 
 class BudgetPolicy(WireModel):

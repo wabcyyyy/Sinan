@@ -8924,7 +8924,7 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 255,
+            "maxLength": 128,
             "minLength": 1,
             "title": "Name"
           },
@@ -8961,7 +8961,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -8973,7 +8973,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 1000
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -9003,7 +9003,7 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 255,
+            "maxLength": 128,
             "minLength": 1,
             "title": "Name"
           },
@@ -9037,7 +9037,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -9049,7 +9049,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 1000
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -10437,7 +10437,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -10463,7 +10463,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 1000
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -10550,7 +10550,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 255
               },
               {
                 "type": "null"
@@ -10576,7 +10576,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 1000
+                "maxLength": 255
               },
               {
                 "type": "null"

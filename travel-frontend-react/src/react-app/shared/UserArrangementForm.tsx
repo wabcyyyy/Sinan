@@ -26,8 +26,8 @@ export function UserArrangementForm({ initial, days, busy, create = false, fixed
       <label>开始时间<input required type="time" value={value.startTime || ''} onChange={e => patch({ startTime: e.target.value })} /></label>
       <label>结束时间<input required type="time" value={value.endTime || ''} onChange={e => patch({ endTime: e.target.value })} /></label>
       <label>单价（元{value.itemType === 'hotel' ? '/间晚' : '/人'}）<input type="number" min="0" max="1000000" step="0.01" value={value.cost ?? ''} placeholder="不知道可留空" onChange={e => patch({ cost: e.target.value === '' ? null : e.target.value })} /></label>
-      <label className="arrangement-wide">地址（可选）<input maxLength={500} value={value.address || ''} onChange={e => patch({ address: e.target.value })} /></label>
-      <label className="arrangement-wide">备注<textarea maxLength={1000} value={value.remark || ''} placeholder="例如：预约凭证、集合位置、自己的提醒" onChange={e => patch({ remark: e.target.value })} /></label>
+      <label className="arrangement-wide">地址（可选）<input maxLength={255} value={value.address || ''} onChange={e => patch({ address: e.target.value })} /></label>
+      <label className="arrangement-wide">备注<textarea maxLength={255} value={value.remark || ''} placeholder="例如：预约凭证、集合位置、自己的提醒" onChange={e => patch({ remark: e.target.value })} /></label>
       {create && !fixedRequired && <label className="arrangement-wide arrangement-check"><input type="checkbox" checked={value.fixed} onChange={e => patch({ fixed: e.target.checked })} />固定地点和时段，后续 AI 修改须保留</label>}
     </fieldset>
     <p className="scenario-hint">资料由你填写，平台未核验。替换地点会清除旧坐标和来源；时间冲突不会保存。住宿按本行程房间数计价。</p>

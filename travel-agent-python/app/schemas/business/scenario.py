@@ -70,9 +70,9 @@ class RestoreVersionBody(BaseModel):
 class ItemEditFields(BaseModel):
     startTime: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     endTime: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
-    address: str | None = Field(default=None, max_length=500)
+    address: str | None = Field(default=None, max_length=255)
     cost: Decimal | None = Field(default=None, ge=0, le=1_000_000, max_digits=12, decimal_places=2)
-    remark: str | None = Field(default=None, max_length=1000)
+    remark: str | None = Field(default=None, max_length=255)
 
 
 class ItemActionBody(ItemEditFields):
