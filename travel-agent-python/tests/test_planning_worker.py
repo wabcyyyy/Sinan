@@ -36,6 +36,18 @@ def queue_db(tmp_path, monkeypatch):
     engine.dispose()
 
 
+def _state(trip: int) -> dict:
+    state = planning_tasks.state_of(trip)
+    assert state is not None
+    return state
+
+
+def _replay(trip: int, cursor: int):
+    result = generation_event_log.read_after(trip, cursor)
+    assert result is not None
+    return result
+
+
 def _create() -> int:
     result = itinerary_generation.generate(1, GenerateTripRequest(city="杭州", days=2, regionHint="西湖附近"))
     return int(result["id"])
@@ -44,14 +56,14 @@ def _create() -> int:
 def test_accept_persists_unowned_task_and_complete_command(queue_db):
     trip = _create()
     planning_tasks.reset()  # API 本地状态全部丢弃，交付责任仍在 DB。
-    state = planning_tasks.state_of(trip)
+    state = _state(trip)
     assert state and state["state"] == "QUEUED" and state["workerId"] == ""
     assert not planning_tasks.is_active(trip)
     assert planning_queue.command_for(trip).region_hint == "西湖附近"
     limits = planning_tasks.claim_queued()
     assert limits and limits.itinerary_id == trip
     assert planning_tasks.claim_queued() is None
-    assert planning_tasks.state_of(trip)["attempt"] == 1
+    assert _state(trip)["attempt"] == 1
 
 
 def test_enqueue_failure_rolls_back_shell_and_all_days(queue_db, monkeypatch):
@@ -75,13 +87,13 @@ def test_fresh_trip_recovers_on_expired_lease_without_idle_delay(queue_db, monke
     assert first
     first.reserve_llm(10, 20)
     planning_tasks.mark_running(trip)
-    deadline = planning_tasks.state_of(trip)["deadlineAt"]
+    deadline = _state(trip)["deadlineAt"]
     simulate_worker_exit(trip)
     submitted = []
     monkeypatch.setattr(generation_recovery, "resume_day", lambda *_: None)
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda *args: submitted.append(args))
     generation_recovery.recover()
-    current = planning_tasks.state_of(trip)
+    current = _state(trip)
     assert submitted and current["attempt"] == 2
     assert current["deadlineAt"] == deadline and current["consumed"]["consumed_llm_calls"] == 1
 
@@ -96,7 +108,7 @@ def test_expired_queue_is_terminalized_without_model_call(queue_db, monkeypatch)
         )
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda *_: pytest.fail("expired task ran"))
     assert generation_recovery.recover() == 1
-    assert planning_tasks.state_of(trip)["state"] == "EXPIRED"
+    assert _state(trip)["state"] == "EXPIRED"
 
 
 def test_shared_replay_survives_process_local_reset_and_closes_once(queue_db):
@@ -121,17 +133,17 @@ def test_shared_replay_reports_retention_gap_and_keeps_monotonic_cursor(queue_db
     monkeypatch.setattr(generation_event_log, "REPLAY_BUFFER", 2)
     for number in range(4):
         event_publisher.publish_event(trip, "day_start", {"dayNo": number})
-    frames, complete, latest = generation_event_log.read_after(trip, 0)
+    frames, complete, latest = _replay(trip, 0)
     assert not complete and latest == 4 and [frame.event_id for frame in frames] == [3, 4]
-    assert generation_event_log.read_after(trip, 3)[1]
-    assert not generation_event_log.read_after(trip, 99)[1]
+    assert _replay(trip, 3)[1]
+    assert not _replay(trip, 99)[1]
     with db.session_scope() as session:
         from app.db.models import GenerationEvent
 
         session.execute(update(GenerationEvent).values(created_at=datetime.now() - timedelta(hours=3)))
     assert generation_event_log.cleanup() == 2
     event_publisher.publish_event(trip, "day_done", {"dayNo": 1})
-    assert generation_event_log.read_after(trip, 4)[2] == 5
+    assert _replay(trip, 4)[2] == 5
 
 
 def test_queue_capacity_rejection_leaves_no_shell(queue_db, monkeypatch):
@@ -151,7 +163,7 @@ def test_new_attempt_does_not_replay_previous_terminal(queue_db):
         session.execute(update(PlanningTask).where(PlanningTask.itinerary_id == trip).values(state="FINISHED"))
     planning_tasks.acquire(1, trip)
     event_publisher.publish_event(trip, "day_start", {"dayNo": 2})
-    frames, complete, _ = generation_event_log.read_after(trip, 0)
+    frames, complete, _ = _replay(trip, 0)
     assert not complete
     assert [json.loads(frame)["type"] for frame in frames] == ["day_start"]
 
@@ -161,7 +173,7 @@ def test_private_events_share_wire_sequence_without_replay_gaps(queue_db):
     event_publisher.publish_event(trip, "day_start", {"dayNo": 1})
     private = event_publisher.publish_local(trip, "chat_token", {"delta": "test"})
     event_publisher.publish_event(trip, "day_done", {"dayNo": 1})
-    frames, complete, latest = generation_event_log.read_after(trip, 0)
+    frames, complete, latest = _replay(trip, 0)
     assert complete and latest == 2
     assert [json.loads(frame)["seq"] for frame in frames] == [1, 3]
     assert json.loads(private)["seq"] == 2

@@ -452,10 +452,12 @@ def test_starting_another_instance_keeps_active_trial_reservation(trial_db):
         trial_billing.recover_reservations()
         with db_session.session_scope() as session:
             row = session.get(TrialLedger, charge.id)
+            assert row is not None
             assert row.status == "reserved"
             row.created_at = datetime.now() - timedelta(days=1)
         frozen = trial_billing.wallet_view(user_id)["balanceCny"]
         trial_billing.recover_reservations()
         with db_session.session_scope() as session:
-            assert session.get(TrialLedger, charge.id).status == "unknown"
+            row = session.get(TrialLedger, charge.id)
+            assert row is not None and row.status == "unknown"
         assert trial_billing.wallet_view(user_id)["balanceCny"] == frozen

@@ -15,7 +15,10 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
+from concurrent.futures import Future
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -74,7 +77,17 @@ def child(role: str, port: int, marker: str) -> None:
     generation.run_plan_context = context
     generation.run_generate_trip_stream = stream
     generation.run_generate_day = lambda request: DailyPlan.model_validate(fixture_plan(request.day_no))
-    generation.enricher_pool.submit = lambda _task, *args: planning_tasks.release(args[1]) if len(args) > 1 else None
+
+    def skip_enrichment(task: Callable[..., object], *args: object) -> Future:
+        if len(args) > 1:
+            itinerary_id = args[1]
+            assert isinstance(itinerary_id, int)
+            planning_tasks.release(itinerary_id)
+        future = Future()
+        future.set_result(None)
+        return future
+
+    generation.enricher_pool.submit = skip_enrichment
     # Outbound HTTP is forbidden, including accidentally enabled lookup paths.
     import httpx
 
@@ -164,10 +177,12 @@ class Processes:
             log.close()
 
 
-def state(trip: int):
+def state(trip: int) -> dict:
     from app.services import planning_tasks
 
-    return planning_tasks.state_of(trip)
+    result = planning_tasks.state_of(trip)
+    assert result is not None
+    return result
 
 
 def delivered(trip: int) -> bool:
@@ -219,6 +234,7 @@ def day_one_items(trip: int) -> list[int]:
 def exercise(processes: Processes, directory: Path) -> dict:
     import httpx
     from sqlalchemy import select, update
+    from sqlalchemy.engine import CursorResult
 
     from app.db.models import GenerationEvent, PlanningTask
     from app.db.session import session_scope
@@ -263,7 +279,7 @@ def exercise(processes: Processes, directory: Path) -> dict:
                 )
                 .values(heartbeat_at=None)
             )
-            assert rejected.rowcount == 0
+            assert cast(CursorResult, rejected).rowcount == 0
             events = session.scalars(select(GenerationEvent).where(GenerationEvent.itinerary_id == trip)).all()
             assert sum(json.loads(event.envelope)["type"] == "complete" for event in events) == 1
         _, new_api = processes.start("api")
