@@ -106,10 +106,10 @@ def install_model_fixture(marker: str) -> None:
     send = httpx.Client.send
     origin = os.environ["LLM_BASE_URL"]
 
-    def local_only(client, request, *args, **kwargs):
+    def local_only(self, request, *args, **kwargs):
         if str(request.url).split("/chat/completions")[0] != origin:
             raise AssertionError(f"probe blocked non-fixture HTTP: {request.url.host}")
-        return send(client, request, *args, **kwargs)
+        return send(self, request, *args, **kwargs)
 
     httpx.Client.send = local_only
 

@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -116,7 +117,7 @@ def wait_terminal(rows: list[dict], timeout: float) -> dict[int, float]:
     return finished
 
 
-def percentile(values: list[float], fraction: float) -> float:
+def percentile(values: Sequence[float], fraction: float) -> float:
     return round(sorted(values)[min(len(values) - 1, int((len(values) - 1) * fraction))], 3) if values else 0
 
 
