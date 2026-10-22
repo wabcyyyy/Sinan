@@ -46,11 +46,22 @@ def fixture_plan(day: int) -> dict:
     }
 
 
+def skip_enrichment(task: Callable[..., object], *args: object) -> Future:
+    from app.services import planning_tasks
+
+    if len(args) > 1:
+        itinerary_id = args[1]
+        assert isinstance(itinerary_id, int)
+        planning_tasks.release(itinerary_id)
+    future = Future()
+    future.set_result(None)
+    return future
+
+
 def child(role: str, port: int, marker: str) -> None:
     from app.agent import current_limits
     from app.schemas.trip import DailyPlan
     from app.services import itinerary_generation as generation
-    from app.services import planning_tasks
 
     def context(*_args, **_kwargs):
         limits = current_limits()
@@ -77,15 +88,6 @@ def child(role: str, port: int, marker: str) -> None:
     generation.run_plan_context = context
     generation.run_generate_trip_stream = stream
     generation.run_generate_day = lambda request: DailyPlan.model_validate(fixture_plan(request.day_no))
-
-    def skip_enrichment(task: Callable[..., object], *args: object) -> Future:
-        if len(args) > 1:
-            itinerary_id = args[1]
-            assert isinstance(itinerary_id, int)
-            planning_tasks.release(itinerary_id)
-        future = Future()
-        future.set_result(None)
-        return future
 
     generation.enricher_pool.submit = skip_enrichment
     # Outbound HTTP is forbidden, including accidentally enabled lookup paths.
@@ -121,8 +123,9 @@ def wait_for(predicate, label: str, timeout: float = 35):
 
 
 class Processes:
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, entrypoint: Path | None = None):
         self.directory = directory
+        self.entrypoint = entrypoint or Path(__file__).resolve()
         self.children: list[subprocess.Popen] = []
         self.logs = []
 
@@ -133,7 +136,7 @@ class Processes:
         log = (self.directory / f"{role}-{len(self.children)}.log").open("w", encoding="utf-8")
         self.logs.append(log)
         process = subprocess.Popen(
-            [sys.executable, str(Path(__file__).resolve()), "--child", role, str(port), marker],
+            [sys.executable, str(self.entrypoint), "--child", role, str(port), marker],
             cwd=ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -308,7 +311,7 @@ def exercise(processes: Processes, directory: Path) -> dict:
     }
 
 
-def main() -> None:
+def main(experiment: Callable[[Processes, Path], dict] = exercise, entrypoint: Path | None = None) -> None:
     from sqlalchemy import URL, create_engine
 
     from app.common.config import settings
@@ -326,7 +329,7 @@ def main() -> None:
     database = "sinan_worker_probe_" + secrets.token_hex(6)
     assert re.fullmatch(r"sinan_worker_probe_[0-9a-f]{12}", database)
     with tempfile.TemporaryDirectory(prefix="sinan-worker-probe-") as temporary:
-        processes = Processes(Path(temporary))
+        processes = Processes(Path(temporary), entrypoint)
         try:
             with admin.begin() as connection:
                 connection.exec_driver_sql(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4")
@@ -339,7 +342,7 @@ def main() -> None:
             migrate.ensure_schema()
             with session_scope() as session:
                 session.add(SysUser(id=1, username="probe", password=hash_password("example-probe-password")))
-            print(json.dumps(exercise(processes, Path(temporary)), ensure_ascii=False, indent=2))
+            print(json.dumps(experiment(processes, Path(temporary)), ensure_ascii=False, indent=2))
         except BaseException:
             for log in Path(temporary).glob("*.log"):
                 print(log.name, log.read_text(encoding="utf-8", errors="replace")[-6000:], file=sys.stderr)

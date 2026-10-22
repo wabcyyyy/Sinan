@@ -437,5 +437,29 @@ def test_recovery_skips_partial_trip_with_visible_day_content(clients, partial_t
         )
     submitted: list[int] = []
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: submitted.append(args[1]))
-    assert generation_recovery.recover() == 0
+    with db_session.session_scope() as session:
+        before_items = session.execute(
+            select(ItineraryItem.id, ItineraryItem.poi_name, ItineraryItem.deleted)
+            .where(ItineraryItem.itinerary_id == partial_trip)
+            .order_by(ItineraryItem.id)
+        ).all()
+    before_main = _main(partial_trip)
+    assert generation_recovery.recover() == 1, "只收敛遗留执行责任，不重新规划有内容的天"
     assert submitted == [], "有可见内容的天只能由用户显式一键重生成，恢复轮不许卷进重生成"
+    with db_session.session_scope() as session:
+        assert (
+            session.execute(
+                select(ItineraryItem.id, ItineraryItem.poi_name, ItineraryItem.deleted)
+                .where(ItineraryItem.itinerary_id == partial_trip)
+                .order_by(ItineraryItem.id)
+            ).all()
+            == before_items
+        )
+    after_main = _main(partial_trip)
+    assert (after_main.title, after_main.gen_state, after_main.status) == (
+        before_main.title,
+        "PARTIAL",
+        before_main.status,
+    )
+    task = itinerary_generation.planning_tasks.state_of(partial_trip)
+    assert task is not None and task["state"] == "FAILED"

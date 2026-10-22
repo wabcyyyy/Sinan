@@ -89,7 +89,12 @@ def recover() -> int:
     expired_owner = and_(
         PlanningTask.state.in_(("QUEUED", "RUNNING")),
         or_(
-            PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at, PlanningTask.deadline_at <= at
+            and_(
+                PlanningTask.lease_owner != "",
+                or_(PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at),
+            ),
+            PlanningTask.deadline_at <= at,
+            PlanningTask.cancel_requested_at.is_not(None),
         ),
     )
     # CORE_READY（M5b，spec §11）与 GENERATING 同待遇：它是生成中的过程态
@@ -114,12 +119,14 @@ def recover() -> int:
         ),
     )
     changed = 0
+    terminal_orphan = and_(expired_owner, ItineraryMain.gen_state.in_(("COMPLETED", "PARTIAL", "FAILED")))
     with session_scope() as session:
         generating = (
             session.execute(
                 select(ItineraryMain)
                 .outerjoin(PlanningTask, PlanningTask.itinerary_id == ItineraryMain.id)
-                .where(idle_generating)
+                .where(or_(idle_generating, terminal_orphan))
+                .order_by(PlanningTask.submit_at, ItineraryMain.id)
             )
             .scalars()
             .all()
@@ -167,6 +174,25 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
         }
         task = session.get(PlanningTask, itinerary_id)
         completed_days = sum(1 for day in days if _day_done(day, day_ids_with_items))
+        if (
+            task is not None
+            and task.state in ("QUEUED", "RUNNING")
+            and main.gen_state in ("COMPLETED", "PARTIAL", "FAILED")
+        ):
+            # 崩溃可能发生在产品终态与执行终态之间：只补执行结论，不重新规划或覆盖标题。
+            outcome = (
+                planning_tasks.FINISHED
+                if main.gen_state == "COMPLETED"
+                else (
+                    "CANCELLED"
+                    if planning_tasks.is_cancel_pending(task)
+                    else "EXPIRED"
+                    if task.deadline_at <= datetime.now()
+                    else "FAILED"
+                )
+            )
+            convergence.settle_without_holder(itinerary_id, outcome, "RECOVERED_TERMINAL")
+            return True
         if days and completed_days == len(days) and len(days) == main.days:
             # 数据其实齐了，只是终态没写上：补终态，不重跑
             _mark_completed(session, itinerary_id, main.city, main.days)

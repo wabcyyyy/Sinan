@@ -3,7 +3,6 @@
 import logging
 import signal
 import threading
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ def main() -> None:
         signal.signal(sig, lambda *_: stop.set())
     from app.common import model_registry, worker_health
     from app.common.config import settings
-    from app.services import cost_ledger, generation_recovery, itinerary_generation, planning_worker
+    from app.services import cost_ledger, itinerary_generation, planning_worker
 
     worker_health.clear()
     settings.validate_boot()
@@ -33,10 +32,7 @@ def main() -> None:
     try:
         while not stop.is_set():
             try:
-                planning_worker.poll_once()
-                if time.monotonic() >= recover_at and planning_worker.available():
-                    generation_recovery.recover()
-                    recover_at = time.monotonic() + generation_recovery.SCAN_INTERVAL_SECONDS
+                recover_at = planning_worker.run_once(recover_at)
                 worker_health.record()
             except Exception:
                 logger.exception("planning worker poll failed; retrying")

@@ -1,11 +1,23 @@
 """规划执行进程的调度；API 只写投递意图，产品执行仍复用 plan_days。"""
 
 import logging
+import time
 
 from app.common.config import settings
 from app.services import itinerary_generation, planning_queue, planning_task_runs, planning_tasks
 
 logger = logging.getLogger(__name__)
+
+
+def run_once(recover_at: float) -> float:
+    """空槽先给恢复任务机会；满载时也定期收敛过期/取消责任。"""
+    from app.services import generation_recovery
+
+    if available() or time.monotonic() >= recover_at:
+        generation_recovery.recover()
+        recover_at = time.monotonic() + generation_recovery.SCAN_INTERVAL_SECONDS
+    poll_once()
+    return recover_at
 
 
 def available() -> bool:
