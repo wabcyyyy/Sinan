@@ -2,10 +2,17 @@
 
 import copy
 import json
+from typing import Literal
 
 from app.common.envelope import ApiError
 from app.db.session import session_scope
-from app.schemas.business.scenario import ScenarioBody, ScenarioCompareVO, ScenarioOptionVO, ScenarioSelectBody
+from app.schemas.business.scenario import (
+    ScenarioBody,
+    ScenarioCompareVO,
+    ScenarioItemVO,
+    ScenarioOptionVO,
+    ScenarioSelectBody,
+)
 from app.schemas.trip_requirements import DayWindow, TripRequirements, canonical_requirements_payload
 from app.services import itinerary_chat, itinerary_plan_apply, itinerary_query
 
@@ -84,62 +91,11 @@ def _prepare(user_id: int, itinerary_id: int, request: ScenarioBody):
         requirements.day_windows = [w for w in requirements.day_windows if w.day_no != request.dayNo]
         requirements.day_windows.append(DayWindow(day_no=request.dayNo, not_before=start, finish_by=finish))
         scoped = request.model_copy(update={"startTime": start})
-        options, proposals = [], {}
-        for key, title in (("keep", "保留全部安排"), ("omit", "移除可选安排")):
-            arranged, conflicts = _schedule(items, scoped, key == "omit")
-            remaining = [item for item in arranged if item["item_type"] != "hotel"]
-            ends = [_minutes(item["end_time"]) for item in remaining if item.get("end_time")]
-            last = max(ends) if ends else None
-            slack = _minutes(finish) - last if last is not None else None
-            if not remaining:
-                conflicts.append("移除后没有游玩或用餐安排，请至少保留一项")
-            if slack is not None and slack < 0:
-                conflicts.append(f"最晚 {_clock(last)} 结束，比可用截止 {finish} 晚 {-slack} 分钟")
-            if key == "omit" and not optional:
-                conflicts.append("尚未选择可舍弃项；请选择后再比较")
-            proposed = copy.deepcopy(plans)
-            selected = next(day for day in proposed if day["day_no"] == request.dayNo)
-            selected["items"] = arranged
-            selected["note"] = "按已列安排与用户预留时间调整；营业、预约和真实交通仍需核实。"
-            proposed[0]["_proposedRequirements"] = canonical_requirements_payload(requirements)
-            try:
-                itinerary_plan_apply._validate_plans(proposed, requirements=requirements)
-            except ApiError as exc:
-                conflicts.append(str(exc.message))
-            removed = [item for item in items if item["id"] not in {p["id"] for p in arranged}]
-            # 外币与缺价不冒充节省金额；住宿未变，普通条目按人计。
-            currencies = {
-                row.id: row.cost_currency
-                for row in itinerary_plan_apply._load_item_identity(session, itinerary_id).values()
-            }
-            cost_delta = (
-                None
-                if any(p.get("cost") is None or currencies.get(p["id"]) not in {None, "CNY"} for p in removed)
-                else -sum(float(p["cost"]) for p in removed) * main.persons
-            )
-            options.append(
-                ScenarioOptionVO(
-                    key=key,
-                    title=title,
-                    feasible=not conflicts,
-                    conflicts=list(dict.fromkeys(conflicts)),
-                    items=[
-                        dict(
-                            id=p["id"],
-                            name=p["poi_name"],
-                            startTime=p.get("start_time"),
-                            endTime=p.get("end_time"),
-                            fixed=p["id"] in fixed or p["item_type"] == "hotel",
-                        )
-                        for p in arranged
-                    ],
-                    removed=[p["poi_name"] for p in removed],
-                    finishTime=_clock(last) if last is not None else None,
-                    slackMinutes=slack,
-                    costDelta=cost_delta,
-                )
-            )
-            proposals[key] = proposed
+        currencies = {
+            row.id: row.cost_currency
+            for row in itinerary_plan_apply._load_item_identity(session, itinerary_id).values()
+        }
+        options, proposals = _options(plans, scoped, requirements, finish, currencies, main.persons)
         return (
             ScenarioCompareVO(
                 planningRevision=main.planning_revision,
@@ -153,6 +109,84 @@ def _prepare(user_id: int, itinerary_id: int, request: ScenarioBody):
             proposals,
             original_revision,
         )
+
+
+def _options(
+    plans: list[dict],
+    request: ScenarioBody,
+    requirements: TripRequirements,
+    finish: str,
+    currencies: dict,
+    persons: int,
+):
+    items = next(day for day in plans if day["day_no"] == request.dayNo)["items"]
+    fixed, optional = set(request.fixedItemIds), set(request.optionalItemIds)
+    options, proposals = [], {}
+    choices: tuple[tuple[Literal["keep", "omit"], str], ...] = (("keep", "保留全部安排"), ("omit", "移除可选安排"))
+    for key, title in choices:
+        arranged, conflicts = _schedule(items, request, key == "omit")
+        remaining = [item for item in arranged if item["item_type"] != "hotel"]
+        ends = [_minutes(item["end_time"]) for item in remaining if item.get("end_time")]
+        last = max(ends) if ends else None
+        slack = _minutes(finish) - last if last is not None else None
+        if not remaining:
+            conflicts.append("移除后没有游玩或用餐安排，请至少保留一项")
+        if last is not None and slack is not None and slack < 0:
+            conflicts.append(f"最晚 {_clock(last)} 结束，比可用截止 {finish} 晚 {-slack} 分钟")
+        if key == "omit" and not optional:
+            conflicts.append("尚未选择可舍弃项；请选择后再比较")
+        proposed = copy.deepcopy(plans)
+        selected = next(day for day in proposed if day["day_no"] == request.dayNo)
+        selected["items"] = arranged
+        selected["note"] = "按已列安排与用户预留时间调整；营业、预约和真实交通仍需核实。"
+        proposed[0]["_proposedRequirements"] = canonical_requirements_payload(requirements)
+        try:
+            itinerary_plan_apply._validate_plans(proposed, requirements=requirements)
+        except ApiError as exc:
+            conflicts.append(str(exc.message))
+        removed = [item for item in items if item["id"] not in {p["id"] for p in arranged}]
+        # 外币与缺价不冒充节省金额；住宿未变，普通条目按人计。
+        cost_delta = (
+            None
+            if any(p.get("cost") is None or currencies.get(p["id"]) not in {None, "CNY"} for p in removed)
+            else -sum(float(p["cost"]) for p in removed) * persons
+        )
+        options.append(_option_view(key, title, conflicts, arranged, removed, fixed, last, slack, cost_delta))
+        proposals[key] = proposed
+    return options, proposals
+
+
+def _option_view(
+    key: Literal["keep", "omit"],
+    title: str,
+    conflicts: list[str],
+    arranged: list[dict],
+    removed: list[dict],
+    fixed: set[int],
+    last: int | None,
+    slack: int | None,
+    cost_delta: float | None,
+):
+    return ScenarioOptionVO(
+        key=key,
+        title=title,
+        feasible=not conflicts,
+        conflicts=list(dict.fromkeys(conflicts)),
+        items=[
+            ScenarioItemVO(
+                id=p["id"],
+                name=p["poi_name"],
+                startTime=p.get("start_time"),
+                endTime=p.get("end_time"),
+                fixed=p["id"] in fixed or p["item_type"] == "hotel",
+            )
+            for p in arranged
+        ],
+        removed=[p["poi_name"] for p in removed],
+        finishTime=_clock(last) if last is not None else None,
+        slackMinutes=slack,
+        costDelta=cost_delta,
+    )
 
 
 def compare(user_id: int, itinerary_id: int, request: ScenarioBody) -> dict:

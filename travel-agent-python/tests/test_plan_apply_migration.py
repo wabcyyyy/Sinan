@@ -138,8 +138,10 @@ def test_scenario_compare_confirm_restore_and_stale_guard(client):
     trip_id = _trip_id(client)
     ids = _item_ids(trip_id)
     with db_session.session_scope() as session:
-        session.get(ItineraryItem, ids["西湖"]).end_time = time(11, 30)
+        lake = session.get(ItineraryItem, ids["西湖"])
         lunch = session.get(ItineraryItem, ids["楼外楼"])
+        assert lake is not None and lunch is not None
+        lake.end_time = time(11, 30)
         lunch.start_time, lunch.end_time = time(12), time(13)
     url = f"/api/itinerary/{trip_id}"
     before = client.get(url).json()["data"]
@@ -180,7 +182,8 @@ def test_scenario_compare_confirm_restore_and_stale_guard(client):
     assert restored.status_code == 200, restored.text
     assert [p["poiName"] for p in restored.json()["data"]["dayList"][0]["items"]] == ["西湖", "楼外楼"]
     with db_session.session_scope() as session:
-        assert not session.get(ItineraryMain, trip_id).requirements_json
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None and not main.requirements_json
     assert (
         client.post(
             url + "/apply-plans", json={"actionMessageId": draft["messageId"], "baseRevision": draft["baseRevision"]}
@@ -213,12 +216,13 @@ def test_scenario_preserves_existing_required_place(client):
     trip_id = _trip_id(client)
     ids = _item_ids(trip_id)
     with db_session.session_scope() as session:
-        session.get(ItineraryItem, ids["西湖"]).end_time = time(11, 30)
+        lake = session.get(ItineraryItem, ids["西湖"])
         lunch = session.get(ItineraryItem, ids["楼外楼"])
+        main = session.get(ItineraryMain, trip_id)
+        assert lake is not None and lunch is not None and main is not None
+        lake.end_time = time(11, 30)
         lunch.start_time, lunch.end_time = time(12), time(13)
-        session.get(ItineraryMain, trip_id).requirements_json = {
-            "requiredPlaces": [{"constraintId": "lunch", "name": "楼外楼", "dayNo": 1}]
-        }
+        main.requirements_json = {"requiredPlaces": [{"constraintId": "lunch", "name": "楼外楼", "dayNo": 1}]}
     body = dict(
         dayNo=1,
         planningRevision=0,
