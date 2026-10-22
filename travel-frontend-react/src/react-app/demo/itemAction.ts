@@ -23,7 +23,7 @@ export function editDemoItem(source: ItineraryDetail, id: number, body: ItemActi
     if (!target || !body.startTime || !body.endTime || body.startTime >= body.endTime) throw new Error('请选择日期及有效起止时间')
     if (target.items.some(p => p.startTime && p.endTime && p.startTime.slice(0, 5) < body.endTime! && p.endTime.slice(0, 5) > body.startTime!)) throw new Error('与当天其他安排时间重叠，请调整时段')
     if (body.poiName != null && body.poiName !== item.poiName || body.address != null && body.address !== item.address) {
-      item.latitude = null; item.longitude = null; item.poiId = null; item.image = null; item.factEvidence = {}; item.source = 'user'; item.verificationStatus = 'unverified'; item.valueKind = 'estimated'
+      item.latitude = null; item.longitude = null; item.poiId = null; item.image = null; item.intro = null; item.description = null; item.whyThis = null; item.openTime = null; item.factEvidence = {}; item.source = 'user'; item.verificationStatus = 'unverified'; item.valueKind = 'estimated'
     }
     if (body.poiName != null) item.poiName = body.poiName
     if (body.address !== undefined) item.address = body.address
@@ -57,6 +57,6 @@ export function createDemoItem(source: ItineraryDetail, body: ItemCreateBody): I
     cost: body.cost == null ? null : Number(body.cost), address: body.address, remark: body.remark, source: 'user', verificationStatus: 'unverified', valueKind: 'estimated' })
   day.items.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
   syncSummary(day)
-  recalculate(trip)
-  return body.fixed ? editDemoItem(trip, id, { ...body, action: 'fix' }) : trip
+  const next = recalculate(trip)
+  return body.fixed ? editDemoItem(next, id, { ...body, action: 'fix' }) : next
 }
