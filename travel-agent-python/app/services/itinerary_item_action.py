@@ -114,6 +114,31 @@ def _edit(session, item, days, request):
             row.sort_no = index
 
 
+def _action_item(
+    session, itinerary_id: int, item_id: int | None, request: ItemActionBody | ItemCreateBody, days: list[ItineraryDay]
+) -> tuple[ItineraryItem, ItineraryDay]:
+    if isinstance(request, ItemCreateBody):
+        day = next((d for d in days if d.day_no == request.dayNo), None)
+        if day is None:
+            raise ApiError(400, "所选日期不存在")
+        item = ItineraryItem(
+            itinerary_id=itinerary_id,
+            day_id=day.id,
+            item_type=request.itemType,
+            poi_name=request.poiName,
+            source="user",
+            verification_status="unverified",
+            value_kind="estimated",
+            review_requirement="before_departure",
+        )
+    else:
+        item = session.get(ItineraryItem, item_id)
+        if item is None or item.itinerary_id != itinerary_id:
+            raise ApiError(404, "行程项不存在")
+        day = next(d for d in days if d.id == item.day_id)
+    return item, day
+
+
 def act(user_id: int, itinerary_id: int, item_id: int | None, request: ItemActionBody | ItemCreateBody) -> dict:
     with session_scope() as session:
         itinerary_chat.lock_main_for_draft(session, itinerary_id)
@@ -121,25 +146,7 @@ def act(user_id: int, itinerary_id: int, item_id: int | None, request: ItemActio
         if main.status != 2 or main.planning_revision != request.planningRevision:
             raise ApiError(409, "行程正在生成或已更新，请刷新后再操作")
         days = list(session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id)))
-        if isinstance(request, ItemCreateBody):
-            day = next((d for d in days if d.day_no == request.dayNo), None)
-            if day is None:
-                raise ApiError(400, "所选日期不存在")
-            item = ItineraryItem(
-                itinerary_id=itinerary_id,
-                day_id=day.id,
-                item_type=request.itemType,
-                poi_name=request.poiName,
-                source="user",
-                verification_status="unverified",
-                value_kind="estimated",
-                review_requirement="before_departure",
-            )
-        else:
-            item = session.get(ItineraryItem, item_id)
-            if item is None or item.itinerary_id != itinerary_id:
-                raise ApiError(404, "行程项不存在")
-            day = next(d for d in days if d.id == item.day_id)
+        item, day = _action_item(session, itinerary_id, item_id, request, days)
         requirements = TripRequirements.model_validate(main.requirements_json or {})
         if request.action in {"update", "delete"} and fixed_for_item(requirements, day.day_no, item):
             raise ApiError(409, "请先解除固定，再修改这条安排")
