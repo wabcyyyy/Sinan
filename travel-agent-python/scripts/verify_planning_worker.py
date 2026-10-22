@@ -288,6 +288,9 @@ def exercise(processes: Processes, directory: Path) -> dict:
         ids = [number for number, _payload in frames if number]
         assert ids and ids == sorted(set(ids)) and min(ids) > cursor
         assert frames[-1][1]["type"] == "complete"
+        detail = client.get(f"{url2}/api/itinerary/{trip}").json()["data"]
+        assert detail["genState"] == "COMPLETED", "original API returned stale generation detail"
+        assert all(day["generationStatus"] == "SUCCEEDED" for day in detail["dayList"])
     return {
         "api_exit_after_accept": "passed",
         "worker_kill_after_day_one": "passed",
@@ -295,6 +298,7 @@ def exercise(processes: Processes, directory: Path) -> dict:
         "completed_day_preserved": "passed",
         "old_owner_update_rejected": "passed",
         "cross_instance_sse_replay": "passed",
+        "cross_instance_detail_read": "passed",
         "deadline_and_consumed_budget_preserved": "passed",
         "recovery_seconds": recovery_seconds,
         "lease_seconds": 3,

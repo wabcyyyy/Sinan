@@ -220,3 +220,19 @@ def test_event_transport_does_not_change_itinerary_modified_time(queue_db):
     event_publisher.publish_local(trip, "chat_token", {"delta": "test"})
     with db.session_scope() as session:
         assert session.scalar(select(ItineraryMain.updated_at).where(ItineraryMain.id == trip)) == previous
+
+
+def test_other_process_progress_invalidates_local_detail_cache(queue_db):
+    from app.services import itinerary_query
+
+    trip = _create()
+    assert itinerary_query.detail(1, trip)["genState"] == "GENERATING"
+    # 不调用本进程 evict，模拟另一个 worker 的提交；Redis 在此夹具中不可用。
+    with db.session_scope() as session:
+        session.execute(update(ItineraryMain).where(ItineraryMain.id == trip).values(gen_state="PARTIAL", status=2))
+    assert itinerary_query.detail(1, trip)["genState"] == "PARTIAL"
+    with db.session_scope() as session:
+        session.execute(
+            update(ItineraryMain).where(ItineraryMain.id == trip).values(title="新确认的计划", planning_revision=1)
+        )
+    assert itinerary_query.detail(1, trip)["title"] == "新确认的计划"
