@@ -29,6 +29,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select, update
+from sqlalchemy.exc import OperationalError
 
 from app.agent import (
     BUDGET_OVERAGE_MARK,
@@ -1094,6 +1095,19 @@ def _publish_core_ready(itinerary_id: int, timing: _StageClock) -> None:
     timing.mark("core_ready")
 
 
+def _recalculate_final_budget(itinerary_id: int) -> None:
+    """仅重试独立预算事务的 MySQL 死锁；不重新生成、不重放外层写事务。"""
+    for attempt in range(3):
+        try:
+            budget_engine.recalculate(itinerary_id)
+            return
+        except OperationalError as exc:
+            if exc.orig is None or exc.orig.args[:1] != (1213,) or attempt == 2:
+                raise
+            logger.warning("final budget deadlock for %s; retry %s/2", itinerary_id, attempt + 1)
+            time.sleep(0.05 * (attempt + 1))
+
+
 def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_summary: str = "行程生成完成") -> None:
     with session_scope() as session:
         main = session.get(ItineraryMain, itinerary_id)
@@ -1109,7 +1123,7 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
     limits = current_limits()
     if limits is not None and limits.remaining() <= 0:
         # 收尾窗口只做本地事务，仍需发布终态和最终预算。
-        budget_engine.recalculate(itinerary_id)
+        _recalculate_final_budget(itinerary_id)
         all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
         day_persistence.complete_trip(itinerary_id, all_succeeded)
         generation_events.complete(
@@ -1124,7 +1138,7 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         return
     stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
     # 最终预算是交付的一部分，不能依赖可能已满的后台富化队列。
-    budget_engine.recalculate(itinerary_id)
+    _recalculate_final_budget(itinerary_id)
     all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
     day_persistence.complete_trip(itinerary_id, all_succeeded)
     version_id: int | None = None

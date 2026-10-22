@@ -5,13 +5,14 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.common import cache_store
 from app.common.envelope import ApiError
 from app.common.task_pool import TaskRejected
 from app.db import session as db_session
-from app.db.models import Base, ItineraryDay, ItineraryItem, ItineraryMain, ItineraryMember
+from app.db.models import Base, BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain, ItineraryMember
 from app.services import (
     budget_engine,
     itinerary_chat,
@@ -124,6 +125,35 @@ def test_final_delivery_has_budget_even_if_enrichment_queue_is_full(trip_db, mon
     assert detail["qualityReport"]["warnings"][0]["code"] == "BUDGET_EXCEEDED"
     durable = planning_tasks.state_of(1)
     assert durable is not None and durable["state"] == "FINISHED", "任务脱离时落执行终态"
+
+
+@pytest.mark.parametrize("errno,failures,expected_calls", [(1213, 1, 2), (1213, 3, 3), (1045, 1, 1)])
+def test_final_budget_deadlock_retry_rolls_back_and_is_bounded(trip_db, monkeypatch, errno, failures, expected_calls):
+    original = budget_engine.recalculate
+    calls = 0
+
+    def recalculate(itinerary_id):
+        nonlocal calls
+        calls += 1
+        if calls <= failures:
+            with db_session.session_scope() as session:
+                session.add(BudgetDetail(itinerary_id=itinerary_id, category="未提交", amount=999, item_count=1))
+                session.flush()
+                raise OperationalError("INSERT budget_detail", {}, Exception(errno, "fixture database error"))
+        return original(itinerary_id)
+
+    monkeypatch.setattr(budget_engine, "recalculate", recalculate)
+    if failures == 1 and errno == 1213:
+        itinerary_generation._recalculate_final_budget(1)
+        assert itinerary_query.detail(1, 1)["totalAmount"] == 640
+    else:
+        with pytest.raises(OperationalError):
+            itinerary_generation._recalculate_final_budget(1)
+    assert calls == expected_calls
+    with db_session.session_scope() as session:
+        rows = session.query(BudgetDetail).filter_by(itinerary_id=1).all()
+        assert all(row.category != "未提交" for row in rows)
+        assert len(rows) == (4 if calls > failures else 0)
 
 
 @pytest.mark.parametrize("user_id,itinerary_id", [(3, 1), (1, 999)])
