@@ -23,6 +23,14 @@ type Envelope<T> = { code: number; message: string; data: T }
 const API_BASE = '/api'
 const sessionRequests = new Set<AbortController>()
 
+export function parseScenario(id: number, body: Contracts.ScenarioParseBody): Promise<Contracts.ScenarioIntentVO> {
+  return apiRequest(`/itinerary/${id}/scenarios/parse`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function actOnItem(id: number, itemId: number, body: Contracts.ItemActionBody): Promise<ItineraryDetail> {
+  return apiRequest(`/itinerary/${id}/items/${itemId}/action`, { method: 'POST', body: JSON.stringify(body) })
+}
+
 export function cancelSessionRequests(): void {
   for (const request of sessionRequests) request.abort()
   sessionRequests.clear()

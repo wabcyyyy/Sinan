@@ -90,7 +90,7 @@ def apply_plans(
         base_planning_revision = itinerary_chat.action_base_planning_revision(message)
         # M4（spec §9.1）：拟变更需求随草稿走——按拟变更需求验证草稿；确认应用时
         # 同事务写入正式需求（未确认前正式行程与正式需求都不改）
-        proposed_requirements = _proposed_requirements(plans)
+        proposed_requirements = _retain_fixed(main, plans, _proposed_requirements(plans))
         days = list(
             session.execute(
                 select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id).order_by(ItineraryDay.day_no)
@@ -103,7 +103,7 @@ def apply_plans(
         retained_item_ids: set[int] = set()
         day_by_no = {day.day_no: day for day in days}
         # M4：校验/快照/条目写/天数同步/revision/消费 pending action 同一事务
-        itinerary_version.append_version_in_session(session, user_id, itinerary_id, "apply_plans", "应用草稿前快照")
+        before = itinerary_version.create_snapshot(user_id, itinerary_id, "apply_plans", "应用草稿前快照")
 
         _revive_or_create_days(session, main, itinerary_id, plans, day_by_no)
         _apply_days(session, plans, itinerary_id, day_by_no, existing_items, retained_item_ids)
@@ -128,7 +128,21 @@ def apply_plans(
         itinerary_version.bump_planning_revision_with_cas(session, itinerary_id, base_planning_revision)
 
     itinerary_query.evict_detail(user_id, itinerary_id)
-    return itinerary_query.detail(user_id, itinerary_id)
+    return {**itinerary_query.detail(user_id, itinerary_id), "undoVersionId": before["id"]}
+
+
+def _retain_fixed(main, plans, proposed: TripRequirements | None) -> TripRequirements | None:
+    current = TripRequirements.model_validate(main.requirements_json or {})
+    if not current.fixed_arrangements:
+        if proposed is not None:
+            proposed.fixed_arrangements = []
+        return proposed
+    result = proposed if proposed is not None else current
+    # 固定只能由用户在条目上显式解除，模型草稿不得丢弃或改写。
+    result.fixed_arrangements = current.fixed_arrangements
+    if any(f.day_no > len(plans) for f in current.fixed_arrangements):
+        raise ApiError(400, "缩短行程会移除固定安排，请先解除固定")
+    return result
 
 
 def _proposed_requirements(plans: list[dict[str, Any]]) -> TripRequirements | None:
@@ -252,7 +266,11 @@ def apply_hotel_option(user_id: int, itinerary_id: int, request: HotelOptionRequ
     request = request or HotelOptionRequest()
     _validate_hotel_request(request)
     with session_scope() as session:
+        itinerary_chat.lock_main_for_draft(session, itinerary_id)
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
+        fixed = TripRequirements.model_validate(main.requirements_json or {}).fixed_arrangements
+        if any(f.item_type == "hotel" and f.day_no in (request.dayNos or []) for f in fixed):
+            raise ApiError(409, "所选晚次有固定住宿，请先解除固定")
         message = itinerary_chat.require_pending_action(
             session, user_id, itinerary_id, request.actionMessageId, request.baseRevision, True
         )

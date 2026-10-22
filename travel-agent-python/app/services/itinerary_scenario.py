@@ -4,6 +4,7 @@ import copy
 import json
 from typing import Literal
 
+from app.agent import parse_scenario_intent, use_scene
 from app.common.envelope import ApiError
 from app.db.session import session_scope
 from app.schemas.business.scenario import (
@@ -11,10 +12,38 @@ from app.schemas.business.scenario import (
     ScenarioCompareVO,
     ScenarioItemVO,
     ScenarioOptionVO,
+    ScenarioParseBody,
     ScenarioSelectBody,
 )
 from app.schemas.trip_requirements import DayWindow, TripRequirements, canonical_requirements_payload
-from app.services import itinerary_chat, itinerary_plan_apply, itinerary_query
+from app.services import (
+    itinerary_chat,
+    itinerary_city,
+    itinerary_plan_apply,
+    itinerary_query,
+    llm_gateway_service,
+    quota_service,
+)
+
+
+def parse_intent(user_id: int, itinerary_id: int, request: ScenarioParseBody) -> dict:
+    main = itinerary_query.find_owned_main(user_id, itinerary_id)
+    if main.planning_revision != request.planningRevision or main.status != 2:
+        raise ApiError(409, "行程已变化或尚未完成，请刷新后重试")
+    plans = itinerary_chat.current_plans(itinerary_id)
+    day = next((d for d in plans if d["day_no"] == request.dayNo), None)
+    if day is None:
+        raise ApiError(400, "当前日期不存在")
+    items = [{k: p.get(k) for k in ("id", "poi_name", "start_time", "end_time")} for p in day["items"]]
+    quota_service.enforce_llm_budget(user_id)
+    with llm_gateway_service.route_scope(user_id), use_scene("chat"):
+        result = itinerary_city.guard_agent_call(
+            "比较条件理解失败，请重试或手动填写", lambda: parse_scenario_intent(request.message, request.dayNo, items)
+        )
+    current = itinerary_query.find_owned_main(user_id, itinerary_id)
+    if current.planning_revision != request.planningRevision:
+        raise ApiError(409, "理解期间行程已变化，请刷新后重试")
+    return result.model_dump()
 
 
 def _minutes(value: str) -> int:
@@ -82,6 +111,17 @@ def _prepare(user_id: int, itinerary_id: int, request: ScenarioBody):
         if _minutes(request.finishBy) - request.departureBufferMinutes <= _minutes(request.startTime):
             raise ApiError(400, "扣除返程预留后没有可用时间，请调整时间窗口")
         requirements = TripRequirements.model_validate(main.requirements_json or {})
+        persistent_ids = {
+            p["id"]
+            for p in items
+            if any(
+                f.day_no == request.dayNo and f.name == p["poi_name"] and f.item_type == p["item_type"]
+                for f in requirements.fixed_arrangements
+            )
+        }
+        if persistent_ids & optional:
+            raise ApiError(400, "固定安排不能舍弃，请先在条目上解除固定")
+        request = request.model_copy(update={"fixedItemIds": list(fixed | persistent_ids)})
         previous = next((w for w in requirements.day_windows if w.day_no == request.dayNo), None)
         # 已有要求不能被比较入口悄悄放宽。
         start = max(request.startTime, previous.not_before or "00:00") if previous else request.startTime

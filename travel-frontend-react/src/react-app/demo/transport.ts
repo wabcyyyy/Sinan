@@ -5,6 +5,8 @@ import { makeDemoTrip, makeTemplateTrip, recalculate, relaxedPlans } from './fix
 import { CURATED_ITINERARIES } from '../../types/generated/contracts'
 import type { ItineraryVersionVO } from '../../types/generated/contracts'
 import { scenarioFixture } from './scenarioFixture'
+import { editDemoItem } from './itemAction'
+import type { ItemActionBody } from '../../types/generated/contracts'
 
 const KEY = 'sinan-demo:trips-v1'
 interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number; versions?: Array<ItineraryVersionVO & { snapshot: ItineraryDetail }>; scenarioMessageId?: number }
@@ -46,6 +48,7 @@ function remember(record: RecordState, operation: string, summary: string) {
   const previous = versions.at(-1)
   const id = (previous?.id ?? 0) + 1
   versions.push({ id, versionNo: id, parentVersionId: previous?.id ?? null, operation, summary, createdAt: new Date().toISOString(), snapshot: snapshot(record) })
+  return id
 }
 
 function delay(ms: number, signal?: AbortSignal | null): Promise<void> {
@@ -151,6 +154,18 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   const record = records()[match[1]]
   if (!record) return json(null, 404, '没有找到这条演示行程，请从“我的行程”重新打开。')
   const action = match[2]
+  const itemAction = action.match(/^\/items\/(\d+)\/action$/)
+  if (itemAction && method === 'POST') {
+    if (body.planningRevision !== record.revision) return json(null, 409, '行程已更新，请刷新后再操作')
+    try {
+      const next = editDemoItem(snapshot(record), Number(itemAction[1]), body as unknown as ItemActionBody)
+      const undoVersionId = remember(record, 'before_item', '条目修改前')
+      record.trip = next; record.revision += 1
+      for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
+      remember(record, 'item_action', '条目修改完成'); save()
+      return json({ ...snapshot(record), undoVersionId })
+    } catch (error) { return json(null, 400, error instanceof Error ? error.message : '修改失败') }
+  }
   if (!action && method === 'GET') return json(snapshot(record))
   if (action === '/versions' && method === 'GET') return json([...(record.versions || [])].reverse().map(({ snapshot: _snapshot, ...version }) => version))
   const restoreMatch = action.match(/^\/versions\/(\d+)\/restore$/)
@@ -206,7 +221,9 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
     const items = draft.plans?.[0]?.items
     if (!items) return json(null, 409, '演示草稿不完整，请重新生成建议。')
     const names = new Set(items.map((point) => point.poi_name))
-    remember(record, 'before_apply', '确认修改前的行程')
+    const fixed = record.trip.fixedArrangements || []
+    if (fixed.some(f => f.dayNo === 2 && !items.some(p => p.poi_name === f.name && p.start_time?.slice(0, 5) === f.startTime && p.end_time?.slice(0, 5) === f.endTime))) return json(null, 409, '草稿改变了固定安排，请先解除固定或重新提出修改')
+    const undoVersionId = remember(record, 'before_apply', '确认修改前的行程')
     record.trip.dayList[1].items = record.trip.dayList[1].items.filter((point) => names.has(point.poiName))
     if (draft.id === record.scenarioMessageId) {
       record.trip.dayList[1].items = record.trip.dayList[1].items.map(point => { const proposal = items.find(item => item.poi_name === point.poiName)!; return { ...point, startTime: proposal.start_time, endTime: proposal.end_time } })
@@ -219,7 +236,7 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
     delete draft.baseRevision
     record.messages.push({ id: Date.now(), role: 'ai', content: '已应用到当前浏览器的演示行程，第一天和住宿保持不变。' })
     save()
-    return json(snapshot(record))
+    return json({ ...snapshot(record), undoVersionId })
   }
   if (action === '/favorite') { record.trip.favorite = Boolean(body.favorite); save(); return json(snapshot(record)) }
   if (/^\/days\/\d+$/.test(action) && method === 'PATCH') {

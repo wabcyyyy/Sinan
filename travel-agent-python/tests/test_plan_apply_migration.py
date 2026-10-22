@@ -134,6 +134,80 @@ def _trip_id(client: TestClient) -> int:
     return client.get("/api/itinerary").json()["data"][0]["id"]
 
 
+def test_scenario_intent_only_extracts_conditions_and_rejects_foreign_ids(client, monkeypatch):
+    from app.agent.editing import scenario_intent
+
+    class FakeClient:
+        response = '{"finishBy":"16:00","optionalItemIds":[2]}'
+
+        def chat(self, *_args, **_kwargs):
+            return self.response
+
+    fake = FakeClient()
+    monkeypatch.setattr(scenario_intent, "get_llm_client", lambda *_: fake)
+    trip_id = _trip_id(client)
+    body = {"dayNo": 1, "planningRevision": 0, "message": "16点前结束，午饭可以舍弃"}
+    response = client.post(f"/api/itinerary/{trip_id}/scenarios/parse", json=body)
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["finishBy"] == "16:00" and data["startTime"] is None
+    assert data["transferMinutes"] is None and data["optionalItemIds"] == [2]
+    assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["planningRevision"] == 0
+    assert _operations(trip_id) == []
+    fake.response = '{"optionalItemIds":[999]}'
+    assert client.post(f"/api/itinerary/{trip_id}/scenarios/parse", json=body).status_code == 502
+
+
+def test_item_action_conflict_rolls_back_and_foreign_item_rejected(client):
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        lake, lunch = session.get(ItineraryItem, 1), session.get(ItineraryItem, 2)
+        assert lake is not None and lunch is not None
+        lake.end_time = time(11, 30)
+        lunch.start_time, lunch.end_time = time(12), time(13)
+    url = f"/api/itinerary/{trip_id}"
+    conflict = {"action": "update", "planningRevision": 0, "dayNo": 1, "startTime": "10:30", "endTime": "12:30"}
+    response = client.post(url + "/items/1/action", json=conflict)
+    assert response.status_code == 400, response.text
+    assert _operations(trip_id) == []
+    detail = client.get(url).json()["data"]
+    assert detail["planningRevision"] == 0
+    assert detail["dayList"][0]["items"][0]["startTime"].startswith("09:30")
+    assert client.post(url + "/items/999/action", json=conflict).status_code == 404
+
+
+def test_item_actions_persist_fixed_reject_stale_and_undo(client):
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}"
+    edit = {"action": "update", "planningRevision": 0, "dayNo": 1, "startTime": "09:30", "endTime": "11:00"}
+    updated = client.post(url + "/items/1/action", json=edit)
+    assert updated.status_code == 200, updated.text
+    assert client.post(url + "/items/1/action", json=edit).status_code == 409
+    fixed = client.post(url + "/items/1/action", json={"action": "fix", "planningRevision": 1})
+    assert fixed.status_code == 200, fixed.text
+    detail = client.get(url).json()["data"]
+    assert detail["fixedArrangements"][0]["name"] == "西湖"
+    assert client.post(url + "/items/1/action", json={"action": "delete", "planningRevision": 2}).status_code == 409
+    assert client.delete("/api/itinerary/items/1").status_code == 409
+    plans = jsonable_encoder(itinerary_chat.current_plans(trip_id))
+    plans[0]["items"][0]["start_time"] = "10:00"
+    plans[0]["_proposedRequirements"] = {}
+    message_id, revision = _draft(trip_id, plans)
+    rejected = client.post(url + "/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision})
+    assert rejected.status_code == 400 and "固定" in rejected.text
+    restored = client.post(
+        url + f"/versions/{fixed.json()['data']['undoVersionId']}/restore", json={"planningRevision": 2}
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["data"]["fixedArrangements"] == []
+    assert (
+        client.post(
+            url + f"/versions/{updated.json()['data']['undoVersionId']}/restore", json={"planningRevision": 1}
+        ).status_code
+        == 409
+    )
+
+
 def test_scenario_compare_confirm_restore_and_stale_guard(client):
     trip_id = _trip_id(client)
     ids = _item_ids(trip_id)

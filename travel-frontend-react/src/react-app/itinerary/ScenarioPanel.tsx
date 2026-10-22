@@ -4,6 +4,7 @@ import type * as Contracts from '../../types/generated/contracts'
 import type { DayPlan, ItineraryDetail } from '../../types/itinerary'
 import { isDemoMode } from '../../demoMode'
 import './scenario.css'
+import { ScenarioIntake } from './ScenarioIntake'
 
 /** 父组件以行程修订号和日期为 key；切日或保存后不复用旧比较。 */
 export function ScenarioPanel({ trip, day, disabled, onSelected }: {
@@ -14,7 +15,8 @@ export function ScenarioPanel({ trip, day, disabled, onSelected }: {
   const [finish, setFinish] = useState('16:00')
   const [transfer, setTransfer] = useState(30)
   const [buffer, setBuffer] = useState(30)
-  const [fixed, setFixed] = useState<number[]>([])
+  const persistentIds = day.items.filter(p => trip.fixedArrangements?.some(f => f.dayNo === day.dayNo && f.name === p.poiName && f.itemType === p.itemType)).flatMap(p => p.id === undefined ? [] : [p.id])
+  const [fixed, setFixed] = useState<number[]>(persistentIds)
   const [optional, setOptional] = useState<number[]>([])
   const [result, setResult] = useState<Contracts.ScenarioCompareVO | null>(null)
   const [busy, setBusy] = useState(false)
@@ -37,7 +39,11 @@ export function ScenarioPanel({ trip, day, disabled, onSelected }: {
     <button className="button button-secondary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>时间不够？比较两种取舍</button>
     {open && <div className="scenario-content">
       <h3>先保住确定的安排，再决定舍弃什么</h3>
-      <p>只调整第 {day.dayNo} 天已有项目的时间，保留顺序与时长。固定项保持原时段，住宿与其他日期不变。固定选择仅对本次调整生效。</p>
+      {!demo && <ScenarioIntake trip={trip} day={day} disabled={locked} onAdopt={parsed => change(() => {
+        setStart(parsed.startTime ?? ''); setFinish(parsed.finishBy ?? ''); setTransfer(parsed.transferMinutes ?? 30); setBuffer(parsed.departureBufferMinutes ?? 30)
+        setFixed([...new Set([...persistentIds, ...parsed.fixedItemIds])]); setOptional(parsed.optionalItemIds.filter(id => !persistentIds.includes(id)))
+      })} />}
+      <p>只调整第 {day.dayNo} 天已有项目的时间，保留顺序与时长。固定项保持原时段，住宿与其他日期不变。这里新增的固定仅对本次调整生效；条目上已固定的安排持续生效，需先在条目上解除。</p>
       {demo && <p className="scenario-hint">固定样例演示：请在未修改的成都第 2 天载入示例。此处不调用模型，不支持任意条件计算。
         <button type="button" className="button button-secondary" disabled={locked || day.dayNo !== 2} onClick={() => change(() => { setStart('09:30'); setFinish('16:00'); setTransfer(30); setBuffer(30); setFixed([21]); setOptional([24, 25]) })}>载入返程取舍示例</button></p>}
       <fieldset disabled={locked || demo} className="scenario-fields">
@@ -49,7 +55,7 @@ export function ScenarioPanel({ trip, day, disabled, onSelected }: {
       <p className="scenario-hint">转场和返程预留由你填写，不是实时交通测算；既有时间要求不会被放宽。</p>
       <fieldset disabled={locked || demo} className="scenario-items"><legend>逐项选择</legend>
         {day.items.map((item, index) => <label key={item.id ?? index}><span>{item.startTime?.slice(0, 5) || '时间待补'} · {item.poiName}</span>
-          <select aria-label={`${item.poiName}的安排方式`} disabled={item.id === undefined || item.itemType === 'hotel'} value={item.itemType === 'hotel' || fixed.includes(item.id!) ? 'fixed' : optional.includes(item.id!) ? 'optional' : 'flex'}
+          <select aria-label={`${item.poiName}的安排方式`} disabled={item.id === undefined || item.itemType === 'hotel' || persistentIds.includes(item.id)} value={item.itemType === 'hotel' || fixed.includes(item.id!) ? 'fixed' : optional.includes(item.id!) ? 'optional' : 'flex'}
             onChange={e => change(() => { setFixed([...fixed.filter(id => id !== item.id), ...(e.target.value === 'fixed' ? [item.id!] : [])]); setOptional([...optional.filter(id => id !== item.id), ...(e.target.value === 'optional' ? [item.id!] : [])]) })}>
             <option value="flex">保留，可调整时间</option><option value="fixed">固定原时段</option><option value="optional">可以舍弃</option>
           </select></label>)}

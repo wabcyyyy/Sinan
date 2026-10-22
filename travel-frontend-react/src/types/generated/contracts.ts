@@ -17,6 +17,14 @@ export interface DayWindow {
   sourceTurnId: string | null
 }
 
+export interface FixedArrangement {
+  dayNo: number
+  name: string
+  itemType: string
+  startTime: string
+  endTime: string
+}
+
 export interface LodgingRequirements {
   rooms: number | null
   lockedHotelIdentity: string | null
@@ -34,6 +42,7 @@ export interface TripRequirements {
   schemaVersion: number
   dayWindows: DayWindow[]
   requiredPlaces: RequiredPlace[]
+  fixedArrangements: FixedArrangement[]
   excludedPlaces: string[]
   excludedCategories: string[]
   pace: "normal" | "relaxed" | null
@@ -755,6 +764,30 @@ export interface ScenarioBody {
   departureBufferMinutes: number
   fixedItemIds: number[]
   optionalItemIds: number[]
+}
+
+export interface ScenarioParseBody {
+  dayNo: number
+  planningRevision: number
+  message: string
+}
+
+export interface ScenarioIntentVO {
+  startTime: string | null
+  finishBy: string | null
+  transferMinutes: number | null
+  departureBufferMinutes: number | null
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+  questions: string[]
+}
+
+export interface ItemActionBody {
+  planningRevision: number
+  action: "update" | "delete" | "fix" | "unfix"
+  dayNo: number | null
+  startTime: string | null
+  endTime: string | null
 }
 
 export interface ScenarioSelectBody {

@@ -234,6 +234,36 @@ def _check_window(plan: dict | None, policy: DayPolicy) -> ConstraintCheck:
     )
 
 
+def _check_fixed(requirements: TripRequirements | None, day_no: int, items: list[dict]) -> list[ConstraintCheck]:
+    checks = []
+    for fixed in requirements.fixed_arrangements if requirements else []:
+        if fixed.day_no != day_no:
+            continue
+        matches = [
+            p for p in items if p.get("poi_name", p.get("name")) == fixed.name and p.get("item_type") == fixed.item_type
+        ]
+        valid = len(matches) == 1 and all(
+            str(matches[0].get(key) or "")[:5] == getattr(fixed, key) for key in ("start_time", "end_time")
+        )
+        checks.append(
+            ConstraintCheck(
+                constraint_id=f"fixed:{day_no}:{fixed.name}",
+                kind="locked_item",
+                status="pass" if valid else "violation",
+                day_no=day_no,
+                item_refs=[fixed.name],
+                reason=""
+                if valid
+                else (
+                    f"固定安排「{fixed.name}」必须保留在第 {day_no} 天 {fixed.start_time}–{fixed.end_time}；"
+                    "请先解除固定再修改"
+                ),
+                blocking=True,
+            )
+        )
+    return checks
+
+
 def _check_locked(plan: dict | None, locked_names: set[str] | None, day_no: int) -> ConstraintCheck | None:
     if not locked_names:
         return None
@@ -286,6 +316,7 @@ def check_constraints(
     items = _plan_items(plan)
     checks: list[ConstraintCheck] = [
         *_check_required(requirements, day_no, items),
+        *_check_fixed(requirements, day_no, items),
         *_check_excluded(requirements, day_no, items),
         *_check_content(requirements, day_no, items, policy),
         _check_window(plan, policy),

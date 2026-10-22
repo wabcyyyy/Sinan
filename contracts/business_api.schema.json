@@ -608,6 +608,47 @@
       "title": "DayWindow",
       "type": "object"
     },
+    "FixedArrangement": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "itemType": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "startTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Endtime",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dayNo",
+        "name",
+        "itemType",
+        "startTime",
+        "endTime"
+      ],
+      "title": "FixedArrangement",
+      "type": "object"
+    },
     "LodgingRequirements": {
       "properties": {
         "rooms": {
@@ -723,6 +764,14 @@
           },
           "maxItems": 20,
           "title": "Requiredplaces",
+          "type": "array"
+        },
+        "fixedArrangements": {
+          "items": {
+            "$ref": "#/$defs/FixedArrangement"
+          },
+          "maxItems": 40,
+          "title": "Fixedarrangements",
           "type": "array"
         },
         "excludedPlaces": {
@@ -878,6 +927,7 @@
         "schemaVersion",
         "dayWindows",
         "requiredPlaces",
+        "fixedArrangements",
         "excludedPlaces",
         "excludedCategories",
         "pace",
@@ -2082,6 +2132,195 @@
         "optionalItemIds"
       ],
       "title": "ScenarioBody",
+      "type": "object"
+    },
+    "ScenarioParseBody": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dayNo",
+        "planningRevision",
+        "message"
+      ],
+      "title": "ScenarioParseBody",
+      "type": "object"
+    },
+    "ScenarioIntentVO": {
+      "properties": {
+        "startTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "finishBy": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finishby"
+        },
+        "transferMinutes": {
+          "anyOf": [
+            {
+              "maximum": 240,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transferminutes"
+        },
+        "departureBufferMinutes": {
+          "anyOf": [
+            {
+              "maximum": 480,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Departurebufferminutes"
+        },
+        "fixedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Fixeditemids",
+          "type": "array"
+        },
+        "optionalItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Optionalitemids",
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Questions",
+          "type": "array"
+        }
+      },
+      "title": "ScenarioIntentVO",
+      "type": "object",
+      "required": [
+        "startTime",
+        "finishBy",
+        "transferMinutes",
+        "departureBufferMinutes",
+        "fixedItemIds",
+        "optionalItemIds",
+        "questions"
+      ]
+    },
+    "ItemActionBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "action": {
+          "enum": [
+            "update",
+            "delete",
+            "fix",
+            "unfix"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "action",
+        "dayNo",
+        "startTime",
+        "endTime"
+      ],
+      "title": "ItemActionBody",
       "type": "object"
     },
     "ScenarioSelectBody": {

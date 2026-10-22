@@ -2229,6 +2229,124 @@
         }
       }
     },
+    "/api/itinerary/{id}/scenarios/parse": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Parse Scenario",
+        "operationId": "parse_scenario_api_itinerary__id__scenarios_parse_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioParseBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Parse Scenario Api Itinerary  Id  Scenarios Parse Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/items/{itemId}/action": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Item Action",
+        "operationId": "item_action_api_itinerary__id__items__itemId__action_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Itemid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemActionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Item Action Api Itinerary  Id  Items  Itemid  Action Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/itinerary/{id}/items": {
       "post": {
         "tags": [
@@ -8742,6 +8860,48 @@
         ],
         "title": "FeedbackCreate"
       },
+      "FixedArrangement": {
+        "properties": {
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "itemType": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Itemtype"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Starttime"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Endtime"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dayNo",
+          "name",
+          "itemType",
+          "startTime",
+          "endTime"
+        ],
+        "title": "FixedArrangement",
+        "description": "用户固定的日期、地点身份与时段；不表示已预订或事实核实。"
+      },
       "GenerateDayRequest": {
         "properties": {
           "city": {
@@ -10079,6 +10239,68 @@
           "role"
         ],
         "title": "InvitationCreate"
+      },
+      "ItemActionBody": {
+        "properties": {
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "update",
+              "delete",
+              "fix",
+              "unfix"
+            ],
+            "title": "Action"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starttime"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "action"
+        ],
+        "title": "ItemActionBody"
       },
       "ItemUpsertRequest": {
         "properties": {
@@ -11758,6 +11980,34 @@
         ],
         "title": "ScenarioBody"
       },
+      "ScenarioParseBody": {
+        "properties": {
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dayNo",
+          "planningRevision",
+          "message"
+        ],
+        "title": "ScenarioParseBody"
+      },
       "ScenarioSelectBody": {
         "properties": {
           "dayNo": {
@@ -12372,6 +12622,14 @@
             "type": "array",
             "maxItems": 20,
             "title": "Requiredplaces"
+          },
+          "fixedArrangements": {
+            "items": {
+              "$ref": "#/components/schemas/FixedArrangement"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Fixedarrangements"
           },
           "excludedPlaces": {
             "items": {

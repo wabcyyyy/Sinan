@@ -94,3 +94,5 @@ The [Chinese README](README.md) is the primary guide. See [architecture](docs/pu
 Use the private channel in [SECURITY.md](.github/SECURITY.md) for vulnerabilities.
 
 Project code is MIT licensed. Photographs and fonts retain separate licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Item editing now supports time/date changes, removal, persistent fixed arrangements, and inline undo guarded by the current revision. Natural-language comparison extracts conditions for review before deterministic comparison; it does not change the itinerary. The static demo supports manual edits only and does not call a model. See the [interaction case and limits](docs/public/vercel-demo.md).

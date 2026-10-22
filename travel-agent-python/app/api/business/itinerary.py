@@ -32,7 +32,13 @@ from app.schemas.business.itinerary import (
     UpdateDayBody,
     VersionBody,
 )
-from app.schemas.business.scenario import RestoreVersionBody, ScenarioBody, ScenarioSelectBody
+from app.schemas.business.scenario import (
+    ItemActionBody,
+    RestoreVersionBody,
+    ScenarioBody,
+    ScenarioParseBody,
+    ScenarioSelectBody,
+)
 from app.services import (
     cover_service,
     itinerary_care,
@@ -42,6 +48,7 @@ from app.services import (
     itinerary_command,
     itinerary_events,
     itinerary_generation,
+    itinerary_item_action,
     itinerary_nl_edit,
     itinerary_plan_apply,
     itinerary_query,
@@ -190,6 +197,23 @@ def top_preferences(user_id: int, limit: int = 5) -> list[str]:
 
 
 # ---- 写路径与版本（M4）----
+
+
+@router.post("/{id}/scenarios/parse")
+def parse_scenario(
+    body: ScenarioParseBody, id: int = Path(..., ge=1), user: AuthUser = Depends(enforce_business_auth)
+) -> dict:
+    return ok(itinerary_scenario.parse_intent(user.id, id, body))
+
+
+@router.post("/{id}/items/{itemId}/action")
+def item_action(
+    body: ItemActionBody,
+    id: int = Path(..., ge=1),
+    itemId: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    return ok(itinerary_item_action.act(user.id, id, itemId, body))
 
 
 @router.post("/{id}/items")

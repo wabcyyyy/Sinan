@@ -12,6 +12,7 @@ import {
   listMyItemFeedback,
   optimizeDay,
   regenerateDay as regenerateDayApi,
+  restoreItineraryVersion,
   revokeItemFeedback,
   setFavorite,
   submitItemFeedback,
@@ -45,6 +46,7 @@ import { DraftReview } from './DraftReview'
 import { DemoEditGuide } from '../demo/DemoEditGuide'
 import { ScenarioPanel } from './ScenarioPanel'
 import { VersionHistory } from './VersionHistory'
+import { ItemActions } from './ItemActions'
 import './workbench.css'
 
 /** 时间线与类型徽章共用的图标映射（新类型先落到 pin，不裸奔）。 */
@@ -447,7 +449,14 @@ export function TripDetailPage({ path }: { path: string }) {
         <motion.div className="day-content-body" key={day.dayNo} variants={fadeUp} initial="hidden" animate="show">
         <div className="day-content-head"><div><span className="section-eyebrow">DAY {String(day.dayNo).padStart(2, '0')}</span>{editingTheme ? <div className="day-theme-editor"><input value={themeDraft} maxLength={80} onChange={(event) => setThemeDraft(event.target.value)} aria-label="当天标题" /><div><button className="button button-primary" type="button" disabled={working} onClick={saveTheme}>保存</button><button className="button button-secondary" type="button" disabled={working} onClick={() => { setThemeDraft(day.theme || ''); setEditingTheme(false) }}>取消</button></div></div> : <><h2>{day.theme || `第 ${day.dayNo} 天`}</h2><p>{day.note}</p></>}</div><div className="day-head-actions">{!offline && <button className="button button-secondary day-head-ai-btn" type="button" title="用对话微调当天的节奏、路线或美食" onClick={() => { setView('chat') }}><Icon name="spark" size={15} />AI 编排此日</button>}{!editingTheme && <button className="button button-secondary" type="button" onClick={() => offline ? setNotice('示例行程不会写入账号') : setEditingTheme(true)}><Icon name="edit" size={16} />编辑标题</button>}<button className="button button-secondary" type="button" disabled={working || editingTheme} onClick={regenerateDay}><Icon name="refresh" size={16} />{working ? '正在整理…' : '重新生成这一天'}</button></div></div>
         {preview && <p className="workbench-current-label">当前行程 · 确认前不会改变{view !== 'review' && <button type="button" className="text-action" onClick={() => setView('review')}>查看修改预览</button>}</p>}
-        {savedEdit && <p className="workbench-saved" role="status">修改已保存 · 以下为当前行程</p>}
+        {savedEdit && <div className="workbench-saved" role="status">修改已保存 · 以下为当前行程
+          {trip.undoVersionId !== undefined && <button type="button" className="button button-secondary" disabled={working || chat.applying || chat.sending} onClick={async () => {
+            setWorking(true)
+            try { const next = await restoreItineraryVersion(trip.id, trip.undoVersionId!, trip.planningRevision!); setTrip(next); setSavedEdit(false); await chat.reload(); setNotice('已撤销，恢复到修改前') }
+            catch (err) { setNotice(err instanceof Error ? err.message : '撤销失败，请刷新后查看历史版本') }
+            finally { setWorking(false) }
+          }}>撤销这次修改</button>}
+        </div>}
         <div className="day-items" key={day.dayNo}>{day.items.map((item, index) => {
           const itemKey = `${day.dayNo}:${index}`
           const previewMark = preview ? itemPreviewMark(preview.changes, day.dayNo, item.poiName) : ''
@@ -480,6 +489,8 @@ export function TripDetailPage({ path }: { path: string }) {
                   <h3>{item.poiName}</h3>
                 </div>
                 <p>{item.remark || item.whyThis || '为这一段旅程保留一点自由。'}</p>
+                {!offline && trip.status === 2 && <ItemActions key={`${item.id}-${trip.planningRevision}`} trip={trip} day={day} item={item} disabled={working || chat.sending || chat.applying}
+                  onChanged={next => { setTrip(next); setSavedEdit(true); setView('itinerary'); void chat.reload() }} />}
                 <div className="item-meta">
                   <span><Icon name="clock" size={14} />{item.durationMin ? `${item.durationMin} 分钟` : '时间可调整'}</span>
                   {getItemPriceTag(item) && <span><Icon name="ticket" size={14} />{getItemPriceTag(item)}</span>}
