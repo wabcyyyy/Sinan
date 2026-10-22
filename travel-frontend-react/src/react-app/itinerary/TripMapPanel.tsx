@@ -82,7 +82,21 @@ export function TripMapPanel({
       syncRoutes(map, pinsRef.current)
       resetBounds()
     })
+    // 工作区切换保留同一张地图；从 hidden 恢复时重新取得容器尺寸。
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        if (container.clientWidth > 0) {
+          map.resize()
+          if (loadedRef.current) resetBounds()
+        }
+      })
+    })
+    observer.observe(container)
     return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
       popupRef.current?.remove()
       markersRef.current.forEach((marker) => marker.remove())
       markersRef.current = []

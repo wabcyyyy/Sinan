@@ -9,6 +9,19 @@ const request = async (path: string, body?: unknown, method = 'POST') => {
   return { response, ...(await response.json()) }
 }
 
+it('starts each edit tour from an independent sample without overwriting existing work', async () => {
+  const { createEditTour } = await import('./transport')
+  const first = createEditTour()
+  const original = (await request('/itinerary/101')).data
+  const draft = (await request(`/itinerary/${first}/chat-edit`, { message: '把第二天安排松一点' })).data
+  await request(`/itinerary/${first}/apply-plans`, { actionMessageId: draft.messageId, baseRevision: draft.baseRevision })
+  const second = createEditTour()
+  expect(second).not.toBe(first)
+  expect((await request(`/itinerary/${first}`)).data.totalAmount).toBe(1080)
+  expect((await request(`/itinerary/${second}`)).data.totalAmount).toBe(1180)
+  expect((await request('/itinerary/101')).data).toEqual(original)
+})
+
 it('copies editorial routes into separate tab-local trips and edits only the confirmed copy', async () => {
   const before = (await request('/templates/-1')).data
   const copy = (await request('/templates/-1/fork', {})).data

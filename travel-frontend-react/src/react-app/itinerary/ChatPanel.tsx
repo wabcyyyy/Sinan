@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import type { ItineraryChatMessage } from '../../types/chat'
-import type { DayPlan, HotelOption, ItineraryDetail } from '../../types/itinerary'
+import type { DayPlan, HotelOption } from '../../types/itinerary'
 import { interpretImageIntent, isUnauthorized, liveHotelQuotes } from '../../api/sinan'
 import { ChatComposer, composeDraft, imageFeedbackText } from '../shared/ChatComposer'
 import { Icon } from '../shared/Icon'
@@ -11,17 +11,16 @@ import { activeActionIndex, describeStructuredChange, diffBadge, hotelDefaultSel
 import { getDayQuickPrompts, getPromptSceneGroups } from './chatPrompts'
 import { describeLiveQuotesError, liveQuotesCaption, quoteRowMeta } from './hotelLiveQuotes'
 import type { LiveQuotesState } from './hotelLiveQuotes'
-import { useTripChat } from './useTripChat'
+import type { useTripChat } from './useTripChat'
 
-/** 对话编排主面（CH3）：对话在左、行程保持可见；草稿卡/确认卡长在对话流内。
+/** 对话编排主面（CH3）：工作区切换时保留对话；草稿卡/确认卡长在对话流内。
  * 选择型 UI（酒店候选）保留结构化点选，不做全屏对话。
  * 折叠入口（2026-09-30 评审拍板）：默认展开；收起成窄条，由调用方持有状态并
  * 同步改 grid 列宽（收起时内容列占满剩余宽度）。不传 onToggleCollapse 则无入口。 */
 export function ChatPanel({
   itineraryId,
   dayList,
-  onApplied,
-  onReconcile,
+  chat,
   collapsed = false,
   onToggleCollapse,
   currentDayNo = 1,
@@ -31,8 +30,7 @@ export function ChatPanel({
 }: {
   itineraryId: number
   dayList: DayPlan[]
-  onApplied: (detail: ItineraryDetail) => void
-  onReconcile: () => void
+  chat: ReturnType<typeof useTripChat>
   collapsed?: boolean
   onToggleCollapse?: () => void
   currentDayNo?: number
@@ -43,7 +41,6 @@ export function ChatPanel({
   /** 每次点击查看后台草稿时递增，确保聊天已挂载时也重新取数。 */
   draftRequest?: number
 }) {
-  const chat = useTripChat(itineraryId, onApplied, onReconcile)
   const [draft, setDraft] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
   const [sceneIdx, setSceneIdx] = useState(0)

@@ -166,7 +166,11 @@ WHERE id = :itinerary_id AND planning_revision = :expected;
 
 ### 演示材料
 
-[立即体验固定样例](https://sinan-demo.vercel.app)：成都两天一晚，免登录、不调用真实模型；交互数据仅保存在当前标签页。
+[立即体验固定样例](https://sinan-demo.vercel.app)：成都两天一晚，免登录、不调用真实模型；交互数据仅保存在当前标签页。点击“90秒体验局部修改”，从独立样例开始，查看第二天、提出调整、核对差异后保存；可以随时跳过引导。
+
+详情页在桌面并排展示时间线与地图／对话／修改预览，手机通过视图切换保留日期与草稿。确认前在原时间线上标出移除或调整项，同时展示提案、未涉及日期与可比较的费用变化；缺价、外币或住宿变化不推算节省额。交互及边界见 [展示说明](docs/public/vercel-demo.md)。
+
+![固定合成样例：原时间线标记待移除项，右侧核对提案后才保存；不是模型运行记录](docs/public/preview/workbench-edit-desktop-20261022.png)
 
 独立 worker 的投递、繁忙恢复、过载拒绝和本地假模型 HTTP 负载实验见 [执行说明](docs/public/planning-worker.md)。实验使用真实进程和 MySQL、固定研究策略与模型内容，保留失败及对照参数；不代表真实模型效果或线上容量。
 

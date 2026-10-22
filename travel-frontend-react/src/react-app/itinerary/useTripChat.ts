@@ -40,6 +40,7 @@ export function useTripChat(
   itineraryId: number,
   onApplied: (detail: ItineraryDetail) => void,
   onReconcile: () => void,
+  enabled: boolean,
 ) {
   const [msgs, setMsgs] = useState<ItineraryChatMessage[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -51,6 +52,7 @@ export function useTripChat(
   msgsRef.current = msgs
 
   const reload = useCallback(async () => {
+    if (!enabled) return false
     try {
       const history = await getItineraryChatHistory(itineraryId)
       setMsgs(history)
@@ -62,14 +64,14 @@ export function useTripChat(
     } finally {
       setLoaded(true)
     }
-  }, [itineraryId])
+  }, [itineraryId, enabled])
 
   useEffect(() => {
     setMsgs([])
     setLoaded(false)
     setNotice('')
-    void reload()
-  }, [reload])
+    if (enabled) void reload()
+  }, [reload, enabled])
 
   const activeIndex = activeActionIndex(msgs)
   const active = activeIndex >= 0 ? msgs[activeIndex] : null

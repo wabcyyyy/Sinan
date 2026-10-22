@@ -113,6 +113,7 @@ export function structuredDraftChanges(current: DayPlan[], draft: ChatDayPlan[])
   const moves: StructuredChange[] = []
   const movedInto = new Set<string>() // `名称@目标天`
   for (const [fromDay, baseMap] of baseByDay) {
+    if (!draftByDay.has(fromDay)) continue // 未提交的日期不被替换，同名新增不能冒充跨日移动。
     for (const name of baseMap.keys()) {
       if (draftByDay.get(fromDay)?.has(name)) continue
       const toDay = [...draftByDay.entries()].find(([d, dm]) => d !== fromDay && dm.has(name))?.[0]
@@ -144,10 +145,10 @@ export function structuredDraftChanges(current: DayPlan[], draft: ChatDayPlan[])
   }
   out.push(...moves)
   const hotelNames = (names: string[]) => names.filter(Boolean).join('、')
-  const fromHotel = hotelNames(current.flatMap((day) => (day.items || []).filter(isHotelTrip).map((item) => cleanName(item.poiName))))
+  const fromHotel = hotelNames(current.filter(day => draftByDay.has(day.dayNo)).flatMap((day) => (day.items || []).filter(isHotelTrip).map((item) => cleanName(item.poiName))))
   const toHotel = hotelNames(draft.flatMap((day) => (day.items || []).filter(isHotelDraft).map((item) => cleanName(item.poi_name))))
-  if (fromHotel && toHotel && fromHotel !== toHotel) {
-    out.push({ type: 'hotelChanged', label: '住宿调整', items: [], fromName: fromHotel, toName: toHotel })
+  if ((fromHotel || toHotel) && fromHotel !== toHotel) {
+    out.push({ type: 'hotelChanged', label: '住宿调整', items: [], fromName: fromHotel || '未安排住宿', toName: toHotel || '未安排住宿' })
   }
   if (!out.length) {
     out.push({

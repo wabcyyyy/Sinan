@@ -10,6 +10,7 @@ Estimated facts require verification before departure.
 
 Open the [online demo](https://sinan-demo.vercel.app). No installation, account, or model API key is required.
 It uses production pages with a synthetic Chengdu itinerary. Changes stay in the current tab; no business API or model is called.
+The skippable “90秒体验局部修改” guide opens an independent sample. Review a scoped edit beside the original timeline, then confirm to save; mobile views keep the selected day and pending draft. Cost differences are shown only for comparable priced items. See the [workbench screenshots and limits](docs/public/vercel-demo.md).
 Map tiles require internet access; the itinerary and navigation links remain available if tiles fail.
 
 | Goal | Start here | Requirements |

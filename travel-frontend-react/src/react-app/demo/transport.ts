@@ -18,6 +18,14 @@ function save() {
   try { sessionStorage.setItem(KEY, JSON.stringify(records())) } catch { /* 禁用存储时仅保持当前页面内存。 */ }
 }
 
+/** 每次引导使用独立合成副本，保留已经编辑的演示行程。 */
+export function createEditTour(): number {
+  const id = Math.max(200, ...Object.keys(records()).map(Number)) + 1
+  records()[String(id)] = { trip: makeDemoTrip(id), messages: [], revision: 1 }
+  save()
+  return id
+}
+
 function snapshot(record: RecordState): ItineraryDetail {
   const total = record.trip.dayList.length
   const completed = record.startedAt === undefined ? total : Math.min(total, Math.floor((Date.now() - record.startedAt) / 2200))
