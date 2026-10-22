@@ -31,3 +31,10 @@
   .scenario-fields, .scenario-options { grid-template-columns: 1fr; }
   .scenario-items label { align-items: stretch; flex-direction: column; }
 }
+
+.user-arrangement-form { margin-top: 1rem; }
+.arrangement-wide { grid-column: 1 / -1; }
+.user-arrangement-form textarea, .user-arrangement-form select { width: 100%; min-height: 42px; border: 1px solid var(--sinan-line-soft); border-radius: 8px; padding: .5rem; color: inherit; background: var(--sinan-surface); }
+.user-arrangement-form textarea { min-height: 80px; resize: vertical; }
+.scenario-fields .arrangement-check { display: flex; align-items: center; gap: .5rem; }
+.arrangement-check input { width: 18px; min-height: 18px; }

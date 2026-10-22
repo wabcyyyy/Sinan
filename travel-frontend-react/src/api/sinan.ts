@@ -851,3 +851,7 @@ export function restoreItineraryVersion(id: number, versionId: number, planningR
 export function testLlmGateway(id: number) {
   return apiRequest<Contracts.LlmGatewayTestVO>(`/llm-gateway/${id}/test`, { method: 'POST' })
 }
+
+export function createUserItem(id: number, body: Contracts.ItemCreateBody): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itinerary/${id}/items/action`, { method: 'POST', body: JSON.stringify(body) })
+}

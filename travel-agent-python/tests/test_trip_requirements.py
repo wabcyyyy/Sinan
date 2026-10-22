@@ -430,3 +430,103 @@ def test_dict_form_with_camel_struct_matches_model_fingerprint():
         },
     }
     assert request_fingerprint(as_dict) == request_fingerprint(command)
+
+
+def test_fixed_arrangements_validate_days_windows_and_overlaps():
+    from app.agent.generation.content.requirement_directives import requirements_directives_clause
+
+    first = {
+        "dayNo": 1,
+        "name": "已订博物馆",
+        "itemType": "attraction",
+        "startTime": "14:00",
+        "endTime": "16:00",
+        "cost": "0",
+    }
+    req = TripRequirements.model_validate({"fixedArrangements": [first]})
+    assert not requirements_issues(req, days=2)
+    assert requirements_issues(req, days=0)
+    prompt = requirements_directives_clause(req, day_no=1)
+    assert "14:00–16:00" in prompt and "已订博物馆" in prompt
+    assert "已订博物馆" not in requirements_directives_clause(req, day_no=2)
+    req.fixed_arrangements.append(req.fixed_arrangements[0].model_copy(update={"name": "已订餐厅"}))
+    assert any("重叠" in issue for issue in requirements_issues(req, days=2))
+    req = TripRequirements.model_validate({"fixedArrangements": [{**first, "endTime": "13:00"}]})
+    assert any("起止时间" in issue for issue in requirements_issues(req, days=2))
+
+
+def test_user_provided_fixed_price_cannot_be_changed_by_a_draft():
+    from app.agent.generation.rules.constraint_checks import _check_fixed
+
+    req = TripRequirements.model_validate(
+        {
+            "fixedArrangements": [
+                {
+                    "dayNo": 1,
+                    "name": "门票",
+                    "itemType": "attraction",
+                    "startTime": "14:00",
+                    "endTime": "16:00",
+                    "cost": "0",
+                }
+            ]
+        }
+    )
+    item = {"poi_name": "门票", "item_type": "attraction", "start_time": "14:00", "end_time": "16:00", "cost": 0}
+    assert _check_fixed(req, 1, [item])[0].status == "pass"
+    assert _check_fixed(req, 1, [{**item, "cost": 50}])[0].status == "violation"
+
+
+def test_persistence_uses_user_price_and_notes_without_external_verification():
+    from app.schemas.trip import DailyPlan, TripItem
+    from app.services.day_persistence import _apply_user_arrangements
+
+    req = TripRequirements.model_validate(
+        {
+            "fixedArrangements": [
+                {
+                    "dayNo": 1,
+                    "name": "门票",
+                    "itemType": "attraction",
+                    "startTime": "14:00",
+                    "endTime": "16:00",
+                    "cost": "0",
+                    "address": "用户地址",
+                    "remark": "集合提醒",
+                }
+            ]
+        }
+    )
+    item = TripItem(
+        item_type="attraction",
+        poi_name="门票",
+        cost=30,
+        latitude=30,
+        longitude=120,
+        source="external",
+        verification_status="verified",
+    )
+    other = TripItem(item_type="food", poi_name="其他安排", cost=40)
+    plan = DailyPlan(day_no=1, items=[item, other])
+    _apply_user_arrangements(plan, req, 1)
+    assert item.cost == 0 and item.remark == "集合提醒" and item.address == "用户地址"
+    assert item.latitude is None and item.longitude is None
+    assert item.source == "user" and item.verification_status == "unverified"
+    assert other.cost == 40
+
+
+@pytest.mark.parametrize("field", ["address", "remark"])
+@pytest.mark.parametrize("kind", ["fixed", "create", "update"])
+def test_user_arrangement_text_respects_existing_storage_limits(field, kind):
+    from app.schemas.business.scenario import ItemActionBody, ItemCreateBody
+    from app.schemas.trip_requirements import FixedArrangement
+
+    base = {"dayNo": 1, "itemType": "attraction", "startTime": "14:00", "endTime": "16:00"}
+    if kind == "fixed":
+        model, body = FixedArrangement, {**base, "name": "门票"}
+    else:
+        model = ItemCreateBody if kind == "create" else ItemActionBody
+        body = {**base, "poiName": "门票", "planningRevision": 0, "action": kind}
+    model.model_validate({**body, field: "字" * 255})
+    with pytest.raises(ValidationError):
+        model.model_validate({**body, field: "字" * 256})

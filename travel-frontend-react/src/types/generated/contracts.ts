@@ -23,6 +23,9 @@ export interface FixedArrangement {
   itemType: string
   startTime: string
   endTime: string
+  cost: number | string | null
+  address: string | null
+  remark: string | null
 }
 
 export interface LodgingRequirements {
@@ -783,11 +786,29 @@ export interface ScenarioIntentVO {
 }
 
 export interface ItemActionBody {
-  planningRevision: number
-  action: "update" | "delete" | "fix" | "unfix"
-  dayNo: number | null
   startTime: string | null
   endTime: string | null
+  address: string | null
+  cost: number | string | null
+  remark: string | null
+  dayNo: number | null
+  poiName: string | null
+  planningRevision: number
+  action: "update" | "delete" | "fix" | "unfix"
+}
+
+export interface ItemCreateBody {
+  startTime: string | null
+  endTime: string | null
+  address: string | null
+  cost: number | string | null
+  remark: string | null
+  planningRevision: number
+  action: "create"
+  itemType: "attraction" | "food" | "hotel"
+  poiName: string
+  dayNo: number
+  fixed: boolean
 }
 
 export interface ScenarioSelectBody {

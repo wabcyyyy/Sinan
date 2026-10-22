@@ -116,14 +116,13 @@
           "type": "integer"
         },
         "name": {
-          "maxLength": 255,
+          "maxLength": 128,
           "minLength": 1,
           "title": "Name",
           "type": "string"
         },
         "itemType": {
-          "maxLength": 32,
-          "minLength": 1,
+          "pattern": "^(attraction|food|hotel|transport)$",
           "title": "Itemtype",
           "type": "string"
         },
@@ -136,6 +135,47 @@
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
           "title": "Endtime",
           "type": "string"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
         }
       },
       "required": [
@@ -143,7 +183,10 @@
         "name",
         "itemType",
         "startTime",
-        "endTime"
+        "endTime",
+        "cost",
+        "address",
+        "remark"
       ],
       "title": "FixedArrangement",
       "type": "object"

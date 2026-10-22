@@ -2347,6 +2347,60 @@
         }
       }
     },
+    "/api/itinerary/{id}/items/action": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Create User Item",
+        "operationId": "create_user_item_api_itinerary__id__items_action_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Create User Item Api Itinerary  Id  Items Action Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/itinerary/{id}/items": {
       "post": {
         "tags": [
@@ -7840,7 +7894,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -8860,7 +8914,7 @@
         ],
         "title": "FeedbackCreate"
       },
-      "FixedArrangement": {
+      "FixedArrangement-Input": {
         "properties": {
           "dayNo": {
             "type": "integer",
@@ -8870,14 +8924,13 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 255,
+            "maxLength": 128,
             "minLength": 1,
             "title": "Name"
           },
           "itemType": {
             "type": "string",
-            "maxLength": 32,
-            "minLength": 1,
+            "pattern": "^(attraction|food|hotel|transport)$",
             "title": "Itemtype"
           },
           "startTime": {
@@ -8889,6 +8942,120 @@
             "type": "string",
             "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
             "title": "Endtime"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dayNo",
+          "name",
+          "itemType",
+          "startTime",
+          "endTime"
+        ],
+        "title": "FixedArrangement",
+        "description": "用户固定的日期、地点身份与时段；不表示已预订或事实核实。"
+      },
+      "FixedArrangement-Output": {
+        "properties": {
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "itemType": {
+            "type": "string",
+            "pattern": "^(attraction|food|hotel|transport)$",
+            "title": "Itemtype"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Starttime"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Endtime"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
           }
         },
         "type": "object",
@@ -9018,7 +9185,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -9203,7 +9370,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -9503,7 +9670,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -10016,7 +10183,7 @@
             "title": "Origincity"
           },
           "requirements": {
-            "$ref": "#/components/schemas/TripRequirements"
+            "$ref": "#/components/schemas/TripRequirements-Input"
           },
           "optionalAsked": {
             "items": {
@@ -10171,7 +10338,7 @@
             "title": "Origincity"
           },
           "requirements": {
-            "$ref": "#/components/schemas/TripRequirements"
+            "$ref": "#/components/schemas/TripRequirements-Output"
           },
           "optionalAsked": {
             "items": {
@@ -10242,34 +10409,6 @@
       },
       "ItemActionBody": {
         "properties": {
-          "planningRevision": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Planningrevision"
-          },
-          "action": {
-            "type": "string",
-            "enum": [
-              "update",
-              "delete",
-              "fix",
-              "unfix"
-            ],
-            "title": "Action"
-          },
-          "dayNo": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 7.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dayno"
-          },
           "startTime": {
             "anyOf": [
               {
@@ -10293,6 +10432,85 @@
               }
             ],
             "title": "Endtime"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "poiName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poiname"
+          },
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "update",
+              "delete",
+              "fix",
+              "unfix"
+            ],
+            "title": "Action"
           }
         },
         "type": "object",
@@ -10301,6 +10519,120 @@
           "action"
         ],
         "title": "ItemActionBody"
+      },
+      "ItemCreateBody": {
+        "properties": {
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starttime"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "create"
+            ],
+            "const": "create",
+            "title": "Action",
+            "default": "create"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "attraction",
+              "food",
+              "hotel"
+            ],
+            "title": "Itemtype"
+          },
+          "poiName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Poiname"
+          },
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "fixed": {
+            "type": "boolean",
+            "title": "Fixed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "itemType",
+          "poiName",
+          "dayNo"
+        ],
+        "title": "ItemCreateBody"
       },
       "ItemUpsertRequest": {
         "properties": {
@@ -10759,7 +11091,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -11209,7 +11541,7 @@
           "requirementsStruct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TripRequirements"
+                "$ref": "#/components/schemas/TripRequirements-Input"
               },
               {
                 "type": "null"
@@ -12600,7 +12932,7 @@
         ],
         "title": "TripItem"
       },
-      "TripRequirements": {
+      "TripRequirements-Input": {
         "properties": {
           "schemaVersion": {
             "type": "integer",
@@ -12625,7 +12957,181 @@
           },
           "fixedArrangements": {
             "items": {
-              "$ref": "#/components/schemas/FixedArrangement"
+              "$ref": "#/components/schemas/FixedArrangement-Input"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Fixedarrangements"
+          },
+          "excludedPlaces": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Excludedplaces"
+          },
+          "excludedCategories": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Excludedcategories"
+          },
+          "pace": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "relaxed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pace"
+          },
+          "maxAttractionsPerDay": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxattractionsperday"
+          },
+          "dietaryRequirement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vegetarian",
+                  "vegan"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dietaryrequirement"
+          },
+          "diningEvidencePolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "verified_only",
+                  "review_candidates"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diningevidencepolicy"
+          },
+          "transportPreference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "driving",
+                  "mixed",
+                  "unspecified"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transportpreference"
+          },
+          "maxWalkMinutesPerLeg": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 480.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxwalkminutesperleg"
+          },
+          "budgetPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lodging": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LodgingRequirements"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unresolvedRequests": {
+            "items": {
+              "type": "string",
+              "maxLength": 400,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Unresolvedrequests"
+          }
+        },
+        "type": "object",
+        "title": "TripRequirements",
+        "description": "现有请求参数之外的结构化需求；全默认 = 无额外约束（等价于旧行为）。"
+      },
+      "TripRequirements-Output": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "dayWindows": {
+            "items": {
+              "$ref": "#/components/schemas/DayWindow"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "title": "Daywindows"
+          },
+          "requiredPlaces": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredPlace"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Requiredplaces"
+          },
+          "fixedArrangements": {
+            "items": {
+              "$ref": "#/components/schemas/FixedArrangement-Output"
             },
             "type": "array",
             "maxItems": 40,

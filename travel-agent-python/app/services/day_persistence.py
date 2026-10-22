@@ -24,6 +24,7 @@ from app.common.vo_json import parse_time_safe
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.trip import DailyPlan, FactEvidence
+from app.schemas.trip_requirements import TripRequirements
 from app.services import generation_gate, itinerary_version, stay_hotels
 from app.services import planning_task_rows as rows
 from app.services.day_delivery_gate import hard_delivery_blockers
@@ -40,6 +41,30 @@ def find_day(itinerary_id: int, day_no: int) -> ItineraryDay | None:
         return session.execute(
             select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id, ItineraryDay.day_no == day_no)
         ).scalar_one_or_none()
+
+
+def _apply_user_arrangements(plan: DailyPlan, requirements: TripRequirements | None, day_no: int) -> None:
+    # 用户填写的预定资料不由模型估价覆盖，也不继承外部核验身份。
+    for fixed in requirements.fixed_arrangements if requirements else []:
+        if fixed.day_no != day_no:
+            continue
+        for item in plan.items:
+            if item.poi_name != fixed.name or item.item_type != fixed.item_type:
+                continue
+            if fixed.cost is not None:
+                item.cost = float(fixed.cost)
+                item.cost_currency = "CNY"
+                item.fact_evidence.pop("cost", None)
+            if fixed.address is not None:
+                item.address = fixed.address
+                item.latitude = item.longitude = None
+                item.fact_evidence = {}
+            if fixed.remark is not None:
+                item.remark = fixed.remark
+            if fixed.cost is not None or fixed.address is not None or fixed.remark is not None:
+                item.source = "user"
+                item.verification_status = "unverified"
+                item.value_kind = "estimated"
 
 
 def persist(
@@ -74,6 +99,7 @@ def persist(
         stay_nights = _stay_nights(request)
         stay_hotels.fill_day_hotel(session, itinerary_id, day_no, stay_nights, plan)
         plan.items = [item for item in plan.items if item.item_type != "hotel" or day_no <= stay_nights]
+        _apply_user_arrangements(plan, requirements, day_no)
         sync_schedule_summary(plan)
         day.generation_action_id = action_id
         day.generation_fingerprint = fingerprint

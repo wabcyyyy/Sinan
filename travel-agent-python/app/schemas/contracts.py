@@ -67,6 +67,7 @@ from app.schemas.business.llm_gateway import (
 )
 from app.schemas.business.scenario import (
     ItemActionBody,
+    ItemCreateBody,
     ItineraryVersionVO,
     RestoreVersionBody,
     ScenarioBody,
@@ -206,6 +207,7 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
         ScenarioParseBody,
         ScenarioIntentVO,
         ItemActionBody,
+        ItemCreateBody,
         ScenarioSelectBody,
         ScenarioCompareVO,
         OptimizeDayBody,

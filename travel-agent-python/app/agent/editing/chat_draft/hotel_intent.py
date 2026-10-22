@@ -140,7 +140,7 @@ def _mentioned_hotel_names(message: str, hotels: list[dict]) -> tuple[str, ...]:
 
 #: 「酒店不动」短路（M4 §9.1）：用户明确保留住宿时，名词"酒店"不得劫持进候选流
 _KEEP_HOTEL_RE = re.compile(
-    r"酒店[^。？！.]{0,8}(不动|不换|不变|不调整|不修改|不升级|保留)|保留[^。？！.]{0,8}酒店|"
+    r"酒店[^。？！.]{0,8}(不动|不换|不变|不调整|不修改|不升级|不要改|别改|别动|保留)|保留[^。？！.]{0,8}酒店|"
     r"(?:酒店|住宿)[^。？！.;；]*(?:保持不变|维持原样)"
 )
 
@@ -154,7 +154,7 @@ def _is_hotel_request(req: ChatTurnRequest, hotels: list[dict] | None = None) ->
     ):
         return False
     # 当前轮明确谈景点/餐饮/行程时，不能被前几轮酒店上下文中的“其他、便宜”等词劫持。
-    if re.search(r"景点|景区|餐厅|餐饮|美食|行程|安排|路线|路线", normalized_message) and not re.search(
+    if re.search(r"景点|景区|餐厅|餐饮|早餐|午餐|晚餐|美食|行程|安排|路线", normalized_message) and not re.search(
         r"酒店|住宿|宾馆|客栈|房型|入住|住一晚|住几晚", normalized_message
     ):
         return False

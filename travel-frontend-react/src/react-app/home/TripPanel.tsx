@@ -72,6 +72,7 @@ export function TripPanel({ planning, chat, onStart }: {
           ready={chat.ready}
           needsReconfirm={chat.needsReconfirm}
           onSlots={chat.updateSlots}
+          onRequirements={chat.updateRequirements}
           onReset={chat.reset}
           onReconfirm={chat.reconfirm}
           onStart={() => onStart(toGenerateInput(chat.slots, chat.firstMessage, chat.serverState?.requirements))}

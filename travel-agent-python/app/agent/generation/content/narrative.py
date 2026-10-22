@@ -53,7 +53,10 @@ def record_grounded_name(
     item: dict, original: str, requirements: TripRequirements | None, aliases: dict[str, str]
 ) -> None:
     """保留用户必去原名；其他落地名称登记别名，供叙事字段同步。"""
-    if requirements and any(place.name == original for place in requirements.required_places):
+    if requirements and (
+        any(place.name == original for place in requirements.required_places)
+        or any(f.name == original for f in requirements.fixed_arrangements)
+    ):
         item["poi_name"] = original
     if original and item.get("poi_name") != original:
         aliases[original] = item["poi_name"]

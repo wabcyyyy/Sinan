@@ -372,9 +372,9 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
     return {
         "schemaVersion": SCHEMA_VERSION,
         "planningRevision": main.planning_revision,
-        "fixedArrangements": TripRequirements.model_validate(main.requirements_json or {}).model_dump(by_alias=True)[
-            "fixedArrangements"
-        ],
+        "fixedArrangements": TripRequirements.model_validate(main.requirements_json or {}).model_dump(
+            mode="json", by_alias=True
+        )["fixedArrangements"],
         "id": main.id,
         "title": main.title,
         "city": main.city,

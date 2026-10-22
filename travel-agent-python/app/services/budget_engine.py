@@ -3,7 +3,7 @@
 口径必须与前端「每日费用」明细一致，两条曾经踩过的坑保留原注释：
 - 餐饮/门票 = 条目单价 × 人数；**不再**做"按城市基准价封顶"的展示层钳制，
   那会让分类合计与明细对不上、改价后总价看起来"不动"；离谱价格在 Agent 生成侧钳制。
-- 房型表退役后酒店统一按每间 2 人算房间数（`ceil(persons / 2)`）。
+- 酒店优先使用显式房间数，未指定时按每间 2 人估算。
 - 餐饮/酒店缺价或为 0 如实缺省；免费景点保留 0。
 """
 
@@ -22,6 +22,7 @@ from app.db.models import (
     ItineraryMain,
 )
 from app.db.session import session_scope
+from app.schemas.trip_requirements import TripRequirements
 from app.services import itinerary_query
 
 DEFAULT_TRANSPORT_PER_DAY = Decimal("35.00")
@@ -40,6 +41,8 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
         ).scalar_one_or_none()
         if main is None:
             return []
+        requirements = TripRequirements.model_validate(main.requirements_json or {})
+        explicit_rooms = requirements.lodging.rooms if requirements.lodging else None
         persons = main.persons or 1
         days = main.days or 1
         items = session.execute(select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)).scalars().all()
@@ -60,8 +63,8 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
                 meal += unit
                 meal_count += 1
             elif item_type == "hotel":
-                # 房型表已退役：容量统一按每间 2 人计
-                rooms = math.ceil(persons / 2)
+                # 未指定房间数时才按每间 2 人估算
+                rooms = explicit_rooms or math.ceil(persons / 2)
                 hotel += unit * Decimal(rooms)
                 hotel_count += 1
 

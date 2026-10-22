@@ -2,7 +2,7 @@ import { hasIntakeUser, intakeEpoch, intakeOwnerIsCurrent } from './intakeStorag
 import { intakeSessionStorage } from './intakeStorage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { clarifyItinerary, isOfflineError, isUnauthorized } from '../../api/sinan'
-import type { IntakeState as ContractIntakeState } from '../../types/generated/contracts'
+import type { IntakeState as ContractIntakeState, TripRequirements } from '../../types/generated/contracts'
 import {
   clearIntake,
   GREETING,
@@ -185,6 +185,15 @@ export function useIntakeChat() {
     setNeedsReconfirm(true)
   }, [])
 
+  const updateRequirements = useCallback((requirements: TripRequirements) => {
+    if (!serverState.current) return
+    seq.current += 1
+    serverState.current = { ...serverState.current, requirements }
+    setSlots({ ...slotsRef.current })
+    setReady(false)
+    setNeedsReconfirm(true)
+  }, [])
+
   /** 后端重验（M2）：发一条固定话术携当前 slots+serverState，响应 ready 恢复才
    * 解锁生成；未就绪/失败返回 false，调用方保持开工禁用。 */
   const reconfirm = useCallback(() => ask(RECONFIRM_MESSAGE), [ask])
@@ -255,6 +264,7 @@ export function useIntakeChat() {
     needsLogin,
     send,
     updateSlots,
+    updateRequirements,
     reconfirm,
     reset,
     restoreSession,
