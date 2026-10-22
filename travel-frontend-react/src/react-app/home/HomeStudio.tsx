@@ -110,7 +110,7 @@ export function HomeStudio({ query, showDemoLink = false }: { query: URLSearchPa
           variant={active ? 'dock' : 'centered'}
           onResumeSession={handleResumeSession}
         />
-        {!active && showDemoLink && <a className="home-demo-link" href="/demo">无需登录或模型密钥，体验固定示例回放<Icon name="arrow" size={14} /></a>}
+        {!active && showDemoLink && <a className="home-demo-link" href="/demo?tour=edit">90秒体验一次行程调整 · 固定示例，无需登录或模型密钥<Icon name="arrow" size={14} /></a>}
       </div>
       {active && <div className="home-studio-panel"><TripPanel planning={planning} chat={{ ...chat, reset: handleChatReset }} onStart={startGeneration} /></div>}
     </div>

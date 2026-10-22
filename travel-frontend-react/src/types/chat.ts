@@ -16,6 +16,7 @@ export interface ChatPlanItem {
   /** 时长/费用：草稿侧可能缺省，缺省视为未填、不参与差异比较 */
   duration_min?: number | null
   cost?: number | null
+  cost_currency?: string | null
   /** 未核实提示用：AI 新增但无坐标的点位视为「位置未核实」 */
   latitude?: number | null
   longitude?: number | null

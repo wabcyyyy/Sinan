@@ -134,6 +134,224 @@ def _trip_id(client: TestClient) -> int:
     return client.get("/api/itinerary").json()["data"][0]["id"]
 
 
+def test_scenario_intent_only_extracts_conditions_and_rejects_foreign_ids(client, monkeypatch):
+    from app.agent.editing import scenario_intent
+
+    class FakeClient:
+        response = '{"finishBy":"16:00","optionalItemIds":[2]}'
+
+        def chat(self, *_args, **_kwargs):
+            return self.response
+
+    fake = FakeClient()
+    monkeypatch.setattr(scenario_intent, "get_llm_client", lambda *_: fake)
+    trip_id = _trip_id(client)
+    body = {"dayNo": 1, "planningRevision": 0, "message": "16点前结束，午饭可以舍弃"}
+    response = client.post(f"/api/itinerary/{trip_id}/scenarios/parse", json=body)
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["finishBy"] == "16:00" and data["startTime"] is None
+    assert data["transferMinutes"] is None and data["optionalItemIds"] == [2]
+    assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["planningRevision"] == 0
+    assert _operations(trip_id) == []
+    fake.response = '{"optionalItemIds":[999]}'
+    assert client.post(f"/api/itinerary/{trip_id}/scenarios/parse", json=body).status_code == 502
+
+
+def test_fixed_arrangements_reject_unsafe_draft_before_confirmation():
+    from app.agent.editing.chat_draft.validate import _fixed_violations
+    from app.schemas.trip_requirements import TripRequirements
+
+    requirements = TripRequirements.model_validate(
+        {
+            "fixedArrangements": [
+                {"dayNo": 1, "name": "西湖", "itemType": "attraction", "startTime": "09:30", "endTime": "11:00"}
+            ]
+        }
+    )
+    item = {"poi_name": "西湖", "item_type": "attraction", "start_time": "09:30", "end_time": "11:00"}
+    plan = [{"day_no": 1, "items": [item]}]
+    assert not _fixed_violations(requirements, plan)
+    assert _fixed_violations(requirements, [])
+    item["start_time"] = "10:00"
+    assert _fixed_violations(requirements, plan)
+
+
+def test_item_action_conflict_rolls_back_and_foreign_item_rejected(client):
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        lake, lunch = session.get(ItineraryItem, 1), session.get(ItineraryItem, 2)
+        assert lake is not None and lunch is not None
+        lake.end_time = time(11, 30)
+        lunch.start_time, lunch.end_time = time(12), time(13)
+    url = f"/api/itinerary/{trip_id}"
+    conflict = {"action": "update", "planningRevision": 0, "dayNo": 1, "startTime": "10:30", "endTime": "12:30"}
+    response = client.post(url + "/items/1/action", json=conflict)
+    assert response.status_code == 400, response.text
+    assert _operations(trip_id) == []
+    detail = client.get(url).json()["data"]
+    assert detail["planningRevision"] == 0
+    assert detail["dayList"][0]["items"][0]["startTime"].startswith("09:30")
+    assert client.post(url + "/items/999/action", json=conflict).status_code == 404
+
+
+def test_item_actions_persist_fixed_reject_stale_and_undo(client):
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}"
+    edit = {"action": "update", "planningRevision": 0, "dayNo": 1, "startTime": "09:30", "endTime": "11:00"}
+    updated = client.post(url + "/items/1/action", json=edit)
+    assert updated.status_code == 200, updated.text
+    assert client.post(url + "/items/1/action", json=edit).status_code == 409
+    fixed = client.post(url + "/items/1/action", json={"action": "fix", "planningRevision": 1})
+    assert fixed.status_code == 200, fixed.text
+    detail = client.get(url).json()["data"]
+    assert detail["fixedArrangements"][0]["name"] == "西湖"
+    assert client.post(url + "/items/1/action", json={"action": "delete", "planningRevision": 2}).status_code == 409
+    assert client.delete("/api/itinerary/items/1").status_code == 409
+    plans = jsonable_encoder(itinerary_chat.current_plans(trip_id))
+    plans[0]["items"][0]["start_time"] = "10:00"
+    plans[0]["_proposedRequirements"] = {}
+    message_id, revision = _draft(trip_id, plans)
+    rejected = client.post(url + "/apply-plans", json={"actionMessageId": message_id, "baseRevision": revision})
+    assert rejected.status_code == 400 and "固定" in rejected.text
+    restored = client.post(
+        url + f"/versions/{fixed.json()['data']['undoVersionId']}/restore", json={"planningRevision": 2}
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["data"]["fixedArrangements"] == []
+    assert (
+        client.post(
+            url + f"/versions/{updated.json()['data']['undoVersionId']}/restore", json={"planningRevision": 1}
+        ).status_code
+        == 409
+    )
+
+
+def test_scenario_compare_confirm_restore_and_stale_guard(client):
+    trip_id = _trip_id(client)
+    ids = _item_ids(trip_id)
+    with db_session.session_scope() as session:
+        lake = session.get(ItineraryItem, ids["西湖"])
+        lunch = session.get(ItineraryItem, ids["楼外楼"])
+        assert lake is not None and lunch is not None
+        lake.end_time = time(11, 30)
+        lunch.start_time, lunch.end_time = time(12), time(13)
+    url = f"/api/itinerary/{trip_id}"
+    before = client.get(url).json()["data"]
+    body = dict(
+        dayNo=1,
+        planningRevision=before["planningRevision"],
+        startTime="09:30",
+        finishBy="12:00",
+        transferMinutes=30,
+        departureBufferMinutes=0,
+        fixedItemIds=[ids["西湖"]],
+        optionalItemIds=[ids["楼外楼"]],
+    )
+    response = client.post(url + "/scenarios/compare", json=body)
+    assert response.status_code == 200, response.text
+    keep, omit = response.json()["data"]["options"]
+    assert not keep["feasible"] and omit["feasible"], response.text
+    assert omit["costDelta"] == -200
+    assert client.get(url).json()["data"] == before
+    assert client.post(url + "/scenarios/select", json={**body, "choice": "keep"}).status_code == 400
+    chosen = client.post(url + "/scenarios/select", json={**body, "choice": "omit"})
+    assert chosen.status_code == 200, chosen.text
+    assert client.get(url).json()["data"] == before
+    draft = chosen.json()["data"]
+    applied = client.post(
+        url + "/apply-plans", json={"actionMessageId": draft["messageId"], "baseRevision": draft["baseRevision"]}
+    )
+    assert applied.status_code == 200, applied.text
+    after = applied.json()["data"]
+    assert [p["poiName"] for p in after["dayList"][0]["items"]] == ["西湖"]
+    assert after["dayList"][0]["items"][0]["startTime"] == "09:30"
+    assert after["dayList"][1] == before["dayList"][1]
+    assert client.post(url + "/scenarios/select", json={**body, "choice": "omit"}).status_code == 409
+    versions = client.get(url + "/versions").json()["data"]
+    restore_url = url + f"/versions/{versions[-1]['id']}/restore"
+    assert client.post(restore_url, json={"planningRevision": body["planningRevision"]}).status_code == 409
+    restored = client.post(restore_url, json={"planningRevision": after["planningRevision"]})
+    assert restored.status_code == 200, restored.text
+    assert [p["poiName"] for p in restored.json()["data"]["dayList"][0]["items"]] == ["西湖", "楼外楼"]
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        assert main is not None and not main.requirements_json
+    assert (
+        client.post(
+            url + "/apply-plans", json={"actionMessageId": draft["messageId"], "baseRevision": draft["baseRevision"]}
+        ).status_code
+        == 409
+    )
+
+
+def test_scenario_rejects_foreign_ids_and_missing_times(client):
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}/scenarios/compare"
+    body = dict(
+        dayNo=1,
+        planningRevision=0,
+        startTime="09:30",
+        finishBy="17:00",
+        transferMinutes=30,
+        departureBufferMinutes=30,
+        fixedItemIds=[],
+        optionalItemIds=[],
+    )
+    response = client.post(url, json=body)
+    assert response.status_code == 200
+    assert all(not option["feasible"] for option in response.json()["data"]["options"])
+    assert client.post(url, json={**body, "fixedItemIds": [99999]}).status_code == 400
+    assert client.post(url, json={**body, "startTime": "25:00"}).status_code == 400
+
+
+def test_scenario_preserves_existing_required_place(client):
+    trip_id = _trip_id(client)
+    ids = _item_ids(trip_id)
+    with db_session.session_scope() as session:
+        lake = session.get(ItineraryItem, ids["西湖"])
+        lunch = session.get(ItineraryItem, ids["楼外楼"])
+        main = session.get(ItineraryMain, trip_id)
+        assert lake is not None and lunch is not None and main is not None
+        lake.end_time = time(11, 30)
+        lunch.start_time, lunch.end_time = time(12), time(13)
+        main.requirements_json = {"requiredPlaces": [{"constraintId": "lunch", "name": "楼外楼", "dayNo": 1}]}
+    body = dict(
+        dayNo=1,
+        planningRevision=0,
+        startTime="09:30",
+        finishBy="17:00",
+        transferMinutes=30,
+        departureBufferMinutes=0,
+        fixedItemIds=[],
+        optionalItemIds=[ids["楼外楼"]],
+    )
+    response = client.post(f"/api/itinerary/{trip_id}/scenarios/compare", json=body)
+    assert response.status_code == 200, response.text
+    assert not response.json()["data"]["options"][1]["feasible"]
+
+
+def test_restore_snapshot_failure_rolls_back_everything(client, monkeypatch):
+    from app.services import itinerary_version
+
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}"
+    version = client.post(url + "/versions", json={"operation": "snapshot", "summary": "before"}).json()["data"]
+    before = client.get(url).json()["data"]
+    original = itinerary_version.append_version_in_session
+
+    def fail_after_restore(session, user_id, itinerary_id, operation, summary):
+        if operation == "restore":
+            raise RuntimeError("snapshot storage failed")
+        original(session, user_id, itinerary_id, operation, summary)
+
+    monkeypatch.setattr(itinerary_version, "append_version_in_session", fail_after_restore)
+    with pytest.raises(RuntimeError, match="snapshot storage failed"):
+        client.post(url + f"/versions/{version['id']}/restore", json={"planningRevision": before["planningRevision"]})
+    assert client.get(url).json()["data"] == before
+    assert len(client.get(url + "/versions").json()["data"]) == 1
+
+
 def _item_ids(trip_id: int) -> dict[str, int]:
     with db_session.session_scope() as session:
         rows = (

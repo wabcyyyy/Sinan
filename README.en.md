@@ -10,7 +10,10 @@ Estimated facts require verification before departure.
 
 Open the [online demo](https://sinan-demo.vercel.app). No installation, account, or model API key is required.
 It uses production pages with a synthetic Chengdu itinerary. Changes stay in the current tab; no business API or model is called.
+The skippable “90秒体验局部修改” guide opens an independent sample. Review a scoped edit beside the original timeline, then confirm to save; mobile views keep the selected day and pending draft. Cost differences are shown only for comparable priced items. See the [workbench screenshots and limits](docs/public/vercel-demo.md).
 Map tiles require internet access; the itinerary and navigation links remain available if tiles fail.
+
+The detail page also compares keeping all existing activities with dropping explicitly optional ones, using user-supplied time windows and buffers. Fixed slots, order and durations are preserved; infeasible proposals cannot be selected. This is deterministic scheduling, not a model call or a live travel-time estimate. Selection creates a draft; confirmation saves it. Version recovery checks the current revision and saves the pre-restore itinerary atomically. The public demo supports one clearly labeled fixed scenario; arbitrary inputs require the real backend. See the [case and evidence](docs/public/vercel-demo.md#时间取舍与恢复).
 
 | Goal | Start here | Requirements |
 | --- | --- | --- |
@@ -91,3 +94,5 @@ The [Chinese README](README.md) is the primary guide. See [architecture](docs/pu
 Use the private channel in [SECURITY.md](.github/SECURITY.md) for vulnerabilities.
 
 Project code is MIT licensed. Photographs and fonts retain separate licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Item editing now supports time/date changes, removal, persistent fixed arrangements, and inline undo guarded by the current revision. Natural-language comparison extracts conditions for review before deterministic comparison; it does not change the itinerary. The static demo supports manual edits only and does not call a model. See the [interaction case and limits](docs/public/vercel-demo.md).

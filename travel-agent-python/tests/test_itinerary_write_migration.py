@@ -349,7 +349,10 @@ def test_restore_rebuilds_rows_and_is_itself_undoable(client: TestClient) -> Non
         f"/api/itinerary/{trip_id}/items", json={"dayId": day1, "itemType": "attraction", "poiName": "后来加的"}
     )
 
-    restored = client.post(f"/api/itinerary/{trip_id}/versions/{snapshot['id']}/restore").json()["data"]
+    revision = client.get(f"/api/itinerary/{trip_id}").json()["data"]["planningRevision"]
+    restored = client.post(
+        f"/api/itinerary/{trip_id}/versions/{snapshot['id']}/restore", json={"planningRevision": revision}
+    ).json()["data"]
     assert [i["poiName"] for i in restored["dayList"][0]["items"]] == ["西湖", "楼外楼"]
     ops = [row["operation"] for row in client.get(f"/api/itinerary/{trip_id}/versions").json()["data"]]
     assert "restore" in ops, "恢复本身也要打快照（可再回滚）"

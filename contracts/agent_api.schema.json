@@ -107,6 +107,47 @@
       "title": "DayWindow",
       "type": "object"
     },
+    "FixedArrangement": {
+      "properties": {
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "itemType": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "startTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "title": "Endtime",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dayNo",
+        "name",
+        "itemType",
+        "startTime",
+        "endTime"
+      ],
+      "title": "FixedArrangement",
+      "type": "object"
+    },
     "LodgingRequirements": {
       "properties": {
         "rooms": {
@@ -222,6 +263,14 @@
           },
           "maxItems": 20,
           "title": "Requiredplaces",
+          "type": "array"
+        },
+        "fixedArrangements": {
+          "items": {
+            "$ref": "#/$defs/FixedArrangement"
+          },
+          "maxItems": 40,
+          "title": "Fixedarrangements",
           "type": "array"
         },
         "excludedPlaces": {
@@ -377,6 +426,7 @@
         "schemaVersion",
         "dayWindows",
         "requiredPlaces",
+        "fixedArrangements",
         "excludedPlaces",
         "excludedCategories",
         "pace",

@@ -62,8 +62,8 @@ const draftReply: ChatReply = {
 }
 
 /** hook 状态探针：msgs/notice 投影成 JSON 供断言。 */
-function ChatProbe() {
-  const chat = useTripChat(7, () => {}, () => {})
+function ChatProbe({ enabled = true }: { enabled?: boolean }) {
+  const chat = useTripChat(7, () => {}, () => {}, enabled)
   return createElement(
     'div',
     null,
@@ -86,12 +86,12 @@ async function flush() {
   await act(async () => {})
 }
 
-async function mountProbe() {
+async function mountProbe(enabled = true) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
   roots.push({ root, container })
-  await act(async () => { root.render(createElement(ChatProbe)) })
+  await act(async () => { root.render(createElement(ChatProbe, { enabled })) })
   await flush()
   return container
 }
@@ -128,6 +128,11 @@ describe('useTripChat M6 turn 幂等（spec §12 编辑入口）', () => {
     }
   })
 
+  it('does not request chat history when the itinerary is offline or unavailable', async () => {
+    await mountProbe(false)
+    expect(historyMock).not.toHaveBeenCalled()
+  })
+
   it('send 生成 turnId 并随流式请求带出；新消息新 turnId', async () => {
     const container = await mountProbe()
     await send(container)
@@ -147,10 +152,12 @@ describe('useTripChat M6 turn 幂等（spec §12 编辑入口）', () => {
       document.body.appendChild(container)
       const root = createRoot(container)
       roots.push({ root, container })
+      function Panel({ draftRequest }: { draftRequest: number }) {
+        const chat = useTripChat(7, () => {}, () => {}, true)
+        return createElement(ChatPanel, { itineraryId: 7, dayList: [], chat, draftRequest })
+      }
       const render = async (draftRequest: number) => {
-        await act(async () => { root.render(createElement(ChatPanel, {
-          itineraryId: 7, dayList: [], onApplied: () => {}, onReconcile: () => {}, draftRequest,
-        })) })
+        await act(async () => { root.render(createElement(Panel, { draftRequest })) })
       }
       await render(0)
       expect(historyMock).toHaveBeenCalledTimes(1)

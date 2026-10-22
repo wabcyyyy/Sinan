@@ -91,6 +91,9 @@ export interface CoverCredit {
 }
 
 export interface ItineraryDetail {
+  planningRevision?: number
+  fixedArrangements?: Contracts.FixedArrangement[]
+  undoVersionId?: number
   schemaVersion?: string
   id: number
   title: string

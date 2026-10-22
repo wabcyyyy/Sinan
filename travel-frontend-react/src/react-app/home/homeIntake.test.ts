@@ -309,6 +309,7 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
       schemaVersion: 1,
       dayWindows: [],
       requiredPlaces: [],
+      fixedArrangements: [],
       excludedPlaces: [],
       excludedCategories: [],
       pace: null,

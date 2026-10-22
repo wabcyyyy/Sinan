@@ -14,6 +14,8 @@ import {
   unverifiedNames,
 } from './chatDraft'
 import { ChatPanel, DraftCard } from './ChatPanel'
+import { useTripChat } from './useTripChat'
+import { buildDraftPreview, itemPreviewMark } from './draftPreview'
 
 /**
  * CH3/L2 对话编排的纯函数与确认卡渲染测试（同 TripBadges.test.ts 纪律：
@@ -25,6 +27,45 @@ const tripDay = (dayNo: number, pois: string[]): DayPlan =>
 
 const draftDay = (dayNo: number, items: Array<{ name: string; lat?: number | null }>): ChatDayPlan =>
   ({ day_no: dayNo, items: items.map((item) => ({ poi_name: item.name, latitude: item.lat ?? null, longitude: item.lat ?? null })) })
+
+describe('局部修改预览的数据边界', () => {
+  it('按同行人数比较有价条目，只承诺未提交日期不涉及，原数据不被改写', () => {
+    const current: DayPlan[] = [
+      { dayId: 1, dayNo: 1, items: [{ itemType: 'hotel', poiName: '酒店', cost: 300 }] },
+      { dayId: 2, dayNo: 2, items: [{ itemType: 'attraction', poiName: '草堂', cost: 50 }, { itemType: 'food', poiName: '午餐', cost: 80 }] },
+    ]
+    const snapshot = structuredClone(current)
+    const plans: ChatDayPlan[] = [{ day_no: 2, items: [{ item_type: 'food', poi_name: '午餐', cost: 80 }] }]
+    const preview = buildDraftPreview(current, plans, 2)
+    expect(preview).toMatchObject({ days: [2], costDelta: -100, removed: 1, untouchedDays: [1], hotelsUntouched: true })
+    expect(itemPreviewMark(preview.changes, 2, '草堂')).toBe('removed')
+    expect(current).toEqual(snapshot)
+  })
+
+  it('缺价、外币或住宿变更不生成看似精确的人民币节省额', () => {
+    const base: DayPlan[] = [{ dayId: 1, dayNo: 1, items: [{ itemType: 'food', poiName: '午餐' }] }]
+    const plans: ChatDayPlan[] = [{ day_no: 1, items: [] }]
+    expect(buildDraftPreview(base, plans, 2).costDelta).toBeNull()
+    base[0].items[0] = { itemType: 'food', poiName: '午餐', cost: 50 }
+    expect(buildDraftPreview(base, [{ day_no: 1, items: [{ item_type: 'food', poi_name: '午餐', cost: 50, cost_currency: 'JPY' }] }], 2).costDelta).toBeNull()
+    base[0].items[0] = { itemType: 'hotel', poiName: '酒店', cost: 300 }
+    const preview = buildDraftPreview(base, plans, 2)
+    expect(preview.costDelta).toBeNull()
+    expect(preview.hotelsUntouched).toBe(false)
+    expect(preview.changes.some(change => change.type === 'hotelChanged')).toBe(true)
+  })
+
+  it('未提交日期的同名地点不误报跨日移动，也不误报该日酒店被替换', () => {
+    const current: DayPlan[] = [
+      { dayId: 1, dayNo: 1, items: [{ itemType: 'attraction', poiName: '公园' }, { itemType: 'hotel', poiName: '甲酒店' }] },
+      { dayId: 2, dayNo: 2, items: [{ itemType: 'hotel', poiName: '乙酒店' }] },
+    ]
+    const proposed: ChatDayPlan[] = [{ day_no: 2, items: [{ item_type: 'attraction', poi_name: '公园' }, { item_type: 'hotel', poi_name: '乙酒店' }] }]
+    const changes = structuredDraftChanges(current, proposed)
+    expect(changes.some(change => change.type === 'moved' || change.type === 'hotelChanged')).toBe(false)
+    expect(changes).toContainEqual(expect.objectContaining({ type: 'added', dayNo: 2, items: ['公园'] }))
+  })
+})
 
 /** 带时间/费用/类型的基线日（M4 五类差异用）；字段名与契约 TripItem 的 camelCase 一致。 */
 const richTripDay = (dayNo: number, items: Array<Record<string, unknown>>): DayPlan =>
@@ -295,8 +336,12 @@ describe('ChatPanel/L2：确认卡渲染（draft 带 requiresConfirmation → �
   })
 
   it('ChatPanel 静态冒烟：初始空态与输入框存在', () => {
+    function Panel() {
+      const chat = useTripChat(7, () => undefined, () => undefined, false)
+      return createElement(ChatPanel, { itineraryId: 7, dayList, chat })
+    }
     const html = renderToStaticMarkup(
-      createElement(ChatPanel, { itineraryId: 7, dayList, onApplied: () => undefined, onReconcile: () => undefined }),
+      createElement(Panel),
     )
     expect(html).toContain('对话编排')
     expect(html).toContain('对行程说话')

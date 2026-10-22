@@ -67,6 +67,16 @@ class RequiredPlace(WireModel):
     source_turn_id: str | None = Field(default=None, max_length=64)
 
 
+class FixedArrangement(WireModel):
+    """用户固定的日期、地点身份与时段；不表示已预订或事实核实。"""
+
+    day_no: int = Field(ge=1, le=MAX_TRIP_DAYS)
+    name: str = Field(min_length=1, max_length=255)
+    item_type: str = Field(min_length=1, max_length=32)
+    start_time: _TimeHhMm
+    end_time: _TimeHhMm
+
+
 class BudgetPolicy(WireModel):
     """预算口径：金额本身仍取现有 budget 字段，不重复保存 total。"""
 
@@ -88,6 +98,7 @@ class TripRequirements(WireModel):
     schema_version: int = REQUIREMENTS_SCHEMA_VERSION
     day_windows: list[DayWindow] = Field(default_factory=list, max_length=MAX_TRIP_DAYS)
     required_places: list[RequiredPlace] = Field(default_factory=list, max_length=20)
+    fixed_arrangements: list[FixedArrangement] = Field(default_factory=list, max_length=40)
     excluded_places: list[_BoundedStr] = Field(default_factory=list, max_length=20)
     excluded_categories: list[_BoundedStr] = Field(default_factory=list, max_length=10)
     pace: Literal["normal", "relaxed"] | None = None

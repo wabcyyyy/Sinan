@@ -85,7 +85,10 @@ def test_optimize_preserves_other_day_and_before_snapshot_restores_order(client)
         assert versions[1].parent_version_id == versions[0].id
         before_version_id = versions[0].id
 
-    response = client.post(f"/api/itinerary/{trip_id}/versions/{before_version_id}/restore")
+    response = client.post(
+        f"/api/itinerary/{trip_id}/versions/{before_version_id}/restore",
+        json={"planningRevision": after["planningRevision"]},
+    )
     assert response.status_code == 200
     restored = response.json()["data"]
     # Restore rebuilds rows, so compare content rather than database-generated IDs.
@@ -94,4 +97,4 @@ def test_optimize_preserves_other_day_and_before_snapshot_restores_order(client)
         assert [item["poiName"] for item in restored_day["items"]] == [item["poiName"] for item in old_day["items"]]
         assert [item["startTime"] for item in restored_day["items"]] == [item["startTime"] for item in old_day["items"]]
     versions = client.get(f"/api/itinerary/{trip_id}/versions").json()["data"]
-    assert [version["operation"] for version in versions] == ["restore", "optimize", "optimize"]
+    assert [version["operation"] for version in versions] == ["restore", "before_restore", "optimize", "optimize"]

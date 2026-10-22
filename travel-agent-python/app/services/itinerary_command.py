@@ -35,6 +35,7 @@ from app.db.models import (
 )
 from app.db.session import session_scope
 from app.schemas.business.itinerary import ItemUpsertRequest
+from app.schemas.trip_requirements import TripRequirements
 from app.services import budget_engine, itinerary_chat, itinerary_query, itinerary_version
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ def update_item(user_id: int, item_id: int, request: ItemUpsertRequest | None) -
         after_summary = f"移动到第 {move_to_day_no} 天"
     itinerary_version.create_snapshot(user_id, itinerary_id, operation, before_summary)
     with session_scope() as session:
-        item = session.get(ItineraryItem, item_id)
+        item = _require_item(session, user_id, item_id)
         if item is None:  # 前一事务 _require_item 已验过，这里只防跨事务竞态
             raise ApiError(404, "行程项不存在")
         if request.itemType is not None:
@@ -189,7 +190,7 @@ def delete_item(user_id: int, item_id: int) -> dict[str, Any]:
     itinerary_version.create_snapshot(user_id, itinerary_id, "delete_item", "删除行程项前快照")
     with session_scope() as session:
         # @TableLogic 下 deleteById 是软删
-        doomed = session.get(ItineraryItem, item_id)
+        doomed = _require_item(session, user_id, item_id)
         if doomed is None:  # 前一事务已验过，防跨事务竞态
             raise ApiError(404, "行程项不存在")
         doomed.deleted = 1
@@ -425,7 +426,15 @@ def _require_item(session, user_id: int, item_id: int) -> ItineraryItem:
     item = session.get(ItineraryItem, item_id)
     if item is None:
         raise ApiError(404, "行程项不存在")
-    _require_main(session, user_id, item.itinerary_id)
+    itinerary_chat.lock_main_for_draft(session, item.itinerary_id)
+    main = _require_main(session, user_id, item.itinerary_id)
+    day = session.get(ItineraryDay, item.day_id)
+    req = TripRequirements.model_validate(main.requirements_json or {})
+    if any(
+        f.day_no == (day.day_no if day else None) and f.name == item.poi_name and f.item_type == item.item_type
+        for f in req.fixed_arrangements
+    ):
+        raise ApiError(409, "请先解除固定，再修改这条安排")
     return item
 
 

@@ -32,7 +32,7 @@ describe('HeroCollage', () => {
 describe('HomeStudio 固定示例入口', () => {
   it('未登录访客在首屏看到回放入口，已登录不显示', () => {
     const query = new URLSearchParams()
-    expect(renderToStaticMarkup(createElement(HomeStudio, { query, showDemoLink: true }))).toContain('href="/demo"')
-    expect(renderToStaticMarkup(createElement(HomeStudio, { query }))).not.toContain('href="/demo"')
+    expect(renderToStaticMarkup(createElement(HomeStudio, { query, showDemoLink: true }))).toContain('href="/demo?tour=edit"')
+    expect(renderToStaticMarkup(createElement(HomeStudio, { query }))).not.toContain('href="/demo?tour=edit"')
   })
 })

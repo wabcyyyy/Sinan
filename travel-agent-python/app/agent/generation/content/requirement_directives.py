@@ -26,6 +26,13 @@ def has_structured_requirements(req: GenerateDayRequest) -> bool:
 def _must_visit_lines(req_struct: TripRequirements, day_no: int | None) -> list[str]:
     """必去约束：全程/指定日的整趟渲染或 day_no 投影。"""
     lines: list[str] = []
+    for fixed in req_struct.fixed_arrangements:
+        if day_no is None or fixed.day_no == day_no:
+            lines.append(
+                f"固定安排：第{fixed.day_no}天 {fixed.start_time}–{fixed.end_time}"
+                f"「{fixed.name}」（{fixed.item_type}），"
+                "原名、类型、日期和时段均不得修改。"
+            )
     if req_struct.required_places:
         lines.append("必去地点的 poi_name 使用以下原名，不缩写、不增加括号后缀；路线段与入口建议写在 remark 中。")
     trip_required = [p.name for p in req_struct.required_places if p.day_no is None]

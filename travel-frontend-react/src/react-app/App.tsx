@@ -128,7 +128,7 @@ function BusinessApp() {
   else if (location.path.startsWith('/explore/guide/')) page = <GuideDetailPage path={location.path} />
   else if (location.path === '/trips') page = <TripsPage />
   else if (location.path === '/settings') page = <SettingsPage />
-  else if (location.path.startsWith('/trips/')) page = <TripDetailPage path={location.path} />
+  else if (location.path.startsWith('/trips/')) page = <TripDetailPage key={location.path} path={location.path} />
   else page = <div className="page-content"><NotFoundBlock onHome={() => navigate('/')} /></div>
   return (
     <AppShell onLogin={() => navigate('/login')} username={username} onLogout={handleLogout}>

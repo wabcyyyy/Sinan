@@ -28,6 +28,7 @@ from app.agent.editing.clarify import run_clarify
 from app.agent.editing.image_intent import run_image_intent
 from app.agent.editing.local_replan import run_local_replan
 from app.agent.editing.nl_edit import run_edit_ops
+from app.agent.editing.scenario_intent import parse_scenario_intent
 from app.agent.editing.weather_care import (
     CareAdjustInput,
     CareAdjustResult,
@@ -102,6 +103,7 @@ __all__ = [
     "metrics",
     "observe_run",
     "optimize_daily_plan",
+    "parse_scenario_intent",
     "phase_scope",
     "registry",
     "resolve_poi",

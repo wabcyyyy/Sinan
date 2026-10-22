@@ -17,6 +17,14 @@ export interface DayWindow {
   sourceTurnId: string | null
 }
 
+export interface FixedArrangement {
+  dayNo: number
+  name: string
+  itemType: string
+  startTime: string
+  endTime: string
+}
+
 export interface LodgingRequirements {
   rooms: number | null
   lockedHotelIdentity: string | null
@@ -34,6 +42,7 @@ export interface TripRequirements {
   schemaVersion: number
   dayWindows: DayWindow[]
   requiredPlaces: RequiredPlace[]
+  fixedArrangements: FixedArrangement[]
   excludedPlaces: string[]
   excludedCategories: string[]
   pace: "normal" | "relaxed" | null
@@ -731,6 +740,92 @@ export interface MemoryVO {
 export interface VersionBody {
   operation: string
   summary: string
+}
+
+export interface ItineraryVersionVO {
+  id: number
+  versionNo: number
+  parentVersionId: number | null
+  operation: string
+  summary: string
+  createdAt: string | null
+}
+
+export interface RestoreVersionBody {
+  planningRevision: number
+}
+
+export interface ScenarioBody {
+  dayNo: number
+  planningRevision: number
+  startTime: string
+  finishBy: string
+  transferMinutes: number
+  departureBufferMinutes: number
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+}
+
+export interface ScenarioParseBody {
+  dayNo: number
+  planningRevision: number
+  message: string
+}
+
+export interface ScenarioIntentVO {
+  startTime: string | null
+  finishBy: string | null
+  transferMinutes: number | null
+  departureBufferMinutes: number | null
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+  questions: string[]
+}
+
+export interface ItemActionBody {
+  planningRevision: number
+  action: "update" | "delete" | "fix" | "unfix"
+  dayNo: number | null
+  startTime: string | null
+  endTime: string | null
+}
+
+export interface ScenarioSelectBody {
+  dayNo: number
+  planningRevision: number
+  startTime: string
+  finishBy: string
+  transferMinutes: number
+  departureBufferMinutes: number
+  fixedItemIds: number[]
+  optionalItemIds: number[]
+  choice: "keep" | "omit"
+}
+
+export interface ScenarioItemVO {
+  id: number
+  name: string
+  startTime: string | null
+  endTime: string | null
+  fixed: boolean
+}
+
+export interface ScenarioOptionVO {
+  key: "keep" | "omit"
+  title: string
+  feasible: boolean
+  conflicts: string[]
+  items: ScenarioItemVO[]
+  removed: string[]
+  finishTime: string | null
+  slackMinutes: number | null
+  costDelta: number | null
+}
+
+export interface ScenarioCompareVO {
+  planningRevision: number
+  options: ScenarioOptionVO[]
+  assumptions: string[]
 }
 
 export interface OptimizeDayBody {

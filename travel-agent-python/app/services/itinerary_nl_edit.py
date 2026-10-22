@@ -17,6 +17,7 @@ itinerary_city（guard_agent_call）、itinerary_chat/budget_engine/itinerary_ve
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import time
 from decimal import Decimal
@@ -30,10 +31,12 @@ from app.common.vo_json import iso_time
 from app.db.models import ItineraryDay, ItineraryItem
 from app.db.session import session_scope
 from app.schemas.trip import EditOpRequest
+from app.schemas.trip_requirements import TripRequirements
 from app.services import (
     budget_engine,
     itinerary_chat,
     itinerary_city,
+    itinerary_plan_apply,
     itinerary_query,
     itinerary_version,
     llm_gateway_service,
@@ -49,12 +52,7 @@ RESERVATION_REMINDER_PREFIX = "【预约提醒】"
 def nl_edit(user_id: int, itinerary_id: int, instruction: str) -> dict[str, Any]:
     """自然语言编辑：解析一句话并**直接落库**（与 chat-edit「只出草稿」相对）。
 
-    与 Java 的唯一结构差异：模型调用放在事务之外（读快照 → 调模型 → 一个 scope 内应用），
-    不是一次 LLM 调用占住一条连接池连接那么久。op 的应用语义、跳过条件与提示文案逐条照搬，
-    包括三条容易被当成 bug 的既有行为：
-    - `move_day` 的目标恒为 `day_no + 1`（按天数截断），尽管提示词写的是「换到第几天」；
-    - `delete` 在 `day_no` 缺失/无法解析时作用于**整趟行程**的点位；
-    - 时间解析失败会让整个请求以 400「时间格式必须为 HH:mm」中止（不是跳过该条 op）。
+    模型调用在事务外，落库时复核固定要求；旧 op 语义与边界见本模块说明。
     """
     with session_scope() as session:
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
@@ -103,6 +101,7 @@ def nl_edit(user_id: int, itinerary_id: int, instruction: str) -> dict[str, Any]
 
     applied: list[str] = []
     with session_scope() as session:
+        itinerary_chat.lock_main_for_draft(session, itinerary_id)
         for op in ops:
             message = _apply_edit_op(session, op, itinerary_id, city, day_ids_by_no)
             if message:
@@ -110,11 +109,20 @@ def nl_edit(user_id: int, itinerary_id: int, instruction: str) -> dict[str, Any]
         if not applied:
             raise ApiError(400, "未能从指令中解析出可执行的修改，请换个说法")
         session.flush()
+        _validate_fixed(session, user_id, itinerary_id)
         itinerary_chat.invalidate_pending_actions(user_id, itinerary_id)
         budget_engine.recalculate(itinerary_id)
         itinerary_version.bump_planning_revision(session, itinerary_id)
     itinerary_version.record_snapshot_or_log(user_id, itinerary_id, "nl_edit", "自然语言编辑完成")
     return {"applied": applied, "detail": fresh_detail(user_id, itinerary_id)}
+
+
+def _validate_fixed(session, user_id: int, itinerary_id: int) -> None:
+    main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
+    requirements = TripRequirements.model_validate(main.requirements_json or {})
+    if requirements.fixed_arrangements:
+        current = json.loads(itinerary_chat.canonical_json(itinerary_chat.current_plans(itinerary_id)))
+        itinerary_plan_apply._validate_plans(current, requirements=requirements)
 
 
 def _apply_edit_op(session, op, itinerary_id: int, city: str | None, day_ids_by_no: dict[int, int]) -> str | None:

@@ -23,6 +23,14 @@ type Envelope<T> = { code: number; message: string; data: T }
 const API_BASE = '/api'
 const sessionRequests = new Set<AbortController>()
 
+export function parseScenario(id: number, body: Contracts.ScenarioParseBody): Promise<Contracts.ScenarioIntentVO> {
+  return apiRequest(`/itinerary/${id}/scenarios/parse`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function actOnItem(id: number, itemId: number, body: Contracts.ItemActionBody): Promise<ItineraryDetail> {
+  return apiRequest(`/itinerary/${id}/items/${itemId}/action`, { method: 'POST', body: JSON.stringify(body) })
+}
+
 export function cancelSessionRequests(): void {
   for (const request of sessionRequests) request.abort()
   sessionRequests.clear()
@@ -821,6 +829,22 @@ export function enableLlmGateway(id: number) {
 
 export function disableLlmGateway(id: number) {
   return apiRequest<Contracts.LlmGatewayVO>(`/llm-gateway/${id}/disable`, { method: 'POST' })
+}
+
+export function compareScenarios(id: number, body: Contracts.ScenarioBody) {
+  return apiRequest<Contracts.ScenarioCompareVO>(`/itinerary/${id}/scenarios/compare`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function selectScenario(id: number, body: Contracts.ScenarioSelectBody) {
+  return apiRequest<unknown>(`/itinerary/${id}/scenarios/select`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function listItineraryVersions(id: number) {
+  return apiRequest<Contracts.ItineraryVersionVO[]>(`/itinerary/${id}/versions`)
+}
+
+export function restoreItineraryVersion(id: number, versionId: number, planningRevision: number) {
+  return apiRequest<ItineraryDetail>(`/itinerary/${id}/versions/${versionId}/restore`, { method: 'POST', body: JSON.stringify({ planningRevision }) })
 }
 
 /** 连通性测试：后端经该配置发一条 1-token 消息，返回 ok/延迟/脱敏错误摘要。 */
