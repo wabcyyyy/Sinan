@@ -256,7 +256,15 @@ def finish_failure(itinerary_id: int, exc: Exception, *, user_facing: bool = Fal
     code = "CANCELLED" if cancelled else error_code(exc)
     with session_scope() as session:
         main = session.get(ItineraryMain, itinerary_id)
-        if main is None or main.status != 1:
+        if main is None:
+            return
+        if main.status != 1:
+            # 产品终态可能先于定时器/执行收尾提交；仍须结束当前持有责任，不能反复领取。
+            with runs.LOCK:
+                held = runs.HELD.get(itinerary_id)
+                if held is not None:
+                    held.outcome = FINISHED if main.gen_state == "COMPLETED" else outcome
+                    held.result_code = None if main.gen_state == "COMPLETED" else code
             return
         days = main.days
         user_id = int(main.user_id)

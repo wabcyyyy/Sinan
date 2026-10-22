@@ -42,7 +42,7 @@ Visit `/demo` at the address printed by Vite, usually [localhost:5173/demo](http
 No Python, database, or model key is needed for this route. Real planning on the normal homepage requires the backend.
 Press Ctrl+C to stop. See [Vercel deployment, Chinese](docs/public/vercel-demo.md) for a static showcase build.
 
-Worker behavior and reproducible process-failure checks: [planning worker guide, Chinese](docs/public/planning-worker.md). The checks use MySQL and real processes with fixed model outputs; they do not measure model quality or capacity.
+Worker dispatch, recovery under load, overload rejection and local fake-model HTTP experiments: [planning worker guide, Chinese](docs/public/planning-worker.md). The experiments use MySQL and real processes with fixed research/content, preserving failures and comparison settings; they do not establish model quality or production capacity.
 
 ## Full local stack
 

@@ -114,6 +114,75 @@ def test_expired_queue_is_terminalized_without_model_call(queue_db, monkeypatch)
     assert _state(trip)["state"] == "EXPIRED"
 
 
+def test_free_slot_recovers_old_owner_before_claiming_new_queue(queue_db, monkeypatch):
+    from app.services import planning_worker
+
+    trip = _create()
+    assert planning_tasks.claim_queued()
+    planning_tasks.mark_running(trip)
+    simulate_worker_exit(trip)
+    with db.session_scope() as session:
+        session.add(SysUser(id=2, username="other-queue-user", password="example-only-no-login"))
+    newer = int(itinerary_generation.generate(2, GenerateTripRequest(city="杭州", days=2))["id"])
+    monkeypatch.setattr(settings, "planning_worker_concurrency", 1)
+    monkeypatch.setattr(generation_recovery, "resume_day", lambda *_: None)
+    submitted = []
+    monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda *args: submitted.append(args))
+    planning_worker.run_once(float("inf"))  # 未到定时扫描点，空槽仍须先检查恢复。
+    assert submitted and submitted[0][2] == trip
+    assert _state(trip)["attempt"] == 2
+    assert _state(newer)["workerId"] == ""
+
+
+def test_full_worker_still_cleans_expired_queue(queue_db, monkeypatch):
+    from app.services import planning_worker
+
+    trip = _create()
+    with db.session_scope() as session:
+        session.execute(
+            update(PlanningTask)
+            .where(PlanningTask.itinerary_id == trip)
+            .values(deadline_at=datetime.now() - timedelta(seconds=1))
+        )
+    monkeypatch.setattr(planning_worker, "available", lambda: False)
+    planning_worker.run_once(0)
+    assert _state(trip)["state"] == "EXPIRED"
+
+
+def test_recovery_leaves_unowned_queue_for_normal_dispatch(queue_db):
+    trip = _create()
+    assert generation_recovery.recover() == 0
+    assert _state(trip)["workerId"] == "" and _state(trip)["attempt"] == 1
+
+
+def test_expiry_after_product_terminal_still_closes_execution(queue_db):
+    trip = _create()
+    assert planning_tasks.claim_queued()
+    with db.session_scope() as session:
+        session.execute(update(ItineraryMain).where(ItineraryMain.id == trip).values(status=3, gen_state="FAILED"))
+    planning_tasks.finish_failure(trip, TimeoutError("fixture deadline"))
+    planning_tasks.release(trip)
+    assert _state(trip)["state"] == "EXPIRED"
+
+
+def test_terminal_orphan_is_settled_without_idle_delay_or_content_rewrite(queue_db, monkeypatch):
+    trip = _create()
+    assert planning_tasks.claim_queued()
+    with db.session_scope() as session:
+        session.execute(
+            update(ItineraryMain)
+            .where(ItineraryMain.id == trip)
+            .values(status=2, gen_state="COMPLETED", title="用户保留的标题")
+        )
+    simulate_worker_exit(trip)
+    monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda *_: pytest.fail("terminal task reran"))
+    assert generation_recovery.recover() == 1
+    assert _state(trip)["state"] == "FINISHED"
+    with db.session_scope() as session:
+        main = session.get(ItineraryMain, trip)
+        assert main is not None and main.title == "用户保留的标题"
+
+
 def test_shared_replay_survives_process_local_reset_and_closes_once(queue_db):
     trip = _create()
     event_publisher.publish_event(trip, "day_start", {"dayNo": 1})

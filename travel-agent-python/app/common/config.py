@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     planning_heartbeat_seconds: float = 30
     planning_write_probe_seconds: float = 1
     planning_worker_concurrency: int = 4
-    planning_queue_capacity: int = 24
+    planning_queue_capacity: int = 8
     planning_poll_seconds: float = 1
     planning_health_path: str = ""
     trusted_proxies: str = "127.0.0.1,0:0:0:0:0:0:0:1,::1"

@@ -257,6 +257,23 @@ jobs:
           DB_NAME: travel_assistant
           PYTHONUTF8: '1'
         run: uv run python scripts/verify_planning_worker.py
+      - name: Local fake-model HTTP overload and busy recovery
+        working-directory: travel-agent-python
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_USER: root
+          DB_PASSWORD: ci-only-password
+          DB_NAME: travel_assistant
+          PYTHONUTF8: '1'
+        run: |
+          uv run python scripts/verify_planning_load.py --requests 12 --retry --deadline 20 --require-full --output "$RUNNER_TEMP/planning-load-burst.json"
+          uv run python scripts/verify_planning_load.py --case recovery --concurrency 1 --deadline 40 --delay 0.6 --output "$RUNNER_TEMP/planning-load-recovery.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: planning-load-evidence
+          path: ${{ runner.temp }}/planning-load-*.json
 
   preview-stack:
     needs: preflight

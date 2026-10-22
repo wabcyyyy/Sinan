@@ -1,0 +1,334 @@
+{
+  "date": "2026-10-22",
+  "environment": "Windows; same local MySQL; isolated per experiment",
+  "source_base": "1bf454631afb7ccf1f02d43d7ab3d27f30702b53",
+  "branch": "codex/planning-load-recovery",
+  "source_state": "working tree; production scheduling and terminal-state fixes in this PR",
+  "measurement": "Fixed research/content; real plan_days, LLMClient HTTP/SSE/retry, MySQL and API/worker processes. No paid model calls.",
+  "limits": [
+    "Synthetic per-call delays and shortened deadlines/leases; no production capacity or default recovery SLA.",
+    "HTTP attempts include retries. Wait percentiles omit never-started tasks, counted separately.",
+    "Complete deliveries require COMPLETED + FINISHED + all days SUCCEEDED; the initial exploration used business state only."
+  ],
+  "experiments": [
+    {
+      "id": "load-c1",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 1,
+        "capacity": 8,
+        "deadline_seconds": 30.0,
+        "fake_day_http_delay_seconds": 0.35,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 8,
+        "accepted": 8,
+        "rejected_429": 0,
+        "delivery_states": {
+          "COMPLETED": 8
+        },
+        "execution_states": {
+          "FINISHED": 8
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8
+        },
+        "failure_notes": [],
+        "complete_rate": 1.0,
+        "admission_p95_ms": 243.974,
+        "queue_to_first_http_p95_seconds": 8.529,
+        "never_started_http": 0,
+        "delivery_p50_seconds": 5.7,
+        "delivery_p95_seconds": 9.844,
+        "model_http_requests": 24,
+        "model_http_429": 0,
+        "peak_model_http_connections": 1,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "id": "load-c2",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 2,
+        "capacity": 8,
+        "deadline_seconds": 30.0,
+        "fake_day_http_delay_seconds": 0.35,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 8,
+        "accepted": 8,
+        "rejected_429": 0,
+        "delivery_states": {
+          "COMPLETED": 8
+        },
+        "execution_states": {
+          "FINISHED": 8
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8
+        },
+        "failure_notes": [],
+        "complete_rate": 1.0,
+        "admission_p95_ms": 234.987,
+        "queue_to_first_http_p95_seconds": 4.866,
+        "never_started_http": 0,
+        "delivery_p50_seconds": 3.587,
+        "delivery_p95_seconds": 6.553,
+        "model_http_requests": 24,
+        "model_http_429": 0,
+        "peak_model_http_connections": 2,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "id": "load-c4",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 4,
+        "capacity": 8,
+        "deadline_seconds": 30.0,
+        "fake_day_http_delay_seconds": 0.35,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 8,
+        "accepted": 8,
+        "rejected_429": 0,
+        "delivery_states": {
+          "COMPLETED": 8
+        },
+        "execution_states": {
+          "FINISHED": 8
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8
+        },
+        "failure_notes": [],
+        "complete_rate": 1.0,
+        "admission_p95_ms": 236.211,
+        "queue_to_first_http_p95_seconds": 2.11,
+        "never_started_http": 0,
+        "delivery_p50_seconds": 2.781,
+        "delivery_p95_seconds": 3.96,
+        "model_http_requests": 25,
+        "model_http_429": 0,
+        "peak_model_http_connections": 4,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "id": "load-final-cap24",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 4,
+        "capacity": 24,
+        "deadline_seconds": 24.0,
+        "fake_day_http_delay_seconds": 2.5,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 28,
+        "accepted": 24,
+        "rejected_429": 4,
+        "delivery_states": {
+          "COMPLETED": 8,
+          "PARTIAL": 4,
+          "FAILED": 12
+        },
+        "execution_states": {
+          "FINISHED": 8,
+          "FAILED": 2,
+          "EXPIRED": 14
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8,
+          "RunLimitExceeded": 2,
+          "TimeoutError": 14
+        },
+        "failure_notes": [
+          "行程生成失败，请稍后重试或调整条件重新生成（错误码 RunLimitExceeded）",
+          "行程生成失败，请稍后重试或调整条件重新生成（错误码 TimeoutError）"
+        ],
+        "complete_rate": 0.3333333333333333,
+        "admission_p95_ms": 848.255,
+        "queue_to_first_http_p95_seconds": 13.684,
+        "never_started_http": 12,
+        "delivery_p50_seconds": 20.024,
+        "delivery_p95_seconds": 20.601,
+        "model_http_requests": 36,
+        "model_http_429": 0,
+        "peak_model_http_connections": 4,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "id": "load-final-cap8",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 4,
+        "capacity": 8,
+        "deadline_seconds": 24.0,
+        "fake_day_http_delay_seconds": 2.5,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 28,
+        "accepted": 8,
+        "rejected_429": 20,
+        "delivery_states": {
+          "COMPLETED": 8
+        },
+        "execution_states": {
+          "FINISHED": 8
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8
+        },
+        "failure_notes": [],
+        "complete_rate": 1.0,
+        "admission_p95_ms": 491.022,
+        "queue_to_first_http_p95_seconds": 7.665,
+        "never_started_http": 0,
+        "delivery_p50_seconds": 7.547,
+        "delivery_p95_seconds": 13.72,
+        "model_http_requests": 24,
+        "model_http_429": 0,
+        "peak_model_http_connections": 4,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "id": "load-recovery-baseline",
+      "result": {
+        "case": "recovery",
+        "scheduler": "baseline",
+        "concurrency": 1,
+        "capacity": 8,
+        "deadline_seconds": 40.0,
+        "fake_day_http_delay_seconds": 0.6,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "backlog_jobs": 6,
+        "new_jobs_started_before_takeover": 6,
+        "takeover_before_backlog_drained": false,
+        "takeover_wait_seconds": 11.851,
+        "recovery_delivery_seconds": 12.775,
+        "all_backlog_delivered": true,
+        "last_backlog_terminal_seconds": 12.789,
+        "completed_day_preserved": true,
+        "deadline_and_usage_preserved": true,
+        "cross_api_sse_and_detail": true
+      }
+    },
+    {
+      "id": "load-recovery-current",
+      "result": {
+        "case": "recovery",
+        "scheduler": "current",
+        "concurrency": 1,
+        "capacity": 8,
+        "deadline_seconds": 40.0,
+        "fake_day_http_delay_seconds": 0.6,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "backlog_jobs": 6,
+        "new_jobs_started_before_takeover": 2,
+        "takeover_before_backlog_drained": true,
+        "takeover_wait_seconds": 4.148,
+        "recovery_delivery_seconds": 5.047,
+        "all_backlog_delivered": true,
+        "last_backlog_terminal_seconds": 12.989,
+        "completed_day_preserved": true,
+        "deadline_and_usage_preserved": true,
+        "cross_api_sse_and_detail": true
+      }
+    },
+    {
+      "id": "load-retry-overload",
+      "result": {
+        "case": "burst",
+        "scheduler": "current",
+        "concurrency": 4,
+        "capacity": 8,
+        "deadline_seconds": 20.0,
+        "fake_day_http_delay_seconds": 0.35,
+        "lease_seconds": 3,
+        "real_model_calls": 0,
+        "scope": "one host; real MySQL/API/worker/LLMClient HTTP; fixed research/content; enrichment disabled",
+        "submitted": 12,
+        "accepted": 8,
+        "rejected_429": 4,
+        "delivery_states": {
+          "COMPLETED": 8
+        },
+        "execution_states": {
+          "FINISHED": 8
+        },
+        "complete_deliveries": 8,
+        "result_codes": {
+          "null": 8
+        },
+        "failure_notes": [],
+        "complete_rate": 1.0,
+        "admission_p95_ms": 354.425,
+        "queue_to_first_http_p95_seconds": 3.194,
+        "never_started_http": 0,
+        "delivery_p50_seconds": 3.305,
+        "delivery_p95_seconds": 4.809,
+        "model_http_requests": 33,
+        "model_http_429": 8,
+        "peak_model_http_connections": 4,
+        "rejected_shells": 0
+      }
+    }
+  ],
+  "failed_explorations": [
+    {
+      "case": "capacity 8, 28 submissions, 12s deadline, 1.1s day HTTP delay",
+      "outcome": "require-full assertion failed",
+      "observed": {
+        "submitted": 28,
+        "accepted": 8,
+        "rejected_429": 20,
+        "delivery_states": {
+          "COMPLETED": 7,
+          "PARTIAL": 1
+        },
+        "result_codes": {
+          "null": 7,
+          "TimeoutError": 1
+        },
+        "failure_notes": [],
+        "complete_rate": 0.875,
+        "admission_p95_ms": 431.278,
+        "queue_to_first_http_p95_seconds": 3.545,
+        "delivery_p50_seconds": 4.189,
+        "delivery_p95_seconds": 7.733,
+        "model_http_requests": 24,
+        "model_http_429": 0,
+        "peak_model_http_connections": 4,
+        "rejected_shells": 0
+      }
+    },
+    {
+      "case": "capacity 24, 28 submissions, 24s deadline, 2.5s day HTTP delay",
+      "outcome": "wait_terminal timed out before terminal-state fix",
+      "finding": "Product terminal could leave execution live; fixed and then remeasured in load-final-cap24/load-final-cap8."
+    }
+  ]
+}

@@ -168,7 +168,7 @@ WHERE id = :itinerary_id AND planning_revision = :expected;
 
 [立即体验固定样例](https://sinan-demo.vercel.app)：成都两天一晚，免登录、不调用真实模型；交互数据仅保存在当前标签页。
 
-独立 worker 的投递、恢复规则和可复现故障验收见 [执行说明](docs/public/planning-worker.md)。该验收使用真实进程和 MySQL、固定模型输出，不代表真实模型效果或高并发容量。
+独立 worker 的投递、繁忙恢复、过载拒绝和本地假模型 HTTP 负载实验见 [执行说明](docs/public/planning-worker.md)。实验使用真实进程和 MySQL、固定研究策略与模型内容，保留失败及对照参数；不代表真实模型效果或线上容量。
 
 本地真实模型的浏览器验收记录见 [2026-10-21 产品案例](docs/public/product-case-20261021.md)。案例保留两次部分交付、失败重试及修复后重新生成的过程，区分候选、落库和最终交付；它是小样本功能验收，不用于宣称成功率或性能提升。
 
