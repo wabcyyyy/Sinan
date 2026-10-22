@@ -132,6 +132,13 @@ def requirements_directives_clause(requirements_struct: TripRequirements | None,
     if requirements_struct is None:
         return ""
     lines = [
+        *(
+            f"固定安排：第 {f.day_no} 天 {f.start_time}–{f.end_time}，类型 {f.item_type}，地点原名「{f.name}」。"
+            "必须保留原名和时段，其他安排不得重叠；这是用户提供的安排，不是平台确认的预订。"
+            + (f"用户填写单价 {f.cost} 元。" if f.cost is not None else "")
+            for f in requirements_struct.fixed_arrangements
+            if day_no is None or f.day_no == day_no
+        ),
         *_must_visit_lines(requirements_struct, day_no),
         *_window_lines(requirements_struct, day_no),
         *_preference_lines(requirements_struct),

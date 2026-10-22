@@ -70,16 +70,13 @@ def _schedule(items: list[dict], request: ScenarioBody, omit: bool) -> tuple[lis
         if omit and source["id"] in request.optionalItemIds:
             continue
         item = copy.deepcopy(source)
-        if item["item_type"] == "hotel":
-            result.append(item)  # 住宿原样保留，不当作白天游玩的时段。
-            continue
         start, end = item.get("start_time"), item.get("end_time")
         if not start or not end or _minutes(end) <= _minutes(start):
             conflicts.append(f"「{item['poi_name']}」缺少有效起止时间，请先补齐；未猜测游玩时长")
             result.append(item)
             continue
         duration = _minutes(end) - _minutes(start)
-        if item["id"] in request.fixedItemIds:
+        if item["id"] in request.fixedItemIds or item["item_type"] == "hotel":
             if cursor > _minutes(start):
                 conflicts.append(
                     f"固定安排「{item['poi_name']}」{start} 开始，前序安排及预留时间最早到 {_clock(cursor)}"
@@ -173,11 +170,11 @@ def _options(
     choices: tuple[tuple[Literal["keep", "omit"], str], ...] = (("keep", "保留全部安排"), ("omit", "移除可选安排"))
     for key, title in choices:
         arranged, conflicts = _schedule(items, request, key == "omit")
-        remaining = [item for item in arranged if item["item_type"] != "hotel"]
+        remaining = arranged
         ends = [_minutes(item["end_time"]) for item in remaining if item.get("end_time")]
         last = max(ends) if ends else None
         slack = _minutes(finish) - last if last is not None else None
-        if not remaining:
+        if not any(item["item_type"] != "hotel" for item in remaining):
             conflicts.append("移除后没有游玩或用餐安排，请至少保留一项")
         if last is not None and slack is not None and slack < 0:
             conflicts.append(f"最晚 {_clock(last)} 结束，比可用截止 {finish} 晚 {-slack} 分钟")

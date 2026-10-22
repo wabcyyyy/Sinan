@@ -8,6 +8,7 @@ import { Icon } from '../shared/Icon'
 import { SmartImg } from '../shared/SmartImg'
 import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
+import { FixedArrangementsEditor } from './FixedArrangementsEditor'
 import { RequirementSummary } from './RequirementSummary'
 
 /** 长期记忆的边界（与后端 preferences 服务同一规则，仅前端提示用）：
@@ -40,6 +41,7 @@ export function IntakeConfirm({
   ready,
   needsReconfirm,
   onSlots,
+  onRequirements,
   onReset,
   onReconfirm,
   onStart,
@@ -50,6 +52,7 @@ export function IntakeConfirm({
   ready: boolean
   needsReconfirm: boolean
   onSlots: (patch: Partial<IntakeSlots>) => void
+  onRequirements?: (requirements: TripRequirements) => void
   onReset: () => void
   onReconfirm: () => Promise<boolean>
   onStart: () => void
@@ -242,6 +245,7 @@ export function IntakeConfirm({
         </div>
       </div>
 
+      {!demoMode && onRequirements && requirements && <FixedArrangementsEditor days={days} requirements={requirements} busy={busy || verifying} onChange={onRequirements} />}
       <RequirementSummary requirements={requirements} />
 
       {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
@@ -347,6 +351,7 @@ export function IntakeConfirm({
           </div>
         )}
       </div>
+
 
       {/* 长期旅行偏好（个人 Agent V1，规格 §5）：与本次行程分离的显式记忆入口——
           可编辑正负标签、保存/清空、把正向偏好选入本次行程。展示模式整块不渲染。 */}

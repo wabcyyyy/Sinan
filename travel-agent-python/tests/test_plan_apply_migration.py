@@ -457,9 +457,9 @@ def test_local_edit_preserves_unmentioned_day_metadata(client: TestClient, day_i
     assert result["code"] == 200, result
     # 读回与刷新走同一详情接口，纯条目补丁不能清掉未提案的主题与提示。
     first = client.get(f"/api/itinerary/{trip_id}").json()["data"]["dayList"][0]
-    assert first["theme"] == "旧主题"
+    assert first["theme"] == ("西湖 → 楼外楼" if day_index == 0 else "旧主题")
     assert first["backupPlan"] == [{"name": "下雨就去博物馆"}]
-    assert first["note"] == "旧备注"
+    assert "09:05" in first["note"] if day_index == 0 else first["note"] == "旧备注"
 
 
 def test_apply_plans_replaces_items_keeps_identity_and_soft_deletes_rest(client: TestClient) -> None:
@@ -1031,3 +1031,122 @@ def test_repeat_apply_consumed_draft_does_not_double_apply(client):
     )
     assert second.status_code == 409, "同一草稿重复确认被拒（已消费）"
     assert _operations(trip_id) == operations_after_first, "重复确认不产生新版本"
+
+
+def test_comparison_reserves_hotel_time_and_reports_actual_finish():
+    from app.schemas.business.scenario import ScenarioBody
+    from app.services.itinerary_scenario import _schedule
+
+    rows = [
+        {"id": 1, "item_type": "attraction", "poi_name": "西湖", "start_time": "12:15", "end_time": "15:45"},
+        {"id": 2, "item_type": "hotel", "poi_name": "酒店", "start_time": "16:00", "end_time": "16:30"},
+        {"id": 3, "item_type": "food", "poi_name": "晚餐", "start_time": "18:00", "end_time": "19:00"},
+    ]
+    body = ScenarioBody(
+        dayNo=1,
+        planningRevision=0,
+        startTime="12:15",
+        finishBy="19:00",
+        transferMinutes=15,
+        departureBufferMinutes=0,
+        fixedItemIds=[1],
+        optionalItemIds=[3],
+    )
+    arranged, conflicts = _schedule(rows, body, False)
+    assert not conflicts
+    assert arranged[2]["start_time"] == "16:45"
+    assert arranged[1] == rows[1]
+
+
+def test_user_item_create_fixed_conflict_and_undo(client):
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}"
+    body = {
+        "planningRevision": 0,
+        "dayNo": 2,
+        "itemType": "food",
+        "poiName": "自己选的餐厅",
+        "startTime": "18:00",
+        "endTime": "19:00",
+        "cost": "88.50",
+        "remark": "已电话预约",
+        "fixed": True,
+    }
+    response = client.post(url + "/items/action", json=body)
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["fixedArrangements"][0]["name"] == body["poiName"]
+    item = next(p for p in data["dayList"][1]["items"] if p["poiName"] == body["poiName"])
+    assert item["source"] == "user" and item["verificationStatus"] == "unverified"
+    assert item["cost"] == 88.5
+    # 与生成前录入的已定费用形状一致；之后快照、编辑及恢复都必须可序列化。
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        fixed = main.requirements_json["fixedArrangements"][0]
+        main.requirements_json = {**main.requirements_json, "fixedArrangements": [{**fixed, "cost": "88.50"}]}
+    assert client.post(url + "/items/action", json=body).status_code == 409
+    assert client.post(url + "/items/action", json={**body, "planningRevision": 1, "fixed": False}).status_code == 400
+    assert (
+        client.post(url + f"/items/{item['id']}/action", json={"planningRevision": 1, "action": "delete"}).status_code
+        == 409
+    )
+    restored = client.post(url + f"/versions/{data['undoVersionId']}/restore", json={"planningRevision": 1})
+    assert restored.status_code == 200, restored.text
+    assert not restored.json()["data"]["fixedArrangements"]
+
+
+def test_manual_replacement_removes_old_facts_and_syncs_summary(client):
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        item = session.get(ItineraryItem, 1)
+        item.latitude, item.longitude = Decimal("30.1"), Decimal("120.2")
+        item.source, item.verification_status = "official", "verified"
+        item.intro = "旧地点介绍"
+        day = session.get(ItineraryDay, item.day_id)
+        day.metadata_json = json.dumps({"practicalNotes": ["西湖旧地点提示", "通用提示"]}, ensure_ascii=False)
+        item.fact_evidence_json = '{"name":{"verificationStatus":"verified"}}'
+    url = f"/api/itinerary/{trip_id}"
+    result = client.post(
+        url + "/items/1/action",
+        json={
+            "action": "update",
+            "planningRevision": 0,
+            "dayNo": 1,
+            "startTime": "09:30",
+            "endTime": "11:00",
+            "poiName": "自己选的公园",
+            "cost": 25,
+            "address": "用户输入地址",
+            "remark": "集合点",
+        },
+    )
+    assert result.status_code == 200, result.text
+    data = client.get(url).json()["data"]
+    item = data["dayList"][0]["items"][0]
+    assert item["latitude"] is None and item["longitude"] is None
+    assert item["source"] == "user" and item["factEvidence"] == {}
+    assert item["description"] is None
+    assert data["dayList"][0]["practicalNotes"] == ["通用提示"]
+    assert "自己选的公园" in data["dayList"][0]["note"]
+    assert "09:30–11:00" in data["dayList"][0]["note"]
+    assert "自己选的公园" in data["dayList"][0]["theme"]
+
+
+def test_budget_uses_explicit_room_count(client):
+    from app.services import budget_engine
+
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        main = session.get(ItineraryMain, trip_id)
+        main.persons = 3
+        main.requirements_json = {"lodging": {"rooms": 1}}
+        for hotel in session.scalars(select(ItineraryItem).where(ItineraryItem.item_type == "hotel")):
+            hotel.deleted = 1
+        day = session.scalar(select(ItineraryDay).where(ItineraryDay.itinerary_id == trip_id, ItineraryDay.day_no == 1))
+        session.add(
+            ItineraryItem(
+                itinerary_id=trip_id, day_id=day.id, item_type="hotel", poi_name="家庭房酒店", cost=Decimal("350")
+            )
+        )
+    details = budget_engine.recalculate(trip_id)
+    assert next(d.amount for d in details if d.category == "酒店") == Decimal("350.00")

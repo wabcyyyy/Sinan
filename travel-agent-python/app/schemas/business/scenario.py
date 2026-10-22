@@ -1,5 +1,6 @@
 """只使用已有安排的时间协商与版本恢复契约。"""
 
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -66,12 +67,28 @@ class RestoreVersionBody(BaseModel):
     planningRevision: int = Field(ge=0)
 
 
-class ItemActionBody(BaseModel):
-    planningRevision: int = Field(ge=0)
-    action: Literal["update", "delete", "fix", "unfix"]
-    dayNo: int | None = Field(default=None, ge=1, le=7)
+class ItemEditFields(BaseModel):
     startTime: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     endTime: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    address: str | None = Field(default=None, max_length=500)
+    cost: Decimal | None = Field(default=None, ge=0, le=1_000_000, max_digits=12, decimal_places=2)
+    remark: str | None = Field(default=None, max_length=1000)
+
+
+class ItemActionBody(ItemEditFields):
+    dayNo: int | None = Field(default=None, ge=1, le=7)
+    poiName: str | None = Field(default=None, min_length=1, max_length=128)
+    planningRevision: int = Field(ge=0)
+    action: Literal["update", "delete", "fix", "unfix"]
+
+
+class ItemCreateBody(ItemEditFields):
+    planningRevision: int = Field(ge=0)
+    action: Literal["create"] = "create"
+    itemType: Literal["attraction", "food", "hotel"]
+    poiName: str = Field(min_length=1, max_length=128)
+    dayNo: int = Field(ge=1, le=7)
+    fixed: bool = False
 
 
 class ItineraryVersionVO(BaseModel):

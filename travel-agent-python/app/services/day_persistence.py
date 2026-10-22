@@ -74,6 +74,27 @@ def persist(
         stay_nights = _stay_nights(request)
         stay_hotels.fill_day_hotel(session, itinerary_id, day_no, stay_nights, plan)
         plan.items = [item for item in plan.items if item.item_type != "hotel" or day_no <= stay_nights]
+        # 用户填写的预定资料不由模型估价覆盖，也不继承外部核验身份。
+        for fixed in requirements.fixed_arrangements if requirements else []:
+            if fixed.day_no != day_no:
+                continue
+            for item in plan.items:
+                if item.poi_name != fixed.name or item.item_type != fixed.item_type:
+                    continue
+                if fixed.cost is not None:
+                    item.cost = float(fixed.cost)
+                    item.cost_currency = "CNY"
+                    item.fact_evidence.pop("cost", None)
+                if fixed.address is not None:
+                    item.address = fixed.address
+                    item.latitude = item.longitude = None
+                    item.fact_evidence = {}
+                if fixed.remark is not None:
+                    item.remark = fixed.remark
+                if fixed.cost is not None or fixed.address is not None or fixed.remark is not None:
+                    item.source = "user"
+                    item.verification_status = "unverified"
+                    item.value_kind = "estimated"
         sync_schedule_summary(plan)
         day.generation_action_id = action_id
         day.generation_fingerprint = fingerprint

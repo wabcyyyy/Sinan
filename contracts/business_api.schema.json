@@ -623,8 +623,7 @@
           "type": "string"
         },
         "itemType": {
-          "maxLength": 32,
-          "minLength": 1,
+          "pattern": "^(attraction|food|hotel|transport)$",
           "title": "Itemtype",
           "type": "string"
         },
@@ -637,6 +636,47 @@
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
           "title": "Endtime",
           "type": "string"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
         }
       },
       "required": [
@@ -644,7 +684,10 @@
         "name",
         "itemType",
         "startTime",
-        "endTime"
+        "endTime",
+        "cost",
+        "address",
+        "remark"
       ],
       "title": "FixedArrangement",
       "type": "object"
@@ -2257,35 +2300,6 @@
     },
     "ItemActionBody": {
       "properties": {
-        "planningRevision": {
-          "minimum": 0,
-          "title": "Planningrevision",
-          "type": "integer"
-        },
-        "action": {
-          "enum": [
-            "update",
-            "delete",
-            "fix",
-            "unfix"
-          ],
-          "title": "Action",
-          "type": "string"
-        },
-        "dayNo": {
-          "anyOf": [
-            {
-              "maximum": 7,
-              "minimum": 1,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Dayno"
-        },
         "startTime": {
           "anyOf": [
             {
@@ -2311,16 +2325,230 @@
           ],
           "default": null,
           "title": "Endtime"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "poiName": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Poiname"
+        },
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "action": {
+          "enum": [
+            "update",
+            "delete",
+            "fix",
+            "unfix"
+          ],
+          "title": "Action",
+          "type": "string"
         }
       },
       "required": [
-        "planningRevision",
-        "action",
-        "dayNo",
         "startTime",
-        "endTime"
+        "endTime",
+        "address",
+        "cost",
+        "remark",
+        "dayNo",
+        "poiName",
+        "planningRevision",
+        "action"
       ],
       "title": "ItemActionBody",
+      "type": "object"
+    },
+    "ItemCreateBody": {
+      "properties": {
+        "startTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost"
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remark"
+        },
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "action": {
+          "const": "create",
+          "default": "create",
+          "enum": [
+            "create"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "itemType": {
+          "enum": [
+            "attraction",
+            "food",
+            "hotel"
+          ],
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "poiName": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Poiname",
+          "type": "string"
+        },
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "fixed": {
+          "default": false,
+          "title": "Fixed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "startTime",
+        "endTime",
+        "address",
+        "cost",
+        "remark",
+        "planningRevision",
+        "action",
+        "itemType",
+        "poiName",
+        "dayNo",
+        "fixed"
+      ],
+      "title": "ItemCreateBody",
       "type": "object"
     },
     "ScenarioSelectBody": {

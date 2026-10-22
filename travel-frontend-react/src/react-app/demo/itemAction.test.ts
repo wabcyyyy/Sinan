@@ -3,7 +3,7 @@ import { makeDemoTrip } from './fixtures'
 import { editDemoItem } from './itemAction'
 
 describe('manual demo edits', () => {
-  const base = { planningRevision: 1, dayNo: 1, startTime: '09:30', endTime: '10:00' }
+  const base = { poiName: null, address: null, cost: null, remark: null, planningRevision: 1, dayNo: 1, startTime: '09:30', endTime: '10:00' }
   it('edits only the selected item and rejects overlapping times without changing the source', () => {
     const trip = makeDemoTrip()
     const edited = editDemoItem(trip, 11, { ...base, action: 'update' })

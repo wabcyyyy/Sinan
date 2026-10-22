@@ -34,6 +34,7 @@ from app.schemas.business.itinerary import (
 )
 from app.schemas.business.scenario import (
     ItemActionBody,
+    ItemCreateBody,
     RestoreVersionBody,
     ScenarioBody,
     ScenarioParseBody,
@@ -214,6 +215,15 @@ def item_action(
     user: AuthUser = Depends(enforce_business_auth),
 ) -> dict:
     return ok(itinerary_item_action.act(user.id, id, itemId, body))
+
+
+@router.post("/{id}/items/action")
+def create_user_item(
+    body: ItemCreateBody,
+    id: int = Path(..., ge=1),
+    user: AuthUser = Depends(enforce_business_auth),
+) -> dict:
+    return ok(itinerary_item_action.act(user.id, id, None, body))
 
 
 @router.post("/{id}/items")

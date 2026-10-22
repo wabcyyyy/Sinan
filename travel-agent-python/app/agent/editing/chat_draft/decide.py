@@ -82,7 +82,7 @@ logger = logging.getLogger(__name__)
 def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str | None = None) -> dict:
     document = _decision_plan_document(req)
     if req.requirements_struct and req.requirements_struct.fixed_arrangements:
-        document["fixed_arrangements"] = [f.model_dump() for f in req.requirements_struct.fixed_arrangements]
+        document["fixed_arrangements"] = [f.model_dump(mode="json") for f in req.requirements_struct.fixed_arrangements]
     system = DECIDE_SYSTEM_PROMPT
     system += (
         "\nfixed_arrangements 中的日期、地点原名、类型和起止时间不可改变。若与用户要求冲突，解释需先在条目上解除固定。"

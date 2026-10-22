@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import itertools
+from decimal import Decimal, InvalidOperation
 
 from app.agent.generation.rules.category_evidence import category_membership, item_category_evidence
 from app.agent.generation.rules.day_policy import DayPolicy, diet_gate_blocking
@@ -245,6 +246,11 @@ def _check_fixed(requirements: TripRequirements | None, day_no: int, items: list
         valid = len(matches) == 1 and all(
             str(matches[0].get(key) or "")[:5] == getattr(fixed, key) for key in ("start_time", "end_time")
         )
+        if valid and fixed.cost is not None:
+            try:
+                valid = Decimal(str(matches[0].get("cost"))) == fixed.cost
+            except (InvalidOperation, ValueError):
+                valid = False
         checks.append(
             ConstraintCheck(
                 constraint_id=f"fixed:{day_no}:{fixed.name}",
@@ -256,6 +262,7 @@ def _check_fixed(requirements: TripRequirements | None, day_no: int, items: list
                 if valid
                 else (
                     f"固定安排「{fixed.name}」必须保留在第 {day_no} 天 {fixed.start_time}–{fixed.end_time}；"
+                    "保留用户填写的费用；"
                     "请先解除固定再修改"
                 ),
                 blocking=True,

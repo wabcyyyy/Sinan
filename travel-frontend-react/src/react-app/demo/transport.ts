@@ -5,8 +5,8 @@ import { makeDemoTrip, makeTemplateTrip, recalculate, relaxedPlans } from './fix
 import { CURATED_ITINERARIES } from '../../types/generated/contracts'
 import type { ItineraryVersionVO } from '../../types/generated/contracts'
 import { scenarioFixture } from './scenarioFixture'
-import { editDemoItem } from './itemAction'
-import type { ItemActionBody } from '../../types/generated/contracts'
+import { createDemoItem, editDemoItem } from './itemAction'
+import type { ItemActionBody, ItemCreateBody } from '../../types/generated/contracts'
 
 const KEY = 'sinan-demo:trips-v1'
 interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number; versions?: Array<ItineraryVersionVO & { snapshot: ItineraryDetail }>; scenarioMessageId?: number }
@@ -154,6 +154,17 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   const record = records()[match[1]]
   if (!record) return json(null, 404, '没有找到这条演示行程，请从“我的行程”重新打开。')
   const action = match[2]
+  if (action === '/items/action' && method === 'POST') {
+    if (body.planningRevision !== record.revision) return json(null, 409, '行程已更新，请刷新后再操作')
+    try {
+      const next = createDemoItem(snapshot(record), body as unknown as ItemCreateBody)
+      const undoVersionId = remember(record, 'before_item', '新增安排前')
+      record.trip = next; record.revision += 1
+      for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
+      remember(record, 'item_action', '新增安排完成'); save()
+      return json({ ...snapshot(record), undoVersionId })
+    } catch (error) { return json(null, 400, error instanceof Error ? error.message : '添加失败') }
+  }
   const itemAction = action.match(/^\/items\/(\d+)\/action$/)
   if (itemAction && method === 'POST') {
     if (body.planningRevision !== record.revision) return json(null, 409, '行程已更新，请刷新后再操作')

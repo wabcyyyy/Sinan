@@ -607,7 +607,23 @@ def test_newly_introduced_conflict_is_still_rejected(monkeypatch):
 
 def test_baseline_conflict_surfaced_in_decide_prompt(monkeypatch):
     """预检提示：基线带重叠时把冲突点写进 decide 输入，模型有机会顺手修复。"""
+    from app.schemas.trip_requirements import TripRequirements
+
     request = _conflicted_request("随便调整一下")
+    request.requirements_struct = TripRequirements.model_validate(
+        {
+            "fixedArrangements": [
+                {
+                    "dayNo": 1,
+                    "name": "苏堤春晓",
+                    "itemType": "attraction",
+                    "startTime": "08:30",
+                    "endTime": "10:00",
+                    "cost": "0",
+                }
+            ]
+        }
+    )
 
     class _CapturingClient(FakeBinding):
         def chat(self, messages, **kwargs):
@@ -618,6 +634,7 @@ def test_baseline_conflict_surfaced_in_decide_prompt(monkeypatch):
     monkeypatch.setattr(decide, "get_llm_client", lambda _role="main": client)
     monkeypatch.setattr(decide.tools, "search_hotels", lambda *args, **kwargs: [])
     decide._chat_turn_response(request)
+    assert '"cost": "0"' in client.user_content
     assert "已知遗留问题" in client.user_content
     assert "苏堤春晓" in client.user_content and "断桥残雪" in client.user_content
 
@@ -822,3 +839,21 @@ def test_coordinated_keep_hotel_does_not_hijack_plan_edit(message):
     assert _is_hotel_request(req, []) is False
     req.message = "酒店换成舒适型，其他地点、时间、主题和提示都保持不变。"
     assert _is_hotel_request(req, []) is True
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "只把第1天楼外楼孤山店的晚餐调整到18:00—19:00，其他安排都保持不变，尤其西湖和酒店不要改。",
+        "只把第1天楼外楼孤山店晚餐改到18:00—19:00，其他全部保持不变。",
+    ],
+)
+def test_dinner_time_is_not_hijacked_by_hotel_history(message):
+    from app.agent.editing.chat_draft.intent import _is_time_adjustment_request
+    from app.schemas.trip import ChatTurnRequest
+
+    req = ChatTurnRequest(
+        city="杭州", days=2, persons=2, message=message, history=[{"role": "assistant", "content": "暂时没有酒店候选"}]
+    )
+    assert _is_hotel_request(req, []) is False
+    assert _is_time_adjustment_request(message) is True

@@ -4,6 +4,7 @@ import type { TripRequirements } from '../../types/generated/contracts'
 export function RequirementSummary({ requirements: r }: { requirements?: TripRequirements | null }) {
   if (!r) return null
   const lines: string[] = []
+  for (const f of r.fixedArrangements ?? []) lines.push(`第 ${f.dayNo} 天固定：${f.name} ${f.startTime}–${f.endTime}${f.cost != null ? ` · 用户填写单价 ￥${f.cost}` : ''}`)
   for (const place of r.requiredPlaces ?? []) lines.push(`${place.dayNo ? `第 ${place.dayNo} 天` : '全程'}必去：${place.name}`)
   if (r.excludedPlaces?.length) lines.push(`避开：${r.excludedPlaces.join('、')}`)
   const categories: Record<string, string> = { temple: '寺庙/神社', museum: '博物馆' }

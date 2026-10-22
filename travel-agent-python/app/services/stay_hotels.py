@@ -105,18 +105,24 @@ def spread_stay_hotels(itinerary_id: int, nights: int) -> int:
             for sort_no, raw in enumerate(plan["items"]):
                 if raw["item_type"] != "hotel":
                     next(nonhotels).sort_no = sort_no
-            _sync_day_summary(day, plan)
+            sync_day_summary(day, plan)
         return changed
 
 
-def _sync_day_summary(day: ItineraryDay, plan: dict) -> None:
+def sync_day_summary(day: ItineraryDay, plan: dict, previous: dict | None = None) -> None:
     """首晚漏排、后续才选出酒店时，终态摊铺也必须同步已落库概述。"""
-    items = []
-    for raw in plan["items"]:
-        wire = itinerary_query.item_vo(ItineraryItem(**raw), {})
-        wire["factEvidence"] = wire.get("factEvidence") or {}
-        items.append(TripItem.model_validate(wire))
-    summary = DailyPlan(day_no=day.day_no, items=items)
+    summary = DailyPlan(
+        day_no=day.day_no,
+        items=[
+            TripItem(
+                item_type=raw["item_type"],
+                poi_name=raw["poi_name"],
+                start_time=str(raw["start_time"]) if raw.get("start_time") else None,
+                end_time=str(raw["end_time"]) if raw.get("end_time") else None,
+            )
+            for raw in plan["items"]
+        ],
+    )
     sync_schedule_summary(summary)
     try:
         metadata = json.loads(day.metadata_json or "{}")
@@ -124,6 +130,23 @@ def _sync_day_summary(day: ItineraryDay, plan: dict) -> None:
         metadata = {}
     if not isinstance(metadata, dict):
         metadata = {}
+    if previous:
+        current = {p.get("id"): p for p in plan["items"]}
+        obsolete = set()
+        for old in previous.get("items", []):
+            new = current.get(old.get("id"))
+            if new is None or new.get("poi_name") != old.get("poi_name"):
+                obsolete.add(old["poi_name"])
+            for key in ("start_time", "end_time"):
+                if old.get(key) and (new is None or old.get(key) != new.get(key)):
+                    obsolete.add(str(old[key])[:5])
+        for key in ("practicalNotes", "photoSpots", "backupPlan"):
+            if isinstance(metadata.get(key), list):
+                metadata[key] = [
+                    note
+                    for note in metadata[key]
+                    if not any(token in json.dumps(note, ensure_ascii=False) for token in obsolete)
+                ]
     metadata["theme"] = summary.theme
     day.metadata_json = json.dumps(metadata, ensure_ascii=False)
-    day.note = summary.note
+    day.note = summary.note[:512] if summary.note else None

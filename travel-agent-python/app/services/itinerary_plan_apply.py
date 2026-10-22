@@ -41,6 +41,7 @@ from app.services import (
     itinerary_plan_apply_hotel,
     itinerary_query,
     itinerary_version,
+    stay_hotels,
 )
 from app.services.itinerary_plan_apply_items import (
     MAX_POI_NAME,
@@ -239,6 +240,8 @@ def _apply_days(
             sort_no = _apply_plan_item(
                 session, raw_item, name, itinerary_id, day.id, existing_items, retained_item_ids, sort_no
             )
+        if not unchanged and "theme" not in plan:
+            stay_hotels.sync_day_summary(day, plan, original)
 
 
 def _sync_apply_metadata(main: ItineraryMain, plans: list[dict[str, Any]], day_by_no: dict[int, ItineraryDay]) -> None:

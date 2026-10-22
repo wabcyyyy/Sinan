@@ -21,6 +21,7 @@
 依赖：pydantic；无内部依赖（保持 schemas 层零内部 import）。
 """
 
+from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, StringConstraints
@@ -72,9 +73,12 @@ class FixedArrangement(WireModel):
 
     day_no: int = Field(ge=1, le=MAX_TRIP_DAYS)
     name: str = Field(min_length=1, max_length=255)
-    item_type: str = Field(min_length=1, max_length=32)
+    item_type: str = Field(pattern=r"^(attraction|food|hotel|transport)$")
     start_time: _TimeHhMm
     end_time: _TimeHhMm
+    cost: Decimal | None = Field(default=None, ge=0, le=1_000_000, max_digits=12, decimal_places=2)
+    address: str | None = Field(default=None, max_length=500)
+    remark: str | None = Field(default=None, max_length=1000)
 
 
 class BudgetPolicy(WireModel):
@@ -159,6 +163,28 @@ def requirements_issues(req: TripRequirements, *, days: int | None = None) -> li
             )
         if days is not None and window.day_no > days:
             issues.append(f"时间窗口指向第 {window.day_no} 天，超出行程天数 {days}")
+    fixed_seen: set[tuple[int, str, str]] = set()
+    for fixed in req.fixed_arrangements:
+        key = (fixed.day_no, fixed.name, fixed.item_type)
+        if key in fixed_seen:
+            issues.append(f"第 {fixed.day_no} 天固定安排「{fixed.name}」重复")
+        fixed_seen.add(key)
+        if days is not None and fixed.day_no > days:
+            issues.append(f"固定安排「{fixed.name}」超出行程天数")
+        if fixed.start_time >= fixed.end_time:
+            issues.append(f"固定安排「{fixed.name}」起止时间无效，暂不支持跨午夜")
+        for window in req.day_windows:
+            if window.day_no == fixed.day_no and (
+                (window.not_before and fixed.start_time < window.not_before)
+                or (window.finish_by and fixed.end_time > window.finish_by)
+            ):
+                issues.append(f"固定安排「{fixed.name}」超出第 {fixed.day_no} 天可用时间")
+    for i, fixed in enumerate(req.fixed_arrangements):
+        if any(
+            other.day_no == fixed.day_no and other.start_time < fixed.end_time and fixed.start_time < other.end_time
+            for other in req.fixed_arrangements[i + 1 :]
+        ):
+            issues.append(f"第 {fixed.day_no} 天固定安排存在时间重叠")
     seen_ids: set[str] = set()
     for place in req.required_places:
         if place.constraint_id in seen_ids:
