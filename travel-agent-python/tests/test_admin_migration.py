@@ -562,7 +562,7 @@ def test_planning_queue_reads_persistent_states_and_only_safe_terminal_fields(ad
 
     monkeypatch.setattr(admin_service, "datetime", Clock)
 
-    def task(key, state, age, owner="worker-private", lease=60, deadline=300, code=None):
+    def task(key, state, age, owner="worker-private", lease: int | None = 60, deadline=300, code=None):
         return PlanningTask(
             itinerary_id=key,
             user_id=ALICE_ID,
@@ -612,6 +612,6 @@ def test_planning_queue_reads_persistent_states_and_only_safe_terminal_fields(ad
 def test_planning_queue_database_failure_is_not_reported_as_empty() -> None:
     from sqlalchemy.exc import OperationalError
 
-    PlanningTask.__table__.drop(db_session.get_engine())
+    Base.metadata.tables[PlanningTask.__tablename__].drop(db_session.get_engine())
     with pytest.raises(OperationalError):
         admin_service.planning_queue_status(20)
