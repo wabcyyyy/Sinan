@@ -69,6 +69,7 @@ from .validate import (
     _all_plan_conflicts,
     _decision_reply,
     _default_plan_update_reply,
+    _fixed_violations,
     _parse_decision_json,
     _scope_violations,
     _substantive_plan_signature,
@@ -80,7 +81,12 @@ logger = logging.getLogger(__name__)
 
 def _decide_plan_change(req: ChatTurnRequest, hotels: list[dict], feedback: str | None = None) -> dict:
     document = _decision_plan_document(req)
+    if req.requirements_struct and req.requirements_struct.fixed_arrangements:
+        document["fixed_arrangements"] = [f.model_dump() for f in req.requirements_struct.fixed_arrangements]
     system = DECIDE_SYSTEM_PROMPT
+    system += (
+        "\nfixed_arrangements 中的日期、地点原名、类型和起止时间不可改变。若与用户要求冲突，解释需先在条目上解除固定。"
+    )
     messages = [{"role": "system", "content": system}]
     messages.extend(dialogue_messages(req.history))
     user_content = (
@@ -320,6 +326,15 @@ def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
         # M4（spec §9.1）：作用域硬校验——affected_days 之外的天/preserved 清单
         # 逐字段比对。违例允许带反馈修一轮；仍违例必须如实拒绝，
         # **不得**用宽泛 fallback（确定性兜底）重写后放行。
+        fixed_issues = _fixed_violations(req.requirements_struct, plans)
+        if fixed_issues:
+            return ChatTurnResponse(
+                reply="；".join(fixed_issues),
+                plans=[],
+                changed=False,
+                plan_document=_trip_plan_document(req),
+                operations=operations,
+            )
         scope_issues = _scope_violations(final_decision, req.plans, plans)
         if scope_issues:
             scope_feedback = (
@@ -336,7 +351,10 @@ def _chat_turn_response(req: ChatTurnRequest) -> ChatTurnResponse:
                 scope_plans = _apply_plan_update(scope_repaired, req)
                 if scope_plans is not None:
                     scope_plans = _dedupe_plans(scope_plans)
-                    if not _scope_violations(scope_repaired, req.plans, scope_plans):
+                    if not (
+                        _scope_violations(scope_repaired, req.plans, scope_plans)
+                        or _fixed_violations(req.requirements_struct, scope_plans)
+                    ):
                         plans = scope_plans
                         final_decision = scope_repaired
                         scope_issues = []

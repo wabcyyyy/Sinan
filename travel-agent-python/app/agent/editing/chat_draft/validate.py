@@ -18,11 +18,25 @@ import re
 from itertools import pairwise
 
 from app.agent.core.json_utils import LlmJsonError, parse_llm_json
+from app.agent.generation.rules.constraint_checks import check_constraints
+from app.agent.generation.rules.day_policy import day_policy_for
 from app.schemas.trip import (
     ChatTurnRequest,
 )
+from app.schemas.trip_requirements import TripRequirements
 
 logger = logging.getLogger(__name__)
+
+
+def _fixed_violations(requirements: TripRequirements | None, plans: list[dict]) -> list[str]:
+    if not requirements or not requirements.fixed_arrangements:
+        return []
+    issues = []
+    for day_no in {f.day_no for f in requirements.fixed_arrangements}:
+        plan = next((p for p in plans if p.get("day_no") == day_no), None)
+        report = check_constraints(plan, requirements, day_no, day_policy_for(requirements, day_no))
+        issues.extend(c.reason for c in report.blocking_checks if c.kind == "locked_item")
+    return issues
 
 
 class DecisionJsonError(ValueError):

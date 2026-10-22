@@ -63,12 +63,15 @@ def _edit(session, item, days, request):
     target = next((d for d in days if d.day_no == request.dayNo), None)
     if target is None or not request.startTime or not request.endTime or request.startTime >= request.endTime:
         raise ApiError(400, "请选择日期及有效起止时间（暂不支持跨午夜）")
+    original_day_id = item.day_id
     item.day_id = target.id
     item.start_time = time.fromisoformat(request.startTime)
     item.end_time = time.fromisoformat(request.endTime)
     item.duration_min = (item.end_time.hour - item.start_time.hour) * 60 + item.end_time.minute - item.start_time.minute
     session.flush()
     for day in days:
+        if day.id not in {original_day_id, target.id}:
+            continue
         rows = session.scalars(select(ItineraryItem).where(ItineraryItem.day_id == day.id)).all()
         for index, row in enumerate(sorted(rows, key=lambda p: (p.start_time or time.max, p.sort_no or 0, p.id))):
             row.sort_no = index

@@ -158,6 +158,25 @@ def test_scenario_intent_only_extracts_conditions_and_rejects_foreign_ids(client
     assert client.post(f"/api/itinerary/{trip_id}/scenarios/parse", json=body).status_code == 502
 
 
+def test_fixed_arrangements_reject_unsafe_draft_before_confirmation():
+    from app.agent.editing.chat_draft.validate import _fixed_violations
+    from app.schemas.trip_requirements import TripRequirements
+
+    requirements = TripRequirements.model_validate(
+        {
+            "fixedArrangements": [
+                {"dayNo": 1, "name": "西湖", "itemType": "attraction", "startTime": "09:30", "endTime": "11:00"}
+            ]
+        }
+    )
+    item = {"poi_name": "西湖", "item_type": "attraction", "start_time": "09:30", "end_time": "11:00"}
+    plan = [{"day_no": 1, "items": [item]}]
+    assert not _fixed_violations(requirements, plan)
+    assert _fixed_violations(requirements, [])
+    item["start_time"] = "10:00"
+    assert _fixed_violations(requirements, plan)
+
+
 def test_item_action_conflict_rolls_back_and_foreign_item_rejected(client):
     trip_id = _trip_id(client)
     with db_session.session_scope() as session:

@@ -43,6 +43,14 @@ def parse_intent(user_id: int, itinerary_id: int, request: ScenarioParseBody) ->
     current = itinerary_query.find_owned_main(user_id, itinerary_id)
     if current.planning_revision != request.planningRevision:
         raise ApiError(409, "理解期间行程已变化，请刷新后重试")
+    fixed = TripRequirements.model_validate(current.requirements_json or {}).fixed_arrangements
+    protected = {
+        p["id"]
+        for p in day["items"]
+        if any(f.day_no == request.dayNo and f.name == p["poi_name"] and f.item_type == p["item_type"] for f in fixed)
+    }
+    if protected.intersection(result.optionalItemIds):
+        result.questions = ["你想舍弃的条目已有持久固定，请先在条目上解除固定再比较。"]
     return result.model_dump()
 
 
@@ -143,7 +151,7 @@ def _prepare(user_id: int, itinerary_id: int, request: ScenarioBody):
                 assumptions=[
                     f"沿用现有顺序和游玩时长；每次转场预留 {request.transferMinutes} 分钟，由你提供，不是地图测算。",
                     f"返程额外预留 {request.departureBufferMinutes} 分钟；保留其他日期和全部住宿。",
-                    "固定选择仅约束本次比较与应用，不代表已预订或永久锁定；营业和预约仍需核实。",
+                    "表单新增固定仅约束本次比较；条目上已有固定持续保留。固定不代表预订；营业和预约仍需核实。",
                 ],
             ),
             proposals,
