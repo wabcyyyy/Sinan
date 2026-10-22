@@ -102,34 +102,30 @@ async def _local_event_frames(
     Yields:
         带 SSE 分隔符的事件帧，包括必要的回放、同步提示与心跳。
     """
-    try:
-        replayed_upto = 0
-        replayed_terminal = False
-        if last_event_id is not None:
-            missed, complete, replayed_upto = event_hub.replay_after(itinerary_id, last_event_id)
-            if not complete:
-                yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
-            for frame in missed:
-                replayed_terminal = replayed_terminal or _is_terminal(frame)
-                yield _sse_frame(frame)
-        if snapshot is not None:
-            # 补发里已经有真实终态帧就不再叠一帧快照（前端终态收尾只该跑一次）
-            if not replayed_terminal:
-                yield _sse_frame(snapshot)
+    replayed_upto = 0
+    replayed_terminal = False
+    if last_event_id is not None:
+        missed, complete, replayed_upto = event_hub.replay_after(itinerary_id, last_event_id)
+        if not complete:
+            yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
+        for frame in missed:
+            replayed_terminal = replayed_terminal or _is_terminal(frame)
+            yield _sse_frame(frame)
+    if snapshot is not None:
+        # 补发里已经有真实终态帧就不再叠一帧快照（前端终态收尾只该跑一次）
+        if not replayed_terminal:
+            yield _sse_frame(snapshot)
+        return
+    while True:
+        envelope = await subscription.take()
+        if envelope is event_hub.CLOSED:
             return
-        while True:
-            envelope = await subscription.take()
-            if envelope is event_hub.CLOSED:
-                return
-            if envelope is None:
-                # 空闲一个心跳周期才补心跳帧：连接保持活跃，但业务事件永远优先
-                envelope = event_publisher.heartbeat_envelope(itinerary_id)
-            elif (getattr(envelope, "event_id", None) or 0) and envelope.event_id <= replayed_upto:
-                continue  # 订阅先于回放登记：这帧已在补发里出现过（或属于补不回来的那段）
-            yield _sse_frame(envelope)
-    finally:
-        # 客户端断开/服务收尾都要摘除，否则注册表里留死连接
-        event_hub.unsubscribe(subscription)
+        if envelope is None:
+            # 空闲一个心跳周期才补心跳帧：连接保持活跃，但业务事件永远优先
+            envelope = event_publisher.heartbeat_envelope(itinerary_id)
+        elif (getattr(envelope, "event_id", None) or 0) and envelope.event_id <= replayed_upto:
+            continue  # 订阅先于回放登记：这帧已在补发里出现过（或属于补不回来的那段）
+        yield _sse_frame(envelope)
 
 
 def _snapshot(itinerary_id: int) -> str | None:
@@ -142,7 +138,7 @@ async def event_frames(
     itinerary_id: int, subscription: Any, snapshot: str | None = None, last_event_id: int | None = None
 ) -> AsyncIterator[str]:
     """共享日志决定事件顺序；本地队列只加速唤醒并承载会话私有事件。"""
-    cursor = last_event_id
+    cursor = last_event_id if last_event_id is not None else getattr(subscription, "start_event_id", None)
     heartbeat_at = time.monotonic()
     gap_reported = False
     try:

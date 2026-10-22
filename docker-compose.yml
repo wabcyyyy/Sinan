@@ -93,7 +93,7 @@ services:
       # 运行密钥（JWT_SECRET/AGENT_INTERNAL_TOKEN/LLM_API_KEY 等）以根 .env 为准：
       # backend .env 是宿主机开发路径，容器内同名键由此处覆盖
       - ./.env
-    environment:
+    environment: &planning-environment
       AGENT_HOST: 0.0.0.0
       # 容器内连 MySQL 服务：口令/库名与 mysql 服务的 MYSQL_* 同源（root .env），
       # 覆盖 backend .env 里指向宿主机本地库的 DB_*，避免两份口令漂移
@@ -148,8 +148,15 @@ services:
     command: ["python", "worker.py"]
     ports: []
     stop_grace_period: 330s
+    environment:
+      <<: *planning-environment
+      PLANNING_HEALTH_PATH: /tmp/sinan-planning-worker.heartbeat
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "-m", "app.common.worker_health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
     depends_on:
       agent-python:
         condition: service_healthy

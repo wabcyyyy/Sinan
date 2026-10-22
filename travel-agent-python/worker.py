@@ -5,14 +5,19 @@ import signal
 import threading
 import time
 
-from app.common import model_registry
-from app.common.config import settings
-from app.services import cost_ledger, generation_recovery, itinerary_generation, planning_worker
-
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    # Install handlers before importing/compiling Agent graphs, including early container stop.
+    stop = threading.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: stop.set())
+    from app.common import model_registry, worker_health
+    from app.common.config import settings
+    from app.services import cost_ledger, generation_recovery, itinerary_generation, planning_worker
+
+    worker_health.clear()
     settings.validate_boot()
     model_registry.validate()
     # API 是唯一启动迁移者；worker 不能与首次建库并发执行 DDL。
@@ -24,9 +29,6 @@ def main() -> None:
     with session_scope() as session:
         session.execute(select(PlanningTask.request_json).limit(1))
     cost_ledger.install_backend()
-    stop = threading.Event()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, lambda *_: stop.set())
     recover_at = 0.0
     try:
         while not stop.is_set():
@@ -35,10 +37,12 @@ def main() -> None:
                 if time.monotonic() >= recover_at and planning_worker.available():
                     generation_recovery.recover()
                     recover_at = time.monotonic() + generation_recovery.SCAN_INTERVAL_SECONDS
+                worker_health.record()
             except Exception:
                 logger.exception("planning worker poll failed; retrying")
             stop.wait(settings.planning_poll_seconds)
     finally:
+        worker_health.clear()
         # 停止领取，已有任务沿用绝对截止；硬退出由下一 worker 在租约过期后接管。
         itinerary_generation.generation_pool.shutdown()
         itinerary_generation.enricher_pool.shutdown()

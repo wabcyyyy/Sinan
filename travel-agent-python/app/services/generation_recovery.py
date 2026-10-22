@@ -287,7 +287,7 @@ def recover_one(itinerary_id: int, failed_resume: bool, active_after: datetime |
         logger.warning("resume interrupted for itinerary %s: %s", itinerary_id, stopped)
         return False
     except (ApiError, RunLimitExceeded) as exc:
-        planning_tasks.finish_failure(itinerary_id, exc)
+        planning_tasks.finish_failure(itinerary_id, exc, user_facing=True)
         planning_tasks.release(itinerary_id, limits.task_id)
         logger.warning("byok route broken, failed itinerary %s: %s", itinerary_id, exc)
         return True

@@ -399,6 +399,7 @@ async def events(
     # 归属查询进线程池，登记订阅必须在事件循环里做（要捕获 loop 才能跨线程投递）
     main = await run_in_threadpool(itinerary_query.find_readable_main, user.id, id)
     subscription, rejected = event_hub.subscribe(id, event_publisher.too_many_connections_envelope(id))
+    subscription.start_event_id = getattr(main, "generation_event_seq", None)
     try:
         snapshot = await run_in_threadpool(itinerary_events.terminal_snapshot, id, main)
     except BaseException:

@@ -36,7 +36,7 @@ API 与 worker 必须使用相同数据库、模型路由、加密配置和时�
 6. 过期任务停止后续模型调用并收敛为失败或部分交付；取消任务不自动复活。
 
 `PLANNING_WORKER_CONCURRENCY` 可在 1–4 内调整，`PLANNING_QUEUE_CAPACITY` 默认 24，`PLANNING_POLL_SECONDS` 默认 1。增加进程会增加模型请求、数据库连接和外部服务调用，本轮没有量测全局吞吐上限。
-worker 收到停止信号后停止领取并等待已有任务；容器宽限 330 秒，超过宽限由容器终止，剩余责任通过租约恢复。API 的 `/healthz` 不代表 worker 正常；应另外查看 worker 日志、QUEUED 堆积和租约更新。
+worker 收到停止信号后停止领取并等待已有任务；容器宽限 330 秒，超过宽限由容器终止，剩余责任通过租约恢复。API 的 `/healthz` 不代表 worker 正常。Compose 为 worker 配置独立健康文件，只有成功轮询数据库后才刷新；健康检查允许一次完整任务截止期与租约窗口，支持检查点恢复占用轮询线程，不能据此证明容量。还应查看 worker 日志、QUEUED 堆积和租约更新。
 
 ## 跨实例 SSE
 

@@ -7,7 +7,7 @@ past an uncommitted earlier event, even when several processes publish concurren
 import json
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.common.event_hub import REPLAY_BUFFER, Envelope
 from app.db.models import GenerationEvent, ItineraryMain, PlanningTask
@@ -20,10 +20,14 @@ def append(itinerary_id: int, envelope: str) -> Envelope | None:
         if main is None:
             return None
         event_id = int(main.generation_event_seq or 0) + 1
-        main.generation_event_seq = event_id
-        main.event_wire_seq = int(main.event_wire_seq or 0) + 1
+        wire_seq = int(main.event_wire_seq or 0) + 1
+        session.execute(
+            update(ItineraryMain)
+            .where(ItineraryMain.id == itinerary_id)
+            .values(generation_event_seq=event_id, event_wire_seq=wire_seq, updated_at=ItineraryMain.updated_at)
+        )
         payload = json.loads(envelope)
-        payload["seq"] = main.event_wire_seq
+        payload["seq"] = wire_seq
         frame = Envelope(json.dumps(payload, ensure_ascii=False))
         frame.event_id = event_id
         session.add(
@@ -45,8 +49,13 @@ def next_seq(itinerary_id: int) -> int | None:
         main = session.scalar(select(ItineraryMain).where(ItineraryMain.id == itinerary_id).with_for_update())
         if main is None:
             return None
-        main.event_wire_seq = int(main.event_wire_seq or 0) + 1
-        return main.event_wire_seq
+        value = int(main.event_wire_seq or 0) + 1
+        session.execute(
+            update(ItineraryMain)
+            .where(ItineraryMain.id == itinerary_id)
+            .values(event_wire_seq=value, updated_at=ItineraryMain.updated_at)
+        )
+        return value
 
 
 def read_after(itinerary_id: int, cursor: int | None) -> tuple[list[Envelope], bool, int] | None:

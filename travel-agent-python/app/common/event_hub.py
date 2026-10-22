@@ -77,13 +77,14 @@ class _ReplayLog:
 class Subscription:
     """一条 SSE 连接。生产端可能在任意线程，消费端固定在自己的事件循环上。"""
 
-    __slots__ = ("_queue", "itinerary_id", "loop", "open", "rejected")
+    __slots__ = ("_queue", "itinerary_id", "loop", "open", "rejected", "start_event_id")
 
     def __init__(self, itinerary_id: int, loop: asyncio.AbstractEventLoop) -> None:
         self.itinerary_id = itinerary_id
         self.loop = loop
         self.open = True
         self.rejected = False
+        self.start_event_id: int | None = None
         self._queue: asyncio.Queue[str] = asyncio.Queue(maxsize=SINK_BUFFER)
 
     async def take(self, timeout: float | None = None) -> Any:

@@ -62,13 +62,14 @@ def open_attempt(
             session.scalar(select(ItineraryMain.generation_event_seq).where(ItineraryMain.id == itinerary_id)) or 0
         )
         row = rows.read(session, itinerary_id, for_update=True)
-        if row is not None and row.state in LIVE_STATES:
+        if row is not None and row.state in LIVE_STATES and (rows.lease_alive(row, at) or not row.lease_owner):
             raise ApiError(409, "该行程已有生成任务在运行，请等它结束")
         busy = session.scalar(
             select(PlanningTask.itinerary_id).where(
                 PlanningTask.user_id == user_id,
                 PlanningTask.itinerary_id != itinerary_id,
                 PlanningTask.state.in_(LIVE_STATES),
+                or_(PlanningTask.lease_expires_at > at, PlanningTask.lease_owner == ""),
             )
         )
         if busy is not None:
@@ -117,7 +118,8 @@ def open_attempt(
                     cancel_requested_at=None,
                     result_code=None,
                     budget_json=json.dumps(rows.budget_payload(snapshot)),
-                    request_json=request_json if queued else row.request_json,
+                    # 显式新 attempt 从当前行程重建，不能沿用首次规划前的需求快照。
+                    request_json=request_json,
                     event_start_seq=start_seq,
                 )
             )

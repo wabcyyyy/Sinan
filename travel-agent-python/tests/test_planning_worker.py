@@ -59,6 +59,9 @@ def test_accept_persists_unowned_task_and_complete_command(queue_db):
     state = _state(trip)
     assert state and state["state"] == "QUEUED" and state["workerId"] == ""
     assert not planning_tasks.is_active(trip)
+    with pytest.raises(ApiError) as duplicate:
+        planning_tasks.acquire(1, trip)
+    assert duplicate.value.status == 409
     assert planning_queue.command_for(trip).region_hint == "西湖附近"
     limits = planning_tasks.claim_queued()
     assert limits and limits.itinerary_id == trip
@@ -177,3 +180,43 @@ def test_private_events_share_wire_sequence_without_replay_gaps(queue_db):
     assert complete and latest == 2
     assert [json.loads(frame)["seq"] for frame in frames] == [1, 3]
     assert json.loads(private)["seq"] == 2
+
+
+def test_explicit_new_attempt_rebuilds_current_requirements(queue_db):
+    trip = _create()
+    with db.session_scope() as session:
+        session.execute(update(PlanningTask).where(PlanningTask.itinerary_id == trip).values(state="FINISHED"))
+        session.execute(
+            update(ItineraryMain).where(ItineraryMain.id == trip).values(requirements="保留新确认的亲子需求")
+        )
+    planning_tasks.acquire(1, trip)
+    assert planning_queue.command_for(trip).requirements == "保留新确认的亲子需求"
+
+
+def test_worker_health_requires_recent_successful_poll(queue_db, tmp_path, monkeypatch):
+    import os
+    import time
+
+    from app.common import worker_health
+
+    path = tmp_path / "worker.heartbeat"
+    monkeypatch.setattr(settings, "planning_health_path", str(path))
+    assert not worker_health.healthy()
+    worker_health.record()
+    assert worker_health.healthy()
+    stale = time.time() - max(30, settings.itinerary_deadline_seconds + settings.planning_live_seconds) - 1
+    os.utime(path, (stale, stale))
+    assert not worker_health.healthy()
+    worker_health.clear()
+    assert not path.exists()
+
+
+def test_event_transport_does_not_change_itinerary_modified_time(queue_db):
+    trip = _create()
+    previous = datetime(2026, 1, 1)
+    with db.session_scope() as session:
+        session.execute(update(ItineraryMain).where(ItineraryMain.id == trip).values(updated_at=previous))
+    event_publisher.publish_event(trip, "day_start", {"dayNo": 1})
+    event_publisher.publish_local(trip, "chat_token", {"delta": "test"})
+    with db.session_scope() as session:
+        assert session.scalar(select(ItineraryMain.updated_at).where(ItineraryMain.id == trip)) == previous

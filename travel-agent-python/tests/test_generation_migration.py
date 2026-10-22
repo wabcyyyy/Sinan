@@ -734,8 +734,13 @@ def test_recovery_completes_trip_whose_days_are_done(broken_trip: int, monkeypat
         assert main.status == 2 and main.gen_state == "COMPLETED" and main.title == "杭州2日游"
 
 
-def test_recovery_skips_trip_with_active_day(broken_trip: int, monkeypatch) -> None:
+def test_recovery_skips_legacy_trip_with_active_day(broken_trip: int, monkeypatch) -> None:
+    from sqlalchemy import delete
+
+    from app.db.models import PlanningTask
+
     with db_session.session_scope() as session:
+        session.execute(delete(PlanningTask).where(PlanningTask.itinerary_id == broken_trip))
         first = session.execute(select(ItineraryDay).order_by(ItineraryDay.day_no)).scalars().first()
         assert first is not None
         first.generation_status = "RUNNING"
