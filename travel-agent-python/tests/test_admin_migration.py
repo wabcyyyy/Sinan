@@ -36,6 +36,7 @@ from app.db.models import (
     ItineraryItem,
     ItineraryMain,
     ItineraryVersion,
+    PlanningTask,
     SysUser,
 )
 from app.services import admin_service, itinerary_query, state_and_sessions, user_service
@@ -213,6 +214,8 @@ def test_admin_paths_require_admin_role(admin: TestClient, alice: TestClient) ->
     assert alice.put("/api/admin/users/3/status/1").status_code == 403
     assert alice.delete("/api/admin/itineraries/10").status_code == 403
     assert admin.get("/api/admin/stats").status_code == 200
+    assert anon.get("/api/admin/planning-queue").status_code == 401
+    assert alice.get("/api/admin/planning-queue").status_code == 403
 
 
 # ---------- 概览 ----------
@@ -530,3 +533,85 @@ def test_llm_usage_limits_and_degraded_shape(admin: TestClient, monkeypatch) -> 
         "timeline": [],
         "calls": {"total": 0, "records": []},
     }
+
+
+def test_planning_queue_empty_and_bounded(admin: TestClient) -> None:
+    response = admin.get("/api/admin/planning-queue")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["capacity"] == settings.planning_queue_capacity
+    assert all(
+        data[key] == 0
+        for key in ("liveTasks", "waitingTasks", "claimedTasks", "runningTasks", "expiredLeases", "overdueTasks")
+    )
+    assert data["oldestWaitSeconds"] is None and data["recentTerminals"] == []
+    assert datetime.fromisoformat(data["observedAt"]) - datetime.fromisoformat(data["recentSince"]) == timedelta(
+        hours=24
+    )
+    for limit in (0, 51, "invalid"):
+        assert admin.get("/api/admin/planning-queue", params={"limit": limit}).status_code == 400
+
+
+def test_planning_queue_reads_persistent_states_and_only_safe_terminal_fields(admin: TestClient, monkeypatch) -> None:
+    at = datetime(2026, 10, 22, 12)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return at
+
+    monkeypatch.setattr(admin_service, "datetime", Clock)
+
+    def task(key, state, age, owner="worker-private", lease: int | None = 60, deadline=300, code=None):
+        return PlanningTask(
+            itinerary_id=key,
+            user_id=ALICE_ID,
+            task_id="private-token",
+            lease_owner=owner,
+            state=state,
+            attempt=2,
+            submit_at=at - timedelta(seconds=age),
+            deadline_at=at + timedelta(seconds=deadline),
+            lease_expires_at=None if lease is None else at + timedelta(seconds=lease),
+            budget_json='{"private":"budget"}',
+            request_json='{"private":"travel-input"}',
+            result_code=code,
+            updated_at=at - timedelta(seconds=age),
+        )
+
+    with db_session.session_scope() as session:
+        session.add_all(
+            [
+                task(101, "QUEUED", 70, owner="", lease=-70),  # Unowned queue placeholder is not an expired lease.
+                task(102, "QUEUED", 40),
+                task(103, "RUNNING", 30),
+                task(104, "RUNNING", 20, lease=0),  # Expiry boundary is inclusive.
+                task(105, "QUEUED", 10, lease=None),
+                task(106, "QUEUED", 400, owner="", deadline=-1),
+                task(110, "FINISHED", 0, lease=-10),
+                task(111, "FAILED", 1, code="ReadTimeout"),
+                task(112, "CANCELLED", 2, code="USER_CANCELLED"),
+                task(113, "EXPIRED", 2, code="DEADLINE"),
+                task(114, "FAILED", 86401, code="OLD_FAILURE"),
+            ]
+        )
+    response = admin.get("/api/admin/planning-queue", params={"limit": 2})
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert (data["liveTasks"], data["waitingTasks"], data["claimedTasks"], data["runningTasks"]) == (6, 2, 2, 2)
+    assert data["expiredLeases"] == 2 and data["overdueTasks"] == 1
+    assert data["oldestWaitSeconds"] == 400
+    assert [row["itineraryId"] for row in data["recentTerminals"]] == [110, 111]
+    assert [row["resultCode"] for row in data["recentTerminals"]] == [None, "ReadTimeout"]
+    assert "private" not in response.text
+    assert set(data["recentTerminals"][0]) == {"itineraryId", "attempt", "state", "resultCode", "updatedAt"}
+    all_recent = admin.get("/api/admin/planning-queue", params={"limit": 50}).json()["data"]["recentTerminals"]
+    assert [row["itineraryId"] for row in all_recent] == [110, 111, 113, 112]
+
+
+def test_planning_queue_database_failure_is_not_reported_as_empty() -> None:
+    from sqlalchemy.exc import OperationalError
+
+    Base.metadata.tables[PlanningTask.__tablename__].drop(db_session.get_engine())
+    with pytest.raises(OperationalError):
+        admin_service.planning_queue_status(20)

@@ -5985,6 +5985,52 @@
         }
       }
     },
+    "/api/admin/planning-queue": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Planning Queue",
+        "description": "MySQL 规划队列快照与最近 24 小时的当前终态任务；仅管理员可读。",
+        "operationId": "planning_queue_api_admin_planning_queue_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_PlanningQueueVO_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/llm-usage": {
       "get": {
         "tags": [
@@ -6824,6 +6870,34 @@
           "message"
         ],
         "title": "ApiResponse[GenerateResponse]"
+      },
+      "ApiResponse_PlanningQueueVO_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanningQueueVO"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiResponse[PlanningQueueVO]"
       },
       "ApiResponse_PoiIntrosResponse_": {
         "properties": {
@@ -10808,6 +10882,119 @@
           "city"
         ],
         "title": "PlanContextRequest"
+      },
+      "PlanningQueueVO": {
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "title": "Observedat"
+          },
+          "capacity": {
+            "type": "integer",
+            "title": "Capacity"
+          },
+          "liveTasks": {
+            "type": "integer",
+            "title": "Livetasks"
+          },
+          "waitingTasks": {
+            "type": "integer",
+            "title": "Waitingtasks"
+          },
+          "claimedTasks": {
+            "type": "integer",
+            "title": "Claimedtasks"
+          },
+          "runningTasks": {
+            "type": "integer",
+            "title": "Runningtasks"
+          },
+          "oldestWaitSeconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldestwaitseconds"
+          },
+          "expiredLeases": {
+            "type": "integer",
+            "title": "Expiredleases"
+          },
+          "overdueTasks": {
+            "type": "integer",
+            "title": "Overduetasks"
+          },
+          "recentSince": {
+            "type": "string",
+            "title": "Recentsince"
+          },
+          "recentTerminals": {
+            "items": {
+              "$ref": "#/components/schemas/PlanningTerminalVO"
+            },
+            "type": "array",
+            "title": "Recentterminals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observedAt",
+          "capacity",
+          "liveTasks",
+          "waitingTasks",
+          "claimedTasks",
+          "runningTasks",
+          "oldestWaitSeconds",
+          "expiredLeases",
+          "overdueTasks",
+          "recentSince",
+          "recentTerminals"
+        ],
+        "title": "PlanningQueueVO"
+      },
+      "PlanningTerminalVO": {
+        "properties": {
+          "itineraryId": {
+            "type": "integer",
+            "title": "Itineraryid"
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "resultCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resultcode"
+          },
+          "updatedAt": {
+            "type": "string",
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itineraryId",
+          "attempt",
+          "state",
+          "resultCode",
+          "updatedAt"
+        ],
+        "title": "PlanningTerminalVO"
       },
       "PoiIntrosRequest": {
         "properties": {

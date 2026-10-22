@@ -19,21 +19,88 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 
 from app.agent import metrics, usage_store
+from app.common.config import settings
 from app.common.envelope import ApiError
 from app.common.vo_json import iso_date, iso_datetime, number
-from app.db.models import ItineraryMain, SysUser
+from app.db.models import ItineraryMain, PlanningTask, SysUser
 from app.db.session import session_scope
-from app.services import itinerary_command
+from app.schemas.business.admin import PlanningQueueVO, PlanningTerminalVO
+from app.services import itinerary_command, planning_task_rows
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_USER_STATUS = (0, 1)
+
+
+def planning_queue_status(limit: int) -> PlanningQueueVO:
+    """跨 API/worker 的同一数据库快照；读取失败直接报错，不伪装为空队列。"""
+    at = datetime.now()
+    since = at - timedelta(hours=24)
+    with session_scope() as session:
+        counts = _planning_live_counts(session, at)
+        recent = session.execute(
+            select(
+                PlanningTask.itinerary_id,
+                PlanningTask.attempt,
+                PlanningTask.state,
+                PlanningTask.result_code,
+                PlanningTask.updated_at,
+            )
+            .where(PlanningTask.state.notin_(planning_task_rows.LIVE_STATES), PlanningTask.updated_at >= since)
+            .order_by(PlanningTask.updated_at.desc(), PlanningTask.itinerary_id.desc())
+            .limit(limit)
+        ).all()
+    return PlanningQueueVO(
+        observed_at=at.isoformat(),
+        capacity=settings.planning_queue_capacity,
+        **counts,
+        recent_since=since.isoformat(),
+        recent_terminals=[
+            PlanningTerminalVO(
+                itinerary_id=row.itinerary_id,
+                attempt=row.attempt,
+                state=row.state,
+                result_code=row.result_code,
+                updated_at=row.updated_at.isoformat(),
+            )
+            for row in recent
+        ],
+    )
+
+
+def _planning_live_counts(session, at: datetime) -> dict[str, Any]:
+    waiting = and_(PlanningTask.state == planning_task_rows.QUEUED, PlanningTask.lease_owner == "")
+    claimed = and_(PlanningTask.state == planning_task_rows.QUEUED, PlanningTask.lease_owner != "")
+    expired = and_(
+        PlanningTask.lease_owner != "",
+        or_(PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at),
+    )
+    live, wait, claim, running, expired_count, overdue, oldest = session.execute(
+        select(
+            func.count(),
+            func.sum(case((waiting, 1), else_=0)),
+            func.sum(case((claimed, 1), else_=0)),
+            func.sum(case((PlanningTask.state == planning_task_rows.RUNNING, 1), else_=0)),
+            func.sum(case((expired, 1), else_=0)),
+            func.sum(case((PlanningTask.deadline_at <= at, 1), else_=0)),
+            func.min(case((waiting, PlanningTask.submit_at))),
+        ).where(PlanningTask.state.in_(planning_task_rows.LIVE_STATES))
+    ).one()
+    return {
+        "live_tasks": live,
+        "waiting_tasks": int(wait or 0),
+        "claimed_tasks": int(claim or 0),
+        "running_tasks": int(running or 0),
+        "expired_leases": int(expired_count or 0),
+        "overdue_tasks": int(overdue or 0),
+        "oldest_wait_seconds": round(max(0, (at - oldest).total_seconds()), 3) if oldest is not None else None,
+    }
 
 
 def stats() -> dict[str, Any]:

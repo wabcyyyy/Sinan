@@ -1,6 +1,119 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "PlanningTerminalVO": {
+      "properties": {
+        "itineraryId": {
+          "title": "Itineraryid",
+          "type": "integer"
+        },
+        "attempt": {
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "resultCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Resultcode"
+        },
+        "updatedAt": {
+          "title": "Updatedat",
+          "type": "string"
+        }
+      },
+      "required": [
+        "itineraryId",
+        "attempt",
+        "state",
+        "resultCode",
+        "updatedAt"
+      ],
+      "title": "PlanningTerminalVO",
+      "type": "object"
+    },
+    "PlanningQueueVO": {
+      "properties": {
+        "observedAt": {
+          "title": "Observedat",
+          "type": "string"
+        },
+        "capacity": {
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "liveTasks": {
+          "title": "Livetasks",
+          "type": "integer"
+        },
+        "waitingTasks": {
+          "title": "Waitingtasks",
+          "type": "integer"
+        },
+        "claimedTasks": {
+          "title": "Claimedtasks",
+          "type": "integer"
+        },
+        "runningTasks": {
+          "title": "Runningtasks",
+          "type": "integer"
+        },
+        "oldestWaitSeconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Oldestwaitseconds"
+        },
+        "expiredLeases": {
+          "title": "Expiredleases",
+          "type": "integer"
+        },
+        "overdueTasks": {
+          "title": "Overduetasks",
+          "type": "integer"
+        },
+        "recentSince": {
+          "title": "Recentsince",
+          "type": "string"
+        },
+        "recentTerminals": {
+          "items": {
+            "$ref": "#/$defs/PlanningTerminalVO"
+          },
+          "title": "Recentterminals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "observedAt",
+        "capacity",
+        "liveTasks",
+        "waitingTasks",
+        "claimedTasks",
+        "runningTasks",
+        "oldestWaitSeconds",
+        "expiredLeases",
+        "overdueTasks",
+        "recentSince",
+        "recentTerminals"
+      ],
+      "title": "PlanningQueueVO",
+      "type": "object"
+    },
     "TrialPolicyVO": {
       "properties": {
         "inviteRequired": {
