@@ -231,12 +231,18 @@ def list_summaries(user_id: int, view: str | None = None, q: str | None = None) 
 
 
 def detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
+    # worker/API 分进程后，本地缓存失效不能跨进程传播。先读主表版本与归属，
+    # Redis 断连或恢复旧缓存时，也不能把已交付结果回放成十分钟前的 GENERATING。
+    main = find_readable_main(user_id, itinerary_id)
+    version = [main.planning_revision, main.generation_event_seq, iso_datetime(main.updated_at), main.gen_state]
     cache_key = f"{user_id}:{itinerary_id}"
     cached = cache_store.get_json(DETAIL_CACHE_NAMESPACE, cache_key)
-    if cached is not None:
-        return cached
+    if isinstance(cached, dict) and cached.get("version") == version and isinstance(cached.get("payload"), dict):
+        return cached["payload"]
     payload = build_detail(user_id, itinerary_id)
-    cache_store.set_json(DETAIL_CACHE_NAMESPACE, cache_key, payload, DETAIL_CACHE_TTL_SECONDS)
+    cache_store.set_json(
+        DETAIL_CACHE_NAMESPACE, cache_key, {"version": version, "payload": payload}, DETAIL_CACHE_TTL_SECONDS
+    )
     return payload
 
 

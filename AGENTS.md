@@ -19,7 +19,7 @@ AI 不得因“再确认一下”、补进度记录、收据登记而另跑全�
 ## 项目是什么（3 句话）
 
 AI 旅行规划 Agent：输入城市/天数/偏好/一句话意图，LangGraph 编排（三路研究子图并行 → 整段流式生成 → 规则终检 → 违规天逐日重生成；parse→…→format 的 trip 分支只服务 Agent 面；离线评测默认走业务层产品路径）生成 AI 规划的每日行程（关键事实标 estimated，前端挂地图深链引导出发前核实），SSE 实时推送进度。
-后端是**单一 FastAPI 进程**（`travel-agent-python/`，Python 3.12 + uv）：业务面 `/api/**` 与 Agent 面 `/api/agent/v1/**` 同进程直调；**AI-NATIVE 数据面（2026-09-17）**：本地不存景点语料（V4 已退役 `poi_knowledge`），地点事实 = LLM 世界知识 + 联网搜索 + OpenTripMap（坐标/分类/图片）+ Nominatim（点名→坐标兜底），数据库只存用户数据与城市级字典/消费基准。
+后端是**单一 Python 实现：FastAPI API + 独立规划 worker**（`travel-agent-python/`，Python 3.12 + uv）：业务面 `/api/**` 与 Agent 面 `/api/agent/v1/**` 由 API 承载；整趟规划由 worker 经 MySQL 持久任务领取后直调 `plan_days`；**AI-NATIVE 数据面（2026-09-17）**：本地不存景点语料（V4 已退役 `poi_knowledge`），地点事实 = LLM 世界知识 + 联网搜索 + OpenTripMap（坐标/分类/图片）+ Nominatim（点名→坐标兜底），数据库只存用户数据与城市级字典/消费基准。
 前端入口是 React 19 + Vite + TS 壳（`travel-frontend-react/src/react-app/`，2026-09 起对话式创建：首页 ChatIntake 一句话收集槽位、详情页 ChatPanel 对话编排），MapLibre + OpenFreeMap 免 key 底图不变；Vue 组件树已整体删除（目录 2026-10-04 更名 travel-frontend-react）。
 
 ## 命令（在指明的目录下执行）
@@ -62,6 +62,8 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 2026-10-16 试用上线口径修订（用户明确授权）：admin 域开放最小试用后台（邀请码、用户余额/费用、人工赠额与禁用），复用既有管理员鉴权；其余运维能力继续经脚本直调。首版部署优先 Railway 单实例及持久卷，保留本地 Compose，不要求自管 Caddy。每位新用户一次性赠送 6 元试用额度，不自动续期、不接支付；应用按运营者配置单价记账，不冒充供应商账单。
 
 2026-10-18 公开行程口径（用户明确授权）：复用 template 快照与 fork，不公开私人行程；GET 行程库可匿名，写入继续鉴权。内置三条编辑规划供浏览和复制，标为规划参考，不冒充实地游记。公开内容按快照固定，复制不继承私人日期、预算、会话、账目或分享权限。
+
+2026-10-22 执行拆分（用户明确授权）：整趟规划与自动恢复由独立 `worker.py` 执行，API 与投递意图同事务提交；MySQL 有界事件回放支持跨 API 实例 SSE。当前范围为同一宿主机，共享本地 data/ 与 SQLite 检查点；真实后端不部署，MQ 暂缓。启动、验证与边界见 `docs/public/planning-worker.md`。此前 Railway 单服务配置不再是可直接上线的完整拓扑。
 
 ## 哲学（违反任何一条的 PR 请先停下来说明）
 

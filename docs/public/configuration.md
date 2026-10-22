@@ -30,7 +30,7 @@
 完整 Docker 栈在仓库根目录执行：
 
 ```bash
-docker compose --profile apps up -d --force-recreate agent-python
+docker compose --profile apps up -d --force-recreate agent-python planning-worker
 ```
 
 宿主机开发则停止并重新运行后端进程。已有 env 不会被初始化器修复或覆盖，修改时先确认上面的生效顺序。

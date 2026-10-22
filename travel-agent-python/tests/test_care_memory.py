@@ -22,7 +22,7 @@ from app.common.config import settings
 from app.common.envelope import install_exception_handlers
 from app.db import session as db_session
 from app.db.models import Base, ItineraryMain, SysUser, UserPreference
-from app.services import preferences, user_service
+from app.services import planning_queue, preferences, user_service
 
 MEMORY_SOURCE = "explicit_memory"
 
@@ -94,7 +94,7 @@ def test_generation_no_longer_accumulates_memory(memory_db, monkeypatch):
     from app.schemas.business.itinerary import GenerateTripRequest
     from app.services import itinerary_generation
 
-    monkeypatch.setattr(itinerary_generation, "submit_planning", lambda *_args: None)
+    monkeypatch.setattr(planning_queue, "enqueue", lambda *_args: None)
     client = _client()
     request = GenerateTripRequest(city="杭州", days=1, persons=1, preferences=["美食", "亲子"])
     detail = itinerary_generation.generate(1, request)

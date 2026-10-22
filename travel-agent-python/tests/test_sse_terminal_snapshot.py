@@ -18,6 +18,13 @@ from app.common import event_hub
 from app.services import itinerary_events
 
 
+@pytest.fixture(autouse=True)
+def local_only(monkeypatch):
+    from app.common import generation_event_log
+
+    monkeypatch.setattr(generation_event_log, "read_after", lambda *_: None)
+
+
 def _main(gen_state: str | None, days: int = 3) -> SimpleNamespace:
     return SimpleNamespace(gen_state=gen_state, days=days, trip_theme=None)
 

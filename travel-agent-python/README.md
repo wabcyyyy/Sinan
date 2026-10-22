@@ -1,11 +1,13 @@
 # travel-agent-python
 
-单进程 FastAPI 后端，同时提供业务面 `/api/**`（鉴权、行程、编辑、分享、PDF、后台）与内部 Agent 面 `/api/agent/v1/**`。
-前端经业务服务调用 Agent 门面，生成和修复在同一进程内编排；内部 Agent HTTP 接口不经过前端代理公开。
+FastAPI 后端与独立规划 worker，同时提供业务面 `/api/**`（鉴权、行程、编辑、分享、PDF、后台）与内部 Agent 面 `/api/agent/v1/**`。
+前端经业务服务调用 Agent 门面，整趟规划和自动恢复由 worker 领取 MySQL 任务后编排；内部 Agent HTTP 接口不经过前端代理公开。
 
 产品生成入口是 `services/itinerary_generation.py` 的 `plan_days`：并行研究 → 整段流式生成 → 落库终检 → 违规或缺失天逐日补齐。
 已成功天会保留，最终状态区分完整、部分交付与失败。业务进度通过 SSE 推送；Agent 面的 `/api/agent/v1/generate-stream` 另提供 JSON Lines 接口。
 数据库保存用户数据、行程快照及城市级字典；地点候选来自模型知识与外部服务，估算内容须在出发前核实。
+
+独立 worker 的启动、容量、恢复及共享 SSE 规则见 [执行说明](../docs/public/planning-worker.md)。
 
 ## 技术栈
 
@@ -20,7 +22,7 @@
 
 ```text
 业务面 /api/itinerary/**
-  → plan_days
+  → MySQL 持久任务 → 独立 worker → plan_days
   → 景点 / 餐饮 / 住宿三路研究（线程池并行，各域使用 LangGraph 子图）
   → stream 分支整段流式生成、逐天落库
   → 确定性终检

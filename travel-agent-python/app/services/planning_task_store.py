@@ -29,7 +29,7 @@ from sqlalchemy.exc import IntegrityError
 from app.agent import RunLimits
 from app.common.config import settings
 from app.common.envelope import ApiError
-from app.db.models import PlanningTask
+from app.db.models import ItineraryMain, PlanningTask, SysUser
 from app.db.session import session_scope
 from app.services import planning_task_rows as rows
 
@@ -43,7 +43,9 @@ TaskWindowExpired = rows.TaskWindowExpired
 LeaseHeld = rows.LeaseHeld
 
 
-def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
+def open_attempt(
+    user_id: int, itinerary_id: int, *, request_json: str | None = None, queued: bool = False
+) -> tuple[RunLimits, dict]:
     """开一个新的执行尝试（首次提交，或显式补齐/重建），返回运行对象与本次快照。
 
     准入两条：同行程的活租约直接拒（重复提交/双跑），同用户的其它活任务拒 429
@@ -54,15 +56,20 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
     window = settings.itinerary_deadline_seconds
     snapshot = rows.new_attempt_snapshot(user_id, itinerary_id, task_id, at, window)
     with session_scope() as session:
+        # 同用户不同 itinerary_id 也必须串行检查；进程内锁无法约束第二个 API 实例。
+        session.scalar(select(SysUser.id).where(SysUser.id == user_id).with_for_update())
+        start_seq = (
+            session.scalar(select(ItineraryMain.generation_event_seq).where(ItineraryMain.id == itinerary_id)) or 0
+        )
         row = rows.read(session, itinerary_id, for_update=True)
-        if row is not None and row.state in LIVE_STATES and rows.lease_alive(row, at):
+        if row is not None and row.state in LIVE_STATES and (rows.lease_alive(row, at) or not row.lease_owner):
             raise ApiError(409, "该行程已有生成任务在运行，请等它结束")
         busy = session.scalar(
             select(PlanningTask.itinerary_id).where(
                 PlanningTask.user_id == user_id,
                 PlanningTask.itinerary_id != itinerary_id,
                 PlanningTask.state.in_(LIVE_STATES),
-                PlanningTask.lease_expires_at > at,
+                or_(PlanningTask.lease_expires_at > at, PlanningTask.lease_owner == ""),
             )
         )
         if busy is not None:
@@ -73,14 +80,16 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                     itinerary_id=itinerary_id,
                     user_id=user_id,
                     task_id=task_id,
-                    lease_owner=WORKER_ID,
+                    lease_owner="" if queued else WORKER_ID,
                     attempt=1,
                     state=QUEUED,
                     submit_at=at,
                     deadline_at=datetime.fromtimestamp(snapshot["deadline_at"]),
-                    lease_expires_at=rows.lease_until(at),
-                    heartbeat_at=at,
+                    lease_expires_at=at if queued else rows.lease_until(at),
+                    heartbeat_at=None if queued else at,
                     budget_json=json.dumps(rows.budget_payload(snapshot)),
+                    request_json=request_json,
+                    event_start_seq=start_seq,
                 )
             )
             try:
@@ -100,15 +109,18 @@ def open_attempt(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
                 .values(
                     user_id=user_id,
                     task_id=task_id,
-                    lease_owner=WORKER_ID,
+                    lease_owner="" if queued else WORKER_ID,
                     attempt=row.attempt + 1,
                     state=QUEUED,
                     deadline_at=datetime.fromtimestamp(snapshot["deadline_at"]),
-                    lease_expires_at=rows.lease_until(at),
-                    heartbeat_at=at,
+                    lease_expires_at=at if queued else rows.lease_until(at),
+                    heartbeat_at=None if queued else at,
                     cancel_requested_at=None,
                     result_code=None,
                     budget_json=json.dumps(rows.budget_payload(snapshot)),
+                    # 显式新 attempt 从当前行程重建，不能沿用首次规划前的需求快照。
+                    request_json=request_json,
+                    event_start_seq=start_seq,
                 )
             )
         rebuilt = rows.read(session, itinerary_id)
@@ -147,12 +159,16 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
             update(PlanningTask)
             .where(
                 PlanningTask.itinerary_id == itinerary_id,
-                or_(PlanningTask.lease_expires_at <= at, PlanningTask.state.notin_(LIVE_STATES)),
+                or_(
+                    PlanningTask.lease_expires_at.is_(None),
+                    PlanningTask.lease_expires_at <= at,
+                    PlanningTask.state.notin_(LIVE_STATES),
+                ),
             )
             .values(
                 task_id=task_id,
                 lease_owner=WORKER_ID,
-                attempt=row.attempt + 1,
+                attempt=row.attempt + int(bool(row.lease_owner)),
                 lease_expires_at=rows.lease_until(at),
                 heartbeat_at=at,
                 budget_json=json.dumps(rows.budget_payload(snapshot)),
@@ -163,6 +179,27 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
         rebuilt = rows.read(session, itinerary_id)
         assert rebuilt is not None
         return rows.build_limits(rebuilt, snapshot), snapshot
+
+
+def claim_queued() -> tuple[RunLimits, dict] | None:
+    """不同 worker 竞争领取；锁只覆盖领取事务，模型执行不持数据库锁。"""
+    at = rows.now()
+    with session_scope() as session:
+        row = session.scalar(
+            select(PlanningTask)
+            .where(
+                PlanningTask.state == QUEUED,
+                or_(PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at),
+                PlanningTask.deadline_at > at,
+                PlanningTask.cancel_requested_at.is_(None),
+            )
+            .order_by(PlanningTask.submit_at, PlanningTask.itinerary_id)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        if row is None:
+            return None
+        return take_over(row.user_id, row.itinerary_id)
 
 
 def apply_budget(itinerary_id: int, task_id: str, snapshot: dict, deltas: dict[str, int]) -> None:

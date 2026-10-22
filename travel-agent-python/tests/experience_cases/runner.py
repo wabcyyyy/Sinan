@@ -496,6 +496,9 @@ def check_generation_pipeline_preserves_requirements(params: dict) -> CheckOutco
                 requirementsStruct=struct,
             )
             detail = itinerary_generation.generate(1, body)
+            from app.services import planning_worker
+
+            planning_worker.poll_once()
         itinerary_generation.planning_tasks.reset()
         trip_id = int(detail["id"])
 

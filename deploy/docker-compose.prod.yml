@@ -193,7 +193,7 @@ services:
           # 两者谁先到位都会如实报错，不会静默降级。
           memory: 384M
 
-  agent-python:
+  agent-python: &planning-backend
     build:
       # 上下文参数化只为让 deploy.sh 能从 `git archive` 的干净 SHA 构建；
       # 默认值就是工作树（与预览面同一份源码，不另开一套构建）。
@@ -213,7 +213,7 @@ services:
     env_file:
       - path: ${SINAN_APP_ENV_FILE:-secrets/app.env}
         required: false
-    environment:
+    environment: &planning-environment
       AGENT_HOST: 0.0.0.0
       # 容器网络内连自己的服务名；不发布端口，公网到不了这个进程。
       DB_HOST: mysql
@@ -293,6 +293,24 @@ services:
           # 只许往下调（收紧）或给出理由后调。
           cpus: "2.0"
           memory: 2G
+
+  planning-worker:
+    <<: *planning-backend
+    command: ["python", "worker.py"]
+    ports: []
+    stop_grace_period: 330s
+    environment:
+      <<: *planning-environment
+      PLANNING_HEALTH_PATH: /tmp/sinan-planning-worker.heartbeat
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.common.worker_health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+    depends_on:
+      agent-python:
+        condition: service_healthy
 
   frontend-react:
     build:

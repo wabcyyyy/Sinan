@@ -39,7 +39,6 @@ from app.db import migrate as db_migrate
 from app.services import (
     cost_ledger,
     export_service,
-    generation_recovery,
     itinerary_care_check,
     itinerary_chat,
     itinerary_generation,
@@ -204,6 +203,9 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"模型角色配置非法：{exc}") from exc
     # 周期任务统一登记（G-3.3）：usage 清理每天一次、生成续跑 60s 一轮。
     # 两个任务都经 app.common.cron——pytest 环境自动 no-op，不再各写各的线程。
+    from app.common import generation_event_log
+
+    cron.register("generation-event-cleanup", 3600, generation_event_log.cleanup)
     cron.register("usage-cleanup", 86400, _cleanup_usage)
     cron.register("checkpoint-cleanup", 86400, _cleanup_checkpoints)
     cron.register("cost-reservation-sweep", 120, _sweep_cost_reservations, startup_delay_seconds=5)
@@ -219,7 +221,6 @@ async def lifespan(app: FastAPI):
     # 而不是直接阻塞 lifespan，是不让"启动应用"依赖数据库可用（同上文 STARTUP
     # DELAY 的既有取舍），且 pytest 里自动 no-op 不影响离线套件。
     cron.register("timezone-check", 86400, timezone_check.verify, startup_delay_seconds=6)
-    generation_recovery.register_loop()
     cron.register("operations-monitor", 60, operations.check, startup_delay_seconds=15)
     # 出发前照看扫描（个人 Agent V1，规格 §3.2）：每 5 分钟、单次最多 5 项、串行；
     # 执行与「立即检查」共用同一函数与争抢，全局开关关闭时扫描直接空转。

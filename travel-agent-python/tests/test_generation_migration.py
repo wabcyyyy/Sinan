@@ -52,6 +52,9 @@ CITY = "杭州"
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch, tmp_path):
+    from tests.planning_task_probe import install_inline_worker
+
+    install_inline_worker(monkeypatch)
     engine = create_engine(f"sqlite:///{tmp_path / 'm5c.db'}")
     Base.metadata.create_all(engine)
     db_session.init_engine(engine, sessionmaker(bind=engine, expire_on_commit=False))
@@ -558,20 +561,27 @@ def test_day_failure_marks_day_and_trip_failed(client: TestClient, monkeypatch) 
     assert len(days[0].generation_error) <= 500, "日级失败原因按列宽截断"
 
 
-def test_queue_full_returns_429_and_fails_shell(client: TestClient, monkeypatch) -> None:
-    _fake_agents(monkeypatch, [_plan(1, ["西湖"])])
+def test_queue_full_returns_429_and_rolls_back_shell(client: TestClient, monkeypatch) -> None:
+    from app.common.config import settings
+    from app.db.models import PlanningTask
+    from app.services import planning_queue
 
-    def reject(task, *args):
-        raise itinerary_generation.TaskRejected("queue full")
-
-    monkeypatch.setattr(itinerary_generation.generation_pool, "submit", reject)
+    with planning_queue.admission():
+        with db_session.session_scope() as session:
+            existing = ItineraryMain(
+                user_id=1, title="队列容量样例", city=CITY, days=1, status=1, gen_state="GENERATING"
+            )
+            session.add(existing)
+            session.flush()
+            planning_queue.enqueue(
+                1, existing.id, itinerary_generation.GenerateCommand(city=CITY, days=1, persons=1, stay_nights=0)
+            )
+    monkeypatch.setattr(settings, "planning_queue_capacity", 1)
     response = client.post("/api/itinerary/generate", json={"city": CITY, "days": 1}).json()
     assert response["code"] == 429 and response["message"] == "行程生成任务已满，系统繁忙，请稍后再试"
     with db_session.session_scope() as session:
-        shell = session.execute(select(ItineraryMain)).scalar_one()
-        # 壳不能留在 GENERATING，否则恢复任务会把它当僵尸重拉
-        assert (shell.status, shell.gen_state) == (3, "FAILED")
-        assert shell.plan_note == "生成失败：系统繁忙，生成队列已满"
+        assert len(session.scalars(select(ItineraryMain)).all()) == 1
+        assert len(session.scalars(select(PlanningTask)).all()) == 1
 
 
 def test_bounded_pool_rejects_after_capacity(monkeypatch) -> None:
@@ -724,8 +734,13 @@ def test_recovery_completes_trip_whose_days_are_done(broken_trip: int, monkeypat
         assert main.status == 2 and main.gen_state == "COMPLETED" and main.title == "杭州2日游"
 
 
-def test_recovery_skips_trip_with_active_day(broken_trip: int, monkeypatch) -> None:
+def test_recovery_skips_legacy_trip_with_active_day(broken_trip: int, monkeypatch) -> None:
+    from sqlalchemy import delete
+
+    from app.db.models import PlanningTask
+
     with db_session.session_scope() as session:
+        session.execute(delete(PlanningTask).where(PlanningTask.itinerary_id == broken_trip))
         first = session.execute(select(ItineraryDay).order_by(ItineraryDay.day_no)).scalars().first()
         assert first is not None
         first.generation_status = "RUNNING"
@@ -750,14 +765,14 @@ def test_recovery_skips_trip_registered_active_in_process(broken_trip: int, monk
     assert submitted == [broken_trip]
 
 
-def test_recovery_is_deduplicated_by_resume_lock(broken_trip: int, monkeypatch) -> None:
+def test_recovery_uses_database_lease_instead_of_cache_resume_lock(broken_trip: int, monkeypatch) -> None:
     from app.services import generation_gate
 
     assert generation_gate.try_resume_lock(broken_trip)
     submitted: list[int] = []
     monkeypatch.setattr(itinerary_generation.generation_pool, "submit", lambda task, *args: submitted.append(args[1]))
     generation_recovery.recover()
-    assert submitted == []
+    assert submitted == [broken_trip]
 
 
 def test_recovery_six_day_stream_break_resumes_without_whole_rerun(client: TestClient, monkeypatch) -> None:

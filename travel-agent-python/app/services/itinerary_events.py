@@ -14,14 +14,22 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi.responses import StreamingResponse
 
-from app.common import event_hub, event_publisher
+from app.common import event_hub, event_publisher, generation_event_log
+from app.db.models import ItineraryMain
+from app.db.session import session_scope
 from app.services import day_persistence
+
+logger = logging.getLogger(__name__)
+POLL_SECONDS = 0.5
 
 
 def terminal_snapshot(itinerary_id: int, main: Any) -> str | None:
@@ -77,7 +85,7 @@ def _is_terminal(envelope: str) -> bool:
         return False
 
 
-async def event_frames(
+async def _local_event_frames(
     itinerary_id: int, subscription: Any, snapshot: str | None = None, last_event_id: int | None = None
 ) -> AsyncIterator[str]:
     """衔接有界事件回放与实时订阅，断线后显式提示无法补齐的缺口。
@@ -94,33 +102,84 @@ async def event_frames(
     Yields:
         带 SSE 分隔符的事件帧，包括必要的回放、同步提示与心跳。
     """
+    replayed_upto = 0
+    replayed_terminal = False
+    if last_event_id is not None:
+        missed, complete, replayed_upto = event_hub.replay_after(itinerary_id, last_event_id)
+        if not complete:
+            yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
+        for frame in missed:
+            replayed_terminal = replayed_terminal or _is_terminal(frame)
+            yield _sse_frame(frame)
+    if snapshot is not None:
+        # 补发里已经有真实终态帧就不再叠一帧快照（前端终态收尾只该跑一次）
+        if not replayed_terminal:
+            yield _sse_frame(snapshot)
+        return
+    while True:
+        envelope = await subscription.take()
+        if envelope is event_hub.CLOSED:
+            return
+        if envelope is None:
+            # 空闲一个心跳周期才补心跳帧：连接保持活跃，但业务事件永远优先
+            envelope = event_publisher.heartbeat_envelope(itinerary_id)
+        elif (getattr(envelope, "event_id", None) or 0) and envelope.event_id <= replayed_upto:
+            continue  # 订阅先于回放登记：这帧已在补发里出现过（或属于补不回来的那段）
+        yield _sse_frame(envelope)
+
+
+def _snapshot(itinerary_id: int) -> str | None:
+    with session_scope() as session:
+        main = session.get(ItineraryMain, itinerary_id)
+        return terminal_snapshot(itinerary_id, main) if main is not None else None
+
+
+async def event_frames(
+    itinerary_id: int, subscription: Any, snapshot: str | None = None, last_event_id: int | None = None
+) -> AsyncIterator[str]:
+    """共享日志决定事件顺序；本地队列只加速唤醒并承载会话私有事件。"""
+    cursor = last_event_id if last_event_id is not None else getattr(subscription, "start_event_id", None)
+    heartbeat_at = time.monotonic()
+    gap_reported = False
     try:
-        replayed_upto = 0
-        replayed_terminal = False
-        if last_event_id is not None:
-            missed, complete, replayed_upto = event_hub.replay_after(itinerary_id, last_event_id)
-            if not complete:
-                yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
-            for frame in missed:
-                replayed_terminal = replayed_terminal or _is_terminal(frame)
-                yield _sse_frame(frame)
-        if snapshot is not None:
-            # 补发里已经有真实终态帧就不再叠一帧快照（前端终态收尾只该跑一次）
-            if not replayed_terminal:
-                yield _sse_frame(snapshot)
+        if getattr(subscription, "rejected", False):
+            async for frame in _local_event_frames(itinerary_id, subscription):
+                yield frame
             return
         while True:
-            envelope = await subscription.take()
-            if envelope is event_hub.CLOSED:
-                return
-            if envelope is None:
-                # 空闲一个心跳周期才补心跳帧：连接保持活跃，但业务事件永远优先
-                envelope = event_publisher.heartbeat_envelope(itinerary_id)
-            elif (getattr(envelope, "event_id", None) or 0) and envelope.event_id <= replayed_upto:
-                continue  # 订阅先于回放登记：这帧已在补发里出现过（或属于补不回来的那段）
-            yield _sse_frame(envelope)
+            try:
+                result = await asyncio.to_thread(generation_event_log.read_after, itinerary_id, cursor)
+                if result is None:
+                    # 无业务行程的内部事件流仍可使用本地总线。
+                    async for frame in _local_event_frames(itinerary_id, subscription, snapshot, last_event_id):
+                        yield frame
+                    return
+                frames, complete, latest = result
+                if not complete:
+                    yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
+                for frame in frames:
+                    yield _sse_frame(frame)
+                    if _is_terminal(frame):
+                        return
+                cursor = latest
+                gap_reported = False
+                # 发布前崩溃/日志过期也不会留下无限心跳的终态连接；始终从 DB 补结论。
+                terminal = await asyncio.to_thread(_snapshot, itinerary_id)
+                if terminal is not None:
+                    yield _sse_frame(terminal)
+                    return
+            except Exception:
+                logger.warning("SSE shared replay read failed: itinerary=%s", itinerary_id, exc_info=True)
+                if not gap_reported:
+                    yield _sse_frame(event_publisher.resync_envelope(itinerary_id))
+                    gap_reported = True
+            local = await subscription.take(timeout=POLL_SECONDS)
+            if local is not None and local is not event_hub.CLOSED and getattr(local, "event_id", None) is None:
+                yield _sse_frame(local)  # 聊天等会话私有帧不进入共享回放
+            if time.monotonic() - heartbeat_at >= event_hub.HEARTBEAT_SECONDS:
+                yield _sse_frame(event_publisher.heartbeat_envelope(itinerary_id))
+                heartbeat_at = time.monotonic()
     finally:
-        # 客户端断开/服务收尾都要摘除，否则注册表里留死连接
         event_hub.unsubscribe(subscription)
 
 

@@ -17,7 +17,7 @@ WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY travel-agent-python/app ./app
 COPY travel-agent-python/scripts ./scripts
-COPY travel-agent-python/main.py travel-agent-python/alembic.ini ./
+COPY travel-agent-python/main.py travel-agent-python/worker.py travel-agent-python/alembic.ini ./
 COPY LICENSE THIRD_PARTY_NOTICES.md ./
 COPY --from=frontend /frontend/dist ./frontend
 COPY deploy/hosted_start.py ./hosted_start.py

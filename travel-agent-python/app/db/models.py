@@ -30,7 +30,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.models_execution import CostLedger, LlmReservation, PlanningTask
+from app.db.models_execution import CostLedger, GenerationEvent, LlmReservation, PlanningQueueGuard, PlanningTask
 from app.db.models_itinerary import (
     BudgetDetail,
     Expense,
@@ -53,6 +53,7 @@ __all__ = [
     "CostLedger",
     "Expense",
     "ExportTask",
+    "GenerationEvent",
     "ItemFeedback",
     "ItineraryCare",
     "ItineraryChatMessage",
@@ -65,6 +66,7 @@ __all__ = [
     "LlmReservation",
     "LongText",
     "PkBigInt",
+    "PlanningQueueGuard",
     "PlanningTask",
     "SoftDelete",
     "SysUser",

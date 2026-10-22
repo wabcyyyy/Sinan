@@ -208,13 +208,13 @@ C ps -a          # 状态必须都是 Exited (0)，出现 137 就是被 SIGKILL 
 ```bash
 deploy/deploy.sh verify                  # 改完 env 先复验
 $C up -d --force-recreate caddy          # 改了 Caddyfile
-$C up -d --force-recreate agent-python   # 改了应用 env
+$C up -d --force-recreate agent-python planning-worker   # 改了应用 env
 ```
 
 - **证书**：ACME 由 Caddy 自动续期，证书与内置 CA 存在命名卷 `sinan-prod-caddy-data`（`/data`）。
   删这个卷=全部重签，ACME 有速率限制。续期失败先看 `docker compose logs caddy | grep -i acme`。
 - **DB 口令**：改 `deploy/secrets/prod.env` → `deploy/deploy.sh provision`（`ALTER USER` 会把
-  口令与连接上限对齐）→ `up -d --force-recreate agent-python`。
+  口令与连接上限对齐）→ `up -d --force-recreate agent-python planning-worker`。
 - **`SINAN_MYSQL_ROOT_PASSWORD`**：env 改了不会自动改库里的 root 口令（root 由镜像初始化时创建）。
   轮换要么进容器 `ALTER USER 'root'@'localhost' IDENTIFIED BY ...`，要么重建实例并恢复备份。
   轮换时须同步实际数据库账号与环境配置。

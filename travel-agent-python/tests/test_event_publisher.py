@@ -44,8 +44,13 @@ class FakeRedis:
 
 
 @pytest.fixture(autouse=True)
-def _isolated_publisher():
+def _isolated_publisher(monkeypatch):
     """用例前后重置单例，避免跨用例串状态。"""
+    from app.common import generation_event_log
+
+    monkeypatch.setattr(generation_event_log, "append", lambda *_: None)
+    monkeypatch.setattr(generation_event_log, "next_seq", lambda *_: None)
+    monkeypatch.setattr(generation_event_log, "read_after", lambda *_: None)
     event_publisher.reset_event_publisher()
     yield
     event_publisher.reset_event_publisher()

@@ -97,7 +97,7 @@ def backup_and_restore(client: httpx.Client, username: str, user_id: int, suffix
         "-c",
         "from pathlib import Path; Path('/app/data/acceptance-marker').write_text('persistent')",
     )
-    compose(PROJECT, "stop", "app")
+    compose(PROJECT, "stop", "app", "planning-worker")
     succeeded = False
     try:
         source = stage / "source"

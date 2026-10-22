@@ -109,6 +109,30 @@ while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) {
 }
 foreach ($t in $pending) { Write-Host "[TIMEOUT] $($t.Name) not responding yet - check its window for errors" }
 
+# Worker has no listening port. Track only this launcher's worker, and verify its command
+# before reusing a pid (Windows may recycle process ids).
+$workerPidFile = Join-Path $root "logs\planning-worker.pid"
+$workerScript = Join-Path $root "travel-agent-python\worker.py"
+$workerRunning = $false
+if (Test-Path -LiteralPath $workerPidFile) {
+    $workerId = 0
+    if ([int]::TryParse((Get-Content -LiteralPath $workerPidFile -Raw).Trim(), [ref]$workerId)) {
+        $workerInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$workerId" -ErrorAction SilentlyContinue
+        $workerRunning = $workerInfo -and $workerInfo.CommandLine -and $workerInfo.CommandLine.Contains($workerScript)
+    }
+}
+if (-not $workerRunning -and (Test-Port 8000)) {
+    $worker = Start-Process -FilePath "$root\travel-agent-python\.venv\Scripts\python.exe" `
+        -ArgumentList @("`"$workerScript`"") -WorkingDirectory "$root\travel-agent-python" `
+        -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput "$root\logs\planning-worker.out.log" `
+        -RedirectStandardError "$root\logs\planning-worker.err.log"
+    Set-Content -LiteralPath $workerPidFile -Value $worker.Id
+    Write-Host "[start] planning-worker (no HTTP port; inspect logs/planning-worker.err.log)"
+} elseif ($workerRunning) {
+    Write-Host "[skip ] planning-worker already running"
+}
+
 Write-Host ""
 Write-Host "Done. Web UI: http://localhost:5173  (register an account on first use)"
 

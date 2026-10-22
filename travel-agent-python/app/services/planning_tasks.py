@@ -162,6 +162,14 @@ def takeover(user_id: int, itinerary_id: int) -> RunLimits:
     return _register(runs.Handle(limits=limits, last_counters=rows.counters_of(snapshot)))
 
 
+def claim_queued() -> RunLimits | None:
+    claimed = store.claim_queued()
+    if claimed is None:
+        return None
+    limits, snapshot = claimed
+    return _register(runs.Handle(limits=limits, last_counters=rows.counters_of(snapshot)))
+
+
 def attach(limits: RunLimits) -> None:
     """重新绑定一个已由本 worker 持有的任务（接管后再入池的那一步）。
 
@@ -234,7 +242,7 @@ def finish_success(itinerary_id: int) -> None:
         held.outcome = FINISHED
 
 
-def finish_failure(itinerary_id: int, exc: Exception) -> None:
+def finish_failure(itinerary_id: int, exc: Exception, *, user_facing: bool = False) -> None:
     """失败/取消/超时的收敛：保留已交付天，写产品终态并登记执行结论。
 
     失权 worker 直接跳过——它已经没有资格再改这趟行程的任何数据（旧结构里这里会照写
@@ -266,7 +274,7 @@ def finish_failure(itinerary_id: int, exc: Exception) -> None:
         )
     else:
         reason = "已取消生成" if cancelled else str(exc)
-        day_persistence.fail_trip(itinerary_id, reason, code=code)
+        day_persistence.fail_trip(itinerary_id, reason, code=code, user_facing=user_facing)
         generation_events.error(itinerary_id, code, reason if cancelled else user_reason(exc), True)
     with runs.LOCK:
         held = runs.HELD.get(itinerary_id)
