@@ -14,7 +14,7 @@ from decimal import Decimal
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, update
 from sqlalchemy.orm import sessionmaker
 
 from app.api.business.auth import auth_router
@@ -287,7 +287,12 @@ def test_detail_is_cached_and_evicted_per_itinerary(client: TestClient) -> None:
     trip_id = client.get("/api/itinerary").json()["data"][0]["id"]
     assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["title"] == "杭州3日游"
     with db_session.session_scope() as session:
-        session.query(ItineraryMain).filter_by(id=trip_id).one().title = "改过名"
+        main = session.query(ItineraryMain).filter_by(id=trip_id).one()
+        # 本用例验证同版本缓存与显式失效。保留版本戳；否则 onupdate 跨秒时
+        # detail 正确地识别新版本并回源，旧断言会随运行时机随机失败。
+        session.execute(
+            update(ItineraryMain).where(ItineraryMain.id == trip_id).values(title="改过名", updated_at=main.updated_at)
+        )
     assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["title"] == "杭州3日游", "详情应命中缓存"
     itinerary_query.evict_detail(1, trip_id)
     assert client.get(f"/api/itinerary/{trip_id}").json()["data"]["title"] == "改过名", "精确失效后必须回源"
