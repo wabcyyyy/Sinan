@@ -36,7 +36,29 @@ API 与 worker 必须使用相同数据库、模型路由、加密配置和时�
 6. 过期任务停止后续模型调用并收敛为失败或部分交付；取消任务不自动复活。
 
 `PLANNING_WORKER_CONCURRENCY` 可在 1–4 内调整，默认 4；`PLANNING_QUEUE_CAPACITY` 默认 8，单 worker 默认最多一批运行、一批等待；`PLANNING_POLL_SECONDS` 默认 1。降低并发时应相应收紧总容量。增加进程会增加模型请求、数据库连接和外部服务调用，当前没有真实供应商的全局吞吐测量或共享模型配额。
-worker 收到停止信号后停止领取并等待已有任务；容器宽限 330 秒，超过宽限由容器终止，剩余责任通过租约恢复。API 的 `/healthz` 不代表 worker 正常。Compose 为 worker 配置独立健康文件，只有成功轮询数据库后才刷新；健康检查允许一次完整任务截止期与租约窗口，支持检查点恢复占用轮询线程，不能据此证明容量。还应查看 worker 日志、QUEUED 堆积和租约更新。
+worker 收到停止信号后停止领取并等待已有任务；容器宽限 330 秒，超过宽限由容器终止，剩余责任通过租约恢复。API 的 `/healthz` 不代表 worker 正常。Compose 为 worker 配置独立健康文件，只有成功轮询数据库后才刷新；健康检查允许一次完整任务截止期与租约窗口，支持检查点恢复占用轮询线程，不能据此证明容量。还应查看 worker 日志与下方持久队列快照。
+
+## 管理员队列快照
+
+`GET /api/admin/planning-queue?limit=20` 复用管理员鉴权（匿名 401、普通用户 403），直接读取 MySQL `planning_task`，不依赖接收请求的 API 内存或 Redis。管理员已登录后，可沿用登录时取得的 PowerShell `WebRequestSession`：
+
+```powershell
+Invoke-RestMethod "$base/api/admin/planning-queue?limit=20" -WebSession $adminSession
+```
+
+| 返回字段 | 口径 |
+| --- | --- |
+| `observedAt` / `capacity` | 本次采样时刻 / 配置的全局任务容量；应用与数据库应使用相同时区 |
+| `liveTasks` | 所有 QUEUED + RUNNING，包含待收敛的超时或取消任务，与容量占用口径一致 |
+| `waitingTasks` / `claimedTasks` / `runningTasks` | 未领取 QUEUED / 有持有者的 QUEUED / RUNNING，三项之和等于 `liveTasks` |
+| `oldestWaitSeconds` | 未领取 QUEUED 中，从首次提交至采样时刻的最长时长；没有排队任务为 null。不是接管前等待时长 |
+| `expiredLeases` | live 且有持有者，租约到期或租约时间缺失；未领取任务的占位时间不算过期租约 |
+| `overdueTasks` | live 且原绝对截止已到，需要 worker 收敛；可与过期租约重叠，不应相加 |
+| `recentSince` / `recentTerminals` | 最近 24 小时内更新过的当前终态任务，按更新时间与行程 ID 倒序，默认 20 条、最多 50 条 |
+
+终态条目只含 `itineraryId`、`attempt`、`state`、`resultCode`、`updatedAt`，不返回旅行输入、费用快照、用户资料或执行令牌。原因码为空表示该执行未登记原因，不能据此推断模型或供应商状态。终态是执行面 FINISHED/FAILED/CANCELLED/EXPIRED，不替代业务面的完整/部分交付判断。
+
+这些是采样时仍保留在当前任务行上的状态，不是历史审计或失败率：同一行程的新 attempt 会覆盖上一终态，`updatedAt` 也不是新增加的精确完成时间。数据库读取失败会报错，不返回伪造的零积压。原 `/api/admin/agent-metrics` 仍只统计当前 API 进程；它与健康文件都不能替代此队列读模型，也不能单独证明 worker 正常或恢复 SLA。此接口按需查询，不增设自动轮询面板、告警服务或监控平台。
 
 ## 跨实例 SSE
 

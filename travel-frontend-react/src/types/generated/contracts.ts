@@ -514,6 +514,28 @@ export interface CityGuideResponse {
 }
 
 // ===== business_api =====
+export interface PlanningTerminalVO {
+  itineraryId: number
+  attempt: number
+  state: string
+  resultCode: string | null
+  updatedAt: string
+}
+
+export interface PlanningQueueVO {
+  observedAt: string
+  capacity: number
+  liveTasks: number
+  waitingTasks: number
+  claimedTasks: number
+  runningTasks: number
+  oldestWaitSeconds: number | null
+  expiredLeases: number
+  overdueTasks: number
+  recentSince: string
+  recentTerminals: PlanningTerminalVO[]
+}
+
 export interface TrialPolicyVO {
   inviteRequired: boolean
   billingEnabled: boolean

@@ -30,6 +30,7 @@ from app.schemas.agent_ops import (
     PoiNearbyRequest,
     PoiNearbyResponse,
 )
+from app.schemas.business.admin import PlanningQueueVO
 from app.schemas.business.auth import LoginBody, LoginData, RegisterBody, UserInfoVO
 from app.schemas.business.care import (
     CareCheckResult,
@@ -164,6 +165,7 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
     ),
     # 业务面核心端点（/api/auth/**、/api/itinerary/** 写路径，G-1.1 取舍范围）
     "business_api": (
+        PlanningQueueVO,
         TrialPolicyVO,
         TrialWalletVO,
         TrialInviteBody,

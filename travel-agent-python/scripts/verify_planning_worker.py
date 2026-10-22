@@ -241,6 +241,7 @@ def exercise(processes: Processes, directory: Path) -> dict:
 
     from app.db.models import GenerationEvent, PlanningTask
     from app.db.session import session_scope
+    from app.services.admin_service import planning_queue_status
 
     api1, url1 = processes.start("api")
     _, url2 = processes.start("api")
@@ -248,6 +249,9 @@ def exercise(processes: Processes, directory: Path) -> dict:
         login(client, url1)
         trip = create(client, url1)
         assert state(trip)["state"] == "QUEUED" and state(trip)["workerId"] == ""
+        queue = planning_queue_status(20)
+        assert queue.live_tasks == queue.waiting_tasks == 1 and queue.expired_leases == 0
+        assert queue.oldest_wait_seconds is not None and queue.oldest_wait_seconds >= 0
         processes.kill(api1)
         first_worker, _ = processes.start("worker")
         wait_for(lambda: delivered(trip), "accepted task after API crash")
@@ -294,6 +298,10 @@ def exercise(processes: Processes, directory: Path) -> dict:
         detail = client.get(f"{url2}/api/itinerary/{trip}").json()["data"]
         assert detail["genState"] == "COMPLETED", "original API returned stale generation detail"
         assert all(day["generationStatus"] == "SUCCEEDED" for day in detail["dayList"])
+        queue = planning_queue_status(20)
+        assert queue.live_tasks == queue.waiting_tasks == queue.expired_leases == 0
+        assert queue.oldest_wait_seconds is None
+        assert any(row.itinerary_id == trip and row.state == "FINISHED" for row in queue.recent_terminals)
     return {
         "api_exit_after_accept": "passed",
         "worker_kill_after_day_one": "passed",
@@ -303,6 +311,7 @@ def exercise(processes: Processes, directory: Path) -> dict:
         "cross_instance_sse_replay": "passed",
         "cross_instance_detail_read": "passed",
         "deadline_and_consumed_budget_preserved": "passed",
+        "mysql_queue_observability": "passed",
         "recovery_seconds": recovery_seconds,
         "lease_seconds": 3,
         "scan_seconds": 10,

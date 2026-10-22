@@ -13,6 +13,8 @@ from app.api.deps import AuthUser
 from app.api.security import enforce_business_auth
 from app.common.addons import ADDONS, addons
 from app.common.envelope import ApiError, ok
+from app.schemas.business.admin import PlanningQueueVO
+from app.schemas.common import ApiResponse
 from app.services import admin_service
 
 router = APIRouter(
@@ -93,6 +95,12 @@ def delete_itinerary(id: int = Path(...)) -> dict:
 @router.get("/agent-metrics")
 def agent_metrics() -> dict:
     return ok(admin_service.agent_metrics())
+
+
+@router.get("/planning-queue", response_model=ApiResponse[PlanningQueueVO])
+def planning_queue(limit: int = Query(20, ge=1, le=50)) -> dict:
+    """MySQL 规划队列快照与最近 24 小时的当前终态任务；仅管理员可读。"""
+    return ok(admin_service.planning_queue_status(limit).model_dump(by_alias=True))
 
 
 @router.get("/llm-usage")
