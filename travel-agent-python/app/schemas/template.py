@@ -29,7 +29,13 @@ class TemplateItemVO(BaseModel):
 class TemplateDayVO(BaseModel):
     dayNo: int
     theme: str | None = None
+    overview: str | None = None
     items: list[TemplateItemVO]
+
+
+class TemplateGuideSection(BaseModel):
+    title: str
+    text: str
 
 
 class TemplateSummaryVO(BaseModel):
@@ -46,6 +52,7 @@ class TemplateSummaryVO(BaseModel):
     sourceType: Literal["editorial", "community"] = "community"
     notes: list[str] = Field(default_factory=list)
     references: list[str] = Field(default_factory=list)
+    guide: list[TemplateGuideSection] = Field(default_factory=list)
 
 
 class TemplatePublishVO(BaseModel):

@@ -12,6 +12,7 @@ Redis 不可用时降级为进程内实现（单机演示有效），与 Java �
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 import uuid
@@ -19,6 +20,7 @@ from collections import deque
 from typing import cast
 
 from app.common import redis_client
+from app.common.envelope import ApiError
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,9 @@ _lock = threading.Lock()
 #: 当日限额在 Redis 熔断期里退化成 15 分钟限额（等于无限刷付费调用）。
 _windows: dict[str, tuple[float, deque[float]]] = {}
 _marks: dict[str, float] = {}
-_session_sets: dict[str, set[str]] = {}
-_jti_to_token: dict[str, str] = {}
+# jti -> (用户名, token, monotonic 过期时刻)。单表避免过期后留下空的用户集合。
+_local_sessions: dict[str, tuple[str, str, float]] = {}
+LOCAL_SESSION_MAX_ENTRIES = 4096
 
 # 兜底表的条目上限（R2-10 的同一课，当时补了 `cache_store._local` 与
 # `ExternalClient._cache`，漏了本文件）。这里的键里有**匿名可控**的一段：
@@ -262,9 +265,17 @@ def unmark(key: str) -> None:
 # ---------- 多端会话 ----------
 
 
+def _purge_local_sessions(now: float) -> None:
+    """调用方持有 _lock；按需清理到期会话，未过期记录不可淘汰。"""
+    for jti in [key for key, (_, _, expiry) in _local_sessions.items() if expiry <= now]:
+        _local_sessions.pop(jti, None)
+
+
 def register_session(username: str, jti: str, token: str, ttl_seconds: int) -> None:
     if not username or not jti or not token or ttl_seconds <= 0:
         return
+    with _lock:
+        _purge_local_sessions(time.monotonic())
     try:
         redis = _redis()
         key = SESSION_KEY_PREFIX + username
@@ -275,8 +286,11 @@ def register_session(username: str, jti: str, token: str, ttl_seconds: int) -> N
     except Exception as exc:
         _note_redis_failure(exc, "session register redis failed, local fallback: %s")
     with _lock:
-        _session_sets.setdefault(username, set()).add(jti)
-        _jti_to_token[jti] = token
+        now = time.monotonic()
+        _purge_local_sessions(now)
+        if jti not in _local_sessions and len(_local_sessions) >= LOCAL_SESSION_MAX_ENTRIES:
+            raise ApiError(503, "会话服务暂时繁忙，请稍后重试")
+        _local_sessions[jti] = (username, token, now + ttl_seconds)
 
 
 def revoke_current(username: str, jti: str, token: str, ttl_seconds: int) -> None:
@@ -287,20 +301,19 @@ def revoke_current(username: str, jti: str, token: str, ttl_seconds: int) -> Non
         redis = _redis()
         redis.srem(SESSION_KEY_PREFIX + username, jti)
         redis.delete(f"{SESSION_KEY_PREFIX}tok:{jti}")
-        return
     except Exception as exc:
         redis_client.note_failure(exc)
         logger.debug("revoke_current redis fallback: %s", exc)
     with _lock:
-        _session_sets.get(username, set()).discard(jti)
-        _jti_to_token.pop(jti, None)
+        _purge_local_sessions(time.monotonic())
+        _local_sessions.pop(jti, None)
 
 
 def revoke_all(username: str) -> int:
     """吊销该用户全部已登记会话，返回吊销数。"""
     from app.common import token_revocation
 
-    revoked = 0
+    revoked: set[str] = set()
     try:
         redis = _redis()
         key = SESSION_KEY_PREFIX + username
@@ -308,25 +321,27 @@ def revoke_all(username: str) -> int:
             token = cast("str | None", redis.get(f"{SESSION_KEY_PREFIX}tok:{jti}"))
             if token:
                 token_revocation.revoke(token, 86_400)  # 拿不到剩余寿命，按 1 天兜底（同 Java）
-                revoked += 1
+                revoked.add(jti)
             redis.delete(f"{SESSION_KEY_PREFIX}tok:{jti}")
         redis.delete(key)
-        return revoked
     except Exception as exc:
         _note_redis_failure(exc, "logout-all redis failed, local fallback: %s")
     with _lock:
-        for jti in _session_sets.pop(username, set()) or set():
-            token = _jti_to_token.pop(jti, None)
-            if token:
-                token_revocation.revoke(token, 86_400)
-                revoked += 1
-    return revoked
+        now = time.monotonic()
+        _purge_local_sessions(now)
+        for jti, (owner, token, expiry) in list(_local_sessions.items()):
+            if owner != username:
+                continue
+            if jti not in revoked:
+                token_revocation.revoke(token, math.ceil(expiry - now))
+                revoked.add(jti)
+            _local_sessions.pop(jti, None)
+    return len(revoked)
 
 
 def reset_for_tests() -> None:
     with _lock:
         _windows.clear()
         _marks.clear()
-        _session_sets.clear()
-        _jti_to_token.clear()
+        _local_sessions.clear()
     redis_client.reset_for_tests()

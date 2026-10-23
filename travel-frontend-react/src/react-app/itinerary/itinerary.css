@@ -546,3 +546,6 @@
 /* 照看草稿在对话流里的来源标注（展示识别，不改变既有草稿卡语义） */
 .chat-draft-source { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; line-height: 1.6; color: var(--sinan-ink-soft); }
 .chat-draft-source svg { flex-shrink: 0; color: var(--sinan-accent); }
+
+.day-item:not(:has(.day-item-media)) { grid-template-columns: 58px 24px minmax(0, 1fr); }
+@media (max-width: 600px) { .day-item:not(:has(.day-item-media)) { grid-template-columns: 45px 12px minmax(0, 1fr); } }

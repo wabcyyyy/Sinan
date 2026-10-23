@@ -1036,7 +1036,13 @@ export interface TemplateItemVO {
 export interface TemplateDayVO {
   dayNo: number
   theme: string | null
+  overview: string | null
   items: TemplateItemVO[]
+}
+
+export interface TemplateGuideSection {
+  title: string
+  text: string
 }
 
 export interface TemplateSummaryVO {
@@ -1051,6 +1057,7 @@ export interface TemplateSummaryVO {
   sourceType: "editorial" | "community"
   notes: string[]
   references: string[]
+  guide: TemplateGuideSection[]
 }
 
 export interface TemplatePublishVO {
@@ -1224,7 +1231,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "第一天沿西湖北线慢走，第二天走进茶文化。每天下午保留休息时间，不把环湖当成打卡任务。",
+    "intro": "把西湖拆成喜欢的几段，而不是走完一圈。第一天从白堤的开阔湖面走向曲院风荷，第二天先读懂一杯茶，再去龙井村坐坐；河坊街留作返程前的可选尾声。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -1232,12 +1239,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "杭州",
       "days": 2,
       "persons": 2,
-      "intro": "第一天沿西湖北线慢走，第二天走进茶文化。每天下午保留休息时间，不把环湖当成打卡任务。",
+      "intro": "把西湖拆成喜欢的几段，而不是走完一圈。第一天从白堤的开阔湖面走向曲院风荷，第二天先读懂一杯茶，再去龙井村坐坐；河坊街留作返程前的可选尾声。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "从断桥到南山路，挑喜欢的湖岸走",
+          "overview": "上午白堤与孤山选一段慢走，午餐后在曲院风荷休息。苏堤南段是加选项：仍有体力再乘车过去，傍晚在南山路收尾。",
           "items": [
             {
               "poiName": "断桥残雪",
@@ -1304,6 +1312,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "双峰茶文化与老城街巷",
+          "overview": "双峰馆区与龙井馆区是两处地点，导航确认“双峰”。午后留给龙井村喝茶，晚些时候根据返程时间决定是否去河坊街。",
           "items": [
             {
               "poiName": "中国茶叶博物馆双峰馆区",
@@ -1351,13 +1360,33 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "适合两天一晚的路线参考；到达日较晚时，从白堤或孤山开始即可。",
-        "阴雨天缩短湖岸步行，优先确认馆区后再调整；不强行补满所有景点。"
+        "先确认中国茶叶博物馆的馆区、开放和预约，再安排第二天上午。",
+        "第二天不叠加灵隐寺与九溪；把空余时间留给茶村，返程更从容。"
       ],
       "references": [
         "https://www.teamuseum.cn/"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合第一次来杭州、喜欢湖景与茶文化的双人周末。每天安排一个主线，愿意随时停下来；带长辈可删去苏堤南段。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "湖岸和茶村分两天走，减少来回切换。第一天曲院风荷到苏堤南段距离较长，建议乘车衔接或二选一，不把整段堤岸都算作轻松步行。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "可优先比较湖滨、凤起路一带靠地铁的住处，抵达和晚餐更容易安排；偏爱安静可考虑湖西，但要接受往返车站的接驳。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "城内以地铁衔接湖边，茶村段按当日地图选择公交或打车。把行李留在住处，第二天离开龙井后先取行李，再决定是否加河坊街。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "小雨时缩短湖岸，把茶博物馆和坐茶馆作为重心。若茶博物馆未开放，改为村内茶室休息；不把湿滑茶坡作为必走路线。"
+        }
       ]
     }
   },
@@ -1369,7 +1398,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "把人民公园、城市博物馆与西侧草堂串成两天，午餐与转场留足时间，街区用餐自行选择。",
+    "intro": "用茶馆开启成都，把博物馆、庭院和街巷串成两个有停顿的白天。第一天集中在市中心，第二天围绕草堂与浣花溪展开；武侯祠与锦里作为体力充足时的延伸。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -1377,12 +1406,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "成都",
       "days": 2,
       "persons": 2,
-      "intro": "把人民公园、城市博物馆与西侧草堂串成两天，午餐与转场留足时间，街区用餐自行选择。",
+      "intro": "用茶馆开启成都，把博物馆、庭院和街巷串成两个有停顿的白天。第一天集中在市中心，第二天围绕草堂与浣花溪展开；武侯祠与锦里作为体力充足时的延伸。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "先坐下来，再认识这座城",
+          "overview": "早茶留出坐下来的时间，午餐之后再进博物馆。宽窄巷子只走感兴趣的一段，晚餐落在少城附近，不再增加夜间跨区行程。",
           "items": [
             {
               "poiName": "人民公园",
@@ -1439,6 +1469,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "草堂与浣花溪，把下午留给武侯片区",
+          "overview": "草堂是今天的主角，庭院与诗歌展陈慢慢看。午后浣花溪短走即可；若想在草堂多留一会儿，就把武侯祠和锦里一起删去。",
           "items": [
             {
               "poiName": "杜甫草堂博物馆",
@@ -1496,14 +1527,33 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "住宿自行选择少城或公共交通方便的片区；本路线不包含可预订酒店。",
-        "第二天下午跨片区，如带老人或下雨，可只保留草堂与浣花溪。"
+        "成都博物馆、草堂和武侯祠分别核实开放与预约；不要把三个场馆都当作随到随进。",
+        "不吃辣可直接告诉店家少辣或不放辣椒，点菜时单独确认汤底与蘸料。"
       ],
       "references": [
-        "https://www.cdmuseum.com/daolan/",
         "https://www.cddfct.cn/"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合喜欢城市日常、园林和川菜的人。每天留一顿坐下来慢慢吃的正餐，街头小吃作为加餐，不必为了店单跨区排队。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "第一天人民公园、博物馆与少城街区相接；第二天草堂和浣花溪放在一起。武侯祠需要单独转场，累了就取消这段与锦里。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "少城或天府广场周边可作为两晚以内短住的比较起点。看清地铁口、夜间噪声和行李寄存条件，比追求景观房更实用。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "区内短走，跨片区乘地铁或打车。草堂到武侯祠不要按连续散步安排，午后先看交通再决定是否出发。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "雨天把人民公园的散步缩短，保留茶馆和已确认开放的博物馆。第二天下雨可只逛草堂重点区域，下午找室内座位休息。"
+        }
       ]
     }
   },
@@ -1515,7 +1565,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "一天留给故宫与景山，一天串联天坛与前门街巷。不跨越全城追赶景点，预约失败就调整当天主题。",
+    "intro": "两天各围绕一组历史街区展开：第一天从宫城向景山、地安门走，第二天从天坛转向前门。把主要精力留给故宫，不用一趟行程装下整座北京。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -1523,12 +1573,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "北京",
       "days": 2,
       "persons": 2,
-      "intro": "一天留给故宫与景山，一天串联天坛与前门街巷。不跨越全城追赶景点，预约失败就调整当天主题。",
+      "intro": "两天各围绕一组历史街区展开：第一天从宫城向景山、地安门走，第二天从天坛转向前门。把主要精力留给故宫，不用一趟行程装下整座北京。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "宫城一整段，景山一小段",
+          "overview": "上午把时间给故宫，沿南北方向走，挑最感兴趣的展陈。午餐后再决定是否登景山；疲惫时直接转到地安门休息。",
           "items": [
             {
               "poiName": "故宫博物院",
@@ -1575,6 +1626,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "天坛公园到前门街巷",
+          "overview": "天坛选择一条清晰的游览线，结束后乘车去前门用餐。下午由主街走进杨梅竹斜街，返程早就删去最后一段。",
           "items": [
             {
               "poiName": "天坛公园",
@@ -1622,13 +1674,33 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "这条路线不含天安门广场参观安排；相关区域通行与预约须另外核实。",
-        "故宫未预约成功时，先调整日期或改为周边公园路线；不要将示例时间理解为已预约。"
+        "故宫需先落实预约与证件，再安排第一天；入口为午门，神武门用于离场。",
+        "本路线不包含天安门广场参观；如另加该区域，单独核实预约和通行安排。"
       ],
       "references": [
-        "https://www.dpm.org.cn/"
+        "https://www.dpm.org.cn/Visit.html"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合第一次来北京、想认真看建筑与历史的人。故宫这半天步行较多，带长辈或孩子时减少后续登高和胡同段。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "故宫自南向北参观，出神武门后再考虑景山与地安门。第二天天坛和前门分段游览，中间乘车，不以全程步行为目标。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "优先比较靠近地铁的东四、灯市口或前门片区。出发前把住处到故宫入口的路线单独查清，距离宫墙近不等于离入口近。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "以地铁和短距离步行为主，故宫当天预留入口通行与安检时间。第一天行李尽量寄存在住处，不带大箱子穿过游览区。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "雨天先保留已经预约的室内展陈，删去景山登高和胡同长走。没有故宫预约时，改日期或改为地安门周边半日，别在入口临时碰运气。"
+        }
       ]
     }
   },
@@ -1640,7 +1712,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "苍山洱海之间，把行程留白一半。",
+    "intro": "四天只做三件事：住进古城、在洱海西岸停一停、去喜洲看看街巷。每天午后都有留白，最后一天只在山脚活动，把大理过成几天舒服的日常。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -1648,12 +1720,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "大理",
       "days": 4,
       "persons": 2,
-      "intro": "苍山洱海之间，把行程留白一半。",
+      "intro": "四天只做三件事：住进古城、在洱海西岸停一停、去喜洲看看街巷。每天午后都有留白，最后一天只在山脚活动，把大理过成几天舒服的日常。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "抵达古城，慢慢进入大理的节奏",
+          "overview": "抵达后先安顿行李，只走南门到人民路的一小段。午饭后留白三小时，想继续逛时再出门，不用完成整座古城。",
           "items": [
             {
               "poiName": "大理古城南门",
@@ -1700,6 +1773,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "洱海西岸，只挑一段廊道",
+          "overview": "龙龛只挑一段能轻松折返的湖岸，先决定回程集合点再出发。午后回住处，傍晚人民路属于可取消的小散步。",
           "items": [
             {
               "poiName": "龙龛生态廊道",
@@ -1746,6 +1820,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 3,
           "theme": "喜洲古镇，半天看白族街巷",
+          "overview": "把古镇街巷与午餐放在同一片区，看看建筑细节，尝一份喜洲粑粑。下午回古城，不再接双廊或环湖。",
           "items": [
             {
               "poiName": "喜洲古镇",
@@ -1792,6 +1867,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 4,
           "theme": "苍山山脚，给返程留出余量",
+          "overview": "山脚短走仅作为天气和交通都合适时的选项。收拾行李、吃早午餐、留足去车站或机场的时间，就是完整的一天。",
           "items": [
             {
               "poiName": "苍山山脚公共开放片区",
@@ -1839,13 +1915,33 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "每天只安排半天主线，下午留给休息或自行探索；不安排一天环洱海。",
-        "苍山仅安排山脚公共开放区域，不安排野路或保护区穿越；如需索道，另行核实天气与开放情况。"
+        "湖边留意风力与防晒，廊道使用规则以现场标识为准。",
+        "喜洲田野和古城住宅不是随意进入的拍照场地，拍摄时留在公共道路。"
       ],
       "references": [
         "https://www.dali.gov.cn/dlzrmzf/c101679/pc/content/2047230416648200192/content_2047230416648200192.html"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合两人慢游、想休息而非密集打卡的人。前提是愿意舍弃环海全线与索道登山，留出午睡、喝咖啡和发呆的时间。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "以古城为基地，龙龛与喜洲各用一天。西岸短线减少搬行李和跨湖转场；第四天不安排上山索道，返程时间更好掌握。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "优先比较古城外缘可通车的住处，确认车辆停靠点到房间的距离。若选择临海住处，先算每天往返古城的交通成本。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "去龙龛、喜洲分别安排接驳，进廊道后步行或按现场规则骑行。不要把洱海环湖整圈当作半日自行车项目。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "风雨明显时取消湖边骑行，在古城选一间有座位的茶室或咖啡馆。喜洲可推迟一天，第四天的山脚短走可直接删去。"
+        }
       ]
     }
   },
@@ -1857,7 +1953,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "白天逛传统市场，晚上沿汉江或街区走走。",
+    "intro": "三天分成三个城市切面：钟路的宫殿与旧街、东侧市场与设计街区、弘大与汉江的傍晚。每一天只在相邻片区展开，把爬坡和夜游都留成可选项。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -1865,12 +1961,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "首尔",
       "days": 3,
       "persons": 2,
-      "intro": "白天逛传统市场，晚上沿汉江或街区走走。",
+      "intro": "三天分成三个城市切面：钟路的宫殿与旧街、东侧市场与设计街区、弘大与汉江的傍晚。每一天只在相邻片区展开，把爬坡和夜游都留成可选项。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "景福宫到仁寺洞，走一段旧城",
+          "overview": "景福宫放在上午，午餐后慢逛仁寺洞。北村仅作为白天可选段，先查访客时段；若已累了，就留在平缓街区等待傍晚。",
           "items": [
             {
               "poiName": "景福宫",
@@ -1927,6 +2024,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "广藏市场与东大门，午后留白",
+          "overview": "广藏市场先绕一圈再点餐，避免把每种小吃都点一份。下午转去东大门，建筑外部与商圈各挑一段，中间安排坐下休息。",
           "items": [
             {
               "poiName": "广藏市场",
@@ -1973,6 +2071,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 3,
           "theme": "延南洞到汉江，留一个轻松的傍晚",
+          "overview": "延南洞到弘大以短走和选店为主。下午先看天气与体力，再决定是否坐车去汝矣岛；夜景不必成为返程前的硬任务。",
           "items": [
             {
               "poiName": "京义线林荫道延南洞段",
@@ -2020,13 +2119,34 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "以街区和市场为主，不承诺店铺营业与夜景天气；餐饮价格、支付和交通自行确认。",
-        "北村是居住街区，出发前确认当日参观限制，遵守现场时段与安静通行要求。"
+        "景福宫的开放日与预约信息、北村居民区访客时段请在出发前分别核对。",
+        "北村以安静步行为主，避免围堵居民门口；汉江散步遇恶劣天气就取消。"
       ],
       "references": [
-        "https://english.visitseoul.net/attractions"
+        "https://hanok.seoul.go.kr/m/eng/town/town01.do",
+        "https://english.seoul.go.kr/wp-content/uploads/2025/01/2025-Tourist-guidebookENG.pdf"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合喜欢街区、市场小吃和城市夜景的双人旅行。北村有坡道，若不想爬坡，留在仁寺洞与清溪川就足够。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "第一天以钟路为中心，第二天转向广藏市场和东大门，第三天才去延南洞与弘大。汉江是最后一天的延伸，需要单独乘车衔接。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "可从钟路、乙支路附近的地铁住处开始比较，方便前两天往返；偏爱夜生活可考虑弘大，同时确认夜间噪声。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "跨片区乘地铁，街区内部步行。把目的地的韩文名称保存在手机里，在当地地图中核对出口和步行路线，再开始转场。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "雨天取消北村坡道与汉江段，在仁寺洞留更多室内休息时间；东大门设计广场如想看室内展览，先确认当天展览和入场安排。"
+        }
       ]
     }
   },
@@ -2038,7 +2158,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "环岛路的骑行和老城的巷子，把傍晚留给海。",
+    "intro": "把海风放在傍晚，把正午留给午餐与休息。先走八市和老城，再给鼓浪屿一整天，最后在环岛路选一段舒服的海岸；不必把每片沙滩都走完。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
@@ -2046,12 +2166,13 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "city": "厦门",
       "days": 3,
       "persons": 2,
-      "intro": "环岛路的骑行和老城的巷子，把傍晚留给海。",
+      "intro": "把海风放在傍晚，把正午留给午餐与休息。先走八市和老城，再给鼓浪屿一整天，最后在环岛路选一段舒服的海岸；不必把每片沙滩都走完。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "八市与老城，傍晚走到海边",
+          "overview": "八市先看摊位和街巷，再选午餐。午后短逛中山路，傍晚坐车去沙坡尾，把看海留到不那么晒的时候。",
           "items": [
             {
               "poiName": "第八市场周边街巷",
@@ -2098,6 +2219,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "鼓浪屿一天，街巷与海岸慢慢走",
+          "overview": "按船票抵达后顺街巷慢走，不急着加购所有景点。午餐后看体力决定是否去海滨，回船前预留找路和候船时间。",
           "items": [
             {
               "poiName": "鼓浪屿登岛与街巷散步",
@@ -2144,6 +2266,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 3,
           "theme": "环岛路海风，把下午交给自己的节奏",
+          "overview": "白城到黄厝范围很长，挑一段海岸就好。午餐后可直接返程；只有时间充裕时才保留最后一段黄厝散步。",
           "items": [
             {
               "poiName": "白城沙滩岸边",
@@ -2191,38 +2314,59 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "鼓浪屿单列一天，登船码头、航线与返程时间需提前核实，示例时段不是船票。",
-        "海边骑行仅走允许通行路段，不把沙滩或木栈道当骑行道；天气不好时缩短户外安排。"
+        "购票前核对游客航线、出发码头与证件；航班变化查看厦门轮渡公告。",
+        "鼓浪屿日穿适合步行的鞋，正午安排休息；海边不把下水游泳当作本路线内容。"
       ],
       "references": [
-        "https://fgw.fujian.gov.cn/zwgk/xwdt/sxdt/202408/t20240808_6499632.htm"
+        "https://www.xmferry.com/"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合喜欢老街、海边和小吃的人。鼓浪屿主要靠步行，带孩子或长辈可减少岛内景点，把午后留给坐下休息。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "老城、鼓浪屿、环岛路各占一天。登岛日不与跨岛远行拼在一起，环岛路只选白城或黄厝附近的一段。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "可优先比较中山路周边或交通方便的思明城区住处，方便老城用餐。选海景住处前，比较去码头和车站的实际接驳。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "登岛按船票确认出发码头与班次，回程码头和目的码头也要一起核对。海岸段步行与乘车结合，骑行只走允许通行的路段。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "大雨或大风时取消海边和骑行，改在老城用餐与室内休息。若轮渡调整航班，先改登岛日，避免把临时天气硬塞进计划。"
+        }
       ]
     }
   },
   {
     "id": -7,
-    "title": "大阪，认真吃三天",
+    "title": "大阪四日 · 三天寻味，一日河岸",
     "city": "大阪",
     "days": 4,
     "coverUrl": null,
     "costTiers": [],
     "publishedAt": "2026-10-18T00:00:00",
-    "intro": "从市场到深夜小馆，把厨房之城吃出层次。",
+    "intro": "前三天认真吃，第四天沿河慢慢收尾。黑门与难波、大阪城与天满、新世界与南区分别成线，让一顿午餐或晚餐成为当天的锚点，吃得有层次，也有喘息。",
     "persons": 2,
     "sourceType": "editorial",
     "summary": {
-      "title": "大阪，认真吃三天",
+      "title": "大阪四日 · 三天寻味，一日河岸",
       "city": "大阪",
       "days": 4,
       "persons": 2,
-      "intro": "从市场到深夜小馆，把厨房之城吃出层次。",
+      "intro": "前三天认真吃，第四天沿河慢慢收尾。黑门与难波、大阪城与天满、新世界与南区分别成线，让一顿午餐或晚餐成为当天的锚点，吃得有层次，也有喘息。",
       "costTiers": [],
       "dayList": [
         {
           "dayNo": 1,
           "theme": "黑门市场到道顿堀，先认识南区",
+          "overview": "黑门市场先看再买，小吃足够就取消日本桥的整顿午餐。午后法善寺横丁短逛，晚餐与河岸夜景都留在道顿堀附近。",
           "items": [
             {
               "poiName": "黑门市场",
@@ -2269,6 +2413,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 2,
           "theme": "大阪城公园到天满，把转场留宽",
+          "overview": "上午以大阪城公园为主，是否进天守阁另作选择。午餐后乘车去天满，只逛靠近车站的一段商店街，晚上就近用餐。",
           "items": [
             {
               "poiName": "大阪城公园",
@@ -2315,6 +2460,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 3,
           "theme": "新世界与难波，认真吃但不赶场",
+          "overview": "新世界午餐后留足消化和休息时间，再转去难波公园。晚餐选前两天最想再吃的味道，不安排跨城追店。",
           "items": [
             {
               "poiName": "新世界街区",
@@ -2361,6 +2507,7 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
         {
           "dayNo": 4,
           "theme": "中之岛与北滨，半天河岸后返程",
+          "overview": "中之岛短走与北滨早午餐作为收尾。提前返程时可全部删去，直接取行李出发，不需要为了“第四天”凑景点。",
           "items": [
             {
               "poiName": "中之岛公园",
@@ -2408,14 +2555,34 @@ export const CURATED_ITINERARIES: TemplateDetailVO[] = [
       "coverUrl": null,
       "sourceType": "editorial",
       "notes": [
-        "司南编辑规划参考，非实地游记。时间为建议停留窗口，不代表营业时间或交通承诺。",
-        "未提供实时价格、酒店或预订；用餐街区自行选店，出发前核实开放、预约与交通。",
-        "沿用原卡片的四天设置：前三天以美食为主，第四天留给河岸与返程。",
-        "市场、餐馆的营业和售罄情况不同，不提供已核实店单、实时价格或预订。"
+        "市场与餐馆分别核对营业日，排队过长就换店；小吃可以分享，留出正餐食量。",
+        "本路线为四天：前三天美食街区，第四天半日河岸与返程。"
       ],
       "references": [
-        "https://www.osaka-info.jp/en/spot/",
+        "https://osaka-info.jp/experience/ja/osaka/spot/208",
         "https://www.osaka-info.jp/spot/dotonbori/"
+      ],
+      "guide": [
+        {
+          "title": "适合怎样的旅行",
+          "text": "适合以吃和街区散步为主的两人旅行。每天保留一顿正餐，市场小吃按食量分享；第四天是河岸与返程，不再塞一轮美食打卡。"
+        },
+        {
+          "title": "为什么这样走",
+          "text": "黑门、日本桥、法善寺与道顿堀集中在南区。第二天大阪城与天满之间乘车，第三天再走新世界，避免每天南北来回穿城。"
+        },
+        {
+          "title": "住在哪一带",
+          "text": "难波或日本桥附近适合前三天的晚餐动线。比较酒店时一起看机场交通、行李寄存与街道噪声，不只看地图上的直线距离。"
+        },
+        {
+          "title": "怎样衔接交通",
+          "text": "城市片区之间以轨道交通衔接，市场和街巷内步行。第四天先确认取行李和机场接驳时间，再决定北滨停多久。"
+        },
+        {
+          "title": "下雨或想少走一点",
+          "text": "雨天缩短河岸与公园，把时间留给有遮蔽的商店街或餐馆。市场人多时不在路中停留用餐，找店家指定的位置。"
+        }
       ]
     }
   }

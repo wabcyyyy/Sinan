@@ -1,6 +1,8 @@
 # 司南 Sinan · AI 旅行规划助手
 
-为国内单城 2–3 日周末与短假做一份能继续修改的行程草案：先确认必去地点、预算与到离时间，再按天安排；想改一处，先看差异，确认后保存。开放、预约、价格与交通仍需出发前核实。
+**把周末想去的地方，排成一份能核对、能继续修改的行程。**
+
+面向国内单城 2–3 日周末与短假：先确认必去地点、预算与到离时间，再生成每日安排；想改一处，先看差异，确认后保存。
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)
@@ -11,22 +13,63 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-[在线演示](https://sinan-demo.vercel.app) · [English](README.en.md) · [快速开始](#quick-start) · [架构](docs/public/architecture.md) · [参与贡献](.github/CONTRIBUTING.md)
+[立即体验](https://sinan-demo.vercel.app) · [真实运行案例](docs/public/product-case-20261021.md) · [系统架构](docs/public/architecture.md) · [本地启动](#quick-start) · [English](README.en.md)
 
-在线演示使用固定样例，不调用模型。真实应用支持对话创建、每日行程与预算、地图深链、编辑确认、分享和中文 PDF 导出；出发前天气照看与显式偏好记忆见 [功能说明](docs/public/care-and-memory.md)。
+> 在线演示免登录，使用固定合成样例，不调用模型；真实模型运行与失败记录见案例。当前未开放公网真实模型试用。开放、预约、价格和交通仍需出发前核实。
 
-[行程库](docs/public/public-itineraries.md)：浏览杭州、成都、北京的两日规划参考，复制后独立微调；也可将自己的路线预览后公开，供他人复用。编辑规划与用户公开内容分别标明来源。
+[![局部修改工作台：左侧标记原安排，右侧核对变更，确认后保存。固定合成样例。](docs/public/preview/showcase-edit-20261023.png)](https://sinan-demo.vercel.app)
 
-## 谁适合用，以及为什么试试
+*局部修改工作台 · 原时间线与修改提案并排核对，第一天和住宿保留。截图为固定合成样例。*
 
-适合已经选好城市、想把有限的周末时间与几个必去地点排清楚的人。首版聚焦单城短途，不承担订票、导航或实时营业信息保证。
+## 先花 90 秒，试一次修改
 
-- **要求能核对**：确认卡显示服务端实际提取的必去日、排除项、到离时间与预算范围。生成结果经确定性规则检查，不合格的日期单独重试；部分完成会明确显示，候选不等于交付。
-- **修改能确认**：自然语言调整先生成差异草稿；用户确认后才保存。服务端检查归属、版本与修改范围，保留未改日期的内容与提示，刷新后读取同一份行程。
+1. 打开[在线演示](https://sinan-demo.vercel.app)，点击“90秒体验局部修改”，进入独立的成都两日样例。
+2. 按引导查看第二天的调整：原时间线标出移除项，右侧显示修改后的安排和可比较的费用变化。
+3. 确认保存，再切换日期、刷新页面，核对保留的安排。也可以跳过引导自由浏览。
 
-时间不够时，详情页还可将当前安排标为“固定原时段／保留可调整／可以舍弃”，填写可用时间及转场预留，比较保留全部与移除可选项两版。此工具沿用已有顺序和时长，使用确定性计算，不另调模型、不猜交通时间；存在冲突的方案不能应用。选择后仍先核对差异再确认，历史版本可二次确认恢复。条目支持编辑地点、地址、日期时间、自填单价与备注，也可新增或移除游览、用餐与住宿入住安排；保存后可就地撤销。生成前可录入已定地点和时段，并明确关联已有必去项，避免同一地点因名称不同变成两条要求。自填资料不冒充平台核验，替换地点会清除旧坐标、图片和来源。条目上的“固定安排”会随行程持久保存，后续 AI 草稿不得改变其日期、地点或时段；比较表中的临时固定仅对本轮生效。真实模式还可先用自然语言提取比较条件，人工核对后再计算。固定不代表预订或事实核实。[案例、截图和边界](docs/public/vercel-demo.md#时间取舍与恢复)。
+修改只保存在当前标签页。这个入口展示交互，不把预设回复当作真实模型生成。
 
-这两项是相对直接聊天可观察的产品能力，不是“规划质量优于通用模型”的对照结论。地图按点位连线，不代表真实交通路线已验证。开放资料按原文规则检查日期与时段，无法确定时明确提示；地点详情可展开查看资料来源与获取日期。真实运行案例和失败边界见下方演示材料。
+## 三个值得看的场景
+
+| 场景 | 用户能观察到的行为 | 从哪里看 |
+| --- | --- | --- |
+| 要求很多，先说清楚再生成 | 必去日、排除项、时间窗与预算先确认；生成后校验，违规日期单独重试，未完成明确提示 | [真实模型案例与失败过程](docs/public/product-case-20261021.md) |
+| 只改第二天，其他安排保留 | 先展示差异，确认后保存；服务端校验修改范围和版本，旧草稿不能覆盖新行程 | [公开交互演示](https://sinan-demo.vercel.app) |
+| 返程提前，需要取舍 | 固定不能动的安排，比较保留全部与舍弃可选项；冲突方案不可应用，选择后仍需确认 | [固定样例与计算边界](docs/public/vercel-demo.md#时间取舍与恢复) |
+
+这些是可观察的产品能力，不是规划质量优于通用模型的对照结论。首版聚焦单城短途，不承担订票与导航；地图点位连线不等于真实交通路线。
+
+### 从一句话，到一份自己的路线
+
+[![首页：说出想去的城市与旅行节奏](docs/public/preview/showcase-home-20261023.png)](https://sinan-demo.vercel.app)
+
+*先确认需求，再安排每天。下方的目的地与路线灵感可直接浏览。*
+
+[![公开路线：完整概览、逐日安排与复制入口](docs/public/preview/showcase-route-20261023.png)](https://sinan-demo.vercel.app/itineraries/-1)
+
+*七条编辑规划，包含路线取舍、住宿选区、交通衔接与雨天建议。打开后可复制成自己的行程。*
+
+<details>
+<summary>展开查看：行前指南与手机端</summary>
+
+![行前指南：适合人群、路线思路与灵活安排](docs/public/preview/showcase-guide-20261023.png)
+
+<p align="center"><img src="docs/public/preview/showcase-route-mobile-20261023.png" width="390" alt="手机端：路线封面、概览与复制入口" /></p>
+
+</details>
+
+截图直接采自真实页面，使用固定样例，2 倍像素 PNG。
+
+## 从体验找到实现
+
+| 想了解什么 | 入口 |
+| --- | --- |
+| 系统如何拆分，产品实际走哪条链路 | [系统架构](docs/public/architecture.md) · 下方[生成与确认工作流](#architecture-workflows) |
+| 真实模型跑过什么，失败后怎样处理 | [产品验收案例](docs/public/product-case-20261021.md) |
+| 演示哪些是真的交互，哪些是固定内容 | [演示说明与截图](docs/public/vercel-demo.md) |
+| 如何运行、修改与参与 | [本地启动](#quick-start) · [开发说明](docs/public/development.md) · [贡献指南](.github/CONTRIBUTING.md) |
+
+真实应用还支持[公开行程库与复制微调](docs/public/public-itineraries.md)、条目编辑与撤销、历史版本恢复、分享和中文 PDF 导出；[天气照看与显式偏好记忆](docs/public/care-and-memory.md)有独立说明。具体开放范围以各功能文档为准。
 
 ## 1. 核心痛点与架构亮点（Key Features & Technical Highlights）
 
@@ -38,6 +81,8 @@
 | 模型排程可能违反必去、排除、时间窗、去重与预算要求 | 共享确定性约束与单日交付规则；业务层终检后仅重置违规日期，用反馈驱动单日图重新生成；保留已成功日期，未完成显式收敛为 `PARTIAL` / `FAILED` | [约束规则](travel-agent-python/app/agent/generation/rules/constraint_checks.py)、[交付门](travel-agent-python/app/services/day_delivery_gate.py)、[单日修复图](travel-agent-python/app/agent/generation/orchestration/trip_graph.py) |
 
 工程边界：FastAPI 承载业务与 Agent API，独立规划 worker 从 MySQL 领取整趟规划并复用 `plan_days`；MySQL 保存业务数据、任务与有界 SSE 回放，SQLite 保存 LangGraph 检查点，Redis 承担缓存、会话吊销等辅助职责。地点事实来自模型知识与外部数据适配器，未证实字段保留估算/待核实标记；本地不维护景点向量语料库。
+
+<a id="architecture-workflows"></a>
 
 ## 2. 系统架构与工作流（System Architecture & Workflow）
 

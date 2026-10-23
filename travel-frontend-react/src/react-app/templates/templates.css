@@ -4,7 +4,7 @@
 .public-heading p, .public-detail-hero p { color: var(--sinan-muted); line-height: 1.8; max-width: 640px; }
 .public-search { display: grid; gap: 8px; max-width: 440px; margin: 0 0 28px; color: var(--sinan-ink-soft); font-size: 13px; }
 .public-search input { border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius-sm); padding: 14px 16px; color: var(--sinan-ink); background: var(--sinan-surface); font: inherit; }
-.public-route-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.public-route-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 .public-route-card { text-align: left; overflow: hidden; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius-lg); background: var(--sinan-surface); color: var(--sinan-ink); padding: 0; cursor: pointer; transition: transform .2s, box-shadow .2s; }
 .public-route-card:hover { transform: translateY(-4px); box-shadow: var(--sinan-shadow); }
 .public-route-copy { display: grid; gap: 14px; padding: 24px; }
@@ -51,3 +51,68 @@
   .public-day li { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .public-route-card { transition: none; } }
+
+/* 一条主推路线 + 成对路线，避免七张等权卡片挤成目录。 */
+.public-route-card:first-child { grid-column: 1 / -1; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; }
+.public-route-card:first-child .public-route-copy { padding: clamp(24px, 4vw, 56px); }
+.public-route-card:first-child .public-route-copy > strong { font-size: clamp(24px, 3vw, 34px); }
+.public-route-copy > span:not(.public-route-meta) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.public-route-card:not(:first-child) > .smart-img { aspect-ratio: 16 / 9; }
+.public-route-card:focus-visible, .public-day-nav a:focus-visible { outline: 3px solid var(--sinan-accent); outline-offset: 4px; }
+.public-detail-hero { grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 72px); margin-bottom: 36px; scroll-margin-top: 100px; }
+.public-detail-hero > div { max-width: 620px; }
+.public-route-facts { flex-wrap: wrap; gap: 8px; }
+.public-route-facts > span { padding: 8px 12px; border-radius: var(--sinan-radius-pill); background: var(--sinan-warm); font-size: 12px; }
+.public-day-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 0 0 48px; }
+.public-day-nav a { display: grid; align-content: start; gap: 12px; padding: 22px; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius); background: var(--sinan-surface); text-decoration: none; color: var(--sinan-ink); transition: border-color .2s, background .2s; }
+.public-day-nav a:hover { border-color: var(--sinan-accent); background: var(--sinan-accent-wash); }
+.public-day-nav a > span:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: .08em; color: var(--sinan-accent-dark); }
+.public-day-nav small { color: var(--sinan-muted); letter-spacing: 0; }
+.public-day-nav strong { font-size: 15px; line-height: 1.6; }
+.public-day-stops { font-size: 12px; line-height: 1.8; color: var(--sinan-muted); }
+.public-guide { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; margin: 0 0 48px; padding: 32px; border-radius: var(--sinan-radius-lg); background: var(--sinan-warm); }
+.public-guide-intro h2 { font-size: 24px; margin: 12px 0; }
+.public-guide-intro p { color: var(--sinan-muted); font-size: 13px; line-height: 1.9; }
+.public-guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; }
+.public-guide-grid > section { display: flex; gap: 12px; }
+.public-guide-grid > section:first-child { grid-column: 1 / -1; }
+.public-guide-number { font-size: 11px; color: var(--sinan-accent-dark); padding-top: 3px; font-variant-numeric: tabular-nums; }
+.public-guide-grid h3 { margin: 0 0 8px; font-size: 14px; }
+.public-guide-grid p { margin: 0; font-size: 13px; line-height: 1.9; color: var(--sinan-ink-soft); }
+.public-day { scroll-margin-top: 100px; }
+.public-day h2 { margin-bottom: 14px; }
+.public-day-overview { max-width: 680px; margin-bottom: 24px; }
+.public-day li { gap: 20px; padding: 0; border: 0; }
+.public-day time { padding-top: 26px; color: var(--sinan-ink); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.public-day time span { display: block; margin-top: 4px; color: var(--sinan-muted); font-size: 12px; font-weight: 400; }
+.public-stop { position: relative; border-left: 1px solid var(--sinan-line); padding: 24px 0 24px 24px; }
+.public-stop::before { content: ''; position: absolute; top: 30px; left: -5px; width: 9px; height: 9px; border-radius: 50%; background: var(--sinan-accent); box-shadow: 0 0 0 5px var(--sinan-paper); }
+.public-stop-kind { display: block; color: var(--sinan-accent-dark); font-size: 11px; margin-bottom: 9px; letter-spacing: .04em; }
+.public-stop-location { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 12px; color: var(--sinan-muted); font-size: 12px; }
+.public-stop-location a { display: inline-flex; gap: 4px; align-items: center; color: var(--sinan-accent-dark); text-decoration: none; padding: 5px 0; }
+.public-back-overview { display: inline-block; font-size: 12px; color: var(--sinan-muted); padding: 20px 0 0; text-underline-offset: 4px; }
+.public-route-notes h2 { margin-top: 14px; }
+.public-route-notes li { margin-bottom: 12px; }
+.public-source-note { border-top: 1px solid var(--sinan-line); margin-top: 24px; padding-top: 16px; }
+.public-source-note summary { font-size: 12px; color: var(--sinan-muted); cursor: pointer; }
+.public-source-note p { font-size: 12px; margin-top: 12px; }
+@media (max-width: 1000px) { .public-guide { grid-template-columns: 1fr; gap: 16px; } }
+@media (max-width: 600px) {
+  .public-route-card:first-child, .public-detail-hero, .public-guide-grid, .public-day-nav { grid-template-columns: minmax(0, 1fr); }
+  .public-route-card:first-child .public-route-copy { padding: 24px; }
+  .public-detail { padding-top: 22px; }
+  .public-detail-hero { margin-top: 20px; gap: 24px; }
+  .public-detail-hero > .smart-img { order: -1; aspect-ratio: 16 / 9; }
+  .public-detail-hero h1 { font-size: 30px; }
+  .public-day-nav { gap: 8px; margin-bottom: 28px; }
+  .public-day-nav a { padding: 16px; gap: 7px; }
+  .public-guide { padding: 22px; margin-bottom: 28px; }
+  .public-day li { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; }
+  .public-day time { font-size: 12px; }
+  .public-stop { padding-left: 18px; }
+  .public-day h2 { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .public-day-nav a { transition: none; } }
+
+.public-route-card:first-child > .smart-img { aspect-ratio: 3 / 2; width: 100%; }
+@media (min-width: 601px) { .public-detail-hero > .smart-img { aspect-ratio: 4 / 3; } }
