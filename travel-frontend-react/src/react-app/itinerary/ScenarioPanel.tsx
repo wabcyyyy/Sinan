@@ -44,7 +44,7 @@ export function ScenarioPanel({ trip, day, disabled, onSelected }: {
         setFixed([...new Set([...persistentIds, ...parsed.fixedItemIds])]); setOptional(parsed.optionalItemIds.filter(id => !persistentIds.includes(id)))
       })} />}
       <p>只调整第 {day.dayNo} 天已有项目的时间，保留顺序与时长。固定项保持原时段，住宿与其他日期不变。这里新增的固定仅对本次调整生效；条目上已固定的安排持续生效，需先在条目上解除。</p>
-      {demo && <p className="scenario-hint">固定样例演示：请在未修改的成都第 2 天载入示例。此处不调用模型，不支持任意条件计算。
+      {demo && <p className="scenario-hint">成都第 2 天 · 16:00 返程示例（预设条件）
         <button type="button" className="button button-secondary" disabled={locked || day.dayNo !== 2} onClick={() => change(() => { setStart('09:30'); setFinish('16:00'); setTransfer(30); setBuffer(30); setFixed([21]); setOptional([24, 25]) })}>载入返程取舍示例</button></p>}
       <fieldset disabled={locked || demo} className="scenario-fields">
         <label>最早开始<input type="time" value={start} onChange={e => change(() => setStart(e.target.value))} /></label>

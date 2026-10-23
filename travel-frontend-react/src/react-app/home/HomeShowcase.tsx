@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { destinations, inspirationTemplates } from '../data'
 import type { InspirationTemplate } from '../data'
 import { navigate } from '../router'
@@ -24,54 +24,13 @@ export function showcaseTemplateHref(item: Pick<InspirationTemplate, 'id' | 'iti
   return `/itineraries/${item.itineraryId}`
 }
 
-/** 自动平滑滚动挂钩：定时按步进自动推进，悬停或触控交互时暂停，循环无缝回弹 */
-function useAutoScroll(ref: { current: HTMLDivElement | null }, step: number, intervalMs: number) {
-  useEffect(() => {
-    const el = ref.current
-    if (!el || typeof window === 'undefined') return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
-
-    let paused = false
-    const onEnter = () => { paused = true }
-    const onLeave = () => { paused = false }
-
-    el.addEventListener('mouseenter', onEnter)
-    el.addEventListener('mouseleave', onLeave)
-    el.addEventListener('touchstart', onEnter, { passive: true })
-    el.addEventListener('touchend', onLeave, { passive: true })
-
-    const timer = setInterval(() => {
-      if (paused || !ref.current) return
-      const node = ref.current
-      const maxScroll = node.scrollWidth - node.clientWidth
-      if (maxScroll <= 10) return
-      if (node.scrollLeft >= maxScroll - 20) {
-        node.scrollTo({ left: 0, behavior: 'smooth' })
-      } else {
-        node.scrollBy({ left: step, behavior: 'smooth' })
-      }
-    }, intervalMs)
-
-    return () => {
-      clearInterval(timer)
-      el.removeEventListener('mouseenter', onEnter)
-      el.removeEventListener('mouseleave', onLeave)
-      el.removeEventListener('touchstart', onEnter)
-      el.removeEventListener('touchend', onLeave)
-    }
-  }, [ref, step, intervalMs])
-}
-
 /** 首页保留热门城市与灵感卡片；灵感扩充为完整路线，支持查看后复制微调。 */
 export function HomeShowcase() {
   const citiesRef = useRef<HTMLDivElement>(null)
-  const ideasRef = useRef<HTMLDivElement>(null)
 
-  useAutoScroll(citiesRef, 280, 3800)
-  useAutoScroll(ideasRef, 300, 4400)
 
   const scrollContainer = (ref: { current: HTMLDivElement | null }, offset: number) => {
-    ref.current?.scrollBy({ left: offset, behavior: 'smooth' })
+    ref.current?.scrollBy({ left: offset, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
   }
 
   return (
@@ -123,35 +82,15 @@ export function HomeShowcase() {
         <div className="showcase-row-head">
           <div><h2>灵感起点</h2><p>看看完整路线，复制一份，再按自己的节奏微调</p></div>
           <div className="showcase-row-actions">
-            <div className="showcase-scroll-controls" aria-label="灵感滚动翻页">
-              <button
-                type="button"
-                className="showcase-ctrl-btn"
-                aria-label="向前滚动灵感"
-                title="向左滚动"
-                onClick={() => scrollContainer(ideasRef, -320)}
-              >
-                <Icon name="arrow" size={13} className="is-prev-icon" />
-              </button>
-              <button
-                type="button"
-                className="showcase-ctrl-btn"
-                aria-label="向后滚动灵感"
-                title="向右滚动"
-                onClick={() => scrollContainer(ideasRef, 320)}
-              >
-                <Icon name="arrow" size={13} />
-              </button>
-            </div>
             <button className="text-action" type="button" onClick={() => navigate('/explore?tab=inspiration')}>更多灵感<Icon name="arrow" size={15} /></button>
           </div>
         </div>
         <div className="showcase-scroll-container">
-          <div className="showcase-ideas" ref={ideasRef}>
+          <div className="showcase-ideas">
             {SHOWCASE_TEMPLATES.map((item) => (
               <button key={item.id} className="showcase-idea" type="button"
                 onClick={() => navigate(showcaseTemplateHref(item))}>
-                <SmartImg src={item.image} alt={`${item.city}灵感封面`} ratio="4 / 5" />
+                <SmartImg src={item.image} alt={`${item.city}灵感封面`} />
                 <span className="showcase-idea-scrim" aria-hidden="true" />
                 <span className="showcase-idea-theme">{item.theme}</span>
                 <span className="showcase-idea-body">

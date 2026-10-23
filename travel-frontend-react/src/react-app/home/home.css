@@ -1145,3 +1145,16 @@
 .intake-memory-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .intake-memory-notice { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--sinan-ink-soft); }
 .intake-memory-notice button { margin-left: auto; }
+
+/* 灵感正文落在图片外，读路线时卡片保持静止。 */
+.showcase-ideas { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; }
+.showcase-idea { background: var(--sinan-surface); border: 1px solid var(--sinan-line-soft); display: flex; flex-direction: column; }
+.showcase-idea .smart-img { width: 100%; aspect-ratio: 4 / 3; }
+.showcase-idea-scrim { display: none; }
+.showcase-idea-body { position: static; color: var(--sinan-ink); padding: 22px; gap: 10px; flex: 1; }
+.showcase-idea strong { color: var(--sinan-ink); font-size: 20px; line-height: 1.5; }
+.showcase-idea .card-kicker, .showcase-idea-desc { color: var(--sinan-muted); }
+.showcase-idea-cta { color: var(--sinan-accent-dark); align-self: end; padding-top: 8px; }
+.showcase-city:focus-visible, .showcase-idea:focus-visible { outline: 3px solid var(--sinan-accent); outline-offset: 3px; }
+@media (max-width: 1000px) { .showcase-ideas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .showcase-ideas { grid-template-columns: minmax(0, 1fr); } .showcase-idea .smart-img { aspect-ratio: 16 / 9; } .showcase-row-head { align-items: start; } }

@@ -15,6 +15,7 @@ from redis.exceptions import RedisError
 
 from app.common import cache_store, redis_client, token_revocation
 from app.common.config import settings
+from app.common.envelope import ApiError
 from app.services import state_and_sessions
 
 
@@ -24,7 +25,9 @@ def isolated_dead_redis(monkeypatch):
     redis_client.reset_for_tests()
     cache_store.reset_for_tests()
     token_revocation.reset_for_tests()
+    state_and_sessions.reset_for_tests()
     yield
+    state_and_sessions.reset_for_tests()
     redis_client.reset_for_tests()
 
 
@@ -154,3 +157,69 @@ def test_sliding_hit_commits_window_update_in_one_transaction(monkeypatch):
     assert state_and_sessions.sliding_hit("quota:llm:min:7", 60) == 3
     assert client.transactions == [True]
     assert client.executed == [["zremrangebyscore", "zadd", "expire", "zcard"]]
+
+
+def test_session_outage_capacity_preserves_live_tokens_and_reclaims_expired(monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr(state_and_sessions.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(state_and_sessions, "LOCAL_SESSION_MAX_ENTRIES", 4)
+    redis_client.note_failure(ConnectionError("offline"))
+    for i in range(4):
+        state_and_sessions.register_session(f"user-{i}", f"jti-{i}", f"token-{i}", 10 if i < 2 else 60)
+    # 同一登记可更新，不占第二个容量；新会话不能挤掉尚可吊销的老会话。
+    state_and_sessions.register_session("user-3", "jti-3", "token-3", 60)
+    original = dict(state_and_sessions._local_sessions)
+    for i in range(50):
+        with pytest.raises(ApiError) as error:
+            state_and_sessions.register_session("alice", f"extra-{i}", f"extra-token-{i}", 60)
+        assert error.value.status == 503
+    assert state_and_sessions._local_sessions == original
+    clock[0] += 10
+    state_and_sessions.register_session("alice", "new", "new-token", 60)
+    assert set(state_and_sessions._local_sessions) == {"jti-2", "jti-3", "new"}
+    clock[0] += 60
+    assert state_and_sessions.revoke_all("alice") == 0
+    assert state_and_sessions._local_sessions == {}
+
+
+@pytest.mark.parametrize("all_sessions", [False, True])
+def test_logout_cleans_local_sessions_after_redis_recovers(monkeypatch, all_sessions):
+    from types import SimpleNamespace
+
+    redis_client.note_failure(ConnectionError("offline"))
+    state_and_sessions.register_session("alice", "a", "token-a", 60)
+    state_and_sessions.register_session("bob", "b", "token-b", 60)
+    if all_sessions:
+        state_and_sessions.register_session("alice", "local-only", "token-local", 60)
+    # a 在两处同时存在，模拟 Redis 写入后丢失确认、转而使用本地登记。
+    redis = SimpleNamespace(
+        smembers=lambda key: {"a"},
+        get=lambda key: "token-a",
+        srem=lambda *args: None,
+        delete=lambda key: None,
+    )
+    monkeypatch.setattr(state_and_sessions, "_redis", lambda: redis)
+    revoked = []
+    monkeypatch.setattr(token_revocation, "revoke", lambda token, ttl: revoked.append((token, ttl)))
+    if all_sessions:
+        assert state_and_sessions.revoke_all("alice") == 2
+        assert {token for token, _ in revoked} == {"token-a", "token-local"}
+        assert len(revoked) == 2
+    else:
+        state_and_sessions.revoke_current("alice", "a", "token-a", 60)
+        assert revoked == [("token-a", 60)]
+    assert set(state_and_sessions._local_sessions) == {"b"}
+
+
+def test_local_logout_uses_remaining_session_lifetime(monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr(state_and_sessions.time, "monotonic", lambda: clock[0])
+    redis_client.note_failure(ConnectionError("offline"))
+    state_and_sessions.register_session("alice", "a", "token-a", 60)
+    state_and_sessions.register_session("alice", "expired", "token-expired", 10)
+    clock[0] += 20
+    revoked = []
+    monkeypatch.setattr(token_revocation, "revoke", lambda token, ttl: revoked.append((token, ttl)))
+    assert state_and_sessions.revoke_all("alice") == 1
+    assert revoked == [("token-a", 40)]
+    assert state_and_sessions._local_sessions == {}

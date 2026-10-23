@@ -1,5 +1,12 @@
-.demo-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 12px clamp(16px, 4vw, 64px); padding: 14px 18px; border: 1px solid var(--sinan-line); border-radius: 16px; background: var(--sinan-paper); color: var(--sinan-ink); }
-.demo-banner > div:first-child { display: grid; gap: 4px; }
-.demo-banner span { font-size: 12px; line-height: 1.6; }
-.demo-banner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.demo-banner { margin: 0; padding: 8px var(--sinan-page-pad); border-bottom: 1px solid var(--sinan-line-soft); background: var(--sinan-paper); color: var(--sinan-ink); }
+.demo-banner-heading { max-width: var(--sinan-page-max); margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.demo-banner-toggle { display: flex; align-items: center; gap: 14px; padding: 4px 0; border: 0; background: transparent; color: var(--sinan-ink-soft); font: inherit; font-size: 12px; cursor: pointer; }
+.demo-banner-toggle > span { color: var(--sinan-muted); font-size: 11px; }
+.demo-banner-heading .text-action { font-size: 12px; }
+.demo-intro { max-width: var(--sinan-page-max); margin: auto; padding: 4px 0 12px; }
+.demo-intro > p { margin: 0 0 12px; font-size: 13px; line-height: 1.8; color: var(--sinan-muted); }
+.demo-banner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .demo-banner-actions .button { padding: 8px 12px; font-size: 12px; }
+.demo-banner-actions > a { color: var(--sinan-ink-soft); font-size: 12px; text-underline-offset: 4px; margin-left: 4px; }
+.demo-banner-toggle:focus-visible { outline: 2px solid var(--sinan-accent); outline-offset: 4px; }
+@media (max-width: 600px) { .demo-banner-heading { align-items: start; } .demo-banner-toggle { flex-wrap: wrap; gap: 4px 10px; } .demo-banner-heading .text-action { flex-shrink: 0; padding-top: 4px; } }

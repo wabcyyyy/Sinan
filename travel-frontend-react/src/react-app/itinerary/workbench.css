@@ -79,3 +79,14 @@
   .demo-edit-guide-actions { flex-wrap: wrap; }
   .draft-review-actions { bottom: 0; }
 }
+
+.workbench-utilities { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.workbench-utilities > .scenario-panel { margin: 0; }
+.workbench-utilities > .scenario-panel:has(.scenario-content), .workbench-utilities > .scenario-panel:has([role="alert"]) { flex-basis: 100%; }
+.workbench-utilities > .scenario-panel > .button { font-size: 12px; padding: 8px 12px; min-height: 36px; }
+.workbench .item-action-buttons { gap: 6px; }
+.workbench .item-action-buttons button { font: inherit; font-size: 11px; min-height: 32px; padding: 5px 9px; color: var(--sinan-ink-soft); background: transparent; }
+.workbench .item-action-buttons button:hover:not(:disabled) { border-color: var(--sinan-accent); color: var(--sinan-accent-dark); background: var(--sinan-accent-wash); }
+.workbench .item-actions.scenario-content:not(:has(form)) { border: 0; background: transparent; padding: 0; margin: 0 0 14px; }
+.workbench .item-actions.scenario-content > .button { font-size: 12px; min-height: 34px; }
+@media (max-width: 600px) { .workbench .item-action-buttons button { min-height: 40px; } .workbench-utilities { gap: 8px; } }

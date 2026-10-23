@@ -81,7 +81,7 @@ export const inspirationTemplates: InspirationTemplate[] = [
   { id: 'dali-slow', itineraryId: -4, title: '去大理过一半日子', city: '大理', theme: '慢旅行', description: '苍山洱海之间，把行程留白一半。', days: 4, image: dali, tags: ['洱海', '留白'], intent: '去大理 4 天，两个人，想看洱海和苍山，行程只安排一半，剩下随意' },
   { id: 'seoul-walk', itineraryId: -5, title: '首尔的坡道与霓虹', city: '首尔', theme: '城市漫游', description: '白天逛传统市场，晚上沿汉江或街区走走。', days: 3, image: seoul, tags: ['街区', '夜游'], intent: '去首尔 3 天，两个人，喜欢逛街区和市场小吃，晚上想看夜景' },
   { id: 'xiamen-breeze', itineraryId: -6, title: '厦门的海风傍晚', city: '厦门', theme: '自然', description: '环岛路的骑行和老城的巷子，把傍晚留给海。', days: 3, image: xiamen, tags: ['海边', '骑行'], intent: '去厦门 3 天，想看海边和老街区，喜欢傍晚散步，节奏松弛' },
-  { id: 'osaka-food', itineraryId: -7, title: '大阪，认真吃三天', city: '大阪', theme: '美食', description: '从市场到深夜小馆，把厨房之城吃出层次。', days: 4, image: osaka, tags: ['市场', '街食'], intent: '两个人去大阪 4 天，以吃为主线，也想沿河和城堡公园走走' },
+  { id: 'osaka-food', itineraryId: -7, title: '大阪四日 · 三天寻味，一日河岸', city: '大阪', theme: '美食', description: '从市场到深夜小馆，把厨房之城吃出层次。', days: 4, image: osaka, tags: ['市场', '街食'], intent: '两个人去大阪 4 天，以吃为主线，也想沿河和城堡公园走走' },
 ]
 
 export interface GuideContent {

@@ -16,7 +16,7 @@ describe('HomeShowcase（切片与静态冒烟）', () => {
     expect(SHOWCASE_TEMPLATES).toEqual(inspirationTemplates.slice(-4))
   })
 
-  it('保留城市与灵感两行；灵感沿用原样式并提供完整行程入口', () => {
+  it('保留城市与灵感两行；灵感包含独立正文并提供完整行程入口', () => {
     const html = renderToStaticMarkup(createElement(HomeShowcase))
     expect(html).toContain('home-showcase')
     expect(html).toContain('showcase-cities')
@@ -26,7 +26,7 @@ describe('HomeShowcase（切片与静态冒烟）', () => {
     expect(html).toContain('全部目的地')
     expect(html).toContain('更多灵感')
     expect(html).toContain('查看完整行程')
-    expect(html).toContain('4 / 5')
+    expect(html).toContain('class="showcase-idea-body"')
     expect(html).not.toContain('用这句开场')
     expect(html).not.toContain('public-itineraries')
     expect(html).not.toContain('行程分享')

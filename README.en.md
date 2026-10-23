@@ -6,12 +6,28 @@ It uses React, FastAPI, and a planning worker backed by persistent MySQL tasks.
 A constrained LangGraph workflow creates daily itineraries, streams progress, and presents edits for confirmation.
 Estimated facts require verification before departure.
 
+[Try the demo](https://sinan-demo.vercel.app) · [中文](README.md) · [Architecture](docs/public/architecture.md) · [Real-model case](docs/public/product-case-20261021.md) · [Run locally](#get-the-code)
+
+[![Scoped edit workbench: compare the original timeline with a proposed change before saving. Fixed synthetic example.](docs/public/preview/showcase-edit-20261023.png)](https://sinan-demo.vercel.app)
+
+*Fixed synthetic example. Review the change beside the original timeline; the other day and accommodation remain outside the edit.*
+
 ## Try it
 
 Open the [online demo](https://sinan-demo.vercel.app). No installation, account, or model API key is required.
 It uses production pages with a synthetic Chengdu itinerary. Changes stay in the current tab; no business API or model is called.
 The skippable “90秒体验局部修改” guide opens an independent sample. Review a scoped edit beside the original timeline, then confirm to save; mobile views keep the selected day and pending draft. Cost differences are shown only for comparable priced items. See the [workbench screenshots and limits](docs/public/vercel-demo.md).
 Map tiles require internet access; the itinerary and navigation links remain available if tiles fail.
+
+1. Open the demo and choose “90秒体验局部修改” to start an independent sample.
+2. Compare the proposed second-day edit with the original timeline.
+3. Confirm, switch days and refresh to inspect the saved result. The guide is skippable.
+
+| Scenario | Observable behavior | Evidence |
+| --- | --- | --- |
+| Constrained planning | Confirm requirements, validate delivery and retry invalid days; show partial results explicitly | [Real-model browser case](docs/public/product-case-20261021.md) |
+| Scoped edits | Review changes before saving; check scope and revision on the server | [Interactive fixed demo](https://sinan-demo.vercel.app) |
+| An earlier departure | Compare keeping all activities with dropping optional ones; reject conflicting proposals | [Fixed comparison scenario and limits](docs/public/vercel-demo.md#时间取舍与恢复) |
 
 The detail page also compares keeping all existing activities with dropping explicitly optional ones, using user-supplied time windows and buffers. Fixed slots, order and durations are preserved; infeasible proposals cannot be selected. This is deterministic scheduling, not a model call or a live travel-time estimate. Selection creates a draft; confirmation saves it. Version recovery checks the current revision and saves the pre-restore itinerary atomically. The public demo supports one clearly labeled fixed scenario; arbitrary inputs require the real backend. See the [case and evidence](docs/public/vercel-demo.md#时间取舍与恢复).
 
@@ -23,6 +39,14 @@ The detail page also compares keeping all existing activities with dropping expl
 | Change the code | [Development guide, Chinese](docs/public/development.md) | Python 3.12, uv, Node 22.12+, Docker |
 
 A [documented local browser case](docs/public/product-case-20261021.md) distinguishes real-model runs, partial delivery and recovery from the fixed demo. It is functional evidence, not a quality or speed benchmark. There is currently no public real-model trial endpoint.
+
+## Explore a complete route
+
+[![Home: start with a city and your preferred pace](docs/public/preview/showcase-home-20261023.png)](https://sinan-demo.vercel.app)
+
+[![Public route with daily overview and a personal copy action](docs/public/preview/showcase-route-20261023.png)](https://sinan-demo.vercel.app/itineraries/-1)
+
+Seven editorial routes include daily context, accommodation area choices, transfers and rain alternatives. Screenshots are native 2x PNG captures of the fixed demo.
 
 ## Get the code
 

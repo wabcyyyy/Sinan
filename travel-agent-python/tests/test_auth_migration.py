@@ -208,6 +208,51 @@ def test_user_info_requires_session(client: TestClient) -> None:
     assert body["data"]["nickname"] == "alice"  # 昵称为空时回落用户名（同 Java）
 
 
+def test_login_outage_stops_issuing_sessions_when_local_table_is_full(client, monkeypatch):
+    monkeypatch.setattr(sessions, "LOCAL_SESSION_MAX_ENTRIES", 3)
+    _register(client)
+    issued = []
+    for i in range(12):
+        response = client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD})
+        if i < 3:
+            assert response.status_code == 200
+            issued.append(client.cookies.get("TA_AUTH"))
+        else:
+            assert response.status_code == 503
+            assert "set-cookie" not in response.headers
+            assert "稍后重试" in response.json()["message"]
+        assert len(sessions._local_sessions) <= 3
+    assert client.get("/api/user/info").status_code == 200
+    assert client.post("/api/auth/logout-all").json()["data"]["revoked"] == 3
+    assert sessions._local_sessions == {}
+    for token in issued:
+        assert client.get("/api/user/info", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD}).status_code == 200
+
+
+def test_expired_session_is_reclaimed_and_jwt_is_still_rejected(client, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    import jwt.api_jwt
+
+    _register(client)
+    client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD})
+    token = client.cookies.get("TA_AUTH")
+    deadline = max(entry[2] for entry in sessions._local_sessions.values())
+    future = datetime.now(UTC) + timedelta(hours=settings.jwt_expire_hours, seconds=10)
+
+    class FutureClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return future
+
+    monkeypatch.setattr(jwt.api_jwt, "datetime", FutureClock)
+    monkeypatch.setattr(sessions.time, "monotonic", lambda: deadline + 10)
+    assert sessions.revoke_all("alice") == 0
+    assert sessions._local_sessions == {}
+    assert client.get("/api/user/info", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
 def test_logout_revokes_the_issued_token_for_both_channels(client: TestClient) -> None:
     _register(client)
     client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD})

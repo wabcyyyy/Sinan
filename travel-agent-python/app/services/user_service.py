@@ -145,17 +145,13 @@ def login(username: str, password: str, ip: str) -> LoginResult:
 def _issue_session(username: str) -> str:
     """签发会话票并登记到会话注册表；返回票本身（调用方只把它写进 Cookie）。
 
-    登录与改密共用这一条登记路径：注册表（`state_and_sessions` 的 jti→token）是
-    「撤销全部会话」唯一的取数来源，少登记一次就少杀一张票。登记失败不影响登录，
-    Cookie 仍然可用（那张票只是不在「登出所有设备」的射程里，24h 后自然过期）。
+    登录与改密共用这一条登记路径。登记成功后才返回 token；本地回退表满时
+    返回可重试错误，不签出无法被「退出所有设备」找到的会话。
     """
     ttl = settings.jwt_expire_hours * 3600
     token = jwt_tokens.encode_token(username, settings.jwt_secret, ttl)
-    try:
-        claims = jwt_tokens.decode_token(token, settings.jwt_secret)
-        sessions.register_session(username, claims["jti"], token, jwt_tokens.remaining_seconds(claims))
-    except Exception as exc:
-        logger.warning("session register failed: %s", exc)
+    claims = jwt_tokens.decode_token(token, settings.jwt_secret)
+    sessions.register_session(username, claims["jti"], token, jwt_tokens.remaining_seconds(claims))
     return token
 
 

@@ -4048,6 +4048,18 @@
           "default": null,
           "title": "Theme"
         },
+        "overview": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overview"
+        },
         "items": {
           "items": {
             "$ref": "#/$defs/TemplateItemVO"
@@ -4059,9 +4071,28 @@
       "required": [
         "dayNo",
         "theme",
+        "overview",
         "items"
       ],
       "title": "TemplateDayVO",
+      "type": "object"
+    },
+    "TemplateGuideSection": {
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "text"
+      ],
+      "title": "TemplateGuideSection",
       "type": "object"
     },
     "TemplateSummaryVO": {
@@ -4134,6 +4165,13 @@
           },
           "title": "References",
           "type": "array"
+        },
+        "guide": {
+          "items": {
+            "$ref": "#/$defs/TemplateGuideSection"
+          },
+          "title": "Guide",
+          "type": "array"
         }
       },
       "required": [
@@ -4147,7 +4185,8 @@
         "coverUrl",
         "sourceType",
         "notes",
-        "references"
+        "references",
+        "guide"
       ],
       "title": "TemplateSummaryVO",
       "type": "object"

@@ -82,7 +82,7 @@ function clarify(body: { message?: string; slots?: Record<string, unknown> }): R
   const supported = body.message?.includes('成都') || body.slots?.city === '成都'
   const slots = { city: '成都', days: 2, persons: 2, budget: 1200, preferences: ['慢节奏', '美食'] }
   return json({ slots: supported ? slots : {}, ready: Boolean(supported), blocked: false, state: null,
-    reply: supported ? '展示脚本：成都，两人两天一晚，预算 1200 元。确认右侧信息后，可以体验逐日生成过程。'
+    reply: supported ? '成都，两人两天一晚，预算 1200 元。先核对右侧信息，确认后开始安排。'
       : '这里展示真实产品页面，数据使用固定脚本。请选择“成都两天一晚”体验需求确认、逐日交付和对话编辑；其他城市仍可在探索页浏览。',
     options: supported ? [] : ['两个人去成都两天一晚，预算1200元，想慢慢逛'], question: null })
 }
@@ -94,8 +94,8 @@ function edit(record: RecordState, text: string): ItineraryChatMessage {
   for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
   const reply: ItineraryChatMessage = { id: Date.now(), role: 'ai',
     content: relaxed ? (record.trip.dayList[1].items.some((point) => point.poiName === '杜甫草堂')
-      ? `展示编辑建议：第二天移除杜甫草堂，保留第一天与住宿。确认后才修改行程，费用小计减少 ${(record.trip.dayList[1].items.find((point) => point.poiName === '杜甫草堂')?.cost ?? 0) * record.trip.persons} 元。`
-      : '固定脚本建议：第二天少安排一处景点，保留第一天与其他安排；确认后只修改当前标签页内的副本。')
+      ? `第二天移除杜甫草堂，保留第一天与住宿。确认后才修改行程，费用小计减少 ${(record.trip.dayList[1].items.find((point) => point.poiName === '杜甫草堂')?.cost ?? 0) * record.trip.persons} 元。`
+      : '建议第二天少安排一处景点，保留第一天与其他安排。先看看下方变化，再决定是否保存。')
       : '这是固定脚本展示，不会调用真实模型。你可以发送“把第二天安排松一点”，查看正式页面中的差异卡，并确认应用。',
     ...(plans ? { plans, baseRevision: String(record.revision), changed: true } : {}) }
   record.messages.push({ id: Date.now() - 1, role: 'user', content: text }, reply)
@@ -207,7 +207,7 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
     for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
     const id = Date.now()
     record.scenarioMessageId = id
-    record.messages.push({ id, role: 'ai', content: '固定返程示例：移除咖啡与晚餐，将宽窄巷子提前到 13:30。请确认差异后保存。未调用模型。', plans: fixture.plans, changed: true, baseRevision: String(record.revision) })
+    record.messages.push({ id, role: 'ai', content: '移除咖啡与晚餐，将宽窄巷子提前到 13:30。先确认差异，再保存这次调整。', plans: fixture.plans, changed: true, baseRevision: String(record.revision) })
     save()
     return json({ messageId: id, baseRevision: String(record.revision) })
   }
@@ -245,7 +245,7 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
     remember(record, 'apply', '已确认的修改')
     delete draft.plans
     delete draft.baseRevision
-    record.messages.push({ id: Date.now(), role: 'ai', content: '已应用到当前浏览器的演示行程，第一天和住宿保持不变。' })
+    record.messages.push({ id: Date.now(), role: 'ai', content: '修改已保存，第一天和住宿保持不变。' })
     save()
     return json({ ...snapshot(record), undoVersionId })
   }
