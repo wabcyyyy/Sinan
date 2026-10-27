@@ -45,7 +45,7 @@ MUTED = colors.HexColor("#5c6470")
 BODY = colors.HexColor("#3d4451")
 FAINT = colors.HexColor("#6f695f")
 
-ITEM_COLUMNS = ("类型", "名称", "时间", "时长(分)", "费用(￥)", "开放/来源", "备注")
+ITEM_COLUMNS = ("类型", "名称", "时间", "时长(分)", "费用", "开放/来源", "备注")
 ITEM_COLUMN_WIDTHS = (34, 96, 62, 42, 46, 92, 92)
 
 TYPE_LABELS = {"attraction": "景点", "food": "美食", "hotel": "酒店", "transport": "交通"}
@@ -139,7 +139,7 @@ def _masthead(model: dict[str, Any]) -> Table:
             _chip(model, f"{model['days']} 天 {model['persons']} 人", model.get("days")),
             _chip(model, f"{model.get('startDate')} ~ {model.get('endDate')}", model.get("startDate")),
             _chip(model, f"偏好：{model.get('preferences')}", model.get("preferences")),
-            _chip(model, f"预算上限 ￥{model.get('budget')}", model.get("budget")),
+            _chip(model, f"预算上限 {model.get('budgetCurrency', 'CNY')} {model.get('budget')}", model.get("budget")),
         )
         if chunk
     ]
@@ -221,7 +221,10 @@ def _item_table(items: list[dict[str, Any]]) -> Table:
                 Paragraph(str(item.get("poiName") or ""), _H_STYLES["cell"]),
                 Paragraph(_time_range(item), _H_STYLES["cell"]),
                 Paragraph("" if item.get("durationMin") is None else str(item["durationMin"]), _H_STYLES["cell"]),
-                Paragraph("" if item.get("cost") is None else str(item["cost"]), _H_STYLES["cell"]),
+                Paragraph(
+                    "" if item.get("cost") is None else f"{item['cost']} {item.get('costCurrency') or '币种未确认'}",
+                    _H_STYLES["cell"],
+                ),
                 Paragraph(_source_cell(item), _H_STYLES["cell"]),
                 Paragraph(str(item.get("remark") or ""), _H_STYLES["cell"]),
             ]
@@ -286,7 +289,7 @@ def _budget_appendix(model: dict[str, Any]) -> list[Any]:
     )
     # 与日卡同理：标题条与表格分开成两个流，预算行很多时表格可以跨页而不是炸掉
     title_card = Table(
-        [[Paragraph("预算附录（人民币估算）", _H_STYLES["budget_title"])]],
+        [[Paragraph(f"已列同币费用（{model.get('budgetCurrency', 'CNY')} 估算）", _H_STYLES["budget_title"])]],
         colWidths=[None],
         style=TableStyle(
             [
@@ -300,12 +303,16 @@ def _budget_appendix(model: dict[str, Any]) -> list[Any]:
             ]
         ),
     )
-    return [title_card, table, Paragraph(f"合计：￥{model.get('totalAmount')}", _H_STYLES["total"])]
+    return [
+        title_card,
+        table,
+        Paragraph(f"合计：{model.get('budgetCurrency', 'CNY')} {model.get('totalAmount')}", _H_STYLES["total"]),
+    ]
 
 
 def _colophon() -> Paragraph:
     return Paragraph(
-        "本刊由 Travel Assistant 排印生成 · 价格均为人民币估算，请以现场或官方渠道为准<br/>"
+        "本刊由 Travel Assistant 排印生成 · 费用按所列币种估算，未知/异币项目可能未计入，请以官方渠道为准<br/>"
         "出发前请再次确认各点位营业时间与票价",
         _H_STYLES["colophon"],
     )

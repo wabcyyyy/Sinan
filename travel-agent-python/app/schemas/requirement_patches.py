@@ -27,7 +27,9 @@ from app.schemas.trip_requirements import (
     DayWindow,
     IntakeState,
     LodgingRequirements,
+    PlaceRelation,
     RequiredPlace,
+    RequirementSource,
     TripRequirements,
 )
 
@@ -43,6 +45,8 @@ PatchTarget = Literal[
     "hotel_tier",
     "preferences",
     "required_place",
+    "place_relation",
+    "unresolved_request",
     "excluded_place",
     "excluded_category",
     "pace",
@@ -84,6 +88,17 @@ class RequirementPatch(WireModel):
     name: str | None = Field(default=None, min_length=1, max_length=64)
     #: required_place 的日约束（set/add 携带；null=全程必去）
     day_no: int | None = Field(default=None, ge=1, le=MAX_TRIP_DAYS)
+    relation: PlaceRelation | None = None
+    source_text: str | None = Field(default=None, min_length=1, max_length=400)
+
+
+def allowed_patch_operations(target: str) -> tuple[str, ...]:
+    """Operation contract shared by extraction validation and deterministic application."""
+    if target in {"preferences", "required_place", "excluded_place", "excluded_category", "place_relation"}:
+        return ("set", "unset", "add", "remove")
+    if target == "unresolved_request":
+        return ("add", "remove")
+    return ("set", "unset")
 
 
 _INT_BOUNDS = {
@@ -358,7 +373,30 @@ def apply_intake_patches(state: IntakeState, patches: list[RequirementPatch]) ->
     rejected: list[str] = []
     req = state.requirements
     for patch in patches:
-        if patch.target in ("day_not_before", "day_finish_by", "day_window_kind"):
+        before_rejections = len(rejected)
+        if patch.op not in allowed_patch_operations(patch.target):
+            _reject(rejected, patch, "操作与目标类型不符，标量使用 set/unset，列表项使用集合操作")
+        elif patch.target == "place_relation":
+            relation = patch.relation
+            key = relation.constraint_id if relation else patch.name
+            if not key or (patch.op in ("set", "add") and relation is None):
+                _reject(rejected, patch, "关系需要完整 relation 或待删除的 constraint_id")
+            elif patch.op in ("remove", "unset"):
+                req.place_relations = [r for r in req.place_relations if r.constraint_id != key]
+            elif any(p.constraint_id == key for p in req.required_places):
+                _reject(rejected, patch, "关系ID与必去ID冲突")
+            elif len(req.place_relations) >= 20 and not any(r.constraint_id == key for r in req.place_relations):
+                _reject(rejected, patch, "关系列表已满")
+            else:
+                assert relation is not None
+                relation = relation.model_copy(update={"source_text": patch.source_text or relation.source_text})
+                req.place_relations = [r for r in req.place_relations if r.constraint_id != key] + [relation]
+        elif patch.target == "unresolved_request":
+            if patch.op == "remove" and isinstance(patch.value, str):
+                req.unresolved_requests = [s for s in req.unresolved_requests if s != patch.value]
+            else:
+                _reject(rejected, patch, patch.source_text or str(patch.value or "需要澄清的未支持要求"))
+        elif patch.target in ("day_not_before", "day_finish_by", "day_window_kind"):
             _apply_day_window(req, patch, rejected)
         elif patch.op in ("add", "remove"):
             _apply_element_op(state, req, patch, rejected)
@@ -366,9 +404,19 @@ def apply_intake_patches(state: IntakeState, patches: list[RequirementPatch]) ->
             _apply_collection_set_unset(state, req, patch, rejected)
         else:
             _apply_scalar_op(state, req, patch, rejected)
+        if patch.source_text:
+            trace = RequirementSource(
+                source_text=patch.source_text,
+                target=patch.target,
+                disposition="unresolved" if len(rejected) > before_rejections else "mapped",
+            )
+            if trace not in req.requirement_sources:
+                req.requirement_sources.append(trace)
+            req.requirement_sources = req.requirement_sources[-60:]
     # 拒绝记录有界入 unresolved：超出上限截最旧，最新协商依据优先保留
     for item in rejected:
-        req.unresolved_requests.append(item)
+        if item[:400] not in req.unresolved_requests:
+            req.unresolved_requests.append(item[:400])
     if len(req.unresolved_requests) > 20:
         req.unresolved_requests = req.unresolved_requests[-20:]
     return rejected

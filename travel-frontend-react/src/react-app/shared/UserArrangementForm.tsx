@@ -5,8 +5,9 @@ import '../itinerary/scenario.css'
 export type UserArrangement = Pick<ItemCreateBody, 'dayNo' | 'itemType' | 'poiName' | 'startTime' | 'endTime' | 'address' | 'cost' | 'remark' | 'fixed'>
 
 /** 用户填写的安排共用一个编辑表单；这里不查询地点，也不声称资料已核验。 */
-export function UserArrangementForm({ initial, days, busy, create = false, fixedRequired = false, onSave, onCancel }: {
+export function UserArrangementForm({ initial, days, busy, create = false, fixedRequired = false, currency = 'CNY', costReadOnly = false, onSave, onCancel }: {
   initial: UserArrangement; days: number[]; busy: boolean; create?: boolean; fixedRequired?: boolean
+  currency?: string; costReadOnly?: boolean
   onSave: (value: UserArrangement) => void; onCancel: () => void
 }) {
   const [value, setValue] = useState(initial)
@@ -25,7 +26,8 @@ export function UserArrangementForm({ initial, days, busy, create = false, fixed
       <label>安排到<select value={value.dayNo} onChange={e => patch({ dayNo: Number(e.target.value) })}>{days.map(d => <option key={d} value={d}>第 {d} 天</option>)}</select></label>
       <label>开始时间<input required type="time" value={value.startTime || ''} onChange={e => patch({ startTime: e.target.value })} /></label>
       <label>结束时间<input required type="time" value={value.endTime || ''} onChange={e => patch({ endTime: e.target.value })} /></label>
-      <label>单价（元{value.itemType === 'hotel' ? '/间晚' : '/人'}）<input type="number" min="0" max="1000000" step="0.01" value={value.cost ?? ''} placeholder="不知道可留空" onChange={e => patch({ cost: e.target.value === '' ? null : e.target.value })} /></label>
+      <label>单价（{currency === 'CNY' ? '元' : currency}{value.itemType === 'hotel' ? '/间晚' : '/人'}）<input type="number" disabled={costReadOnly} min="0" max="1000000" step="0.01" value={value.cost ?? ''} placeholder="不知道可留空" onChange={e => patch({ cost: e.target.value === '' ? null : e.target.value })} /></label>
+      {costReadOnly && <small>原币费用保留，不自动换算；此处不改写币种不同或尚未确认币种的金额。</small>}
       <label className="arrangement-wide">地址（可选）<input maxLength={255} value={value.address || ''} onChange={e => patch({ address: e.target.value })} /></label>
       <label className="arrangement-wide">备注<textarea maxLength={255} value={value.remark || ''} placeholder="例如：预约凭证、集合位置、自己的提醒" onChange={e => patch({ remark: e.target.value })} /></label>
       {create && !fixedRequired && <label className="arrangement-wide arrangement-check"><input type="checkbox" checked={value.fixed} onChange={e => patch({ fixed: e.target.checked })} />固定地点和时段，后续 AI 修改须保留</label>}

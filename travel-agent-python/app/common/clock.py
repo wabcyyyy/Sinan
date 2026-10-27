@@ -1,4 +1,4 @@
-"""产品日期口径（个人 Agent V1）：「今天/明天」一律按 Asia/Shanghai（UTC+8）解释。
+"""产品日期口径：账户/照看窗口按上海；约束行程日历按已确认的目的地时区。
 
 规格 §3.2：统一规则与日期判断均使用显式时区时间，禁止直接拿主机 `date.today()`
 解释产品窗口——非 CST 主机上"今天"会漂移，照看窗口与当日 AI 限制都会算错。
@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 PRODUCT_ZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 
@@ -31,3 +32,8 @@ def shanghai_now() -> datetime:
 def shanghai_today() -> date:
     """上海日历日：照看的「今天」（出发判定、last_ai_attempt_on 的自然日口径）。"""
     return shanghai_now().date()
+
+
+def destination_today(time_zone: str) -> date:
+    """IANA 目的地日历日，复用同一当前时刻；不改账户日窗的上海归属。"""
+    return shanghai_now().astimezone(ZoneInfo(time_zone)).date()

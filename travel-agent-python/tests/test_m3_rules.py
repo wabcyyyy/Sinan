@@ -32,6 +32,26 @@ from app.services.day_delivery_gate import hard_delivery_blockers
 # ---- §8.3 ①：mode-aware 速度分档（5km 步行估算明显长于驾驶）----
 
 
+def test_explicit_short_full_day_window_overrides_full_day_density_only():
+    default = day_policy_for(TripRequirements(), 1)
+    assert default.min_active_minutes == 240 and default.max_daily_minutes == 480
+    for start, end, minimum, maximum in (
+        ("14:00", "18:00", 0, 240),
+        ("10:00", "11:00", 0, 60),
+        ("09:00", "18:00", 240, 480),
+        ("14:00", None, 240, 480),
+    ):
+        policy = day_policy_for(
+            TripRequirements(
+                day_windows=[DayWindow(day_no=1, not_before=start, finish_by=end)], max_attractions_per_day=2
+            ),
+            1,
+        )
+        assert policy.kind == "full" and policy.playable
+        assert policy.min_active_minutes == minimum and policy.max_daily_minutes == maximum
+        assert policy.max_attractions == 2 and policy.window_start_min is not None
+
+
 def test_walking_estimate_is_clearly_longer_than_driving_for_same_5km():
     """同一直线距离按交通档位分档估算：步行 4.5km/h 不得再误用车速。
 

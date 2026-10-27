@@ -1,0 +1,12 @@
+.screenshot-import { margin-block: 16px; padding: 16px; border: 1px solid var(--sinan-line); border-radius: var(--sinan-radius); }
+.screenshot-import summary { cursor: pointer; font-weight: 650; }
+.screenshot-import p, .screenshot-import small { color: var(--sinan-muted); }
+.screenshot-import fieldset { display: grid; gap: 12px; margin-block: 12px; min-width: 0; border: 0; padding: 0; }
+.screenshot-import label { display: grid; gap: 6px; }
+.screenshot-import input, .screenshot-import select { max-width: 100%; }
+.screenshot-import nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.screenshot-preview { position: relative; width: fit-content; max-width: 100%; margin: 12px 0; }
+.screenshot-preview img { display: block; max-width: 100%; max-height: 480px; object-fit: contain; }
+.screenshot-region { position: absolute; pointer-events: none; border: 2px solid var(--sinan-accent); background: color-mix(in srgb, var(--sinan-accent) 15%, transparent); }
+.screenshot-fields { display: grid; gap: 8px; padding-left: 20px; overflow-wrap: anywhere; }
+.screenshot-fields q, .screenshot-fields small { display: block; }

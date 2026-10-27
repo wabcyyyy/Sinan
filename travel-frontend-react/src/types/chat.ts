@@ -1,4 +1,5 @@
 import type { HotelOption } from './itinerary'
+import type { ReplanOption } from './generated/contracts'
 
 /**
  * NL 编辑 / chat 域类型。
@@ -24,6 +25,7 @@ export interface ChatPlanItem {
 
 /** chat 草稿中的单日方案。 */
 export interface ChatDayPlan {
+  _replanSummary?: ReplanOption
   day_no: number
   items?: ChatPlanItem[]
 }

@@ -2,6 +2,7 @@
  * 从已退役的旧版编辑面板 ChatEditPanel 语义移植（draftChanges/prepareHotelOptions），供现壳与单测共用。 */
 import type { ChatDayPlan, ChatPlanItem, ItineraryChatMessage } from '../../types/chat'
 import type { DayPlan, HotelOption, TripItem } from '../../types/itinerary'
+import { formatMoney } from '../../shared/money'
 
 /** 最近一条带草稿（plans 或 hotelOptions）的 AI 消息 =「当前唯一待确认」。 */
 export function activeActionIndex(msgs: ItineraryChatMessage[]): number {
@@ -43,9 +44,11 @@ export interface StructuredChange {
   items: string[]
   /** updated：变化维度（time=起止/时长，cost=估算费用）；兜底条目缺省=不出徽标 */
   field?: 'time' | 'cost'
-  /** updated：时间窗或费用的前后值（费用渲染时加 ¥） */
+  /** updated：时间窗或费用的前后值；金额按各自原币种展示。 */
   from?: string
   to?: string
+  fromCurrency?: string | null
+  toCurrency?: string | null
   /** moved：原天 → 新天 */
   fromDay?: number
   toDay?: number
@@ -79,8 +82,10 @@ function updatedChanges(dayNo: number, name: string, base: TripItem, item: ChatP
       from: `${base.durationMin} 分钟`, to: `${item.duration_min} 分钟`,
     })
   }
-  if (base.cost != null && item.cost != null && base.cost !== item.cost) {
-    out.push({ type: 'updated', dayNo, field: 'cost', label: `第 ${dayNo} 天`, items: [name], from: String(base.cost), to: String(item.cost) })
+  if (base.cost != null && item.cost != null && (base.cost !== item.cost || (item.cost_currency != null && base.costCurrency !== item.cost_currency))) {
+    out.push({ type: 'updated', dayNo, field: 'cost', label: `第 ${dayNo} 天`, items: [name], from: String(base.cost), to: String(item.cost),
+      fromCurrency: base.costCurrency, toCurrency: item.cost_currency,
+    })
   }
   return out
 }
@@ -170,7 +175,10 @@ export function describeStructuredChange(change: StructuredChange): string {
       if (change.from == null || change.to == null) return `${change.label}：${change.items.join('、')}`
       const name = change.items[0] ?? change.label
       const day = change.dayNo != null ? `（第 ${change.dayNo} 天）` : ''
-      const value = change.field === 'cost' ? `¥${change.from}→¥${change.to}` : `${change.from}→${change.to}`
+      const money = (amount: string, currency?: string | null) => currency && /^[A-Z]{3}$/.test(currency)
+        ? formatMoney(Number(amount), currency) : `${amount}（币种待确认）`
+      const value = change.field === 'cost'
+        ? `${money(change.from, change.fromCurrency)}→${money(change.to, change.toCurrency)}` : `${change.from}→${change.to}`
       return `${name}${day}：${value}`
     }
     case 'moved':

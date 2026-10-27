@@ -1,0 +1,108 @@
+{
+  "entries": [
+    {
+      "kind": "transport",
+      "polarity": "recommended",
+      "fields": [
+        {
+          "key": "name",
+          "value": "京都駅",
+          "quote": "出発駅 京都駅 / Kyoto Station",
+          "region": {
+            "x": 0.035,
+            "y": 0.13157894736842105,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "date",
+          "value": "2026-10-25",
+          "quote": "出発 2026-10-25 23:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "startTime",
+          "value": "23:00",
+          "quote": "出発 2026-10-25 23:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "endDate",
+          "value": "2026-10-26",
+          "quote": "到着 2026-10-26 06:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "endTime",
+          "value": "06:00",
+          "quote": "到着 2026-10-26 06:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "timeZone",
+          "value": "Asia/Tokyo",
+          "quote": "現地時間 Asia/Tokyo",
+          "region": {
+            "x": 0.035,
+            "y": 0.4276315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "amount",
+          "value": "1200",
+          "quote": "券面 JPY 1200 · 非实际班次",
+          "region": {
+            "x": 0.035,
+            "y": 0.5263157894736842,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "currency",
+          "value": "JPY",
+          "quote": "券面 JPY 1200 · 非实际班次",
+          "region": {
+            "x": 0.035,
+            "y": 0.5263157894736842,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        }
+      ],
+      "questions": []
+    }
+  ],
+  "questions": []
+}

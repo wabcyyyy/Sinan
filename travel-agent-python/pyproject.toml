@@ -49,12 +49,16 @@ dependencies = [
     # 此前经 redis 传递进锁（2.14.0），显式列为直接依赖：签名、时间声明与算法白名单
     # 交给维护中的库，项目只保留「按密钥长度定档 + 只认 HMAC + 必备声明」的业务约束。
     "pyjwt>=2.10,<3",
+    # SINAN-UPGRADE-P0：带选择/时窗/逻辑关系及 assumptions 冲突解释的 CP-SAT 内核。
+    "ortools==9.14.6206",
 ]
 
 [dependency-groups]
 dev = [
     "diff-cover>=10.5.1",
     "fonttools>=4.60,<5",
+    # Unmodified ChinaTravel sandbox geodesic queries; dev-only official benchmark integration.
+    "geopy==2.4.1",
     "import-linter>=2.15",
     # 评测数据集 schema 校验（PR-0 数据集治理，tests/agent_eval/dataset_schema.py）。
     # 非新增包体：jsonschema 4.26.0 早已在 mcp 的传递闭包里（uv.lock），这里只是
@@ -64,6 +68,7 @@ dev = [
     "pytest==8.2.2",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.7",
+    "tqdm==4.66.6", # Unmodified official evaluator progress display.
 ]
 
 [tool.ruff]

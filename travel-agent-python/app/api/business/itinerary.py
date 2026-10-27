@@ -8,6 +8,7 @@ from fastapi import APIRouter, Body, Depends, File, Header, Path, Query, UploadF
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
+from app.api.business.replanning import router as replanning_router
 from app.api.deps import AuthUser
 from app.api.security import enforce_business_auth
 from app.common import event_hub, event_publisher
@@ -66,6 +67,7 @@ router = APIRouter(
     tags=["itinerary"],
     dependencies=[Depends(enforce_business_auth)],
 )
+router.include_router(replanning_router)
 
 
 @router.get("/supported-cities")

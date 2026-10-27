@@ -23,6 +23,7 @@ from app.api.business.llm_gateway import router as llm_gateway_router
 from app.api.business.media import router as media_router
 from app.api.business.members import router as members_router
 from app.api.business.pois import router as pois_router
+from app.api.business.preparation import router as preparation_router
 from app.api.business.probe import router as probe_router
 from app.api.business.share import router as share_router
 from app.api.business.share_shell import router as share_shell_router
@@ -38,6 +39,7 @@ business_routers: tuple[APIRouter, ...] = (
     user_router,
     client_errors_router,
     itinerary_router,
+    preparation_router,
     llm_gateway_router,
     image_intent_router,
     speech_intent_router,

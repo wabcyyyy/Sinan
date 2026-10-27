@@ -1,5 +1,12 @@
 # AGENTS.md — Travel-Assistant
 
+## 当前执行口径（2026-10-26，用户要求清除过时约束）
+
+- 正式与新评测调用的思考配置统一来自 `app/common/config.py` 与当前本地环境：默认开启思考、`reasoning_effort=low`。实验入口不得沿用早期固定关闭思考的设置；专用客户端也复用 `llm_client` 的供应商参数处理。
+- 当前费用记录读取唯一原账本 `docs/benchmarks/sinan-nl-01-20261025/budget.json` 的已授权状态；本轮 `cap_cny=null`、`cap_mode=unlimited`。不重新套用早期1/5/10/14/30/50元额度，不复制或清零账本，授权范围和未知费用预占继续保留。没有新的任务范围就不自行扩大付费实验。
+- `docs/design/sinan-upgrade-*`、旧夜间任务单及已结束的NL/Easy/Human首轮文件是历史技术/实验材料，其旧调用次数、关闭思考、费用额度、截止时间与续跑指令均已失效，不再作为当前执行约束。技术需求、实验事实、原始请求/响应、评分、失败与费用账本保留。
+- `scripts/sinan_nl_budget.py` 等旧实验专用协议及其回归测试仅供历史复现，不用作新实验默认入口。旧结果如标注关闭思考，应保持原标签，不能改写成默认low结果。
+
 ## 个人项目快速迭代（本节优先，2026-10-12）
 
 日常只运行根目录 `verify.ps1`（Sinan 也可 `just check`），规则详见 `VALIDATION.md`。
@@ -69,6 +76,8 @@ cd travel-frontend-react && npm run build && npm run test:unit && npm run theme:
 
 1. **单一真源**：每类事实只有一份权威定义（schema 在 app/schemas、SQL 在 db/migrations、env 键在 app/common/config.py + .env.example）。副本必然漂移，不允许出现第二份。
 2. **门禁只升不降**：静态检查、测试、eval 基线只许收紧。放宽门禁的改动需要在本文件留注释与期限。
+   - 官方沙箱模式（2026-10-26，用户批准ChinaTravel原题方案）：仅显式 `requirements.fact_source=chinatravel` 使用冻结WorldEnv与相对行程日；完整业务计划保存在既有day metadata并读回，执行官方schema/默认8类常识及解析后原话人数/天数/预算检查，不运行普通全天240分钟、估价钳制、在线富化或自动补酒店。它是另一事实环境下的明确验收配置，不修改官方题意/DSL/checker，也不放宽默认产品门禁；评分Gold不参与生成和运行期反馈。未通过保持PARTIAL。复核期限2026-11-02，核对共享字段/保存读回及源环境隔离。 跨夜衔接用不输出的零时长hotel origin内部节点记录次日实际离店时刻，不额外强制早餐；仅该源origin anchor允许零时长，真实活动与默认路径仍须至少1分钟。
+   - 规格修正（2026-10-25，三条用户旅程验收）：普通日有明确起止且窗口不足 8 小时时，不再强制全天 240 分钟活动下限；仅此场景按用户窗口限制总时长，景点上限、必去、预约、排除和转场检查保留。依据：14–18 点两个 90 分钟场馆原被默认充实度误判无解；普通全天及单边窗口的 240/480 基线不变。新增对应回归，不降低既有测试断言。复核期限：2026-11-01，按短窗/全天用例复核此规则。
    - 登记项（2026-09-30，前端错误探针）：`POST /api/client-errors` 加入 `test_default_deny_auth` 的匿名写豁免清单——登录页自身崩溃时拿不到会话，探针必须匿名可达。滥用面有界（只写日志、字段上限、按 IP 分钟窗 30 次）。期限：上线后首次日志复盘（不晚于 2026-10-31）复核；日志面出现灌水即改走强制会话。
    - 登记项（2026-10-08，eval_gate 深度下限降档）：stream 路径的 `coord_valid_rate` / `deeplink_resolvable_rate` 下限从 0.728 / 0.2222 暂降为 presence-only（0.0）。依据：三轮同口径实测 0.8504 / 0.5722 / 0.6754 + 一次 3 例样本 deeplink 反向触红——这两个率由**外部地理编码可用性（Nominatim 1rps、OSM 国内覆盖）**主导，下限冻结自单轮小样本，红绿随外部服务天气随机波动，分不清回归与噪声。结构检查保留（指标在、数值型、版本/正文指纹不变），观测值照常打印积累带宽。期限：攒够 ≥5 轮全量（13 例）同口径样本后按带宽数值重定下限，或改为多轮中位数门禁；`category_reasonable_rate`（1.0，生成质量属性、非外部）不受本项影响。
    - 登记项（2026-10-12，离线评测改走产品路径后重定基线）：`eval_agent.py` 默认从 trip 图改为业务层 `plan_days`（研究 → 整段流式 → 落库终检 → 逐日补齐，临时 SQLite），`report/offline/report.json` 四项界值随路径重定：`success/degraded_status_rate` 0/1 → 0.9231/0（产品路径按落库终态计）；`failed_status_rate` 上限 0 → 0.0769、`budget_deviation_rate` 上限 0 → 0.0769，二者是同一个例子——三亚 5 日用例第 5 天逐日补齐仍过稀，`plan_days` 按现行语义（单天失败中止整趟，`test_day_failure_marks_day_and_trip_failed`）判 FAILED、无交付预算。这是旧图路径看不到的产品行为，如实入基线而不是改 fixture 绕开。期限：产品决定单天补齐失败是否改为 PARTIAL 交付时复核；改了就把两项收回 0（`eval_ratchet.py --update`）。

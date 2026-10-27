@@ -13,6 +13,7 @@ from app.schemas.trip_requirements import FixedArrangement, TripRequirements, ca
 from app.services import (
     budget_engine,
     itinerary_chat,
+    itinerary_item_move,
     itinerary_plan_apply,
     itinerary_query,
     itinerary_version,
@@ -61,7 +62,7 @@ def _change_fixed(session, main, item, day, request, requirements):
     main.requirements_json = canonical_requirements_payload(requirements)
 
 
-def _edit(session, item, days, request):
+def _edit(session, item, days, request, currency):
     if request.action == "delete":
         item.deleted = 1
         return
@@ -98,7 +99,7 @@ def _edit(session, item, days, request):
             evidence = json.loads(item.fact_evidence_json or "{}")
             evidence.pop("cost", None)
             item.fact_evidence_json = json.dumps(evidence, ensure_ascii=False)
-            item.cost_currency = "CNY"
+            item.cost_currency = currency
         setattr(item, column, value.strip() if isinstance(value, str) else value)
     original_day_id = item.day_id
     item.day_id = target.id
@@ -130,6 +131,22 @@ def _action_item(
             verification_status="unverified",
             value_kind="estimated",
             review_requirement="before_departure",
+            latitude=request.latitude,
+            longitude=request.longitude,
+            fact_evidence_json=json.dumps(
+                {
+                    "coordinates": {
+                        "sourceRef": "user_map_wgs84",
+                        "provider": "user",
+                        "verificationStatus": "unverified",
+                        "valueKind": "estimated",
+                        "freshnessStatus": "unknown",
+                        "reviewRequirement": "before_departure",
+                    }
+                }
+            )
+            if request.latitude is not None
+            else "{}",
         )
     else:
         item = session.get(ItineraryItem, item_id)
@@ -148,7 +165,14 @@ def act(user_id: int, itinerary_id: int, item_id: int | None, request: ItemActio
         days = list(session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == itinerary_id)))
         item, day = _action_item(session, itinerary_id, item_id, request, days)
         requirements = TripRequirements.model_validate(main.requirements_json or {})
-        if request.action in {"update", "delete"} and fixed_for_item(requirements, day.day_no, item):
+        temporal_edit = request.action == "update" and (
+            request.dayNo != day.day_no
+            or request.startTime != (item.start_time.strftime("%H:%M") if item.start_time else None)
+            or request.endTime != (item.end_time.strftime("%H:%M") if item.end_time else None)
+        )
+        if requirements.constraint_planning and (request.action in {"move", "delete"} or temporal_edit):
+            raise ApiError(409, "约束行程的时间调整、移动或移除，请先比较方案再确认保存")
+        if request.action in {"update", "delete", "move"} and fixed_for_item(requirements, day.day_no, item):
             raise ApiError(409, "请先解除固定，再修改这条安排")
         if item.item_type == "hotel" and request.action not in {"fix", "unfix", "delete"}:
             nights = main.stay_nights if main.stay_nights is not None else max((main.days or 1) - 1, 0)
@@ -172,7 +196,16 @@ def act(user_id: int, itinerary_id: int, item_id: int | None, request: ItemActio
             previous_plans = itinerary_chat.current_plans(itinerary_id)
             if isinstance(request, ItemCreateBody):
                 session.add(item)
-            _edit(session, item, days, request)
+            if request.action == "move":
+                itinerary_item_move.move(session, item, day, days, request, requirements)
+            else:
+                _edit(
+                    session,
+                    item,
+                    days,
+                    request,
+                    requirements.constraint_planning.currency if requirements.constraint_planning else "CNY",
+                )
             if isinstance(request, ItemCreateBody) and request.fixed:
                 _change_fixed(
                     session,

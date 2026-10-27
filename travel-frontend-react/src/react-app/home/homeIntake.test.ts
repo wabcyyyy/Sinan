@@ -124,7 +124,7 @@ describe('TripPanel（active 右栏容器）', () => {
     const requirements = intakeState({}).requirements
     const html = renderToStaticMarkup(createElement(RequirementSummary, { requirements: {
       ...requirements,
-      requiredPlaces: [{ constraintId: 'p1', name: '浙江省博物馆', dayNo: 2, sourceTurnId: null }],
+      requiredPlaces: [{ constraintId: 'p1', name: '浙江省博物馆', dayNo: 2, sourceTurnId: null, sourceRef: null }],
       dayWindows: [{ dayNo: 1, kind: 'arrival', notBefore: '14:00', finishBy: null, sourceTurnId: null }, { dayNo: 2, kind: 'departure', notBefore: null, finishBy: '16:00', sourceTurnId: null }],
       excludedPlaces: ['灵隐寺'], budgetPolicy: { mode: 'hard_cap', includeIntercityTransport: false },
       unresolvedRequests: ['保证不用排队'],
@@ -224,6 +224,21 @@ describe('TripBoard（done 态只读预览板）', () => {
   } as unknown as ItineraryDetail
   const board = () => renderToStaticMarkup(createElement(TripBoard, { draft }))
 
+  it('欧元预览按服务端币种展示，不写成人民币', () => {
+    const html = renderToStaticMarkup(createElement(TripBoard, { draft: { ...draft, budgetCurrency: 'EUR' } }))
+    expect(html).toContain('EUR 2340')
+    expect(html).toContain('餐饮 EUR 640')
+    expect(html).not.toContain('￥')
+  })
+
+  it('要求冲突提示先修订需求，不能引导原条件反复重生成', () => {
+    const conflict = { ...draft, genState: 'PARTIAL', dayList: [{ ...day(1, []), generationStatus: 'FAILED', constraintPlanning: { status: 'INFEASIBLE' } }] } as unknown as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(TripBoard, { draft: conflict }))
+    expect(html).toContain('请先选择上方修订')
+    expect(html).toContain('先调整需求再规划')
+    expect(html).not.toContain('重新生成这一天')
+  })
+
   it('部分完成不冒充就绪，失败日期保留重试入口但不展示为已交付路线', () => {
     const partial = { ...draft, genState: 'PARTIAL', dayList: draft.dayList.map((d) => ({ ...d, generationStatus: 'FAILED' })) } as ItineraryDetail
     const html = renderToStaticMarkup(createElement(TripBoard, { draft: partial }))
@@ -299,6 +314,7 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
     city: null,
     days: null,
     persons: null,
+    personCountOptions: [],
     budget: null,
     startDate: null,
     stayNights: null,
@@ -306,10 +322,14 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
     hotelTier: null,
     originCity: null,
     requirements: {
+      factSource: null, travelPlanner: 'generate', travelConstraints: null,
       schemaVersion: 1,
       dayWindows: [],
       requiredPlaces: [],
       fixedArrangements: [],
+      placeRelations: [],
+      constraintPlanning: null,
+      placeInputs: [],
       excludedPlaces: [],
       excludedCategories: [],
       pace: null,
@@ -321,6 +341,7 @@ function intakeState(base: Partial<Pick<IntakeState, 'city' | 'days' | 'persons'
       budgetPolicy: null,
       lodging: null,
       unresolvedRequests: [],
+      requirementSources: [],
     },
     optionalAsked: [],
     optionalPending: [],
@@ -440,6 +461,32 @@ describe('HomeStudio「重新说」锁（mock api 交互）', () => {
     await act(async () => { resume.click() })
     await say(container, '日期待定')
     expect(clarifyMock.mock.calls.at(-1)?.[2]).toEqual(state)
+  })
+
+  it('人数冲突保留确认选项，选择人数后才解锁并按确认值生成', async () => {
+    const pending = intakeState({ city: '成都', days: 4, persons: null })
+    pending.personCountOptions = [4, 5]
+    clarifyMock.mockResolvedValueOnce(clarifyFixture({
+      state: pending, slots: { city: '成都', days: 4 }, missing: ['persons'], blocked: true,
+      question: '人数信息中有4和5两种说法，请确认这次一共几人？', options: ['4 人', '5 人'], next: 'persons',
+    })).mockResolvedValueOnce({
+      ...clarifyReady, state: intakeState({ city: '成都', days: 4, persons: 4 }),
+      slots: { city: '成都', days: 4, persons: 4 },
+    })
+    const { container } = await mountStudio()
+    await say(container, '旅行人数4，我和4个同学去成都')
+    expect(container.querySelector('.intake-start')).toBeNull()
+    expect(generateMock).not.toHaveBeenCalled()
+    const choose = Array.from(container.querySelectorAll<HTMLButtonElement>('.intake-chips button'))
+      .find(button => button.textContent === '4 人')
+    expect(choose).toBeDefined()
+    await act(async () => { choose!.click() })
+    await flush()
+    expect(clarifyMock.mock.calls.at(-1)?.[0]).toBe('4 人')
+    expect(clarifyMock.mock.calls.at(-1)?.[2]).toEqual(pending)
+    await act(async () => { (container.querySelector('.intake-start') as HTMLButtonElement).click() })
+    await flush()
+    expect(generateMock.mock.calls[0][0]).toMatchObject({ persons: 4 })
   })
 
   it('恢复已生成的历史会话立即加载原行程，不再提交生成', async () => {

@@ -66,6 +66,19 @@ const namesOf = (state: ItemPreviewState) => state.candidates.map((candidate) =>
 // ===== 1. 纯 reducer：去重 / 撤回 / 陈旧 run / 快照整日让位 =====
 
 describe('itemPreviews reducer（M5a 候选状态机）', () => {
+  it('CP提交帧一次结算存活与落选，重连预览不会复活，旧run映射不改新run', () => {
+    let state = reduceItemPreviewEvent(emptyPreviewState(), previewFrame('run-1:0:1', 0, 1, '同名馆'))
+    state = reduceItemPreviewEvent(state, previewFrame('run-1:0:2', 0, 2, '同名馆'))
+    const resolved: ItineraryStreamEvent = { type: 'day_preview_mapping', data: { runId: 'run-1', snapshot: { id: 7 },
+      mappings: [{ previewId: 'run-1:0:1', itemId: 901, candidateId: 'cp-0' }],
+      withdrawn: [{ previewId: 'run-1:0:2', reason: '未采用' }] } }
+    state = reduceItemPreviewEvent(state, resolved)
+    expect(state.candidates).toEqual([])
+    state = reduceItemPreviewEvent(state, previewFrame('run-1:0:1', 0, 1, '迟到的同名馆'))
+    expect(state.candidates).toEqual([])
+    state = reduceItemPreviewEvent(state, previewFrame('run-2:0:1', 0, 1, '新候选', 'run-2'))
+    expect(reduceItemPreviewEvent(state, resolved)).toBe(state)
+  })
   it('item_preview 追加候选；重复 previewId 不重复追加', () => {
     let state = emptyPreviewState()
     state = reduceItemPreviewEvent(state, previewFrame('run-1:1:1', 1, 1, '宽窄巷子'))
@@ -210,6 +223,8 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
         cancelling: planning.cancelling,
         degraded: planning.degradedNote,
         previews: planning.previews.map((candidate) => `${candidate.dayNo}:${String(candidate.item.poiName)}`),
+        draftItems: planning.draft?.dayList?.flatMap(d => d.items.map(p => p.poiName)) ?? [],
+        revision: planning.draft?.planningRevision,
       })),
     )
   }
@@ -250,7 +265,26 @@ describe('useHomePlanning M5a/M5b 流消费（mock api 交互）', () => {
       cancelling: boolean
       degraded: string | null
       previews: string[]
+      draftItems: string[]
+      revision?: number
     }
+
+  it('CP映射帧同步显示正式快照并结算候选，旧run和旧版本快照不能覆盖', async () => {
+    const container = await mountProbe()
+    await startGeneration(container)
+    await feed(previewFrame('run-1:0:1', 0, 1, '研究馆'))
+    const snapshot = { ...readyDetail, status: 1, planningRevision: 2, dayList: [day(1, ['正式馆'])] }
+    await feed({ type: 'day_preview_mapping', data: { runId: 'run-1', snapshot,
+      mappings: [{ previewId: 'run-1:0:1', itemId: 901 }], withdrawn: [] } })
+    expect(stateOf(container)).toMatchObject({ previews: [], draftItems: ['正式馆'], revision: 2 })
+    await act(async () => waitCapture!.options.onUpdate?.({ ...snapshot, planningRevision: 1, dayList: [] }))
+    expect(stateOf(container)).toMatchObject({ draftItems: ['正式馆'], revision: 2 })
+    await feed({ type: 'day_preview_mapping', data: { runId: 'run-1', snapshot: { ...snapshot, planningRevision: 1, dayList: [day(1, ['陈旧馆'])] }, mappings: [] } })
+    expect(stateOf(container).draftItems).toEqual(['正式馆'])
+    await feed(previewFrame('run-2:0:1', 0, 1, '新候选', 'run-2'))
+    await feed({ type: 'day_preview_mapping', data: { runId: 'run-1', snapshot: { ...snapshot, planningRevision: 3, dayList: [day(1, ['旧run'])] }, mappings: [] } })
+    expect(stateOf(container)).toMatchObject({ previews: ['0:新候选'], draftItems: ['正式馆'] })
+  })
 
   it('degraded 帧要露出诚实提示，resync 帧必须立刻按 DB 详情对账', async () => {
     const container = await mountProbe()
@@ -446,6 +480,21 @@ const boardDraft = {
 } as unknown as ItineraryDetail
 
 describe('M5a/M5b 渲染（静态断言）', () => {
+  it('未排程研究池单列，不把候选放进第1天或当作正式安排', () => {
+    const draft = { id: 7, days: 1, dayList: [day(1, [])] } as unknown as ItineraryDetail
+    const html = renderToStaticMarkup(createElement(TripPanel, {
+      planning: planning({
+        status: 'planning', busy: true, draft,
+        previews: [{ previewId: 'cp:0:1', runId: 'cp', dayNo: 0, itemOrdinal: 1, item: { poiName: '未排程馆' } }],
+      }), chat: fakeChat({}), onStart: () => undefined,
+    }))
+    expect(html).toContain('尚未排程的研究候选')
+    expect(html).toContain('未排程馆')
+    expect(html).toContain('正在完善')
+    expect(html.indexOf('未排程馆')).toBeLessThan(html.indexOf('trip-preview-days'))
+    expect(candidatesForDay([{ previewId: 'cp:0:1', runId: 'cp', dayNo: 0, itemOrdinal: 1, item: {} }], 1)).toEqual([])
+  })
+
   it('生成中天卡：候选条目带「正在完善」徽标就地亮出，替代纯骨架 shimmer', () => {
     const draft = { id: 7, days: 1, dayList: [day(1, [])] } as unknown as ItineraryDetail
     const html = renderToStaticMarkup(createElement(TripPanel, {

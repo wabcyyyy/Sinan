@@ -1,22 +1,37 @@
-// 一次性自注销 SW（R2-F8 拍板 2026-10-05）：清退 Vue 时代注册的旧 Service Worker 壳。
-// 旧 SW 的 update check 拉到本文件即换装 → activate 时清全部缓存并注销自身；
-// 当前页面在缓存清空后由网络直出，下一次导航即是干净的新壳。
-// 全量用户清退完成后本文件可删——仓库里没有任何 navigator.serviceWorker.register
-// 调用，保留它只是给历史上沾染过旧 SW 的浏览器"喂最后一剂药"。
-self.addEventListener('install', () => {
-  self.skipWaiting()
+// 只缓存公开应用壳与静态资源；用户私有行程存在 IndexedDB，API 响应绝不进入 CacheStorage。
+const SHELL = 'sinan-offline-shell-v1'
+self.addEventListener('install', event => { event.waitUntil(self.skipWaiting()) })
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    for (const name of await caches.keys()) if (name.startsWith('sinan-offline-shell-') && name !== SHELL) await caches.delete(name)
+    await self.clients.claim()
+  })())
 })
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    (async () => {
-      const names = await caches.keys()
-      await Promise.all(names.map((name) => caches.delete(name)))
-      await self.registration.unregister()
-      const clients = await self.clients.matchAll({ type: 'window' })
-      for (const client of clients) {
-        client.navigate(client.url).catch(() => {})
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'CACHE_OFFLINE_SHELL') return
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(SHELL)
+      const assets = ['/', '/offline', ...event.data.assets].filter(path =>
+        typeof path === 'string' && path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/api/'))
+      for (const path of new Set(assets)) {
+        const response = await fetch(path, { credentials: 'same-origin' })
+        if (!response.ok || response.type === 'opaque') throw new Error('静态页面资源未能保存')
+        await cache.put(path, response)
       }
-    })(),
-  )
+      event.ports[0]?.postMessage({ ok: true })
+    } catch (error) { event.ports[0]?.postMessage({ ok: false, error: error instanceof Error ? error.message : '保存失败' }) }
+  })())
+})
+self.addEventListener('fetch', event => {
+  const request = event.request
+  const url = new URL(request.url)
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return
+  if (request.mode === 'navigate') {
+    if (!url.pathname.startsWith('/offline')) return
+    event.respondWith(fetch(request).catch(async () => (await caches.open(SHELL)).match('/offline') || Response.error()))
+    return
+  }
+  if (!url.pathname.startsWith('/assets/') && !url.pathname.startsWith('/src/') && !url.pathname.startsWith('/node_modules/') && !url.pathname.startsWith('/@vite/')) return
+  event.respondWith(fetch(request).catch(async () => (await caches.open(SHELL)).match(request) || Response.error()))
 })

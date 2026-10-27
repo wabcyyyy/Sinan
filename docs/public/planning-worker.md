@@ -38,6 +38,8 @@ API 与 worker 必须使用相同数据库、模型路由、加密配置和时�
 `PLANNING_WORKER_CONCURRENCY` 可在 1–4 内调整，默认 4；`PLANNING_QUEUE_CAPACITY` 默认 8，单 worker 默认最多一批运行、一批等待；`PLANNING_POLL_SECONDS` 默认 1。降低并发时应相应收紧总容量。增加进程会增加模型请求、数据库连接和外部服务调用，当前没有真实供应商的全局吞吐测量或共享模型配额。
 worker 收到停止信号后停止领取并等待已有任务；容器宽限 330 秒，超过宽限由容器终止，剩余责任通过租约恢复。API 的 `/healthz` 不代表 worker 正常。Compose 为 worker 配置独立健康文件，只有成功轮询数据库后才刷新；健康检查允许一次完整任务截止期与租约窗口，支持检查点恢复占用轮询线程，不能据此证明容量。还应查看 worker 日志与下方持久队列快照。
 
+约束规划路径另保存研究、路网矩阵与整趟求解结果，恢复按用户、行程、需求指纹和原绝对截止匹配阶段快照；保存前检查持久执行令牌，已交付日期不覆盖。该机制复用同机 SQLite 检查点，恢复阶段结果而非 CP-SAT 搜索树。阶段内部未提交的工作可能重做，但不能重置累计预算。六个进程硬退出位置及真实 MySQL 争用结果见 [P1 交付](../design/sinan-p1-delivery-20261025.md)。
+
 ## 管理员队列快照
 
 `GET /api/admin/planning-queue?limit=20` 复用管理员鉴权（匿名 401、普通用户 403），直接读取 MySQL `planning_task`，不依赖接收请求的 API 内存或 Redis。管理员已登录后，可沿用登录时取得的 PowerShell `WebRequestSession`：

@@ -8,6 +8,7 @@ import { candidatesForDay } from './itemPreviews'
 import type { ItemPreviewCandidate } from './itemPreviews'
 import { toGenerateInput } from './intakeSlots'
 import { IntakeConfirm } from './IntakeConfirm'
+import { ConstraintRepairPanel } from './ConstraintRepairPanel'
 import { SlotChecklist } from './SlotChecklist'
 import { TripBoard } from './TripBoard'
 import type { useHomePlanning } from './useHomePlanning'
@@ -63,6 +64,10 @@ export function TripPanel({ planning, chat, onStart }: {
   return <section className="trip-panel" aria-label="行程工作面板" aria-busy={planning.busy}>
     <TripSteps step={step} busy={planning.busy} partial={planning.draft?.genState === 'PARTIAL'} />
     <motion.div className="trip-panel-body" key={contentKey} variants={fadeUp} initial="hidden" animate="show">
+      {!planning.busy && planning.draft && chat.serverState?.requirements && <ConstraintRepairPanel
+        trip={planning.draft} requirements={chat.serverState.requirements}
+        onAdopt={next => { chat.updateRequirements(next); planning.reset() }}
+      />}
       {state === 'collecting' && <SlotChecklist slots={chat.slots} onSelectPrompt={(text) => void chat.send(text)} />}
       {showConfirm && (
         <IntakeConfirm
@@ -124,6 +129,7 @@ function TripSteps({ step, busy, partial }: { step: number; busy: boolean; parti
  * 数据来自 SSE + 轮询对账的 draft（useHomePlanning），无需独立请求。 */
 function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlanning> }) {
   const { status, message, progress, draft, busy, previews, coreReady, degradedNote, cancelling, cancel } = planning
+  const researchCandidates = candidatesForDay(previews, 0).filter(candidate => candidate.item.poiName)
   const doneDays = draft ? draft.dayList.filter((day) => dayDone(day)).length : 0
   // 总进度：阶段占前 60%，逐日交付占后 40%——天数越多，后段越能看出在动
   const stagePart = Math.min(progress, PLANNING_STAGES.length) / PLANNING_STAGES.length
@@ -166,6 +172,13 @@ function PlanningPreview({ planning }: { planning: ReturnType<typeof useHomePlan
     {coreReady && <p className="planning-core-hint" role="status"><Icon name="spark" size={13} />主行程已可查看，备选仍在完善</p>}
     {/* 外部信息没取到时不装作「全都齐了」；复用同一非阻断提示位，零新增样式 */}
     {busy && degradedNote && <p className="planning-core-hint" role="status"><Icon name="alert" size={13} />{degradedNote}</p>}
+    {busy && researchCandidates.length > 0 && <section aria-label="尚未排程的研究候选">
+      <p className="planning-core-hint">研究候选 · 尚未排程，费用与营业信息以规划说明为准</p>
+      <ul className="trip-preview-candidates">{researchCandidates.map(candidate => <li key={candidate.previewId} className="trip-preview-candidate">
+        <span className="trip-preview-candidate-name">{candidate.item.poiName}</span>
+        <span className="trip-preview-candidate-tag">正在完善</span>
+      </li>)}</ul>
+    </section>}
     {status === 'login' && <button className="button button-primary" type="button" onClick={() => navigate(loginRedirect())}>登录并继续<Icon name="arrow" size={16} /></button>}
     {draft && draft.days > 0 && <motion.ol className="trip-preview-days" variants={staggerChildren(0.07)} initial="hidden" animate="show">
       {Array.from({ length: draft.days }, (_, index) => index + 1).map((dayNo) => (

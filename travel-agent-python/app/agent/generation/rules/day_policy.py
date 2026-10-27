@@ -6,6 +6,7 @@
 
 口径（spec 原文）：
 - 普通全天且无新约束：保留 240/480 分钟与景点数量基线（reflect 既有常量）；
+- 明确给出不足 8 小时的起止窗口：按窗口验收，不强制套用全天 240 分钟下限；
 - 到达日/返程日：按明确可用窗口验收，不要求凑满 240 分钟；可用时间不足时
   "抵达/返程安排"是合法日类型（无景点不算伤），不冒充普通景点日；
 - 慢游（pace=relaxed）：仅降低景点数上限（给休息留白），不全局下降时长阈值，
@@ -108,14 +109,18 @@ def day_policy_for(requirements: TripRequirements | None, day_no: int) -> DayPol
     if requirements and requirements.max_attractions_per_day is not None:
         max_attractions = min(max_attractions, requirements.max_attractions_per_day)
     if kind == "full":
+        available = end - start if start is not None and end is not None else None
+        minimum, maximum = MIN_ACTIVE_MINUTES, MAX_DAILY_MINUTES
+        if available is not None and 0 < available < MAX_DAILY_MINUTES:
+            minimum, maximum = 0, available
         return DayPolicy(
             day_no=day_no,
             kind=kind,
             window_start_min=start,
             window_end_min=end,
             has_known_window=known,
-            min_active_minutes=MIN_ACTIVE_MINUTES,
-            max_daily_minutes=MAX_DAILY_MINUTES,
+            min_active_minutes=minimum,
+            max_daily_minutes=maximum,
             max_attractions=max_attractions,
             relaxed=relaxed,
             playable=True,

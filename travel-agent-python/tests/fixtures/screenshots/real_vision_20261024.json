@@ -1,0 +1,744 @@
+{
+  "results": [
+    {
+      "fixture": "guide",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "place",
+            "polarity": "recommended",
+            "fields": [
+              {
+                "key": "name",
+                "value": "Musée du Louvre",
+                "quote": "Musée du Louvre",
+                "region": {
+                  "x": 0.12,
+                  "y": 0.14,
+                  "width": 0.22,
+                  "height": 0.04
+                },
+                "language": "fr"
+              },
+              {
+                "key": "localName",
+                "value": "卢浮宫",
+                "quote": "卢浮宫",
+                "region": {
+                  "x": 0.36,
+                  "y": 0.14,
+                  "width": 0.09,
+                  "height": 0.04
+                },
+                "language": "zh"
+              },
+              {
+                "key": "city",
+                "value": "Paris",
+                "quote": "Paris",
+                "region": {
+                  "x": 0.04,
+                  "y": 0.24,
+                  "width": 0.08,
+                  "height": 0.04
+                },
+                "language": "en"
+              },
+              {
+                "key": "countryCode",
+                "value": "FR",
+                "quote": "FR",
+                "region": {
+                  "x": 0.19,
+                  "y": 0.24,
+                  "width": 0.04,
+                  "height": 0.04
+                },
+                "language": "en"
+              }
+            ],
+            "questions": []
+          },
+          {
+            "recordId": "",
+            "kind": "place",
+            "polarity": "excluded",
+            "fields": [
+              {
+                "key": "name",
+                "value": "Louvre-Lens",
+                "quote": "Louvre-Lens",
+                "region": {
+                  "x": 0.09,
+                  "y": 0.34,
+                  "width": 0.16,
+                  "height": 0.04
+                },
+                "language": "fr"
+              },
+              {
+                "key": "note",
+                "value": "不同城市与馆区",
+                "quote": "不同城市与馆区",
+                "region": {
+                  "x": 0.27,
+                  "y": 0.34,
+                  "width": 0.19,
+                  "height": 0.04
+                },
+                "language": "zh"
+              }
+            ],
+            "questions": []
+          }
+        ],
+        "questions": []
+      },
+      "extractor": "vision:deepseek-flash",
+      "evaluation": {
+        "passed": true,
+        "checks": [
+          {
+            "check": "primary_record",
+            "passed": true
+          },
+          {
+            "check": "field:city",
+            "passed": true
+          },
+          {
+            "check": "field:countryCode",
+            "passed": true
+          },
+          {
+            "check": "kind",
+            "passed": true
+          },
+          {
+            "check": "negative_separate_record",
+            "passed": true
+          },
+          {
+            "check": "quote:0:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:name",
+            "passed": true
+          },
+          {
+            "check": "quote:0:localName",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:localName",
+            "passed": true
+          },
+          {
+            "check": "quote:0:city",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:city",
+            "passed": true
+          },
+          {
+            "check": "quote:0:countryCode",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:countryCode",
+            "passed": true
+          },
+          {
+            "check": "quote:1:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:1:name",
+            "passed": true
+          },
+          {
+            "check": "quote:1:note",
+            "passed": true
+          },
+          {
+            "check": "region_row:1:note",
+            "passed": true
+          }
+        ],
+        "scope": "hand-authored field values, verbatim quotes and region centers on reference rows; not tight-box IoU"
+      },
+      "seconds": 1.906
+    },
+    {
+      "fixture": "booking",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "reservation",
+            "polarity": "unclear",
+            "fields": [
+              {
+                "key": "name",
+                "value": "Musée du Louvre / 卢浮宫",
+                "quote": "Musée du Louvre / 卢浮宫",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.14,
+                  "width": 0.35,
+                  "height": 0.05
+                },
+                "language": "fr"
+              },
+              {
+                "key": "date",
+                "value": "2026-10-25",
+                "quote": "2026-10-25",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.24,
+                  "width": 0.15,
+                  "height": 0.04
+                },
+                "language": null
+              },
+              {
+                "key": "startTime",
+                "value": "14:00",
+                "quote": "14:00",
+                "region": {
+                  "x": 0.23,
+                  "y": 0.24,
+                  "width": 0.07,
+                  "height": 0.04
+                },
+                "language": null
+              },
+              {
+                "key": "endTime",
+                "value": "16:00",
+                "quote": "16:00",
+                "region": {
+                  "x": 0.23,
+                  "y": 0.34,
+                  "width": 0.07,
+                  "height": 0.04
+                },
+                "language": null
+              },
+              {
+                "key": "timeZone",
+                "value": "Europe/Paris",
+                "quote": "Europe/Paris",
+                "region": {
+                  "x": 0.15,
+                  "y": 0.44,
+                  "width": 0.15,
+                  "height": 0.04
+                },
+                "language": null
+              },
+              {
+                "key": "currency",
+                "value": "EUR",
+                "quote": "EUR",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.54,
+                  "width": 0.06,
+                  "height": 0.04
+                },
+                "language": null
+              },
+              {
+                "key": "amount",
+                "value": "22.00",
+                "quote": "22.00",
+                "region": {
+                  "x": 0.14,
+                  "y": 0.54,
+                  "width": 0.08,
+                  "height": 0.04
+                },
+                "language": null
+              }
+            ],
+            "questions": []
+          }
+        ],
+        "questions": [
+          "The screenshot states 'NOT A REAL ORDER'; should this booking be treated as a sample rather than an actual reservation?"
+        ]
+      },
+      "extractor": "vision:deepseek-flash",
+      "evaluation": {
+        "passed": false,
+        "checks": [
+          {
+            "check": "primary_record",
+            "passed": true
+          },
+          {
+            "check": "field:date",
+            "passed": true
+          },
+          {
+            "check": "field:startTime",
+            "passed": true
+          },
+          {
+            "check": "field:endDate",
+            "passed": false
+          },
+          {
+            "check": "field:endTime",
+            "passed": true
+          },
+          {
+            "check": "field:timeZone",
+            "passed": true
+          },
+          {
+            "check": "field:amount",
+            "passed": true
+          },
+          {
+            "check": "field:currency",
+            "passed": true
+          },
+          {
+            "check": "kind",
+            "passed": true
+          },
+          {
+            "check": "quote:0:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:name",
+            "passed": true
+          },
+          {
+            "check": "quote:0:date",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:date",
+            "passed": true
+          },
+          {
+            "check": "quote:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "quote:0:currency",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:currency",
+            "passed": true
+          },
+          {
+            "check": "quote:0:amount",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:amount",
+            "passed": true
+          }
+        ],
+        "scope": "hand-authored field values, verbatim quotes and region centers on reference rows; not tight-box IoU"
+      },
+      "seconds": 2.188
+    },
+    {
+      "fixture": "guide_kyoto",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "place",
+            "polarity": "recommended",
+            "fields": [
+              {
+                "key": "name",
+                "value": "清水寺",
+                "quote": "清水寺",
+                "region": {
+                  "x": 0.155,
+                  "y": 0.135,
+                  "width": 0.09,
+                  "height": 0.04
+                },
+                "language": "ja"
+              },
+              {
+                "key": "localName",
+                "value": "Kiyomizu-dera",
+                "quote": "Kiyomizu-dera",
+                "region": {
+                  "x": 0.255,
+                  "y": 0.135,
+                  "width": 0.21,
+                  "height": 0.04
+                },
+                "language": "en"
+              },
+              {
+                "key": "city",
+                "value": "京都",
+                "quote": "京都",
+                "region": {
+                  "x": 0.04,
+                  "y": 0.24,
+                  "width": 0.06,
+                  "height": 0.04
+                },
+                "language": "ja"
+              },
+              {
+                "key": "countryCode",
+                "value": "JP",
+                "quote": "JP",
+                "region": {
+                  "x": 0.19,
+                  "y": 0.24,
+                  "width": 0.04,
+                  "height": 0.04
+                },
+                "language": "en"
+              }
+            ],
+            "questions": []
+          }
+        ],
+        "questions": [
+          "The header states 'NOT A REAL ORDER' and '自制匿名开发样例' — is this a sample/placeholder rather than an actual travel plan?"
+        ]
+      },
+      "extractor": "vision:deepseek-flash",
+      "evaluation": {
+        "passed": true,
+        "checks": [
+          {
+            "check": "primary_record",
+            "passed": true
+          },
+          {
+            "check": "field:city",
+            "passed": true
+          },
+          {
+            "check": "field:countryCode",
+            "passed": true
+          },
+          {
+            "check": "kind",
+            "passed": true
+          },
+          {
+            "check": "quote:0:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:name",
+            "passed": true
+          },
+          {
+            "check": "quote:0:localName",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:localName",
+            "passed": true
+          },
+          {
+            "check": "quote:0:city",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:city",
+            "passed": true
+          },
+          {
+            "check": "quote:0:countryCode",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:countryCode",
+            "passed": true
+          }
+        ],
+        "scope": "hand-authored field values, verbatim quotes and region centers on reference rows; not tight-box IoU"
+      },
+      "seconds": 1.547
+    },
+    {
+      "fixture": "transport",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "transport",
+            "polarity": "unclear",
+            "fields": [
+              {
+                "key": "name",
+                "value": "京都駅 / Kyoto Station",
+                "quote": "出発駅 京都駅 / Kyoto Station",
+                "region": {
+                  "x": 0.03,
+                  "y": 0.14,
+                  "width": 0.39,
+                  "height": 0.04
+                },
+                "language": "ja"
+              },
+              {
+                "key": "date",
+                "value": "2026-10-25",
+                "quote": "2026-10-25",
+                "region": {
+                  "x": 0.03,
+                  "y": 0.24,
+                  "width": 0.19,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "startTime",
+                "value": "23:00",
+                "quote": "23:00",
+                "region": {
+                  "x": 0.22,
+                  "y": 0.24,
+                  "width": 0.07,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "endDate",
+                "value": "2026-10-26",
+                "quote": "2026-10-26",
+                "region": {
+                  "x": 0.03,
+                  "y": 0.34,
+                  "width": 0.19,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "endTime",
+                "value": "06:00",
+                "quote": "06:00",
+                "region": {
+                  "x": 0.22,
+                  "y": 0.34,
+                  "width": 0.07,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "timeZone",
+                "value": "Asia/Tokyo",
+                "quote": "現地時間 Asia/Tokyo",
+                "region": {
+                  "x": 0.03,
+                  "y": 0.44,
+                  "width": 0.24,
+                  "height": 0.03
+                },
+                "language": "ja"
+              },
+              {
+                "key": "currency",
+                "value": "JPY",
+                "quote": "JPY 1200",
+                "region": {
+                  "x": 0.09,
+                  "y": 0.54,
+                  "width": 0.09,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "amount",
+                "value": "1200",
+                "quote": "JPY 1200",
+                "region": {
+                  "x": 0.09,
+                  "y": 0.54,
+                  "width": 0.09,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "note",
+                "value": "出発 2026-10-25 23:00 京都駅 / 到着 2026-10-26 06:00（翌日）・非实际班次",
+                "quote": "到着 2026-10-26 06:00",
+                "region": {
+                  "x": 0.03,
+                  "y": 0.34,
+                  "width": 0.24,
+                  "height": 0.03
+                },
+                "language": "ja"
+              }
+            ],
+            "questions": []
+          }
+        ],
+        "questions": [
+          "到着駅（降車駅）が記載されていません。どこで降りますか？",
+          "この券面は「非实际班次」とありますが、実際の便名・列車名はありますか？"
+        ]
+      },
+      "extractor": "vision:deepseek-flash",
+      "evaluation": {
+        "passed": true,
+        "checks": [
+          {
+            "check": "primary_record",
+            "passed": true
+          },
+          {
+            "check": "field:date",
+            "passed": true
+          },
+          {
+            "check": "field:startTime",
+            "passed": true
+          },
+          {
+            "check": "field:endDate",
+            "passed": true
+          },
+          {
+            "check": "field:endTime",
+            "passed": true
+          },
+          {
+            "check": "field:timeZone",
+            "passed": true
+          },
+          {
+            "check": "field:amount",
+            "passed": true
+          },
+          {
+            "check": "field:currency",
+            "passed": true
+          },
+          {
+            "check": "kind",
+            "passed": true
+          },
+          {
+            "check": "quote:0:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:name",
+            "passed": true
+          },
+          {
+            "check": "quote:0:date",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:date",
+            "passed": true
+          },
+          {
+            "check": "quote:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:endDate",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:endDate",
+            "passed": true
+          },
+          {
+            "check": "quote:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "quote:0:currency",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:currency",
+            "passed": true
+          },
+          {
+            "check": "quote:0:amount",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:amount",
+            "passed": true
+          },
+          {
+            "check": "quote:0:note",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:note",
+            "passed": true
+          }
+        ],
+        "scope": "hand-authored field values, verbatim quotes and region centers on reference rows; not tight-box IoU"
+      },
+      "seconds": 2.844
+    }
+  ],
+  "source": "Four authorized real deepseek-flash responses, 2026-10-24; replay never sends another model request"
+}

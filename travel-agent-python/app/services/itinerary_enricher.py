@@ -77,6 +77,9 @@ def enrich_itinerary(
     user_id: int, itinerary_id: int, request: Any, expected_revision: int | None = None, limits: RunLimits | None = None
 ) -> None:
     try:
+        requirements = getattr(request, "requirements_struct", None)
+        if requirements and requirements.constraint_planning:
+            return  # 本分支不追加旧人民币口径的模型讲解/候选富化；finally 仍收执行句柄。
         if limits is None:
             _enrich(user_id, itinerary_id, request, expected_revision)
         else:

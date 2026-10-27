@@ -362,6 +362,16 @@ def llm_open_trip(req: GenerateDayRequest) -> tuple[list[dict], list[dict]]:
 
     返回 (每日行程列表, 行程级备选池 suggestions)。
     """
+    if req.requirements_struct and req.requirements_struct.fact_source == "chinatravel":
+        if req.context.get("fact_source") != "chinatravel":
+            raise ValueError("official-source request has no frozen provider context; online fallback forbidden")
+        if req.requirements_struct and req.requirements_struct.travel_planner == "cp":
+            from app.agent.generation.content.complete_travel_solver import generate
+
+            return generate(req)
+        from app.agent.generation.content.complete_travel import generate
+
+        return generate(req, get_llm_client("fast"))
     client = get_llm_client("fast")
     system, user = open_trip_prompt(req)
     days = req.days or 1

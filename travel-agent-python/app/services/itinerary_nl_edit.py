@@ -56,6 +56,8 @@ def nl_edit(user_id: int, itinerary_id: int, instruction: str) -> dict[str, Any]
     """
     with session_scope() as session:
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
+        if TripRequirements.model_validate(main.requirements_json or {}).constraint_planning:
+            raise ApiError(409, "约束行程请使用修改比较与草稿确认，不直接执行自然语言写入")
         # R3-F9（2026-10-05 拍板：拒绝编辑）：失败壳+可编辑体并存，会与恢复重拉
         # （R2-F7 收窄后的增量补天）互相覆盖——拒绝入口让恢复成为失败行程唯一
         # 的内容来源，手改请先重建。失败口径与 generation_recovery 的 failed

@@ -4,8 +4,9 @@ import type { TripRequirements } from '../../types/generated/contracts'
 export function RequirementSummary({ requirements: r }: { requirements?: TripRequirements | null }) {
   if (!r) return null
   const lines: string[] = []
-  for (const f of r.fixedArrangements ?? []) lines.push(`第 ${f.dayNo} 天固定：${f.name} ${f.startTime}–${f.endTime}${f.cost != null ? ` · 用户填写单价 ￥${f.cost}` : ''}`)
+  for (const f of r.fixedArrangements ?? []) lines.push(`第 ${f.dayNo} 天固定：${f.name} ${f.startTime}–${f.endTime}${f.cost != null ? ` · 用户填写单价 ${r.constraintPlanning?.currency || 'CNY'} ${f.cost}` : ''}`)
   for (const place of r.requiredPlaces ?? []) lines.push(`${place.dayNo ? `第 ${place.dayNo} 天` : '全程'}必去：${place.name}`)
+  for (const relation of r.placeRelations ?? []) lines.push(`第 ${relation.dayNo} 天${relation.strength === 'soft' ? '优先' : '要求'}：${relation.kind === 'before' ? `${relation.placeNames[0]} 之后再去 ${relation.placeNames[1]}` : `${relation.placeNames.join('、')} 至少安排一处`}`)
   if (r.excludedPlaces?.length) lines.push(`避开：${r.excludedPlaces.join('、')}`)
   const categories: Record<string, string> = { temple: '寺庙/神社', museum: '博物馆' }
   if (r.excludedCategories?.length) lines.push(`不安排：${r.excludedCategories.map((v) => categories[v] ?? v).join('、')}`)
@@ -27,6 +28,7 @@ export function RequirementSummary({ requirements: r }: { requirements?: TripReq
   return <section className="requirement-summary" aria-label="明确要求">
     <h4>这次规划会带上这些要求</h4>
     <ul>{lines.map((line, index) => <li key={`${index}-${line}`}>{line}</li>)}</ul>
+    {Boolean(r.requirementSources?.length) && <details><summary>核对原话与提取结果</summary><ul>{r.requirementSources.map((source, index) => <li key={index}><q>{source.sourceText}</q> · {source.disposition === 'mapped' ? '已记录在要求中' : '需要继续确认'}</li>)}</ul></details>}
     {Boolean(r.unresolvedRequests?.length) && <p role="status">尚未支持或需要澄清：{r.unresolvedRequests.join('；')}</p>}
     <p>有遗漏？在对话里补充后再开始。开放、预约与交通时间仍需出发前核实。</p>
   </section>

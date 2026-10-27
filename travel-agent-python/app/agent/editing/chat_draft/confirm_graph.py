@@ -139,6 +139,19 @@ def run_confirmation(reply: ChatTurnResponse, *, thread: str) -> ChatTurnRespons
     return reply
 
 
+def validate_confirmation(thread: str, choice: dict) -> ConfirmResume | None:
+    """只读核对提案；业务事务提交前不得消费独立 SQLite 检查点。"""
+    config = checkpoint.run_config(thread)
+    if checkpoint.get_checkpointer().get(config) is None:
+        return None
+    values = confirm_graph.get_state(config).values
+    raw = values.get("chat_reply")
+    if raw is None:
+        return None
+    reply = raw if isinstance(raw, ChatTurnResponse) else ChatTurnResponse.model_validate(raw)
+    return _validate_choice(reply, _proposal_kind(reply), choice)
+
+
 def resume_confirmation(thread: str, choice: dict) -> ConfirmResume | None:
     """确认侧续跑（业务薄适配调用）：`Command(resume=choice)` → 服务端复核。
 

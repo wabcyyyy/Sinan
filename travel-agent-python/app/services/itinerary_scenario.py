@@ -28,6 +28,8 @@ from app.services import (
 
 def parse_intent(user_id: int, itinerary_id: int, request: ScenarioParseBody) -> dict:
     main = itinerary_query.find_owned_main(user_id, itinerary_id)
+    if TripRequirements.model_validate(main.requirements_json or {}).constraint_planning:
+        raise ApiError(409, "约束行程请使用修改面板的免费理解与求解比较")
     if main.planning_revision != request.planningRevision or main.status != 2:
         raise ApiError(409, "行程已变化或尚未完成，请刷新后重试")
     plans = itinerary_chat.current_plans(itinerary_id)
@@ -116,6 +118,8 @@ def _prepare(user_id: int, itinerary_id: int, request: ScenarioBody):
         if _minutes(request.finishBy) - request.departureBufferMinutes <= _minutes(request.startTime):
             raise ApiError(400, "扣除返程预留后没有可用时间，请调整时间窗口")
         requirements = TripRequirements.model_validate(main.requirements_json or {})
+        if requirements.constraint_planning:
+            raise ApiError(409, "约束行程请使用联合求解的修改比较")
         persistent_ids = {
             p["id"]
             for p in items

@@ -50,7 +50,11 @@ def _to_data_uri(data: bytes) -> str:
     """解码校验 + 缩放重编码（剥 EXIF）→ JPEG data URI。"""
     try:
         image = Image.open(io.BytesIO(data))
+        if image.width * image.height > IMAGE_INTENT_MAX_PIXELS:
+            raise ApiError(400, "图片分辨率过高，请压缩后重试")
         image.load()
+    except ApiError:
+        raise
     except Exception as exc:
         raise ApiError(400, "图片文件已损坏或不是有效图片") from exc
     if (image.format or "").upper() not in _ALLOWED_FORMATS:

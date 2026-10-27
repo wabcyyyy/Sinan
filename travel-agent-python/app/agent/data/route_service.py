@@ -2,11 +2,12 @@
 
 路线是旅行规划中的事实数据，不应由模型猜测。本模块提供一个很薄的、可
 替换的路线服务：**默认只用坐标估算**（haversine × 道路系数 + 缓冲，结果带
-``degraded=True``），不查任何外部路线 API——高德 v5 与 Google Routes 源已于
-2026-09-15 随「去高德」移除。`fetcher` 注入保留给测试替身与将来的本地路线源。
+``degraded=True``）。P1 可经 `ORS_BASE_URL` 显式接入单区域 ORS 静态路网；
+也可显式接入 FOSSGIS 布局的 OSRM；未配置不查托管 API。`fetcher` 同样用于
+测试注入，高德/Google 源不恢复。
 
-对外只暴露领域契约，优化器和校验器不需要知道底层是估算、测试替身还是将来的
-本地路网。进程内缓存用于避免同一轮规划重复查询同一条边。
+对外保留来源与时间，不把坐标估算当路网、静态路网当实时路况。进程内缓存
+按供应商/区域区分，避免同一轮重复查询。
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from collections.abc import Callable
 from datetime import datetime
 
 from app.agent.core.geo import haversine_meters
+from app.agent.data.ors_routes import fetch_ors_route
+from app.agent.data.osrm_routes import fetch_osrm_route
 from app.agent.runtime.trace import record_event
 from app.common.config import settings
 
@@ -54,6 +57,13 @@ def estimate_duration_minutes(distance_m: float, mode: str = "walking") -> int:
 
 
 RouteFetcher = Callable[[dict, dict, str, str | None], dict | None]
+
+
+def fetch_configured_route(first: dict, second: dict, mode: str, departure_time: str | None) -> dict | None:
+    if settings.ors_base_url:
+        return fetch_ors_route(first, second, mode, departure_time)
+    return fetch_osrm_route(first, second, mode, departure_time)
+
 
 _route_cache: dict[tuple, tuple[float, dict]] = {}
 _route_lock = threading.Lock()
@@ -115,7 +125,7 @@ def _peak_factor(departure_time: str | datetime | None) -> float:
 
 
 def is_estimated(source: str | None) -> bool:
-    """路线是否来自坐标估算（去高德后：除注入替身外唯一可能的来源）。"""
+    """路线是否来自坐标估算；ORS/OSRM 静态路网来源单独标注。"""
     return str(source or "") == ESTIMATE_SOURCE
 
 
@@ -183,7 +193,7 @@ def coordinate_estimate(
 
 def _with_peak_factor(result: dict | None, departure_time: str | datetime | None) -> dict | None:
     """对路线结果统一做高峰系数修正（注入的供应商/测试替身同样适用）。"""
-    if result is None or not departure_time or "base_duration_min" in result:
+    if result is None or not departure_time or "base_duration_min" in result or result.get("time_dependent") is False:
         return result
     factor = _peak_factor(departure_time)
     if factor != 1.0:
@@ -197,9 +207,8 @@ def _with_peak_factor(result: dict | None, departure_time: str | datetime | None
 class RouteService:
     """带缓存和降级策略的路线服务。
 
-    去高德后**没有真实路线供应商**：默认路径就是坐标估算（`source=coordinate-estimate`
-    且 `degraded=True`）。`fetcher` 注入保留给测试替身与将来的本地路线源——
-    不传即不查任何外部服务。
+    默认坐标估算（`source=coordinate-estimate` 且 `degraded=True`）；全局实例的
+    fetcher 仅在显式配置 ORS/OSRM 地址后请求静态路网，普通 `RouteService()` 仍无供应商。
     """
 
     def __init__(self, fetcher: RouteFetcher | None = None):
@@ -221,6 +230,10 @@ class RouteService:
             tuple(_coords(second) or ()),
             mode,
             str(departure_time or ""),
+            id(self.fetcher),
+            settings.ors_base_url if self.fetcher is not None else "",
+            settings.ors_region if self.fetcher is not None else "",
+            settings.osrm_base_url if self.fetcher is not None else "",
         )
         now = time.monotonic()
         cached = _route_cache.get(cache_key)
@@ -228,7 +241,9 @@ class RouteService:
             return dict(cached[1])
 
         result: dict | None = None
-        if self.fetcher is not None:
+        configured = bool(settings.ors_base_url or settings.osrm_base_url)
+        enabled = self.fetcher is not fetch_configured_route or configured
+        if self.fetcher is not None and enabled and (self.fetcher is not fetch_ors_route or settings.ors_base_url):
             calls = getattr(self._local, "calls", 0)
             if calls >= settings.route_max_calls:
                 fallback_reason = "route_call_budget_exhausted"
@@ -297,7 +312,7 @@ def clear_route_cache() -> None:
     _route_cache.clear()
 
 
-default_route_service = RouteService()
+default_route_service = RouteService(fetcher=fetch_configured_route)
 
 
 def get_route_matrix(

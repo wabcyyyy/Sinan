@@ -323,6 +323,10 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
             "items": [item_vo(item, intro_by_name) for item in items_by_day.get(day.id, [])],
         }
         metadata = _loads_object(day.metadata_json) or {}
+        payload["travelActivities"] = metadata.get("travelActivities")
+        payload["travelHeader"] = metadata.get("travelHeader")
+        payload["travelValidationIssues"] = metadata.get("travelValidationIssues")
+        payload["relativeDays"] = metadata.get("relativeDays", False)
         payload["theme"] = metadata.get("theme")
         payload["miniRoute"] = _as_map(metadata.get("miniRoute"))
         payload["backupPlan"] = _as_map_list(metadata.get("backupPlan"))
@@ -330,6 +334,12 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         payload["practicalNotes"] = _as_str_list(metadata.get("practicalNotes"))
         # dayOptions 必须透出：metadata 已落库，不透出即前端槽位空转
         payload["dayOptions"] = _as_map_list(metadata.get("dayOptions"))
+        payload["constraintPlanning"] = metadata.get("constraintPlanning")
+        payload["executedItemIds"] = metadata.get("executedItemIds") or []
+        if payload["constraintPlanning"]:
+            payload["constraintPlanning"]["isCurrent"] = (
+                payload["constraintPlanning"].get("planningRevision") == main.planning_revision
+            )
         day_list.append(payload)
 
     total_amount = sum((b.amount or Decimal("0") for b in budgets), Decimal("0"))
@@ -339,15 +349,17 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         if (item.review_requirement is None or item.review_requirement != "none") or item.freshness_status == "stale"
     )
     narrative_mismatches = _narrative_hotel_mismatches(main.plan_note, main.trip_theme, items)
+    requirements = TripRequirements.model_validate(main.requirements_json or {})
+    budget_currency = requirements.constraint_planning.currency if requirements.constraint_planning else "CNY"
+    currency_prefix = f"{budget_currency} " if requirements.constraint_planning else "￥"
     budget_warning = (
-        f"当前估算总额 ￥{total_amount:.2f} 超出预算 ￥{main.budget:.2f}，"
-        f"超出 ￥{total_amount - main.budget:.2f}；请调整行程或预算，出发前核实价格"
+        f"当前估算总额 {currency_prefix}{total_amount:.2f} 超出预算 {currency_prefix}{main.budget:.2f}，"
+        f"超出 {currency_prefix}{total_amount - main.budget:.2f}；请调整行程或预算，出发前核实价格"
         if main.budget is not None and main.budget > 0 and total_amount > main.budget
         else None
     )
     quality_status = _quality_status(main.status, items, days, pending_facts, narrative_mismatches, budget_warning)
     issues = _quality_issues(quality_status, days, items, pending_facts, narrative_mismatches, budget_warning)
-    requirements = TripRequirements.model_validate(main.requirements_json or {})
     for day in day_list:
         plan = {
             "items": [
@@ -372,6 +384,7 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
     return {
         "schemaVersion": SCHEMA_VERSION,
         "planningRevision": main.planning_revision,
+        "requirementsStruct": requirements.model_dump(mode="json", by_alias=True) if main.user_id == user_id else None,
         "fixedArrangements": TripRequirements.model_validate(main.requirements_json or {}).model_dump(
             mode="json", by_alias=True
         )["fixedArrangements"],
@@ -385,6 +398,7 @@ def build_detail(user_id: int, itinerary_id: int) -> dict[str, Any]:
         "stayNights": main.stay_nights if main.stay_nights is not None else max(len(day_list) - 1, 0),
         "persons": main.persons,
         "budget": _num(main.budget),
+        "budgetCurrency": budget_currency,
         "preferences": main.preferences,
         "hotelTier": main.hotel_tier,
         # L14：出发地（用户建行程时填）——前端据此显示"从 X 出发"与"查实时价"入口

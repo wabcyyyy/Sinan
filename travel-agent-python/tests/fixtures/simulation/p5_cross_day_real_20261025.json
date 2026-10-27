@@ -1,0 +1,232 @@
+{
+  "family": "cross_day",
+  "profile": {
+    "split": "evaluation",
+    "days": 2,
+    "duration": 90,
+    "max_places": 3,
+    "fixed": true
+  },
+  "method": "real clarify and constrained real user expression; frozen controller, no future events sent",
+  "trajectories": [
+    {
+      "id": "cross_day-0",
+      "style": "简短直接，可使用推迟/移到/预约/关闭/优先保留等词",
+      "turns": [
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "12:00",
+            "end_time": "13:30",
+            "expected": "apply"
+          },
+          "message": "把地点2的预约改到第1天12:00开始，第1天13:30前结束。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-0-1"
+        },
+        {
+          "operation": {
+            "kind": "move",
+            "target": "地点5",
+            "day_no": 1,
+            "start_time": "15:00",
+            "expected": "reject"
+          },
+          "message": "把地点5移到第1天15:00。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-0-2"
+        },
+        {
+          "operation": {
+            "kind": "prefer",
+            "target": "地点5",
+            "expected": "noop_or_apply"
+          },
+          "message": "优先保留地点5。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-0-3"
+        }
+      ]
+    },
+    {
+      "id": "cross_day-1",
+      "style": "自然礼貌，但不能加其他意图",
+      "turns": [
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "12:00",
+            "end_time": "13:30",
+            "expected": "apply"
+          },
+          "message": "请帮我预约地点2，第1天12:00到第1天13:30前结束。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-1-1"
+        },
+        {
+          "operation": {
+            "kind": "move",
+            "target": "地点5",
+            "day_no": 1,
+            "start_time": "15:00",
+            "expected": "reject"
+          },
+          "message": "请把地点5安排到第1天15:00。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-1-2"
+        },
+        {
+          "operation": {
+            "kind": "prefer",
+            "target": "地点5",
+            "expected": "noop_or_apply"
+          },
+          "message": "我想优先安排地点5。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-1-3"
+        }
+      ]
+    },
+    {
+      "id": "cross_day-2",
+      "style": "明确点名活动，用简短同义词表达",
+      "turns": [
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "12:00",
+            "end_time": "13:30",
+            "expected": "apply"
+          },
+          "message": "帮我预约第1天12:00到13:30的地点2。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-2-1"
+        },
+        {
+          "operation": {
+            "kind": "move",
+            "target": "地点5",
+            "day_no": 1,
+            "start_time": "15:00",
+            "expected": "reject"
+          },
+          "message": "第1天15:00去地点5。",
+          "simulator_errors": [
+            "模拟器未表达移动"
+          ],
+          "request_id": "p5-cross_day-2-2"
+        },
+        {
+          "operation": {
+            "kind": "prefer",
+            "target": "地点5",
+            "expected": "noop_or_apply"
+          },
+          "message": "我更想去地点5。",
+          "simulator_errors": [],
+          "request_id": "p5-cross_day-2-3"
+        }
+      ]
+    }
+  ],
+  "intake_message": "2026年11月3日去Paris玩2天，1个人，不住宿。活动总预算1000欧元是硬上限，每天最多3个景点；第1天09:00以后开始、18:00以前结束；第2天09:00以后开始、18:00以前结束。其他安排在确认表单中核对。",
+  "intake": {
+    "state": {
+      "schema_version": 1,
+      "city": "Paris",
+      "days": 2,
+      "persons": 1,
+      "budget": 1000.0,
+      "start_date": "2026-11-03",
+      "stay_nights": 0,
+      "preferences": [],
+      "hotel_tier": null,
+      "origin_city": null,
+      "requirements": {
+        "schema_version": 1,
+        "day_windows": [
+          {
+            "day_no": 1,
+            "kind": "full",
+            "not_before": "09:00",
+            "finish_by": "18:00",
+            "source_turn_id": null
+          },
+          {
+            "day_no": 2,
+            "kind": "full",
+            "not_before": "09:00",
+            "finish_by": "18:00",
+            "source_turn_id": null
+          }
+        ],
+        "required_places": [],
+        "fixed_arrangements": [],
+        "place_relations": [],
+        "constraint_planning": {
+          "country_code": "FR",
+          "time_zone": "Europe/Paris",
+          "currency": "EUR",
+          "active_evidence": null
+        },
+        "place_inputs": [],
+        "excluded_places": [],
+        "excluded_categories": [],
+        "pace": null,
+        "max_attractions_per_day": 3,
+        "dietary_requirement": null,
+        "dining_evidence_policy": null,
+        "transport_preference": null,
+        "max_walk_minutes_per_leg": null,
+        "budget_policy": {
+          "mode": "hard_cap",
+          "include_intercity_transport": null
+        },
+        "lodging": null,
+        "unresolved_requests": []
+      },
+      "optional_asked": [
+        "preferences"
+      ],
+      "optional_pending": [],
+      "negotiations": {},
+      "acceptances": {}
+    },
+    "slots": {
+      "city": "Paris",
+      "days": 2,
+      "persons": 1,
+      "budget": 1000,
+      "start_date": "2026-11-03",
+      "stay_nights": 0
+    },
+    "missing": [],
+    "question": "这趟有什么特别的偏好吗？比如美食、自然风光，或者带爸妈要少走路。",
+    "ready": true,
+    "options": [
+      "特色美食 · 慢节奏",
+      "自然风光 · 拍照",
+      "经典打卡",
+      "直接开始规划"
+    ],
+    "blocked": false,
+    "degraded": false,
+    "reply": "巴黎两天、每天最多三个景点、白天9点到18点，这些都记下了。想玩哪一类？博物馆、老街美食还是塞纳河沿线？",
+    "reply_for": "preferences",
+    "next": "preferences"
+  },
+  "intake_checks": {
+    "not_degraded": true,
+    "destination": true,
+    "slots": true,
+    "hard_budget": true,
+    "daily_max": true,
+    "windows": true
+  }
+}

@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   createPdfExport,
+  getPreparation,
+  actOnItem,
   createShare,
   exportDownloadUrl,
   getItineraryDetail,
@@ -31,6 +33,8 @@ import { PublishItineraryPanel } from '../templates/PublishItineraryPanel'
 import { fadeUp, SPRING_SNAPPY, staggerChildren } from '../shared/motion'
 import { EmptyBlock, ErrorBlock, LoadingBlock, QualityNotice } from '../shared/States'
 import { OpeningEvidence } from './OpeningEvidence'
+import { ConstraintPlanningNotice } from './ConstraintPlanningNotice'
+import { formatMoney } from '../../shared/money'
 import { DietaryEvidenceNotice, DraftOnlyBanner, ItemEvidence, TripMetrics } from './TripBadges'
 import { detailGeneratingCopy } from './detailBanner'
 import { ChatPanel } from './ChatPanel'
@@ -48,6 +52,11 @@ import { ScenarioPanel } from './ScenarioPanel'
 import { VersionHistory } from './VersionHistory'
 import { AddItem } from './AddItem'
 import { ItemActions } from './ItemActions'
+import { PreparationPanel } from './PreparationPanel'
+import { usePreparation } from './usePreparation'
+import { newPlace } from './PreparationForms'
+import { TravelToday, destinationDate } from './TravelToday'
+import { getOfflineOwner, readOfflineTrip, saveOfflineTrip, type OfflineTrip } from './offlineTrip'
 import './workbench.css'
 
 /** 时间线与类型徽章共用的图标映射（新类型先落到 pin，不裸奔）。 */
@@ -75,9 +84,10 @@ function displayDate(value: string | null | undefined) {
 }
 
 /** 价格只说有数据的事：没有 cost 时不再补「特色美食/精选打卡」这类无出处的装饰词。 */
-function getItemPriceTag(item: DayPlan['items'][0]): string | null {
-  if (item.cost === 0) return '费用参考 ￥0 · 待核实'
-  if (item.cost && item.cost > 0) return `参考 ￥${item.cost}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
+function getItemPriceTag(item: DayPlan['items'][0], strictCurrency: boolean): string | null {
+  if (strictCurrency && item.cost != null && !item.costCurrency) return `参考 ${item.cost}（币种待确认）`
+  if (item.cost === 0) return `费用参考 ${formatMoney(0, item.costCurrency || 'CNY')} · 待核实`
+  if (item.cost && item.cost > 0) return `参考 ${formatMoney(item.cost, item.costCurrency || 'CNY')}${item.itemType === 'hotel' ? '/间晚' : '/人'}`
   return null
 }
 
@@ -101,8 +111,12 @@ export function TripDetailPage({ path }: { path: string }) {
   // 条目点击展开（2026-10-12 反馈）：悬停不再联动地图——悬停就抢焦点/飞图会把页面拽走；
   // 点击才选中并展开地图出口，「在地图中定位」才切换地图工具。
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
+  const [dragItem, setDragItem] = useState<number | null>(null)
   // 工具切换不卸载聊天或地图，保留草稿、当前日期和地图选中点。
-  const [view, setView] = useState<'itinerary' | 'map' | 'chat' | 'review'>('itinerary')
+  const [view, setView] = useState<'itinerary' | 'today' | 'map' | 'chat' | 'review' | 'preparation'>(() => window.matchMedia('(max-width: 820px)').matches ? 'today' : 'itinerary')
+  const [placeSeed, setPlaceSeed] = useState<Contracts.SavedPlace>()
+  const [offlinePack, setOfflinePack] = useState<OfflineTrip | null>(null)
+  const [offlineBusy, setOfflineBusy] = useState(false)
   const [savedEdit, setSavedEdit] = useState(false)
   // 条目对/错反馈（C3.5）：本人反馈索引 + 能力开关（GET 404 = addon 关，隐藏控件）
   const [feedbacks, setFeedbacks] = useState<Map<number, Contracts.FeedbackVO>>(new Map())
@@ -152,12 +166,13 @@ export function TripDetailPage({ path }: { path: string }) {
     setWeather(null)
     setFeedbacks(new Map())
     setFeedbackOn(false)
-    if (id === '0' || !hasIdentity()) {
+    if (id === '0' && isDemoMode()) {
       setTrip({ ...sampleItinerary, id: Number(id) || 0 })
       setOffline(true)
       setLoading(false)
       return
     }
+    if (!hasIdentity()) { setAuthExpired(true); setError('请登录后查看这段私人行程'); setLoading(false); return }
     getItineraryDetail(id)
       .then((next) => { if (!isStale()) setTrip(next) })
       .catch((err: unknown) => {
@@ -166,8 +181,7 @@ export function TripDetailPage({ path }: { path: string }) {
           setAuthExpired(true)
           setError('登录已失效，请重新登录后继续查看这段旅程')
         } else if (isOfflineError(err)) {
-          setTrip({ ...sampleItinerary, id: Number(id) || 0 })
-          setOffline(true)
+          setError('当前无法连接服务。若之前主动保存过本人行程，可打开本机离线副本。')
         } else {
           setError(err instanceof Error ? err.message : '行程读取失败')
         }
@@ -176,6 +190,18 @@ export function TripDetailPage({ path }: { path: string }) {
   }
 
   useEffect(() => { load() }, [id])
+  useEffect(() => {
+    if (!trip || isDemoMode()) return
+    const owner = getOfflineOwner()
+    if (!owner) return
+    let active = true
+    readOfflineTrip(owner.id, trip.id).then(value => { if (active) setOfflinePack(value) }).catch(() => {})
+    return () => { active = false }
+  }, [trip?.id])
+  useEffect(() => {
+    const today = trip?.dayList.find(d => d.travelDate === destinationDate(trip?.dayList[0]?.constraintPlanning?.destination.timeZone))
+    if (today) setDayNo(today.dayNo)
+  }, [trip?.id])
 
   /** 对话应用/冲突后的静默对账：不闪 loading，直接换上服务端最新详情。 */
   const refreshDetail = () => {
@@ -252,7 +278,9 @@ export function TripDetailPage({ path }: { path: string }) {
     setDayNo(current.days[0] ?? 1)
     setView('review')
   }, [pendingPlans])
-  const panel = view === 'itinerary' ? 'map' : view
+  const panel = view === 'itinerary' || view === 'today' ? 'map' : view
+  const canViewPreparation = isDemoMode() || trip?.myRole === 'owner'
+  const preparation = usePreparation(Number(id), !loading && Boolean(trip) && (isDemoMode() || (!offline && canViewPreparation)))
   const tour = isDemoMode() && query.get('tour') === 'edit'
   useEffect(() => {
     if (view !== 'chat') return
@@ -261,7 +289,7 @@ export function TripDetailPage({ path }: { path: string }) {
   }, [view])
 
   if (loading) return <div className="page-content detail-state"><LoadingBlock label="正在打开这段旅程…" /></div>
-  if (error || !trip) return <div className="page-content detail-state"><ErrorBlock message={error || '行程不存在'} onRetry={load} onLogin={authExpired ? () => navigate(loginRedirect()) : undefined} /></div>
+  if (error || !trip) return <div className="page-content detail-state"><ErrorBlock message={error || '行程不存在'} onRetry={load} onLogin={authExpired ? () => navigate(loginRedirect()) : undefined} />{error.includes('离线副本') && <button type="button" className="button button-secondary" onClick={() => navigate('/offline')}>打开本机离线行程</button>}</div>
 
   const handleWriteError = (err: unknown, fallback: string) => {
     if (isUnauthorized(err)) {
@@ -388,8 +416,18 @@ export function TripDetailPage({ path }: { path: string }) {
         <button className={`icon-action${trip.favorite ? ' is-favorited' : ''}`} type="button" aria-label={trip.favorite ? '取消收藏' : '收藏'} aria-pressed={trip.favorite} onClick={favorite}><Icon name="heart" size={18} /></button>
         <button className="button button-secondary" type="button" disabled={sharing} onClick={share}><Icon name="share" size={16} />{sharing ? '创建中…' : '分享'}</button>
         <button className="button button-secondary" type="button" disabled={exporting} onClick={exportPdf}><Icon name="download" size={16} />{exporting ? '导出中…' : '导出'}</button>
+        {!offline && !isDemoMode() && canViewPreparation && <button className="button button-secondary" type="button" disabled={offlineBusy || trip.status !== 2} onClick={async () => {
+          setOfflineBusy(true)
+          try {
+            const [latest, prep] = await Promise.all([getItineraryDetail(trip.id), getPreparation(trip.id)])
+            const pack = await saveOfflineTrip(latest, prep.data)
+            setOfflinePack(pack); setNotice('本人行程与资料已保存到此设备，可断网阅读')
+          } catch (err) { handleWriteError(err, '保存离线行程失败') }
+          finally { setOfflineBusy(false) }
+        }}>{offlineBusy ? '正在保存…' : '保存离线'}</button>}
       </div>
     </div>
+    {offlinePack && <div className="offline-pack-status" role="status">本机离线包：{new Date(offlinePack.savedAt).toLocaleString('zh-CN')} 保存 · 修订 {offlinePack.revision}{offlinePack.revision !== trip.planningRevision ? ' · 在线行程已变化，请重新保存' : ''} <button type="button" onClick={() => navigate(`/offline/${trip.id}`)}>查看只读副本</button></div>}
     {offline && <div className="detail-offline"><span>示例状态</span> 这是本地预览，服务恢复后可打开真实行程。</div>}
     {trip.status === 1 && <div className="detail-generating" role="status"><span className="detail-generating-dot" aria-hidden="true" />{detailGeneratingCopy(trip.coreReady)}</div>}
     {(trip.genState === 'PARTIAL' || trip.genState === 'FAILED') && <div className="detail-offline" role="status"><strong>行程尚未完整交付</strong> · 已完成 {trip.dayList.filter((day) => day.generationStatus === 'SUCCEEDED').length}/{trip.days} 天。未完成日期的内容仅为草案，请切换到该日，点击「重新生成这一天」。</div>}
@@ -398,7 +436,7 @@ export function TripDetailPage({ path }: { path: string }) {
         <motion.span className="section-eyebrow" variants={fadeUp}>{trip.city} · {trip.days} 天 · {trip.persons} 人</motion.span>
         <motion.h1 variants={fadeUp}>{trip.title}</motion.h1>
         <motion.p variants={fadeUp}>{trip.tripTheme || trip.planNote}</motion.p>
-        <motion.div className="detail-hero-facts" variants={fadeUp}>
+        <details className="workbench-summary"><summary>行程概况 · {trip.days} 天 · 已列费用 {formatMoney(trip.totalAmount, trip.budgetCurrency || 'CNY')} · {trip.pendingFactCount || 0} 项待核实</summary><motion.div className="detail-hero-facts" variants={fadeUp}>
         {/* 核实提示只留这一处：草案态由 DraftOnlyBanner 承担（含待核实条数），其余走 QualityNotice */}
         {trip.destinationStatus === 'draft_only'
           ? <DraftOnlyBanner status={trip.destinationStatus} pending={trip.pendingFactCount || 0} />
@@ -411,7 +449,7 @@ export function TripDetailPage({ path }: { path: string }) {
           hasWeather={Boolean(weather?.daily?.length)}
         />
         {weather?.daily?.length ? <div className="detail-weather" aria-label="天气参考"><span className="weather-label"><Icon name="sun" size={16} />天气参考</span>{weather.daily.slice(0, trip.days).map((item) => <span className="weather-day" key={item.date}><strong>{displayDate(item.date)}</strong><small>{item.text} · {item.tMin ?? '--'}–{item.tMax ?? '--'}℃</small></span>)}</div> : null}
-        </motion.div>
+        </motion.div></details>
       </motion.div>
       <motion.figure className="detail-cover" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}><SmartImg src={destinations.find((item) => item.city === trip.city)?.image || poiPhotoUrl(trip.city, trip.city)} alt={`${trip.city} 城市参考图`} ratio="16 / 10" eager /><figcaption><Icon name="pin" size={14} />{trip.city} · 城市印象</figcaption></motion.figure>
     </section>
@@ -429,15 +467,19 @@ export function TripDetailPage({ path }: { path: string }) {
           </button>
         })}</nav>
     <nav className="workbench-mobile-views" aria-label="行程视图">
-      {(['itinerary', 'map', 'chat'] as const).filter(item => !offline || item !== 'chat').map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)}>{item === 'itinerary' ? '行程' : item === 'map' ? '地图' : '对话'}</button>)}
+      {(['today', 'itinerary', 'map', 'preparation', 'chat'] as const).filter(item => (canViewPreparation || item !== 'preparation') && (!offline || item !== 'chat')).map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)}>{item === 'today' ? '今天' : item === 'itinerary' ? '行程' : item === 'map' ? '地图' : item === 'preparation' ? '资料' : '对话'}</button>)}
       {preview && <button type="button" aria-pressed={view === 'review'} onClick={() => setView('review')}>修改预览</button>}
     </nav>
     <div className="workbench-utilities">
+    <button className="button button-secondary" type="button" onClick={() => setView('today')}>今天／下一站</button>
+    {canViewPreparation && <button className="button button-secondary" type="button" onClick={() => setView('preparation')}>旅行资料 · {preparation.data.tasks.filter(t => !t.done).length} 项待办</button>}
     {!offline && <VersionHistory key={`${trip.id}-${trip.planningRevision}`} trip={trip} disabled={working || chat.sending || chat.applying || trip.status === 1} onRestored={next => { setTrip(next); setSavedEdit(true); setView('itinerary'); void chat.reload(); setNotice('已恢复历史版本，恢复前的行程也已保存') }} />}
-    {!offline && day && trip.status === 2 && <ScenarioPanel key={`${trip.id}-${trip.planningRevision}-${day.dayNo}`} trip={trip} day={day} disabled={working || chat.sending || chat.applying} onSelected={async () => { setSavedEdit(false); if (!await chat.reload()) throw new Error('方案已选定，但草稿读取失败。请重试或刷新页面查看。'); setView('review') }} />}
+    {!offline && day && !day.constraintPlanning && trip.status === 2 && <ScenarioPanel key={`${trip.id}-${trip.planningRevision}-${day.dayNo}`} trip={trip} day={day} disabled={working || chat.sending || chat.applying} onSelected={async () => { setSavedEdit(false); if (!await chat.reload()) throw new Error('方案已选定，但草稿读取失败。请重试或刷新页面查看。'); setView('review') }} />}
     </div>
     <div className={`detail-workspace workbench view-${view}`}>
       <section className="day-content">
+        <ConstraintPlanningNotice assessment={day?.constraintPlanning} />
+        {view === 'today' ? <TravelToday trip={trip} dayNo={dayNo} setDayNo={setDayNo} preparation={preparation} canMark={canViewPreparation} onMap={() => setView('map')} /> : <div className="workbench-day-plan">
         {/* 出发前照看（个人 Agent V1）：只在真实模式挂载——离线样例与演示模式
             不渲染、不请求 care API（规格 §5 静态展示隔离）；不支持/未加载时面板自隐藏 */}
         {carePanelVisible({ offline, demo: isDemoMode() }) && (
@@ -477,6 +519,16 @@ export function TripDetailPage({ path }: { path: string }) {
               id={`day-item-${itemKey}`}
               style={{ '--stagger-i': index } as CSSProperties}
               tabIndex={0}
+              onDragOver={event => { if (dragItem !== null) event.preventDefault() }}
+              onDrop={async event => {
+                event.preventDefault()
+                const moving = dragItem; setDragItem(null)
+                if (moving === null || moving === item.id || working || offline || trip.planningRevision === undefined) return
+                setWorking(true)
+                try { const next = await actOnItem(trip.id, moving, { action: 'move', planningRevision: trip.planningRevision, dayNo: day.dayNo, targetIndex: index, startTime: null, endTime: null, poiName: null, address: null, cost: null, remark: null }); setTrip(next); setExpandedItem(null); setSavedEdit(true); void chat.reload() }
+                catch (err) { handleWriteError(err, '移动失败') }
+                finally { setWorking(false) }
+              }}
               aria-expanded={isExpanded}
               onClick={() => toggleItem(itemKey)}
               onKeyDown={(event) => {
@@ -489,15 +541,17 @@ export function TripDetailPage({ path }: { path: string }) {
               <div className="day-item-line"><i><Icon name={ITEM_TYPE_ICONS[item.itemType] || 'pin'} size={12} strokeWidth={2.2} /></i><span /></div>
               <div className="day-item-copy">
                 <div className="item-heading">
+                  {!offline && trip.status === 2 && <button type="button" className="item-drag-handle" draggable={!working && !trip.fixedArrangements?.some(f => f.dayNo === day.dayNo && f.name === item.poiName && f.itemType === item.itemType)} onDragStart={event => { setDragItem(item.id ?? null); event.dataTransfer.effectAllowed = 'move' }} onDragEnd={() => setDragItem(null)} onClick={event => { event.stopPropagation(); toggleItem(itemKey) }} aria-label={`整理${item.poiName}顺序`} title="拖动排序，或点击后使用上移、下移">⠿</button>}
+
                   <span className={`item-type item-type-${item.itemType}`}><Icon name={ITEM_TYPE_ICONS[item.itemType] || 'pin'} size={12} strokeWidth={2} />{ITEM_TYPE_LABELS[item.itemType] || '安排'}</span>
                   <h3>{item.poiName}</h3>
                 </div>
                 <p>{item.remark || item.whyThis || '为这一段旅程保留一点自由。'}</p>
-                {!offline && trip.status === 2 && <ItemActions key={`${item.id}-${trip.planningRevision}`} trip={trip} day={day} item={item} disabled={working || chat.sending || chat.applying}
-                  onChanged={next => { setTrip(next); setSavedEdit(true); setView('itinerary'); void chat.reload() }} />}
+                {!offline && trip.status === 2 && isExpanded && <ItemActions key={`${item.id}-${trip.planningRevision}`} trip={trip} day={day} item={item} disabled={working || chat.sending || chat.applying}
+                  onDraftCreated={openChatDraft} onChanged={next => { setTrip(next); setExpandedItem(null); setSavedEdit(true); setView('itinerary'); void chat.reload() }} />}
                 <div className="item-meta">
                   <span><Icon name="clock" size={14} />{item.durationMin ? `${item.durationMin} 分钟` : '时间可调整'}</span>
-                  {getItemPriceTag(item) && <span><Icon name="ticket" size={14} />{getItemPriceTag(item)}</span>}
+                  {getItemPriceTag(item, Boolean(day.constraintPlanning)) && <span><Icon name="ticket" size={14} />{getItemPriceTag(item, Boolean(day.constraintPlanning))}</span>}
                   {item.source === 'user' && <span>用户填写 · 未经平台核验</span>}
                   <ItemEvidence item={item} />
                   <span className="item-expand-hint"><Icon name="pin" size={12} />{isExpanded ? '收起' : '地图与导航'}<Icon name="chevron" size={12} className={isExpanded ? 'is-open' : ''} /></span>
@@ -513,6 +567,8 @@ export function TripDetailPage({ path }: { path: string }) {
                       onClick={(event) => event.stopPropagation()}
                     >
                       <div className="item-expand-inner">
+                        {!offline && <button className="item-map-link" type="button" onClick={() => setView('chat')}>让 AI 调整这项</button>}
+
                         {hasCoord ? <>
                           <a className="item-map-link" href={amapLink({ latitude: item.latitude!, longitude: item.longitude!, poiName: item.poiName || '' })} target="_blank" rel="noreferrer"><Icon name="pin" size={13} />高德地图导航</a>
                           <a className="item-map-link" href={googleMapsLink({ latitude: item.latitude!, longitude: item.longitude!, poiName: item.poiName || '' })} target="_blank" rel="noreferrer"><Icon name="compass" size={13} />Google 地图</a>
@@ -593,18 +649,23 @@ export function TripDetailPage({ path }: { path: string }) {
         )}
         {day.practicalNotes?.length ? <div className="day-note is-tips"><Icon name="compass" size={17} /><div><strong>出发前核实清单</strong><p>以下为规划建议；开放、预约、营业与班次信息请以官方当日公告为准。</p>{day.practicalNotes.map((note) => <p key={note}>{note}</p>)}</div></div> : null}
         </motion.div>
-      </> : <EmptyBlock title="这一天还没有安排" description="可以先切换到其他天，或重新生成当天内容。" />}</section>
+      </> : <EmptyBlock title="这一天还没有安排" description="可以先切换到其他天，或重新生成当天内容。" />}</div>}</section>
       <aside className="workbench-panel" aria-label="地图与对话工作区">
         <nav className="workbench-panel-tabs" aria-label="工作区工具">
           <button type="button" aria-pressed={panel === 'map'} onClick={() => setView('map')}>地点地图</button>
           {!offline && <button type="button" aria-pressed={panel === 'chat'} onClick={() => setView('chat')}>对话调整</button>}
+          {canViewPreparation && <button type="button" aria-pressed={panel === 'preparation'} onClick={() => setView('preparation')}>旅行资料</button>}
           {preview && <button type="button" aria-pressed={panel === 'review'} onClick={() => setView('review')}>待确认修改</button>}
         </nav>
-        <div hidden={panel !== 'map'}><TripMapPanel days={trip.dayList} activeKey={activePin} onSelect={selectPin} focusDayNo={dayNo} />
+        <div hidden={panel !== 'map'}><TripMapPanel days={trip.dayList} activeKey={activePin} onSelect={selectPin} focusDayNo={dayNo} places={preparation.data.places}
+          onAddPlace={!offline && canViewPreparation ? (latitude, longitude) => { setPlaceSeed({ ...newPlace(), latitude, longitude, coordinateSource: 'map_wgs84' }); setView('preparation') } : undefined} />
           <p className="workbench-map-hint">点击时间线里的安排，在地图中查看位置。连线是点位顺序，交通时间请在导航中核实。{preview && ' 当前地图尚未应用修改。'}</p>
         </div>
         {!offline && <div hidden={panel !== 'chat'}><ChatPanel itineraryId={trip.id} dayList={trip.dayList} chat={chat}
-          currentDayNo={dayNo} city={trip.city} draftRequest={chatDraftRequest} /></div>}
+          replanTrip={trip.dayList.some(d => d.constraintPlanning) ? trip : undefined}
+          selectedItemId={expandedItem?.startsWith(`${dayNo}:`) ? day?.items[Number(expandedItem.split(':')[1])]?.id : undefined}
+          currentDayNo={dayNo} city={trip.city} draftRequest={chatDraftRequest} selectedItem={expandedItem?.startsWith(`${dayNo}:`) ? day?.items[Number(expandedItem.split(':')[1])]?.poiName : undefined} /></div>}
+        {canViewPreparation && <div hidden={panel !== 'preparation'}><PreparationPanel key={trip.id} trip={trip} controller={preparation} seed={placeSeed} readOnly={offline} onChanged={next => { setTrip(next); setSavedEdit(true); void chat.reload() }} /></div>}
         {preview && pendingPlans && <div hidden={panel !== 'review'}><DraftReview preview={preview} plans={pendingPlans} dayNo={dayNo} persons={trip.persons}
           applying={chat.applying} onApply={() => { void chat.applyDraft() }} onDismiss={() => { setView('map'); setNotice('建议暂未应用，当前行程未修改；可从「待确认修改」重新打开') }} /></div>}
         {chat.notice && panel !== 'chat' && <p className="chat-notice" role="alert">{chat.notice}</p>}

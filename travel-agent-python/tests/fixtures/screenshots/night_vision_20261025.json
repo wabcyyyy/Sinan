@@ -1,0 +1,343 @@
+{
+  "mode": "recorded real vision; original failed generic-title result retained in source artifacts",
+  "results": [
+    {
+      "case": "booking",
+      "image": "tests\\fixtures\\screenshots\\booking.png",
+      "extractor": "vision:deepseek-flash",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "reservation",
+            "polarity": "unclear",
+            "fields": [
+              {
+                "key": "name",
+                "value": "Musée du Louvre / 卢浮宫",
+                "quote": "Musée du Louvre / 卢浮宫",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.14,
+                  "width": 0.31,
+                  "height": 0.04
+                },
+                "language": "fr"
+              },
+              {
+                "key": "date",
+                "value": "2026-10-25",
+                "quote": "2026-10-25",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.24,
+                  "width": 0.13,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "startTime",
+                "value": "14:00",
+                "quote": "14:00",
+                "region": {
+                  "x": 0.21,
+                  "y": 0.24,
+                  "width": 0.07,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "endDate",
+                "value": "2026-10-25",
+                "quote": "2026-10-25",
+                "region": {
+                  "x": 0.07,
+                  "y": 0.34,
+                  "width": 0.13,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "endTime",
+                "value": "16:00",
+                "quote": "16:00",
+                "region": {
+                  "x": 0.21,
+                  "y": 0.34,
+                  "width": 0.07,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "timeZone",
+                "value": "Europe/Paris",
+                "quote": "Europe/Paris",
+                "region": {
+                  "x": 0.14,
+                  "y": 0.44,
+                  "width": 0.16,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "currency",
+                "value": "EUR",
+                "quote": "EUR",
+                "region": {
+                  "x": 0.09,
+                  "y": 0.54,
+                  "width": 0.05,
+                  "height": 0.03
+                },
+                "language": null
+              },
+              {
+                "key": "amount",
+                "value": "22.00",
+                "quote": "22.00",
+                "region": {
+                  "x": 0.15,
+                  "y": 0.54,
+                  "width": 0.07,
+                  "height": 0.03
+                },
+                "language": null
+              }
+            ],
+            "questions": []
+          }
+        ],
+        "questions": []
+      },
+      "independent_checks": {
+        "passed": true,
+        "checks": [
+          {
+            "check": "primary_record",
+            "passed": true
+          },
+          {
+            "check": "field:date",
+            "passed": true
+          },
+          {
+            "check": "field:startTime",
+            "passed": true
+          },
+          {
+            "check": "field:endDate",
+            "passed": true
+          },
+          {
+            "check": "field:endTime",
+            "passed": true
+          },
+          {
+            "check": "field:timeZone",
+            "passed": true
+          },
+          {
+            "check": "field:amount",
+            "passed": true
+          },
+          {
+            "check": "field:currency",
+            "passed": true
+          },
+          {
+            "check": "kind",
+            "passed": true
+          },
+          {
+            "check": "quote:0:name",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:name",
+            "passed": true
+          },
+          {
+            "check": "quote:0:date",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:date",
+            "passed": true
+          },
+          {
+            "check": "quote:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:startTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:endDate",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:endDate",
+            "passed": true
+          },
+          {
+            "check": "quote:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:endTime",
+            "passed": true
+          },
+          {
+            "check": "quote:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:timeZone",
+            "passed": true
+          },
+          {
+            "check": "quote:0:currency",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:currency",
+            "passed": true
+          },
+          {
+            "check": "quote:0:amount",
+            "passed": true
+          },
+          {
+            "check": "region_row:0:amount",
+            "passed": true
+          }
+        ],
+        "scope": "hand-authored field values, verbatim quotes and region centers on reference rows; not tight-box IoU"
+      }
+    },
+    {
+      "case": "ambiguous",
+      "image": "tests\\fixtures\\screenshots\\night-boundaries\\ambiguous.png",
+      "extractor": "vision:deepseek-flash",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "place",
+            "polarity": "recommended",
+            "fields": [
+              {
+                "key": "name",
+                "value": "Louvre",
+                "quote": "Louvre",
+                "region": {
+                  "x": 0.06,
+                  "y": 0.22,
+                  "width": 0.12,
+                  "height": 0.05
+                },
+                "language": null
+              },
+              {
+                "key": "amount",
+                "value": "25",
+                "quote": "Ticket: $25",
+                "region": {
+                  "x": 0.06,
+                  "y": 0.33,
+                  "width": 0.16,
+                  "height": 0.05
+                },
+                "language": null
+              },
+              {
+                "key": "note",
+                "value": "A candidate only. Confirm the branch first.",
+                "quote": "A candidate only. Confirm the branch first.",
+                "region": {
+                  "x": 0.06,
+                  "y": 0.45,
+                  "width": 0.55,
+                  "height": 0.05
+                },
+                "language": null
+              }
+            ],
+            "questions": [
+              "Which city is this Louvre branch located in?",
+              "What date is planned for the museum visit?",
+              "Which currency is the $25 ticket price in?"
+            ]
+          }
+        ],
+        "questions": [
+          "Which city is this Louvre branch located in?",
+          "What date is planned for the museum visit?",
+          "Which currency is the $25 ticket price in?"
+        ]
+      },
+      "independent_checks": {
+        "passed": true,
+        "checks": {
+          "asks_for_missing_information": true,
+          "no_guessed_context": true,
+          "name_not_expanded": true,
+          "amount_if_present_correct": true,
+          "not_mandatory": true
+        }
+      }
+    },
+    {
+      "case": "blurred",
+      "image": "tests\\fixtures\\screenshots\\night-boundaries\\blurred.png",
+      "extractor": "vision:deepseek-flash",
+      "extraction": {
+        "entries": [
+          {
+            "recordId": "",
+            "kind": "reservation",
+            "polarity": "unclear",
+            "fields": [
+              {
+                "key": "note",
+                "value": "Booking details are blurred and unreadable.",
+                "quote": "Please use a clearer copy for booking details.",
+                "region": {
+                  "x": 0.06,
+                  "y": 0.69,
+                  "width": 0.55,
+                  "height": 0.05
+                },
+                "language": null
+              }
+            ],
+            "questions": [
+              "What is the venue name for this museum reservation?",
+              "What is the reservation date?",
+              "What is the reservation time?",
+              "未识别开始当地日期、结束当地日期、开始时间、结束时间、IANA 当地时区，请对照原图补充确认；不会沿用其他日期或猜测。"
+            ]
+          }
+        ],
+        "questions": [
+          "What is the venue name for this museum reservation?",
+          "What is the reservation date?",
+          "What is the reservation time?"
+        ]
+      },
+      "independent_checks": {
+        "passed": true,
+        "checks": {
+          "asks_for_missing_information": true,
+          "no_unreadable_booking_facts": true
+        }
+      }
+    }
+  ]
+}

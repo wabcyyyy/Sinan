@@ -1711,6 +1711,210 @@
         }
       }
     },
+    "/api/itinerary/{id}/constraint-repairs": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Repair Requirements",
+        "operationId": "repair_requirements_api_itinerary__id__constraint_repairs_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConstraintRepairBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/replans/parse": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Parse Change",
+        "operationId": "parse_change_api_itinerary__id__replans_parse_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplanParseBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/replans/compare": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Compare Change",
+        "operationId": "compare_change_api_itinerary__id__replans_compare_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplanBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/replans/select": {
+      "post": {
+        "tags": [
+          "itinerary"
+        ],
+        "summary": "Select Change",
+        "operationId": "select_change_api_itinerary__id__replans_select_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplanSelectBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/itinerary/supported-cities": {
       "get": {
         "tags": [
@@ -4302,6 +4506,162 @@
         }
       }
     },
+    "/api/itinerary/{id}/preparation": {
+      "get": {
+        "tags": [
+          "preparation"
+        ],
+        "summary": "Get Preparation",
+        "operationId": "get_preparation_api_itinerary__id__preparation_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Preparation Api Itinerary  Id  Preparation Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "preparation"
+        ],
+        "summary": "Put Preparation",
+        "operationId": "put_preparation_api_itinerary__id__preparation_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreparationPutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Put Preparation Api Itinerary  Id  Preparation Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/itinerary/{id}/preparation/bookings/{booking_id}/fix": {
+      "post": {
+        "tags": [
+          "preparation"
+        ],
+        "summary": "Fix Booking",
+        "operationId": "fix_booking_api_itinerary__id__preparation_bookings__booking_id__fix_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "booking_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Booking Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreVersionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Fix Booking Api Itinerary  Id  Preparation Bookings  Booking Id  Fix Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/llm-gateway": {
       "get": {
         "tags": [
@@ -4612,6 +4972,174 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Post Image Intent Api Image Intent Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-intent/document": {
+      "post": {
+        "tags": [
+          "image-intent"
+        ],
+        "summary": "Extract Document",
+        "operationId": "extract_document_api_image_intent_document_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_extract_document_api_image_intent_document_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Extract Document Api Image Intent Document Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-intent/resolve": {
+      "post": {
+        "tags": [
+          "image-intent"
+        ],
+        "summary": "Resolve Document",
+        "operationId": "resolve_document_api_image_intent_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotResolveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Resolve Document Api Image Intent Resolve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-intent/confirm": {
+      "post": {
+        "tags": [
+          "image-intent"
+        ],
+        "summary": "Confirm Document",
+        "operationId": "confirm_document_api_image_intent_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Confirm Document Api Image Intent Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/image-intent/manual": {
+      "post": {
+        "tags": [
+          "image-intent"
+        ],
+        "summary": "Manual Document",
+        "operationId": "manual_document_api_image_intent_manual_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotManualBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Manual Document Api Image Intent Manual Post"
                 }
               }
             }
@@ -6905,6 +7433,136 @@
   },
   "components": {
     "schemas": {
+      "ActiveEvidenceOptions": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "all",
+              "decision",
+              "bottleneck"
+            ],
+            "title": "Strategy",
+            "default": "fixed"
+          },
+          "maxQueries": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Maxqueries",
+            "default": 3
+          },
+          "budgetUnits": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Budgetunits",
+            "default": 4
+          },
+          "timeLimitSeconds": {
+            "type": "number",
+            "maximum": 15.0,
+            "minimum": 0.5,
+            "title": "Timelimitseconds",
+            "default": 8
+          },
+          "allowSourceSearch": {
+            "type": "boolean",
+            "title": "Allowsourcesearch",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ActiveEvidenceOptions"
+      },
+      "ActiveEvidenceReport": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "title": "Policy",
+            "default": "bottleneck_heuristic"
+          },
+          "probes": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceProbe"
+            },
+            "type": "array",
+            "maxItems": 48,
+            "title": "Probes"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceQueryRecord"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Queries"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Questions"
+          },
+          "spentUnits": {
+            "type": "integer",
+            "title": "Spentunits",
+            "default": 0
+          },
+          "budgetUnits": {
+            "type": "integer",
+            "title": "Budgetunits",
+            "default": 0
+          },
+          "stopReason": {
+            "type": "string",
+            "title": "Stopreason",
+            "default": "disabled"
+          },
+          "solveCalls": {
+            "type": "integer",
+            "title": "Solvecalls",
+            "default": 0
+          },
+          "elapsedSeconds": {
+            "type": "number",
+            "title": "Elapsedseconds",
+            "default": 0
+          },
+          "retrievalCalls": {
+            "type": "integer",
+            "title": "Retrievalcalls",
+            "default": 0
+          },
+          "llmCalls": {
+            "type": "integer",
+            "title": "Llmcalls",
+            "default": 0
+          },
+          "promptTokens": {
+            "type": "integer",
+            "title": "Prompttokens",
+            "default": 0
+          },
+          "completionTokens": {
+            "type": "integer",
+            "title": "Completiontokens",
+            "default": 0
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          }
+        },
+        "type": "object",
+        "title": "ActiveEvidenceReport"
+      },
       "AdjustRequest": {
         "properties": {
           "city": {
@@ -7410,6 +8068,29 @@
         ],
         "title": "BackupRule",
         "description": "备用方案规则（M3-① 叙事层）：if 触发条件 → action 替换动作。\n\nwire 键为 \"if\"（显式别名，覆盖 to_camel 生成器，因为 if_ 的 camel\n形态没有意义）；每日 0-3 条。"
+      },
+      "Body_extract_document_api_image_intent_document_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "guide",
+              "booking"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "kind"
+        ],
+        "title": "Body_extract_document_api_image_intent_document_post"
       },
       "Body_post_image_intent_api_image_intent_post": {
         "properties": {
@@ -8255,6 +8936,721 @@
         ],
         "title": "ClientErrorReport"
       },
+      "ConfirmedPlaceInput-Input": {
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Inputid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "localName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Localname"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "attraction",
+              "transport"
+            ],
+            "title": "Itemtype",
+            "default": "attraction"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Aliases"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Countrycode"
+          },
+          "entityId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Entityid"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https://www\\.openstreetmap\\.org/(node|way|relation)/\\d+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "identitySource": {
+            "type": "string",
+            "enum": [
+              "nominatim",
+              "user_provided"
+            ],
+            "title": "Identitysource",
+            "default": "nominatim"
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          },
+          "originalAmount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalamount"
+          },
+          "originalCurrency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalcurrency"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/ScreenshotEvidence-Input"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inputId",
+          "name",
+          "localName",
+          "city",
+          "countryCode",
+          "entityId",
+          "evidence"
+        ],
+        "title": "ConfirmedPlaceInput"
+      },
+      "ConfirmedPlaceInput-Output": {
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Inputid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "localName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Localname"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "attraction",
+              "transport"
+            ],
+            "title": "Itemtype",
+            "default": "attraction"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Aliases"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Countrycode"
+          },
+          "entityId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Entityid"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^https://www\\.openstreetmap\\.org/(node|way|relation)/\\d+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "identitySource": {
+            "type": "string",
+            "enum": [
+              "nominatim",
+              "user_provided"
+            ],
+            "title": "Identitysource",
+            "default": "nominatim"
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          },
+          "originalAmount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalamount"
+          },
+          "originalCurrency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalcurrency"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/ScreenshotEvidence-Output"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inputId",
+          "name",
+          "localName",
+          "city",
+          "countryCode",
+          "entityId",
+          "evidence"
+        ],
+        "title": "ConfirmedPlaceInput"
+      },
+      "ConstraintCheck": {
+        "properties": {
+          "constraintId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Constraintid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "required_place",
+              "excluded_place",
+              "excluded_category",
+              "attraction_limit",
+              "dietary_requirement",
+              "day_window",
+              "locked_item",
+              "budget_strict",
+              "time_conflict",
+              "place_relation",
+              "planning_evidence"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "violation",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "itemRefs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Itemrefs"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400,
+            "title": "Reason",
+            "default": ""
+          },
+          "evidenceRefs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Evidencerefs"
+          },
+          "blocking": {
+            "type": "boolean",
+            "title": "Blocking",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "constraintId",
+          "kind",
+          "status"
+        ],
+        "title": "ConstraintCheck"
+      },
+      "ConstraintPlanningAssessment": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPTIMAL",
+              "FEASIBLE",
+              "INFEASIBLE",
+              "UNKNOWN"
+            ],
+            "title": "Status"
+          },
+          "solverStatus": {
+            "type": "string",
+            "title": "Solverstatus"
+          },
+          "numericalStatus": {
+            "type": "string",
+            "enum": [
+              "OPTIMAL",
+              "FEASIBLE",
+              "INFEASIBLE",
+              "UNKNOWN"
+            ],
+            "title": "Numericalstatus"
+          },
+          "planningRevision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planningrevision"
+          },
+          "isCurrent": {
+            "type": "boolean",
+            "title": "Iscurrent",
+            "default": true
+          },
+          "conditional": {
+            "type": "boolean",
+            "title": "Conditional",
+            "default": true
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "single_city_trip"
+            ],
+            "const": "single_city_trip",
+            "title": "Scope",
+            "default": "single_city_trip"
+          },
+          "localDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Localdate"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/ConstraintPlanningOptions"
+          },
+          "destinationSource": {
+            "type": "string",
+            "enum": [
+              "user_confirmed"
+            ],
+            "const": "user_confirmed",
+            "title": "Destinationsource",
+            "default": "user_confirmed"
+          },
+          "budgetScope": {
+            "type": "string",
+            "title": "Budgetscope",
+            "default": "仅已列活动费用；未列交通、住宿或其他费用待补，不代表全程总费用"
+          },
+          "report": {
+            "$ref": "#/components/schemas/ConstraintReport"
+          },
+          "conflictIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conflictids"
+          },
+          "conflictIrreducible": {
+            "type": "boolean",
+            "title": "Conflictirreducible",
+            "default": false
+          },
+          "repairSuggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintRepairSuggestion"
+            },
+            "type": "array",
+            "title": "Repairsuggestions"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanningRouteFact"
+            },
+            "type": "array",
+            "title": "Routes"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanningFactContext"
+            },
+            "type": "array",
+            "title": "Facts"
+          },
+          "knownCost": {
+            "type": "number",
+            "title": "Knowncost",
+            "default": 0
+          },
+          "totalCost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totalcost"
+          },
+          "solveSeconds": {
+            "type": "number",
+            "title": "Solveseconds",
+            "default": 0
+          },
+          "optimizedTiers": {
+            "type": "integer",
+            "title": "Optimizedtiers",
+            "default": 0
+          },
+          "totalTiers": {
+            "type": "integer",
+            "title": "Totaltiers",
+            "default": 0
+          },
+          "objectiveBound": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objectivebound"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "activeEvidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveEvidenceReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "solverStatus",
+          "numericalStatus",
+          "localDate",
+          "destination",
+          "reason"
+        ],
+        "title": "ConstraintPlanningAssessment"
+      },
+      "ConstraintPlanningOptions": {
+        "properties": {
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Countrycode"
+          },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency"
+          },
+          "activeEvidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveEvidenceOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "countryCode",
+          "timeZone",
+          "currency"
+        ],
+        "title": "ConstraintPlanningOptions",
+        "description": "显式选择实验规划路径；本币/时区/国家由用户确认，不猜未知城市。"
+      },
+      "ConstraintRepairBody": {
+        "properties": {
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "constraintId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Constraintid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "soften_relation",
+              "remove_required"
+            ],
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "constraintId",
+          "action"
+        ],
+        "title": "ConstraintRepairBody"
+      },
+      "ConstraintRepairSuggestion": {
+        "properties": {
+          "constraintId": {
+            "type": "string",
+            "title": "Constraintid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "soften_relation",
+              "remove_required"
+            ],
+            "title": "Action"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "sourceText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcetext"
+          }
+        },
+        "type": "object",
+        "required": [
+          "constraintId",
+          "action",
+          "label"
+        ],
+        "title": "ConstraintRepairSuggestion"
+      },
+      "ConstraintReport": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintCheck"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Checks"
+          }
+        },
+        "type": "object",
+        "title": "ConstraintReport"
+      },
       "CoverBody": {
         "properties": {
           "source": {
@@ -8284,6 +9680,30 @@
           "dayNo": {
             "type": "integer",
             "title": "Dayno"
+          },
+          "travelActivities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TravelActivity"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Travelactivities"
+          },
+          "travelHeader": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TravelHeader"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "note": {
             "anyOf": [
@@ -8365,6 +9785,16 @@
             },
             "type": "array",
             "title": "Suggestions"
+          },
+          "constraintPlanning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintPlanningAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8503,6 +9933,192 @@
           "instruction"
         ],
         "title": "EditOpRequest"
+      },
+      "EvidenceProbe": {
+        "properties": {
+          "gapId": {
+            "type": "string",
+            "title": "Gapid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "opening",
+              "price",
+              "duration",
+              "route"
+            ],
+            "title": "Kind"
+          },
+          "targets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "importance": {
+            "type": "integer",
+            "title": "Importance"
+          },
+          "costUnits": {
+            "type": "integer",
+            "title": "Costunits"
+          },
+          "factState": {
+            "type": "string",
+            "title": "Factstate"
+          },
+          "lowStatus": {
+            "type": "string",
+            "title": "Lowstatus"
+          },
+          "highStatus": {
+            "type": "string",
+            "title": "Highstatus"
+          },
+          "sensitivity": {
+            "type": "integer",
+            "title": "Sensitivity"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gapId",
+          "kind",
+          "targets",
+          "importance",
+          "costUnits",
+          "factState",
+          "lowStatus",
+          "highStatus",
+          "sensitivity",
+          "score",
+          "reason"
+        ],
+        "title": "EvidenceProbe"
+      },
+      "EvidenceQueryRecord": {
+        "properties": {
+          "gapId": {
+            "type": "string",
+            "title": "Gapid"
+          },
+          "tool": {
+            "type": "string",
+            "title": "Tool"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "updated",
+              "unknown",
+              "ask_user",
+              "rejected",
+              "error"
+            ],
+            "title": "Outcome"
+          },
+          "costUnits": {
+            "type": "integer",
+            "title": "Costunits"
+          },
+          "decisionChanged": {
+            "type": "boolean",
+            "title": "Decisionchanged",
+            "default": false
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          },
+          "bindingBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bindingbasis"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gapId",
+          "tool",
+          "outcome",
+          "costUnits",
+          "reason"
+        ],
+        "title": "EvidenceQueryRecord"
+      },
+      "EvidenceRegion": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "title": "EvidenceRegion"
       },
       "ExpenseCreate": {
         "properties": {
@@ -8980,6 +10596,18 @@
               }
             ],
             "title": "Remark"
+          },
+          "sourceRef": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceref"
           }
         },
         "type": "object",
@@ -9056,6 +10684,18 @@
               }
             ],
             "title": "Remark"
+          },
+          "sourceRef": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceref"
           }
         },
         "type": "object",
@@ -10110,6 +11750,16 @@
             ],
             "title": "Persons"
           },
+          "personCountOptions": {
+            "items": {
+              "type": "integer",
+              "maximum": 20.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Personcountoptions"
+          },
           "budget": {
             "anyOf": [
               {
@@ -10264,6 +11914,16 @@
               }
             ],
             "title": "Persons"
+          },
+          "personCountOptions": {
+            "items": {
+              "type": "integer",
+              "maximum": 20.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Personcountoptions"
           },
           "budget": {
             "anyOf": [
@@ -10508,9 +12168,23 @@
               "update",
               "delete",
               "fix",
-              "unfix"
+              "unfix",
+              "move"
             ],
             "title": "Action"
+          },
+          "targetIndex": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetindex"
           }
         },
         "type": "object",
@@ -10623,6 +12297,32 @@
             "type": "boolean",
             "title": "Fixed",
             "default": false
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
           }
         },
         "type": "object",
@@ -11430,6 +13130,96 @@
         "title": "PhotoSpot",
         "description": "出片点位（M3-① 叙事层）：名称 + 拍摄建议 + 最佳时段。\n\n纯叙事建议，不参与事实核验；每日 0-4 个，意图为空时模型可整体省略。"
       },
+      "PlaceRelation": {
+        "properties": {
+          "constraintId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Constraintid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "before",
+              "one_of"
+            ],
+            "title": "Kind"
+          },
+          "placeNames": {
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Placenames"
+          },
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "title": "Strength",
+            "default": "hard"
+          },
+          "priority": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Priority",
+            "default": 1
+          },
+          "negotiable": {
+            "type": "boolean",
+            "title": "Negotiable",
+            "default": false
+          },
+          "sourceText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 400,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcetext"
+          },
+          "sourceTurnId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceturnid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "constraintId",
+          "kind",
+          "placeNames",
+          "dayNo"
+        ],
+        "title": "PlaceRelation",
+        "description": "受控关系输入；before 要求两点均选中，one_of 表示至少选一个。\n\n支持表单与 intake patch；仅约束规划分支编译，常规规则路径仍标 unknown。\nnegotiable 只记录协商权限，不授权自动放宽 hard。"
+      },
       "PlanContextRequest": {
         "properties": {
           "city": {
@@ -11555,6 +13345,113 @@
         ],
         "title": "PlanContextRequest"
       },
+      "PlanningFactContext": {
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "title": "Candidateid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "sourceEntityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceentityid"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "sourceLanguage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcelanguage"
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          },
+          "countryCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Countrycode"
+          },
+          "originalCurrency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalcurrency"
+          },
+          "originalAmount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalamount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidateId",
+          "name",
+          "source"
+        ],
+        "title": "PlanningFactContext"
+      },
       "PlanningQueueVO": {
         "properties": {
           "observedAt": {
@@ -11627,6 +13524,104 @@
           "recentTerminals"
         ],
         "title": "PlanningQueueVO"
+      },
+      "PlanningRouteFact": {
+        "properties": {
+          "fromId": {
+            "type": "string",
+            "title": "Fromid"
+          },
+          "toId": {
+            "type": "string",
+            "title": "Toid"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "durationMin": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationmin"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "fetchedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetchedat"
+          },
+          "dataDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datadate"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "road_network",
+              "coordinate_estimate",
+              "unknown"
+            ],
+            "title": "Basis"
+          },
+          "timeDependent": {
+            "type": "boolean",
+            "title": "Timedependent",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "fromId",
+          "toId",
+          "mode",
+          "source",
+          "basis"
+        ],
+        "title": "PlanningRouteFact"
       },
       "PlanningTerminalVO": {
         "properties": {
@@ -12062,6 +14057,125 @@
         "type": "object",
         "title": "PreferenceSignalsBody"
       },
+      "PreparationData": {
+        "properties": {
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/SavedPlace"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Places"
+          },
+          "bookings": {
+            "items": {
+              "$ref": "#/components/schemas/TravelBooking"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Bookings"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/PreparationTask"
+            },
+            "type": "array",
+            "maxItems": 150,
+            "title": "Tasks"
+          },
+          "confirmations": {
+            "items": {
+              "$ref": "#/components/schemas/UserConfirmation"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Confirmations"
+          },
+          "completedItemIds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Completeditemids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreparationData"
+      },
+      "PreparationPutBody": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Revision"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PreparationData"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision",
+          "data"
+        ],
+        "title": "PreparationPutBody"
+      },
+      "PreparationTask": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "reservation",
+              "transport",
+              "stay",
+              "documents",
+              "packing",
+              "other"
+            ],
+            "title": "Category",
+            "default": "other"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "done": {
+            "type": "boolean",
+            "title": "Done",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "PreparationTask"
+      },
       "QualityIssue": {
         "properties": {
           "code": {
@@ -12187,6 +14301,217 @@
         ],
         "title": "RegisterBody"
       },
+      "ReplanBody": {
+        "properties": {
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "change": {
+            "$ref": "#/components/schemas/ReplanChange"
+          },
+          "completedItemIds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Completeditemids"
+          },
+          "optionalItemIds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Optionalitemids"
+          },
+          "allowCrossDay": {
+            "type": "boolean",
+            "title": "Allowcrossday",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "change"
+        ],
+        "title": "ReplanBody"
+      },
+      "ReplanChange": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "move",
+              "delay",
+              "close",
+              "finish_by",
+              "appointment",
+              "prefer"
+            ],
+            "title": "Kind"
+          },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "dayNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayno"
+          },
+          "anchorItemId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchoritemid"
+          },
+          "placement": {
+            "type": "string",
+            "enum": [
+              "before",
+              "after"
+            ],
+            "title": "Placement",
+            "default": "before"
+          },
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starttime"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          },
+          "delayMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 480.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delayminutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "ReplanChange"
+      },
+      "ReplanParseBody": {
+        "properties": {
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "dayNo": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dayno"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "message",
+          "dayNo"
+        ],
+        "title": "ReplanParseBody"
+      },
+      "ReplanSelectBody": {
+        "properties": {
+          "planningRevision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Planningrevision"
+          },
+          "comparisonId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Comparisonid"
+          },
+          "choice": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Choice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planningRevision",
+          "comparisonId",
+          "choice"
+        ],
+        "title": "ReplanSelectBody"
+      },
       "RequiredPlace": {
         "properties": {
           "constraintId": {
@@ -12225,6 +14550,18 @@
               }
             ],
             "title": "Sourceturnid"
+          },
+          "sourceRef": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceref"
           }
         },
         "type": "object",
@@ -12234,6 +14571,38 @@
         ],
         "title": "RequiredPlace",
         "description": "必去地点约束：day_nonull=全程必去；指定 day_no 属于硬要求（该日必须出现）。"
+      },
+      "RequirementSource": {
+        "properties": {
+          "sourceText": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Sourcetext"
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Target"
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "mapped",
+              "unresolved"
+            ],
+            "title": "Disposition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sourceText",
+          "target",
+          "disposition"
+        ],
+        "title": "RequirementSource",
+        "description": "本轮原话与抽取动作的对应；不声称未抽出的语义已被覆盖。"
       },
       "RestoreVersionBody": {
         "properties": {
@@ -12248,6 +14617,89 @@
           "planningRevision"
         ],
         "title": "RestoreVersionBody"
+      },
+      "SavedPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Address",
+            "default": ""
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(https?://[^\\s]+)?$",
+            "title": "Url",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Note",
+            "default": ""
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "coordinateSource": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "map_wgs84"
+                ],
+                "const": "map_wgs84"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordinatesource"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SavedPlace"
       },
       "ScenarioBody": {
         "properties": {
@@ -12411,6 +14863,497 @@
           "choice"
         ],
         "title": "ScenarioSelectBody"
+      },
+      "ScreenshotConfirmBody": {
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Documentid"
+          },
+          "recordId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Recordid"
+          },
+          "resolutionId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Resolutionid"
+          },
+          "entityId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Entityid"
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "required",
+              "excluded",
+              "fixed",
+              "booking"
+            ],
+            "title": "Disposition"
+          },
+          "requirements": {
+            "$ref": "#/components/schemas/TripRequirements-Input"
+          },
+          "startDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startdate"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Days"
+          },
+          "localDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localdate"
+          },
+          "endDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starttime"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          },
+          "timeZone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "overridePolarity": {
+            "type": "boolean",
+            "title": "Overridepolarity",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "documentId",
+          "recordId",
+          "resolutionId",
+          "entityId",
+          "disposition",
+          "requirements",
+          "days"
+        ],
+        "title": "ScreenshotConfirmBody"
+      },
+      "ScreenshotEvidence-Input": {
+        "properties": {
+          "imageId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Imageid"
+          },
+          "recordId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Recordid"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Height"
+          },
+          "extractedAt": {
+            "type": "string",
+            "title": "Extractedat"
+          },
+          "extractor": {
+            "type": "string",
+            "title": "Extractor"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenshotField"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Fields"
+          },
+          "confirmedFields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 16,
+            "title": "Confirmedfields"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "user_confirmed_input"
+            ],
+            "const": "user_confirmed_input",
+            "title": "Status",
+            "default": "user_confirmed_input"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imageId",
+          "recordId",
+          "width",
+          "height",
+          "extractedAt",
+          "extractor",
+          "fields"
+        ],
+        "title": "ScreenshotEvidence"
+      },
+      "ScreenshotEvidence-Output": {
+        "properties": {
+          "imageId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Imageid"
+          },
+          "recordId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Recordid"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Height"
+          },
+          "extractedAt": {
+            "type": "string",
+            "title": "Extractedat"
+          },
+          "extractor": {
+            "type": "string",
+            "title": "Extractor"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenshotField"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Fields"
+          },
+          "confirmedFields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 16,
+            "title": "Confirmedfields"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "user_confirmed_input"
+            ],
+            "const": "user_confirmed_input",
+            "title": "Status",
+            "default": "user_confirmed_input"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imageId",
+          "recordId",
+          "width",
+          "height",
+          "extractedAt",
+          "extractor",
+          "fields"
+        ],
+        "title": "ScreenshotEvidence"
+      },
+      "ScreenshotField": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "name",
+              "localName",
+              "city",
+              "countryCode",
+              "date",
+              "endDate",
+              "startTime",
+              "endTime",
+              "timeZone",
+              "currency",
+              "amount",
+              "note"
+            ],
+            "title": "Key"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Value"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "region": {
+            "$ref": "#/components/schemas/EvidenceRegion"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "quote",
+          "region"
+        ],
+        "title": "ScreenshotField"
+      },
+      "ScreenshotManualBody": {
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Documentid"
+          },
+          "recordId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Recordid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City"
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Countrycode"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Address"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "unconfirmed",
+              "museum",
+              "station",
+              "airport",
+              "bus_station",
+              "ferry_terminal"
+            ],
+            "title": "Entitytype",
+            "default": "unconfirmed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documentId",
+          "recordId",
+          "name",
+          "city",
+          "countryCode",
+          "address"
+        ],
+        "title": "ScreenshotManualBody"
+      },
+      "ScreenshotResolveBody": {
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Documentid"
+          },
+          "recordId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Recordid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City"
+          },
+          "countryCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "title": "Countrycode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documentId",
+          "recordId",
+          "name",
+          "city",
+          "countryCode"
+        ],
+        "title": "ScreenshotResolveBody"
       },
       "ShareCreateBody": {
         "properties": {
@@ -12623,6 +15566,679 @@
         "title": "Suggestion",
         "description": "备选池条目：生成时未排入行程、可在「发现更多」一键加入的候选点位。\n\n候选池保底链路中条目必须来自候选池（代码侧兜底校验）；开放模式\n（open_research）下允许池外模型建议，坐标留空由前端经地图检索补齐。"
       },
+      "TravelActivity": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "airplane",
+              "train",
+              "attraction",
+              "breakfast",
+              "lunch",
+              "dinner",
+              "accommodation"
+            ],
+            "title": "Type"
+          },
+          "startTime": {
+            "type": "string",
+            "title": "Starttime"
+          },
+          "endTime": {
+            "type": "string",
+            "title": "Endtime"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "cost": {
+            "type": "number",
+            "title": "Cost"
+          },
+          "transports": {
+            "items": {
+              "$ref": "#/components/schemas/TravelLeg"
+            },
+            "type": "array",
+            "title": "Transports"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "FlightID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flightid"
+          },
+          "TrainID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trainid"
+          },
+          "tickets": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tickets"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "roomType": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roomtype"
+          },
+          "transferRequest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TravelTransferRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "startTime",
+          "endTime",
+          "price",
+          "cost"
+        ],
+        "title": "TravelActivity"
+      },
+      "TravelBooking": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "hotel",
+              "transport",
+              "ticket",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "startAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startat"
+          },
+          "endAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endat"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Reference",
+            "default": ""
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Address",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Note",
+            "default": ""
+          },
+          "documentUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(https?://[^\\s]+)?$",
+            "title": "Documenturl",
+            "default": ""
+          },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "inputEvidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreenshotEvidence-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeZone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "originalAmount": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "pattern": "^\\d{1,7}(\\.\\d{1,2})?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalamount"
+          },
+          "originalCurrency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalcurrency"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name"
+        ],
+        "title": "TravelBooking"
+      },
+      "TravelHeader": {
+        "properties": {
+          "peopleNumber": {
+            "type": "integer",
+            "title": "Peoplenumber"
+          },
+          "startCity": {
+            "type": "string",
+            "title": "Startcity"
+          },
+          "targetCity": {
+            "type": "string",
+            "title": "Targetcity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "peopleNumber",
+          "startCity",
+          "targetCity"
+        ],
+        "title": "TravelHeader"
+      },
+      "TravelLeg": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "title": "End"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "metro",
+              "taxi"
+            ],
+            "title": "Mode"
+          },
+          "startTime": {
+            "type": "string",
+            "title": "Starttime"
+          },
+          "endTime": {
+            "type": "string",
+            "title": "Endtime"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "cost": {
+            "type": "number",
+            "title": "Cost"
+          },
+          "distance": {
+            "type": "number",
+            "title": "Distance"
+          },
+          "tickets": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tickets"
+          },
+          "cars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "mode",
+          "startTime",
+          "endTime",
+          "price",
+          "cost",
+          "distance"
+        ],
+        "title": "TravelLeg"
+      },
+      "TravelRequirements-Input": {
+        "properties": {
+          "attractionTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attractiontypes"
+          },
+          "restaurantCuisines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Restaurantcuisines"
+          },
+          "hotelFeatures": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hotelfeatures"
+          },
+          "requiredNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requirednames"
+          },
+          "excludedNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excludednames"
+          },
+          "allowedIntercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "train",
+                "airplane"
+              ]
+            },
+            "type": "array",
+            "title": "Allowedintercitymodes"
+          },
+          "requiredIntercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "train",
+                "airplane"
+              ]
+            },
+            "type": "array",
+            "title": "Requiredintercitymodes"
+          },
+          "requiredInnercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "walk",
+                "metro",
+                "taxi"
+              ]
+            },
+            "type": "array",
+            "title": "Requiredinnercitymodes"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "roomBeds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roombeds"
+          },
+          "maxHotelCostPerPersonPerNight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxhotelcostperpersonpernight"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unresolved"
+          }
+        },
+        "type": "object",
+        "title": "TravelRequirements"
+      },
+      "TravelRequirements-Output": {
+        "properties": {
+          "attractionTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attractiontypes"
+          },
+          "restaurantCuisines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Restaurantcuisines"
+          },
+          "hotelFeatures": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hotelfeatures"
+          },
+          "requiredNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requirednames"
+          },
+          "excludedNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excludednames"
+          },
+          "allowedIntercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "train",
+                "airplane"
+              ]
+            },
+            "type": "array",
+            "title": "Allowedintercitymodes"
+          },
+          "requiredIntercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "train",
+                "airplane"
+              ]
+            },
+            "type": "array",
+            "title": "Requiredintercitymodes"
+          },
+          "requiredInnercityModes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "walk",
+                "metro",
+                "taxi"
+              ]
+            },
+            "type": "array",
+            "title": "Requiredinnercitymodes"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "roomBeds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roombeds"
+          },
+          "maxHotelCostPerPersonPerNight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxhotelcostperpersonpernight"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unresolved"
+          }
+        },
+        "type": "object",
+        "title": "TravelRequirements"
+      },
+      "TravelTransferRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "metro",
+              "taxi"
+            ],
+            "title": "Mode"
+          },
+          "departure": {
+            "type": "string",
+            "title": "Departure"
+          },
+          "tickets": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tickets"
+          },
+          "cars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "departure"
+        ],
+        "title": "TravelTransferRequest"
+      },
       "TrialGrantBody": {
         "properties": {
           "amountCny": {
@@ -12801,10 +16417,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "CNY"
-                ],
-                "const": "CNY"
+                "pattern": "^[A-Z]{3}$"
               },
               {
                 "type": "null"
@@ -12939,6 +16552,40 @@
             "title": "Schemaversion",
             "default": 1
           },
+          "factSource": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "chinatravel"
+                ],
+                "const": "chinatravel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factsource"
+          },
+          "travelPlanner": {
+            "type": "string",
+            "enum": [
+              "generate",
+              "cp"
+            ],
+            "title": "Travelplanner",
+            "default": "generate"
+          },
+          "travelConstraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TravelRequirements-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "dayWindows": {
             "items": {
               "$ref": "#/components/schemas/DayWindow"
@@ -12962,6 +16609,32 @@
             "type": "array",
             "maxItems": 40,
             "title": "Fixedarrangements"
+          },
+          "placeRelations": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceRelation"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Placerelations"
+          },
+          "constraintPlanning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintPlanningOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "placeInputs": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmedPlaceInput-Input"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Placeinputs"
           },
           "excludedPlaces": {
             "items": {
@@ -13100,6 +16773,14 @@
             "type": "array",
             "maxItems": 20,
             "title": "Unresolvedrequests"
+          },
+          "requirementSources": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementSource"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Requirementsources"
           }
         },
         "type": "object",
@@ -13112,6 +16793,40 @@
             "type": "integer",
             "title": "Schemaversion",
             "default": 1
+          },
+          "factSource": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "chinatravel"
+                ],
+                "const": "chinatravel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factsource"
+          },
+          "travelPlanner": {
+            "type": "string",
+            "enum": [
+              "generate",
+              "cp"
+            ],
+            "title": "Travelplanner",
+            "default": "generate"
+          },
+          "travelConstraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TravelRequirements-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "dayWindows": {
             "items": {
@@ -13137,6 +16852,32 @@
             "maxItems": 40,
             "title": "Fixedarrangements"
           },
+          "placeRelations": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceRelation"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Placerelations"
+          },
+          "constraintPlanning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConstraintPlanningOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "placeInputs": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmedPlaceInput-Output"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Placeinputs"
+          },
           "excludedPlaces": {
             "items": {
               "type": "string",
@@ -13274,6 +17015,14 @@
             "type": "array",
             "maxItems": 20,
             "title": "Unresolvedrequests"
+          },
+          "requirementSources": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementSource"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Requirementsources"
           }
         },
         "type": "object",
@@ -13296,6 +17045,70 @@
         },
         "type": "object",
         "title": "UpdateDayBody"
+      },
+      "UserConfirmation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "itemId": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Itemid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "aspect": {
+            "type": "string",
+            "enum": [
+              "location",
+              "opening",
+              "price",
+              "booking"
+            ],
+            "title": "Aspect"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Note",
+            "default": ""
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(https?://[^\\s]+)?$",
+            "title": "Sourceurl",
+            "default": ""
+          },
+          "recordedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordedat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "itemId",
+          "name",
+          "aspect"
+        ],
+        "title": "UserConfirmation"
       },
       "ValidationError": {
         "properties": {

@@ -27,6 +27,9 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, StringConstraints
 
 from app.schemas.common import WireModel
+from app.schemas.planning import ConstraintPlanningOptions
+from app.schemas.screenshot_input import ConfirmedPlaceInput
+from app.schemas.travel_plan import TravelRequirements
 
 MAX_TRIP_DAYS = 7
 
@@ -66,6 +69,7 @@ class RequiredPlace(WireModel):
     name: _BoundedStr
     day_no: int | None = Field(default=None, ge=1, le=MAX_TRIP_DAYS)
     source_turn_id: str | None = Field(default=None, max_length=64)
+    source_ref: str | None = Field(default=None, max_length=64)
 
 
 class FixedArrangement(WireModel):
@@ -79,6 +83,7 @@ class FixedArrangement(WireModel):
     cost: Decimal | None = Field(default=None, ge=0, le=1_000_000, max_digits=12, decimal_places=2)
     address: str | None = Field(default=None, max_length=255)
     remark: str | None = Field(default=None, max_length=255)
+    source_ref: str | None = Field(default=None, max_length=64)
 
 
 class BudgetPolicy(WireModel):
@@ -96,13 +101,45 @@ class LodgingRequirements(WireModel):
     stay_nights_explicit: bool = False
 
 
+class PlaceRelation(WireModel):
+    """受控关系输入；before 要求两点均选中，one_of 表示至少选一个。
+
+    支持表单与 intake patch；仅约束规划分支编译，常规规则路径仍标 unknown。
+    negotiable 只记录协商权限，不授权自动放宽 hard。
+    """
+
+    constraint_id: _BoundedStr
+    kind: Literal["before", "one_of"]
+    place_names: list[_BoundedStr] = Field(min_length=2, max_length=2)
+    day_no: int = Field(ge=1, le=MAX_TRIP_DAYS)
+    strength: Literal["hard", "soft"] = "hard"
+    priority: int = Field(default=1, ge=1, le=5)
+    negotiable: bool = False
+    source_text: _FreeText | None = None
+    source_turn_id: str | None = Field(default=None, max_length=64)
+
+
+class RequirementSource(WireModel):
+    """本轮原话与抽取动作的对应；不声称未抽出的语义已被覆盖。"""
+
+    source_text: _FreeText
+    target: str = Field(min_length=1, max_length=64)
+    disposition: Literal["mapped", "unresolved"]
+
+
 class TripRequirements(WireModel):
     """现有请求参数之外的结构化需求；全默认 = 无额外约束（等价于旧行为）。"""
 
     schema_version: int = REQUIREMENTS_SCHEMA_VERSION
+    fact_source: Literal["chinatravel"] | None = None
+    travel_planner: Literal["generate", "cp"] = "generate"
+    travel_constraints: TravelRequirements | None = None
     day_windows: list[DayWindow] = Field(default_factory=list, max_length=MAX_TRIP_DAYS)
     required_places: list[RequiredPlace] = Field(default_factory=list, max_length=20)
     fixed_arrangements: list[FixedArrangement] = Field(default_factory=list, max_length=40)
+    place_relations: list[PlaceRelation] = Field(default_factory=list, max_length=20)
+    constraint_planning: ConstraintPlanningOptions | None = None
+    place_inputs: list[ConfirmedPlaceInput] = Field(default_factory=list, max_length=8)
     excluded_places: list[_BoundedStr] = Field(default_factory=list, max_length=20)
     excluded_categories: list[_BoundedStr] = Field(default_factory=list, max_length=10)
     pace: Literal["normal", "relaxed"] | None = None
@@ -114,6 +151,7 @@ class TripRequirements(WireModel):
     budget_policy: BudgetPolicy | None = None
     lodging: LodgingRequirements | None = None
     unresolved_requests: list[_FreeText] = Field(default_factory=list, max_length=20)
+    requirement_sources: list[RequirementSource] = Field(default_factory=list, max_length=60)
 
 
 class IntakeState(WireModel):
@@ -128,6 +166,7 @@ class IntakeState(WireModel):
     city: str | None = Field(default=None, min_length=1, max_length=64)
     days: int | None = Field(default=None, ge=1)
     persons: int | None = Field(default=None, ge=1, le=20)
+    person_count_options: list[Annotated[int, Field(ge=1, le=20)]] = Field(default_factory=list, max_length=2)
     budget: float | None = Field(default=None, ge=0)
     start_date: str | None = Field(default=None, max_length=10)
     stay_nights: int | None = Field(default=None, ge=0)
@@ -192,6 +231,14 @@ def requirements_issues(req: TripRequirements, *, days: int | None = None) -> li
         seen_ids.add(place.constraint_id)
         if days is not None and place.day_no is not None and place.day_no > days:
             issues.append(f"必去地点「{place.name}」指定第 {place.day_no} 天，超出行程天数 {days}")
+    for relation in req.place_relations:
+        if relation.constraint_id in seen_ids:
+            issues.append(f"地点关系约束重复：{relation.constraint_id}")
+        seen_ids.add(relation.constraint_id)
+        if relation.place_names[0] == relation.place_names[1]:
+            issues.append(f"地点关系「{relation.constraint_id}」需要两个不同地点")
+        if days is not None and relation.day_no > days:
+            issues.append(f"地点关系「{relation.constraint_id}」超出行程天数 {days}")
     for category in req.excluded_categories:
         if category not in SUPPORTED_EXCLUDED_CATEGORIES:
             issues.append(f"暂不支持排除类别「{category}」，当前支持：{'、'.join(SUPPORTED_EXCLUDED_CATEGORIES)}")
@@ -220,6 +267,8 @@ def canonical_requirements_payload(req: TripRequirements | None) -> dict[str, An
         payload["dayWindows"] = sorted(payload["dayWindows"], key=lambda w: w.get("dayNo", 0))
     if isinstance(payload.get("requiredPlaces"), list):
         payload["requiredPlaces"] = sorted(payload["requiredPlaces"], key=lambda p: p.get("constraintId", ""))
+    if isinstance(payload.get("placeRelations"), list):
+        payload["placeRelations"] = sorted(payload["placeRelations"], key=lambda p: p.get("constraintId", ""))
     for key in ("excludedPlaces", "excludedCategories", "unresolvedRequests"):
         if isinstance(payload.get(key), list):
             payload[key] = sorted(payload[key])

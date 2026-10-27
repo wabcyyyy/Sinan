@@ -142,7 +142,7 @@ def _run_search(state: UnifiedAgentState) -> dict:
             supplement = search_places_via_web(task.city, task.domain, limit=4, intent_keywords=[keyword])
             items = _merge_supplement(items, supplement)
     # 外部池仍偏少时：联网搜索补真实地点名（池空/海外城市的证据缺口）
-    if len(items) < 3 and web_search_enabled() and _spend_research(limits, task.domain):
+    if len(items) < min(3, task.limit or 3) and web_search_enabled() and _spend_research(limits, task.domain):
         web_rows = search_places_via_web(
             task.city,
             task.domain,
@@ -203,13 +203,16 @@ def _finalize_pack(state: UnifiedAgentState) -> dict:
         confidence = _DEFAULT_CONFIDENCE if items else 0.0
     gap = config.gap_hint(items)
     quota_note = state.quota_note or ""
+    evaluation_note = state.evaluation_note
+    if state.sufficient is False:
+        evaluation_note = "研究评估认为证据不足，补查后尚未重新确认充分性"
     pack = EvidencePack(
         domain=task.domain,
         items=items,
         confidence=confidence,
         rounds=state.round,
-        gaps=[note for note in (gap, quota_note, state.evaluation_note) if note],
-        degraded=not items or bool(state.evaluation_note),
+        gaps=[note for note in (gap, quota_note, evaluation_note) if note],
+        degraded=not items or bool(evaluation_note),
     )
     record_event("decision", f"research.{task.domain}", metadata=pack.to_dict())
     return {"pack": pack}

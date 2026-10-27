@@ -92,6 +92,11 @@ core          零依赖原语：json_utils / geo / poi_identity / intent  已落
 | `rules/constraint_checks.py` | ConstraintReport 硬约束检查（必去/排除/窗口/冲突）：core_ready 交付门与编辑草稿确定性硬校验共用（M3/M4） |
 | `rules/category_evidence.py` | 类别证据资格与三态判定：已验证字段绑定同一地点身份，未知/过期证据不能解除名称排除 |
 | `content/reflect.py::hard_day_issues` | 单日结构伤及需求交付闸：图内修复、最后尝试和业务落库共用同一判据；过滤缺口由 `content/landing.py` 回喂生成 |
+| `content/constraint_*.py`、`orchestration/constraint_planning.py` | SINAN-UPGRADE-P0/P1：单日内核与 1–3 日共享模型；P1 经显式目的地口径接入 plan_days，保留数值证明与未核实事实的区分；验收见 `docs/design/sinan-upgrade-p1-20261024.md` |
+| `data/ors_routes.py`、`data/osrm_routes.py` | 显式配置的静态路网源，复用 RouteService；OSRM 使用 FOSSGIS 布局、1rps 与双向响应缓存，仅用于少量免费验收；在线记录见 `docs/design/sinan-upgrade-p1-real-routing-20261024.md` |
+| `content/constraint_replan_*.py`、`orchestration/constraint_replanning.py`、`orchestration/replan_snapshot.py` | P2：旧计划提示、依赖邻域冻结、逐级扩张、分项扰动及有限非支配候选；与业务比较／草稿／CAS 接线，既有活动池范围收尾定向验证通过，见 `docs/design/sinan-upgrade-p2-closeout-20261024.md` |
+| `editing/screenshot.py`、`grounding/screenshot_entities.py` | P3：字段原文／区域、跨语言地点查询、需求与预订复用；四图真实调用保留一图漏抽，追问／补录及本地真实浏览器 4 场景通过，见 `docs/design/sinan-upgrade-p3-browser-20261024.md`；模糊／留出样例质量未扩展 |
+| `content/evidence_*.py`、`orchestration/active_evidence.py`、`orchestration/evidence_tools.py` | P4：单字段双端试解、有限取证、字段更新与再求解；显式开启，经 plan_days 与 P2 草稿/CAS 接线，本地真实浏览器及三类新约束模板已补验，真实模型/在线对照尚未验收，见 `docs/design/sinan-upgrade-p4-browser-20261024.md` |
 | `workflow.py` | 图工作流的门面：生成 → 校验 → 修复循环 |
 | `grounding/official_pages.py` | 官方页面证据 adapter：限域抓取（仅 http(s)/私网 fail-closed/2MB/10s），只认登记过的公告句式，认不出 = unknown（M7） |
 | `editing/chat_draft/` | 编辑草稿决策契约：意图分类（「酒店不动」优先于名词匹配）、作用域校验、拟变更需求随草稿提议（M4） |

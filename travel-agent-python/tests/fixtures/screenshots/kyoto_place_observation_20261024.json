@@ -1,0 +1,53 @@
+{
+  "source": "P1 recorded Nominatim observation; no additional lookup",
+  "observed": {
+    "split": "development",
+    "city": "京都",
+    "query_name": "清水寺",
+    "country_code": "JP",
+    "time_zone": "Asia/Tokyo",
+    "currency": "JPY",
+    "locale_source": "probe scenario, not inferred from geocoder",
+    "local_date": "2026-10-24",
+    "retrieved_utc": "2026-10-24T16:30:00.46281+08:00",
+    "lookup_status": "found",
+    "country_match_count": 1,
+    "rows": [
+      {
+        "name": "清水寺",
+        "display_name": "清水寺, Slope of a tea-ceremony room, Kiyomizu 1-chōme, 辰巳町, Higashiyama Ward, 京都市, 京都府, 605-0862, 日本",
+        "latitude": 34.994303,
+        "longitude": 135.7844389,
+        "aliases": [
+          "Chrám Kijomizu-dera",
+          "Kiyomizu-dera",
+          "Temple Kiyomizu",
+          "Temple de l'eau pure",
+          "Киёмидзу-дэра",
+          "วัดน้ำใส",
+          "きよみずでら",
+          "清水寺",
+          "기요미즈데라"
+        ],
+        "localized_name": "清水寺",
+        "country_code": "JP",
+        "source_fetched_at": "2026-10-24T16:30:00.961279+08:00",
+        "source_language": "multilingual",
+        "category": "amenity",
+        "type": "place_of_worship",
+        "source": "nominatim",
+        "place_id": "osm:way:336641107",
+        "source_url": "https://www.openstreetmap.org/way/336641107",
+        "dietary_options": [],
+        "category_tags": {
+          "amenity": "place_of_worship",
+          "religion": "buddhist",
+          "tourism": "attraction",
+          "historic": "yes"
+        }
+      }
+    ],
+    "price_coverage": "unknown",
+    "opening_coverage": "unknown"
+  }
+}

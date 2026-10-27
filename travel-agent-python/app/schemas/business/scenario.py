@@ -3,7 +3,7 @@
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ScenarioBody(BaseModel):
@@ -79,7 +79,8 @@ class ItemActionBody(ItemEditFields):
     dayNo: int | None = Field(default=None, ge=1, le=7)
     poiName: str | None = Field(default=None, min_length=1, max_length=128)
     planningRevision: int = Field(ge=0)
-    action: Literal["update", "delete", "fix", "unfix"]
+    action: Literal["update", "delete", "fix", "unfix", "move"]
+    targetIndex: int | None = Field(default=None, ge=0, le=100)
 
 
 class ItemCreateBody(ItemEditFields):
@@ -89,6 +90,14 @@ class ItemCreateBody(ItemEditFields):
     poiName: str = Field(min_length=1, max_length=128)
     dayNo: int = Field(ge=1, le=7)
     fixed: bool = False
+    latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def coordinate_pair(self):
+        if (self.latitude is None) != (self.longitude is None) or self.latitude == self.longitude == 0:
+            raise ValueError("请提供有效且成对的 WGS84 地图落点")
+        return self
 
 
 class ItineraryVersionVO(BaseModel):

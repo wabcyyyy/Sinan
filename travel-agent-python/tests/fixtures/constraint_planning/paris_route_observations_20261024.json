@@ -1,0 +1,135 @@
+{
+  "method": "Real Nominatim observations; manually select tourism=museum, not the railway station. No price/opening/duration facts added.",
+  "attribution": "© OpenStreetMap contributors (ODbL)",
+  "selected_places": [
+    {
+      "name": "卢浮宫博物馆",
+      "display_name": "卢浮宫博物馆, 里沃利路, 圣日耳曼奥塞尔街区, 第一区;第一區, 巴黎, 法兰西岛大区;法蘭西島大區, 法國本土;法国本土, 75001, 法国;法國",
+      "latitude": 48.8611473,
+      "longitude": 2.3380277,
+      "aliases": [
+        "Louvre",
+        "Louvre Museum",
+        "Louvre Müzesi",
+        "Luvro",
+        "Museo del Louvre",
+        "Museu do Louvre",
+        "Museum des Louvre",
+        "Musée du Louvre",
+        "Лувр",
+        "متحف اللوفر",
+        "ルーブル美術館",
+        "卢浮宫",
+        "卢浮宫博物馆"
+      ],
+      "localized_name": "卢浮宫博物馆",
+      "country_code": "FR",
+      "source_fetched_at": "2026-10-24T08:30:01.942799+00:00",
+      "source_language": "multilingual",
+      "category": "tourism",
+      "type": "museum",
+      "source": "nominatim",
+      "place_id": "osm:relation:7515426",
+      "source_url": "https://www.openstreetmap.org/relation/7515426",
+      "dietary_options": [],
+      "category_tags": {
+        "tourism": "museum"
+      }
+    },
+    {
+      "name": "奧賽博物館",
+      "display_name": "奧賽博物館, 1, Rue de la Légion d'Honneur, 圣托马斯·达奎因街区, 第七区;第七區, 巴黎, 法兰西岛大区;法蘭西島大區, 法國本土;法国本土, 75007, 法国;法國",
+      "latitude": 48.8599179,
+      "longitude": 2.3265849,
+      "aliases": [
+        "Gare d'Orsay",
+        "Museo d'Orsay",
+        "Museo de Orsay",
+        "Museu de Orsay",
+        "Museum of Orsay",
+        "Musée d'Orsay",
+        "Musée d'Orsay - Valéry Giscard d'Estaing",
+        "Muzeum Orsay",
+        "Музей Орсе",
+        "オルセー美術館",
+        "奥赛博物馆",
+        "奧賽博物館",
+        "오르세 미술관"
+      ],
+      "localized_name": "奥赛博物馆",
+      "country_code": "FR",
+      "source_fetched_at": "2026-10-24T09:39:10.681841+00:00",
+      "source_language": "multilingual",
+      "category": "tourism",
+      "type": "museum",
+      "source": "nominatim",
+      "place_id": "osm:way:63178753",
+      "source_url": "https://www.openstreetmap.org/way/63178753",
+      "dietary_options": [],
+      "category_tags": {
+        "tourism": "museum"
+      }
+    }
+  ],
+  "orsay_query_rows": [
+    {
+      "name": "奧賽博物館",
+      "display_name": "奧賽博物館, 1, Rue de la Légion d'Honneur, 圣托马斯·达奎因街区, 第七区;第七區, 巴黎, 法兰西岛大区;法蘭西島大區, 法國本土;法国本土, 75007, 法国;法國",
+      "latitude": 48.8599179,
+      "longitude": 2.3265849,
+      "aliases": [
+        "Gare d'Orsay",
+        "Museo d'Orsay",
+        "Museo de Orsay",
+        "Museu de Orsay",
+        "Museum of Orsay",
+        "Musée d'Orsay",
+        "Musée d'Orsay - Valéry Giscard d'Estaing",
+        "Muzeum Orsay",
+        "Музей Орсе",
+        "オルセー美術館",
+        "奥赛博物馆",
+        "奧賽博物館",
+        "오르세 미술관"
+      ],
+      "localized_name": "奥赛博物馆",
+      "country_code": "FR",
+      "source_fetched_at": "2026-10-24T09:39:10.681841+00:00",
+      "source_language": "multilingual",
+      "category": "tourism",
+      "type": "museum",
+      "source": "nominatim",
+      "place_id": "osm:way:63178753",
+      "source_url": "https://www.openstreetmap.org/way/63178753",
+      "dietary_options": [],
+      "category_tags": {
+        "tourism": "museum"
+      }
+    },
+    {
+      "name": "奥赛博物馆",
+      "display_name": "奥赛博物馆, 62, Rue de Lille, 圣托马斯·达奎因街区, 第七区;第七區, 巴黎, 法兰西岛大区;法蘭西島大區, 法國本土;法国本土, 75343, 法国;法國",
+      "latitude": 48.8605888,
+      "longitude": 2.3259096,
+      "aliases": [
+        "Musée d'Orsay",
+        "RER C",
+        "奥赛博物馆",
+        "뮈제 도르세"
+      ],
+      "localized_name": "奥赛博物馆",
+      "country_code": "FR",
+      "source_fetched_at": "2026-10-24T09:39:10.681841+00:00",
+      "source_language": "multilingual",
+      "category": "railway",
+      "type": "station",
+      "source": "nominatim",
+      "place_id": "osm:node:2379542204",
+      "source_url": "https://www.openstreetmap.org/node/2379542204",
+      "dietary_options": [],
+      "category_tags": {
+        "railway": "station"
+      }
+    }
+  ]
+}

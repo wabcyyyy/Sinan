@@ -1,0 +1,108 @@
+{
+  "entries": [
+    {
+      "kind": "reservation",
+      "polarity": "recommended",
+      "fields": [
+        {
+          "key": "name",
+          "value": "Musée du Louvre",
+          "quote": "预约 Musée du Louvre / 卢浮宫",
+          "region": {
+            "x": 0.035,
+            "y": 0.13157894736842105,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "date",
+          "value": "2026-10-25",
+          "quote": "开始 2026-10-25 14:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "startTime",
+          "value": "14:00",
+          "quote": "开始 2026-10-25 14:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "endDate",
+          "value": "2026-10-25",
+          "quote": "结束 2026-10-25 16:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "endTime",
+          "value": "16:00",
+          "quote": "结束 2026-10-25 16:00",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "timeZone",
+          "value": "Europe/Paris",
+          "quote": "当地时区 Europe/Paris",
+          "region": {
+            "x": 0.035,
+            "y": 0.4276315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "amount",
+          "value": "22.00",
+          "quote": "票面 EUR 22.00",
+          "region": {
+            "x": 0.035,
+            "y": 0.5263157894736842,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "currency",
+          "value": "EUR",
+          "quote": "票面 EUR 22.00",
+          "region": {
+            "x": 0.035,
+            "y": 0.5263157894736842,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        }
+      ],
+      "questions": []
+    }
+  ],
+  "questions": []
+}

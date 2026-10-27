@@ -1,6 +1,1001 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "TravelActivity": {
+      "properties": {
+        "type": {
+          "enum": [
+            "airplane",
+            "train",
+            "attraction",
+            "breakfast",
+            "lunch",
+            "dinner",
+            "accommodation"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "startTime": {
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "title": "Endtime",
+          "type": "string"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "number"
+        },
+        "transports": {
+          "items": {
+            "$ref": "#/$defs/TravelLeg"
+          },
+          "title": "Transports",
+          "type": "array"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "FlightID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flightid"
+        },
+        "TrainID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trainid"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "rooms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "roomType": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roomtype"
+        },
+        "transferRequest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelTransferRequest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "type",
+        "startTime",
+        "endTime",
+        "price",
+        "cost",
+        "transports",
+        "position",
+        "start",
+        "end",
+        "FlightID",
+        "TrainID",
+        "tickets",
+        "rooms",
+        "roomType",
+        "transferRequest"
+      ],
+      "title": "TravelActivity",
+      "type": "object"
+    },
+    "TravelDay": {
+      "properties": {
+        "day": {
+          "title": "Day",
+          "type": "integer"
+        },
+        "activities": {
+          "items": {
+            "$ref": "#/$defs/TravelActivity"
+          },
+          "title": "Activities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "day",
+        "activities"
+      ],
+      "title": "TravelDay",
+      "type": "object"
+    },
+    "TravelLeg": {
+      "properties": {
+        "start": {
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "title": "End",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "walk",
+            "metro",
+            "taxi"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "startTime": {
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "title": "Endtime",
+          "type": "string"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "number"
+        },
+        "distance": {
+          "title": "Distance",
+          "type": "number"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "cars": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cars"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "mode",
+        "startTime",
+        "endTime",
+        "price",
+        "cost",
+        "distance",
+        "tickets",
+        "cars"
+      ],
+      "title": "TravelLeg",
+      "type": "object"
+    },
+    "TravelTransferRequest": {
+      "properties": {
+        "mode": {
+          "enum": [
+            "walk",
+            "metro",
+            "taxi"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "departure": {
+          "title": "Departure",
+          "type": "string"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "cars": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cars"
+        }
+      },
+      "required": [
+        "mode",
+        "departure",
+        "tickets",
+        "cars"
+      ],
+      "title": "TravelTransferRequest",
+      "type": "object"
+    },
+    "TravelPlan": {
+      "properties": {
+        "peopleNumber": {
+          "title": "Peoplenumber",
+          "type": "integer"
+        },
+        "startCity": {
+          "title": "Startcity",
+          "type": "string"
+        },
+        "targetCity": {
+          "title": "Targetcity",
+          "type": "string"
+        },
+        "itinerary": {
+          "items": {
+            "$ref": "#/$defs/TravelDay"
+          },
+          "title": "Itinerary",
+          "type": "array"
+        }
+      },
+      "required": [
+        "peopleNumber",
+        "startCity",
+        "targetCity",
+        "itinerary"
+      ],
+      "title": "TravelPlan",
+      "type": "object"
+    },
+    "EvidenceRegion": {
+      "properties": {
+        "x": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Y",
+          "type": "number"
+        },
+        "width": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Height",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "EvidenceRegion",
+      "type": "object"
+    },
+    "PreparationData": {
+      "additionalProperties": false,
+      "properties": {
+        "places": {
+          "items": {
+            "$ref": "#/$defs/SavedPlace"
+          },
+          "maxItems": 100,
+          "title": "Places",
+          "type": "array"
+        },
+        "bookings": {
+          "items": {
+            "$ref": "#/$defs/TravelBooking"
+          },
+          "maxItems": 100,
+          "title": "Bookings",
+          "type": "array"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/PreparationTask"
+          },
+          "maxItems": 150,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "confirmations": {
+          "items": {
+            "$ref": "#/$defs/UserConfirmation"
+          },
+          "maxItems": 200,
+          "title": "Confirmations",
+          "type": "array"
+        },
+        "completedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 200,
+          "title": "Completeditemids",
+          "type": "array"
+        }
+      },
+      "title": "PreparationData",
+      "type": "object",
+      "required": [
+        "places",
+        "bookings",
+        "tasks",
+        "confirmations",
+        "completedItemIds"
+      ]
+    },
+    "PreparationTask": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "category": {
+          "default": "other",
+          "enum": [
+            "reservation",
+            "transport",
+            "stay",
+            "documents",
+            "packing",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "done": {
+          "default": false,
+          "title": "Done",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "dayNo",
+        "done"
+      ],
+      "title": "PreparationTask",
+      "type": "object"
+    },
+    "SavedPlace": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "address": {
+          "default": "",
+          "maxLength": 255,
+          "title": "Address",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "maxLength": 2048,
+          "pattern": "^(https?://[^\\s]+)?$",
+          "title": "Url",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "coordinateSource": {
+          "anyOf": [
+            {
+              "const": "map_wgs84",
+              "enum": [
+                "map_wgs84"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coordinatesource"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address",
+        "url",
+        "note",
+        "latitude",
+        "longitude",
+        "coordinateSource"
+      ],
+      "title": "SavedPlace",
+      "type": "object"
+    },
+    "ScreenshotEvidence": {
+      "properties": {
+        "imageId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Imageid",
+          "type": "string"
+        },
+        "recordId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "extractedAt": {
+          "title": "Extractedat",
+          "type": "string"
+        },
+        "extractor": {
+          "title": "Extractor",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/ScreenshotField"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Fields",
+          "type": "array"
+        },
+        "confirmedFields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "title": "Confirmedfields",
+          "type": "object"
+        },
+        "status": {
+          "const": "user_confirmed_input",
+          "default": "user_confirmed_input",
+          "enum": [
+            "user_confirmed_input"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "imageId",
+        "recordId",
+        "width",
+        "height",
+        "extractedAt",
+        "extractor",
+        "fields",
+        "confirmedFields",
+        "status"
+      ],
+      "title": "ScreenshotEvidence",
+      "type": "object"
+    },
+    "ScreenshotField": {
+      "properties": {
+        "key": {
+          "enum": [
+            "name",
+            "localName",
+            "city",
+            "countryCode",
+            "date",
+            "endDate",
+            "startTime",
+            "endTime",
+            "timeZone",
+            "currency",
+            "amount",
+            "note"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/EvidenceRegion"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "quote",
+        "region",
+        "language"
+      ],
+      "title": "ScreenshotField",
+      "type": "object"
+    },
+    "TravelBooking": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "hotel",
+            "transport",
+            "ticket",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "startAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startat"
+        },
+        "endAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endat"
+        },
+        "reference": {
+          "default": "",
+          "maxLength": 128,
+          "title": "Reference",
+          "type": "string"
+        },
+        "address": {
+          "default": "",
+          "maxLength": 255,
+          "title": "Address",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "documentUrl": {
+          "default": "",
+          "maxLength": 2048,
+          "pattern": "^(https?://[^\\s]+)?$",
+          "title": "Documenturl",
+          "type": "string"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "inputEvidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScreenshotEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timeZone": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "originalAmount": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "pattern": "^\\d{1,7}(\\.\\d{1,2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalamount"
+        },
+        "originalCurrency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalcurrency"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "startAt",
+        "endAt",
+        "reference",
+        "address",
+        "note",
+        "documentUrl",
+        "itemId",
+        "inputEvidence",
+        "timeZone",
+        "originalAmount",
+        "originalCurrency"
+      ],
+      "title": "TravelBooking",
+      "type": "object"
+    },
+    "UserConfirmation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "itemId": {
+          "minimum": 1,
+          "title": "Itemid",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "aspect": {
+          "enum": [
+            "location",
+            "opening",
+            "price",
+            "booking"
+          ],
+          "title": "Aspect",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        },
+        "sourceUrl": {
+          "default": "",
+          "maxLength": 2048,
+          "pattern": "^(https?://[^\\s]+)?$",
+          "title": "Sourceurl",
+          "type": "string"
+        },
+        "recordedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recordedat"
+        }
+      },
+      "required": [
+        "id",
+        "itemId",
+        "name",
+        "aspect",
+        "note",
+        "sourceUrl",
+        "recordedAt"
+      ],
+      "title": "UserConfirmation",
+      "type": "object"
+    },
+    "PreparationPutBody": {
+      "properties": {
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/$defs/PreparationData"
+        }
+      },
+      "required": [
+        "revision",
+        "data"
+      ],
+      "title": "PreparationPutBody",
+      "type": "object"
+    },
+    "PreparationVO": {
+      "properties": {
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/$defs/PreparationData"
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updatedat"
+        }
+      },
+      "required": [
+        "revision",
+        "data",
+        "updatedAt"
+      ],
+      "title": "PreparationVO",
+      "type": "object"
+    },
     "PlanningTerminalVO": {
       "properties": {
         "itineraryId": {
@@ -502,6 +1497,56 @@
       "title": "LoginData",
       "type": "object"
     },
+    "ActiveEvidenceOptions": {
+      "properties": {
+        "strategy": {
+          "default": "fixed",
+          "enum": [
+            "fixed",
+            "all",
+            "decision",
+            "bottleneck"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "maxQueries": {
+          "default": 3,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Maxqueries",
+          "type": "integer"
+        },
+        "budgetUnits": {
+          "default": 4,
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Budgetunits",
+          "type": "integer"
+        },
+        "timeLimitSeconds": {
+          "default": 8,
+          "maximum": 15.0,
+          "minimum": 0.5,
+          "title": "Timelimitseconds",
+          "type": "number"
+        },
+        "allowSourceSearch": {
+          "default": false,
+          "title": "Allowsourcesearch",
+          "type": "boolean"
+        }
+      },
+      "title": "ActiveEvidenceOptions",
+      "type": "object",
+      "required": [
+        "strategy",
+        "maxQueries",
+        "budgetUnits",
+        "timeLimitSeconds",
+        "allowSourceSearch"
+      ]
+    },
     "BudgetPolicy": {
       "properties": {
         "mode": {
@@ -539,6 +1584,229 @@
         "mode",
         "includeIntercityTransport"
       ]
+    },
+    "ConfirmedPlaceInput": {
+      "properties": {
+        "inputId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Inputid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "localName": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Localname",
+          "type": "string"
+        },
+        "itemType": {
+          "default": "attraction",
+          "enum": [
+            "attraction",
+            "transport"
+          ],
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Aliases",
+          "type": "array"
+        },
+        "city": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "City",
+          "type": "string"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "entityId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "pattern": "^https://www\\.openstreetmap\\.org/(node|way|relation)/\\d+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "identitySource": {
+          "default": "nominatim",
+          "enum": [
+            "nominatim",
+            "user_provided"
+          ],
+          "title": "Identitysource",
+          "type": "string"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "originalAmount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalamount"
+        },
+        "originalCurrency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalcurrency"
+        },
+        "evidence": {
+          "$ref": "#/$defs/ScreenshotEvidence"
+        }
+      },
+      "required": [
+        "inputId",
+        "name",
+        "localName",
+        "itemType",
+        "aliases",
+        "city",
+        "address",
+        "countryCode",
+        "entityId",
+        "latitude",
+        "longitude",
+        "sourceUrl",
+        "identitySource",
+        "retrievedAt",
+        "originalAmount",
+        "originalCurrency",
+        "evidence"
+      ],
+      "title": "ConfirmedPlaceInput",
+      "type": "object"
+    },
+    "ConstraintPlanningOptions": {
+      "properties": {
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "timeZone": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "activeEvidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveEvidenceOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "countryCode",
+        "timeZone",
+        "currency",
+        "activeEvidence"
+      ],
+      "title": "ConstraintPlanningOptions",
+      "type": "object"
     },
     "DayWindow": {
       "properties": {
@@ -677,6 +1945,19 @@
           ],
           "default": null,
           "title": "Remark"
+        },
+        "sourceRef": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceref"
         }
       },
       "required": [
@@ -687,7 +1968,8 @@
         "endTime",
         "cost",
         "address",
-        "remark"
+        "remark",
+        "sourceRef"
       ],
       "title": "FixedArrangement",
       "type": "object"
@@ -735,6 +2017,102 @@
         "stayNightsExplicit"
       ]
     },
+    "PlaceRelation": {
+      "properties": {
+        "constraintId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "before",
+            "one_of"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "placeNames": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Placenames",
+          "type": "array"
+        },
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "strength": {
+          "default": "hard",
+          "enum": [
+            "hard",
+            "soft"
+          ],
+          "title": "Strength",
+          "type": "string"
+        },
+        "priority": {
+          "default": 1,
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "negotiable": {
+          "default": false,
+          "title": "Negotiable",
+          "type": "boolean"
+        },
+        "sourceText": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcetext"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "constraintId",
+        "kind",
+        "placeNames",
+        "dayNo",
+        "strength",
+        "priority",
+        "negotiable",
+        "sourceText",
+        "sourceTurnId"
+      ],
+      "title": "PlaceRelation",
+      "type": "object"
+    },
     "RequiredPlace": {
       "properties": {
         "constraintId": {
@@ -775,16 +2153,200 @@
           ],
           "default": null,
           "title": "Sourceturnid"
+        },
+        "sourceRef": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceref"
         }
       },
       "required": [
         "constraintId",
         "name",
         "dayNo",
-        "sourceTurnId"
+        "sourceTurnId",
+        "sourceRef"
       ],
       "title": "RequiredPlace",
       "type": "object"
+    },
+    "RequirementSource": {
+      "properties": {
+        "sourceText": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Sourcetext",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "mapped",
+            "unresolved"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceText",
+        "target",
+        "disposition"
+      ],
+      "title": "RequirementSource",
+      "type": "object"
+    },
+    "TravelRequirements": {
+      "properties": {
+        "attractionTypes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Attractiontypes",
+          "type": "array"
+        },
+        "restaurantCuisines": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Restaurantcuisines",
+          "type": "array"
+        },
+        "hotelFeatures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hotelfeatures",
+          "type": "array"
+        },
+        "requiredNames": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requirednames",
+          "type": "array"
+        },
+        "excludedNames": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excludednames",
+          "type": "array"
+        },
+        "allowedIntercityModes": {
+          "items": {
+            "enum": [
+              "train",
+              "airplane"
+            ],
+            "type": "string"
+          },
+          "title": "Allowedintercitymodes",
+          "type": "array"
+        },
+        "requiredIntercityModes": {
+          "items": {
+            "enum": [
+              "train",
+              "airplane"
+            ],
+            "type": "string"
+          },
+          "title": "Requiredintercitymodes",
+          "type": "array"
+        },
+        "requiredInnercityModes": {
+          "items": {
+            "enum": [
+              "walk",
+              "metro",
+              "taxi"
+            ],
+            "type": "string"
+          },
+          "title": "Requiredinnercitymodes",
+          "type": "array"
+        },
+        "rooms": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "roomBeds": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roombeds"
+        },
+        "maxHotelCostPerPersonPerNight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxhotelcostperpersonpernight"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        }
+      },
+      "title": "TravelRequirements",
+      "type": "object",
+      "required": [
+        "attractionTypes",
+        "restaurantCuisines",
+        "hotelFeatures",
+        "requiredNames",
+        "excludedNames",
+        "allowedIntercityModes",
+        "requiredIntercityModes",
+        "requiredInnercityModes",
+        "rooms",
+        "roomBeds",
+        "maxHotelCostPerPersonPerNight",
+        "unresolved"
+      ]
     },
     "TripRequirements": {
       "properties": {
@@ -792,6 +2354,42 @@
           "default": 1,
           "title": "Schemaversion",
           "type": "integer"
+        },
+        "factSource": {
+          "anyOf": [
+            {
+              "const": "chinatravel",
+              "enum": [
+                "chinatravel"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factsource"
+        },
+        "travelPlanner": {
+          "default": "generate",
+          "enum": [
+            "generate",
+            "cp"
+          ],
+          "title": "Travelplanner",
+          "type": "string"
+        },
+        "travelConstraints": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "dayWindows": {
           "items": {
@@ -815,6 +2413,33 @@
           },
           "maxItems": 40,
           "title": "Fixedarrangements",
+          "type": "array"
+        },
+        "placeRelations": {
+          "items": {
+            "$ref": "#/$defs/PlaceRelation"
+          },
+          "maxItems": 20,
+          "title": "Placerelations",
+          "type": "array"
+        },
+        "constraintPlanning": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConstraintPlanningOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "placeInputs": {
+          "items": {
+            "$ref": "#/$defs/ConfirmedPlaceInput"
+          },
+          "maxItems": 8,
+          "title": "Placeinputs",
           "type": "array"
         },
         "excludedPlaces": {
@@ -962,15 +2587,29 @@
           "maxItems": 20,
           "title": "Unresolvedrequests",
           "type": "array"
+        },
+        "requirementSources": {
+          "items": {
+            "$ref": "#/$defs/RequirementSource"
+          },
+          "maxItems": 60,
+          "title": "Requirementsources",
+          "type": "array"
         }
       },
       "title": "TripRequirements",
       "type": "object",
       "required": [
         "schemaVersion",
+        "factSource",
+        "travelPlanner",
+        "travelConstraints",
         "dayWindows",
         "requiredPlaces",
         "fixedArrangements",
+        "placeRelations",
+        "constraintPlanning",
+        "placeInputs",
         "excludedPlaces",
         "excludedCategories",
         "pace",
@@ -981,7 +2620,8 @@
         "maxWalkMinutesPerLeg",
         "budgetPolicy",
         "lodging",
-        "unresolvedRequests"
+        "unresolvedRequests",
+        "requirementSources"
       ]
     },
     "GenerateTripRequest": {
@@ -2405,10 +4045,25 @@
             "update",
             "delete",
             "fix",
-            "unfix"
+            "unfix",
+            "move"
           ],
           "title": "Action",
           "type": "string"
+        },
+        "targetIndex": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Targetindex"
         }
       },
       "required": [
@@ -2420,7 +4075,8 @@
         "dayNo",
         "poiName",
         "planningRevision",
-        "action"
+        "action",
+        "targetIndex"
       ],
       "title": "ItemActionBody",
       "type": "object"
@@ -2533,6 +4189,34 @@
           "default": false,
           "title": "Fixed",
           "type": "boolean"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
         }
       },
       "required": [
@@ -2546,7 +4230,9 @@
         "itemType",
         "poiName",
         "dayNo",
-        "fixed"
+        "fixed",
+        "latitude",
+        "longitude"
       ],
       "title": "ItemCreateBody",
       "type": "object"
@@ -2786,6 +4472,1446 @@
         "assumptions"
       ],
       "title": "ScenarioCompareVO",
+      "type": "object"
+    },
+    "ReplanChange": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "move",
+            "delay",
+            "close",
+            "finish_by",
+            "appointment",
+            "prefer"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "anchorItemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anchoritemid"
+        },
+        "placement": {
+          "default": "before",
+          "enum": [
+            "before",
+            "after"
+          ],
+          "title": "Placement",
+          "type": "string"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "delayMinutes": {
+          "anyOf": [
+            {
+              "maximum": 480,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delayminutes"
+        }
+      },
+      "required": [
+        "kind",
+        "itemId",
+        "dayNo",
+        "anchorItemId",
+        "placement",
+        "startTime",
+        "endTime",
+        "delayMinutes"
+      ],
+      "title": "ReplanChange",
+      "type": "object"
+    },
+    "ReplanBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "change": {
+          "$ref": "#/$defs/ReplanChange"
+        },
+        "completedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Completeditemids",
+          "type": "array"
+        },
+        "optionalItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "title": "Optionalitemids",
+          "type": "array"
+        },
+        "allowCrossDay": {
+          "default": true,
+          "title": "Allowcrossday",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "change",
+        "completedItemIds",
+        "optionalItemIds",
+        "allowCrossDay"
+      ],
+      "title": "ReplanBody",
+      "type": "object"
+    },
+    "ActiveEvidenceReport": {
+      "properties": {
+        "policy": {
+          "default": "bottleneck_heuristic",
+          "title": "Policy",
+          "type": "string"
+        },
+        "probes": {
+          "items": {
+            "$ref": "#/$defs/EvidenceProbe"
+          },
+          "maxItems": 48,
+          "title": "Probes",
+          "type": "array"
+        },
+        "queries": {
+          "items": {
+            "$ref": "#/$defs/EvidenceQueryRecord"
+          },
+          "maxItems": 6,
+          "title": "Queries",
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Questions",
+          "type": "array"
+        },
+        "spentUnits": {
+          "default": 0,
+          "title": "Spentunits",
+          "type": "integer"
+        },
+        "budgetUnits": {
+          "default": 0,
+          "title": "Budgetunits",
+          "type": "integer"
+        },
+        "stopReason": {
+          "default": "disabled",
+          "title": "Stopreason",
+          "type": "string"
+        },
+        "solveCalls": {
+          "default": 0,
+          "title": "Solvecalls",
+          "type": "integer"
+        },
+        "elapsedSeconds": {
+          "default": 0,
+          "title": "Elapsedseconds",
+          "type": "number"
+        },
+        "retrievalCalls": {
+          "default": 0,
+          "title": "Retrievalcalls",
+          "type": "integer"
+        },
+        "llmCalls": {
+          "default": 0,
+          "title": "Llmcalls",
+          "type": "integer"
+        },
+        "promptTokens": {
+          "default": 0,
+          "title": "Prompttokens",
+          "type": "integer"
+        },
+        "completionTokens": {
+          "default": 0,
+          "title": "Completiontokens",
+          "type": "integer"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        }
+      },
+      "title": "ActiveEvidenceReport",
+      "type": "object",
+      "required": [
+        "policy",
+        "probes",
+        "queries",
+        "questions",
+        "spentUnits",
+        "budgetUnits",
+        "stopReason",
+        "solveCalls",
+        "elapsedSeconds",
+        "retrievalCalls",
+        "llmCalls",
+        "promptTokens",
+        "completionTokens",
+        "assumptions"
+      ]
+    },
+    "EvidenceProbe": {
+      "properties": {
+        "gapId": {
+          "title": "Gapid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "opening",
+            "price",
+            "duration",
+            "route"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        },
+        "importance": {
+          "title": "Importance",
+          "type": "integer"
+        },
+        "costUnits": {
+          "title": "Costunits",
+          "type": "integer"
+        },
+        "factState": {
+          "title": "Factstate",
+          "type": "string"
+        },
+        "lowStatus": {
+          "title": "Lowstatus",
+          "type": "string"
+        },
+        "highStatus": {
+          "title": "Highstatus",
+          "type": "string"
+        },
+        "sensitivity": {
+          "title": "Sensitivity",
+          "type": "integer"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gapId",
+        "kind",
+        "targets",
+        "importance",
+        "costUnits",
+        "factState",
+        "lowStatus",
+        "highStatus",
+        "sensitivity",
+        "score",
+        "reason"
+      ],
+      "title": "EvidenceProbe",
+      "type": "object"
+    },
+    "EvidenceQueryRecord": {
+      "properties": {
+        "gapId": {
+          "title": "Gapid",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "updated",
+            "unknown",
+            "ask_user",
+            "rejected",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "costUnits": {
+          "title": "Costunits",
+          "type": "integer"
+        },
+        "decisionChanged": {
+          "default": false,
+          "title": "Decisionchanged",
+          "type": "boolean"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "bindingBasis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bindingbasis"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gapId",
+        "tool",
+        "outcome",
+        "costUnits",
+        "decisionChanged",
+        "sourceUrl",
+        "retrievedAt",
+        "bindingBasis",
+        "reason"
+      ],
+      "title": "EvidenceQueryRecord",
+      "type": "object"
+    },
+    "ReplanAttempt": {
+      "properties": {
+        "scope": {
+          "enum": [
+            "local",
+            "day",
+            "trip"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "movableItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Movableitemids",
+          "type": "array"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "seconds": {
+          "title": "Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "scope",
+        "status",
+        "movableItemIds",
+        "reason",
+        "seconds"
+      ],
+      "title": "ReplanAttempt",
+      "type": "object"
+    },
+    "ReplanMetrics": {
+      "properties": {
+        "removedItems": {
+          "default": 0,
+          "title": "Removeditems",
+          "type": "integer"
+        },
+        "crossDayMoves": {
+          "default": 0,
+          "title": "Crossdaymoves",
+          "type": "integer"
+        },
+        "changedItems": {
+          "default": 0,
+          "title": "Changeditems",
+          "type": "integer"
+        },
+        "orderChanges": {
+          "default": 0,
+          "title": "Orderchanges",
+          "type": "integer"
+        },
+        "startShiftMinutes": {
+          "default": 0,
+          "title": "Startshiftminutes",
+          "type": "integer"
+        },
+        "travelMinutes": {
+          "default": 0,
+          "title": "Travelminutes",
+          "type": "integer"
+        },
+        "meanStartShiftMinutes": {
+          "default": 0,
+          "title": "Meanstartshiftminutes",
+          "type": "number"
+        },
+        "lockedViolations": {
+          "default": 0,
+          "title": "Lockedviolations",
+          "type": "integer"
+        }
+      },
+      "title": "ReplanMetrics",
+      "type": "object",
+      "required": [
+        "removedItems",
+        "crossDayMoves",
+        "changedItems",
+        "orderChanges",
+        "startShiftMinutes",
+        "travelMinutes",
+        "meanStartShiftMinutes",
+        "lockedViolations"
+      ]
+    },
+    "ReplanOption": {
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "numericalStatus": {
+          "title": "Numericalstatus",
+          "type": "string"
+        },
+        "factStatus": {
+          "title": "Factstatus",
+          "type": "string"
+        },
+        "metrics": {
+          "$ref": "#/$defs/ReplanMetrics"
+        },
+        "changedItemIds": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Changeditemids",
+          "type": "array"
+        },
+        "affectedDayNos": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Affecteddaynos",
+          "type": "array"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "signature": {
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "numericalStatus",
+        "factStatus",
+        "metrics",
+        "changedItemIds",
+        "affectedDayNos",
+        "reasons",
+        "signature"
+      ],
+      "title": "ReplanOption",
+      "type": "object"
+    },
+    "ReplanCompareVO": {
+      "properties": {
+        "comparisonId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparisonid"
+        },
+        "planningRevision": {
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/ReplanOption"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/ReplanAttempt"
+          },
+          "title": "Attempts",
+          "type": "array"
+        },
+        "conflicts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conflicts",
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "activeEvidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveEvidenceReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "comparisonId",
+        "planningRevision",
+        "options",
+        "attempts",
+        "conflicts",
+        "dependencies",
+        "assumptions",
+        "activeEvidence"
+      ],
+      "title": "ReplanCompareVO",
+      "type": "object"
+    },
+    "ReplanParseBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "itemId": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Itemid"
+        },
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "message",
+        "itemId",
+        "dayNo"
+      ],
+      "title": "ReplanParseBody",
+      "type": "object"
+    },
+    "ReplanParseVO": {
+      "properties": {
+        "change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReplanChange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Questions",
+          "type": "array"
+        },
+        "parser": {
+          "const": "bounded_rules",
+          "default": "bounded_rules",
+          "enum": [
+            "bounded_rules"
+          ],
+          "title": "Parser",
+          "type": "string"
+        }
+      },
+      "title": "ReplanParseVO",
+      "type": "object",
+      "required": [
+        "change",
+        "questions",
+        "parser"
+      ]
+    },
+    "ReplanSelectBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "comparisonId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Comparisonid",
+          "type": "string"
+        },
+        "choice": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Choice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "comparisonId",
+        "choice"
+      ],
+      "title": "ReplanSelectBody",
+      "type": "object"
+    },
+    "ConstraintRepairBody": {
+      "properties": {
+        "planningRevision": {
+          "minimum": 0,
+          "title": "Planningrevision",
+          "type": "integer"
+        },
+        "constraintId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "soften_relation",
+            "remove_required"
+          ],
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "planningRevision",
+        "constraintId",
+        "action"
+      ],
+      "title": "ConstraintRepairBody",
+      "type": "object"
+    },
+    "ConstraintRepairVO": {
+      "properties": {
+        "requirements": {
+          "$ref": "#/$defs/TripRequirements"
+        },
+        "baseRevision": {
+          "title": "Baserevision",
+          "type": "integer"
+        },
+        "notice": {
+          "title": "Notice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirements",
+        "baseRevision",
+        "notice"
+      ],
+      "title": "ConstraintRepairVO",
+      "type": "object"
+    },
+    "ScreenshotEntry": {
+      "properties": {
+        "recordId": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "place",
+            "reservation",
+            "transport"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "polarity": {
+          "default": "unclear",
+          "enum": [
+            "recommended",
+            "excluded",
+            "unclear"
+          ],
+          "title": "Polarity",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/ScreenshotField"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Fields",
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "recordId",
+        "kind",
+        "polarity",
+        "fields",
+        "questions"
+      ],
+      "title": "ScreenshotEntry",
+      "type": "object"
+    },
+    "ScreenshotDocumentVO": {
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/ScreenshotEntry"
+          },
+          "maxItems": 8,
+          "title": "Entries",
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Questions",
+          "type": "array"
+        },
+        "documentId": {
+          "title": "Documentid",
+          "type": "string"
+        },
+        "imageId": {
+          "title": "Imageid",
+          "type": "string"
+        },
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        },
+        "documentKind": {
+          "enum": [
+            "guide",
+            "booking"
+          ],
+          "title": "Documentkind",
+          "type": "string"
+        },
+        "extractedAt": {
+          "title": "Extractedat",
+          "type": "string"
+        },
+        "extractor": {
+          "title": "Extractor",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entries",
+        "questions",
+        "documentId",
+        "imageId",
+        "width",
+        "height",
+        "documentKind",
+        "extractedAt",
+        "extractor"
+      ],
+      "title": "ScreenshotDocumentVO",
+      "type": "object"
+    },
+    "ScreenshotResolveBody": {
+      "properties": {
+        "documentId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Documentid",
+          "type": "string"
+        },
+        "recordId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "city": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "City",
+          "type": "string"
+        },
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "recordId",
+        "name",
+        "city",
+        "countryCode"
+      ],
+      "title": "ScreenshotResolveBody",
+      "type": "object"
+    },
+    "ScreenshotManualBody": {
+      "properties": {
+        "documentId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Documentid",
+          "type": "string"
+        },
+        "recordId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "city": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "City",
+          "type": "string"
+        },
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "address": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Address",
+          "type": "string"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "entityType": {
+          "default": "unconfirmed",
+          "enum": [
+            "unconfirmed",
+            "museum",
+            "station",
+            "airport",
+            "bus_station",
+            "ferry_terminal"
+          ],
+          "title": "Entitytype",
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "recordId",
+        "name",
+        "city",
+        "countryCode",
+        "address",
+        "latitude",
+        "longitude",
+        "entityType"
+      ],
+      "title": "ScreenshotManualBody",
+      "type": "object"
+    },
+    "ScreenshotEntity": {
+      "properties": {
+        "entityId": {
+          "title": "Entityid",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "address": {
+          "title": "Address",
+          "type": "string"
+        },
+        "countryCode": {
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "identitySource": {
+          "default": "nominatim",
+          "enum": [
+            "nominatim",
+            "user_provided"
+          ],
+          "title": "Identitysource",
+          "type": "string"
+        },
+        "matchScore": {
+          "default": 0,
+          "title": "Matchscore",
+          "type": "integer"
+        },
+        "matchReasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matchreasons",
+          "type": "array"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "entityType": {
+          "title": "Entitytype",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entityId",
+        "name",
+        "aliases",
+        "address",
+        "countryCode",
+        "latitude",
+        "longitude",
+        "sourceUrl",
+        "identitySource",
+        "matchScore",
+        "matchReasons",
+        "retrievedAt",
+        "category",
+        "entityType"
+      ],
+      "title": "ScreenshotEntity",
+      "type": "object"
+    },
+    "ScreenshotResolveVO": {
+      "properties": {
+        "resolutionId": {
+          "title": "Resolutionid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "choices",
+            "not_found",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "choices": {
+          "items": {
+            "$ref": "#/$defs/ScreenshotEntity"
+          },
+          "title": "Choices",
+          "type": "array"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "resolutionId",
+        "status",
+        "choices",
+        "question"
+      ],
+      "title": "ScreenshotResolveVO",
+      "type": "object"
+    },
+    "ScreenshotConfirmBody": {
+      "properties": {
+        "documentId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Documentid",
+          "type": "string"
+        },
+        "recordId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "resolutionId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Resolutionid",
+          "type": "string"
+        },
+        "entityId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "candidate",
+            "required",
+            "excluded",
+            "fixed",
+            "booking"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "requirements": {
+          "$ref": "#/$defs/TripRequirements"
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Startdate"
+        },
+        "days": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "localDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Localdate"
+        },
+        "endDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enddate"
+        },
+        "startTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttime"
+        },
+        "endTime": {
+          "anyOf": [
+            {
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtime"
+        },
+        "timeZone": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "overridePolarity": {
+          "default": false,
+          "title": "Overridepolarity",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "documentId",
+        "recordId",
+        "resolutionId",
+        "entityId",
+        "disposition",
+        "requirements",
+        "startDate",
+        "days",
+        "localDate",
+        "endDate",
+        "startTime",
+        "endTime",
+        "timeZone",
+        "amount",
+        "currency",
+        "overridePolarity"
+      ],
+      "title": "ScreenshotConfirmBody",
+      "type": "object"
+    },
+    "ScreenshotConfirmVO": {
+      "properties": {
+        "requirements": {
+          "$ref": "#/$defs/TripRequirements"
+        },
+        "booking": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelBooking"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notice": {
+          "title": "Notice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirements",
+        "booking",
+        "notice"
+      ],
+      "title": "ScreenshotConfirmVO",
       "type": "object"
     },
     "OptimizeDayBody": {

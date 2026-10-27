@@ -39,6 +39,7 @@ from app.db.models_itinerary import (
     ItineraryDay,
     ItineraryItem,
     ItineraryMain,
+    ItineraryPreparation,
     ItineraryVersion,
 )
 from app.db.orm_base import Base, LongText, PkBigInt, SoftDelete
@@ -62,6 +63,7 @@ __all__ = [
     "ItineraryItem",
     "ItineraryMain",
     "ItineraryMember",
+    "ItineraryPreparation",
     "ItineraryVersion",
     "LlmReservation",
     "LongText",

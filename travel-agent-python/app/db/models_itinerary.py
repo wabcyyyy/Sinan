@@ -31,6 +31,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.orm_base import Base, LongText, PkBigInt, SoftDelete
 
 
+class ItineraryPreparation(Base):
+    __tablename__ = "itinerary_preparation"
+
+    itinerary_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    data_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+
 class ItineraryVersion(Base):
     __tablename__ = "itinerary_version"
     __table_args__ = (UniqueConstraint("itinerary_id", "version_no", name="uk_itinerary_version"),)

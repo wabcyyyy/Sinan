@@ -29,6 +29,7 @@ class ResearchTask:
     city: str
     preferences: list[str] = field(default_factory=list)
     budget: float | None = None
+    budget_currency: str = "CNY"
     hotel_tier: str | None = None
     limit: int = 30
     # M1 意图贯通：intent 驱动补池检索关键词（intent_keywords）与意图覆盖评估。

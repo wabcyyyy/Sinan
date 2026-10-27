@@ -197,9 +197,16 @@ export function useHomePlanning() {
   }, [])
 
   const monitor = useCallback(async (created: ItineraryDetail, controller: AbortController) => {
+    let streamRun: string | null = null
+    const abandonedRuns = new Set<string>()
     const onEvent = (event: ItineraryStreamEvent) => {
       if (controller.signal.aborted || !intakeOwnerIsCurrent(ownerEpoch)) return
       const data = event.data || {}
+      const run = typeof data.runId === 'string' ? data.runId : null
+      if (event.type === 'item_preview' && run && run !== streamRun && !abandonedRuns.has(run)) {
+        if (streamRun) abandonedRuns.add(streamRun)
+        streamRun = run
+      }
       if (event.type === 'research_start') { setProgress(1); setMessage('正在查找目的地信息') }
       if (event.type === 'research_done') { setProgress(2); setMessage('正在安排每天的路线') }
       if (event.type === 'day_start') { setProgress(2); setMessage(`正在安排第 ${String(data.dayNo || '')} 天`) }
@@ -207,7 +214,15 @@ export function useHomePlanning() {
       if (event.type === 'butler_note') { setProgress(3); setMessage('正在补充出行提醒') }
       // M5a：候选发布/撤回（开放 data → itemPreviews 纯 reducer 收窄：previewId
       // 去重、换 run 作废、撤回精确移除）
-      if (event.type === 'item_preview' || event.type === 'item_preview_withdrawn') {
+      if (event.type === 'day_preview_mapping' && run && !abandonedRuns.has(run) && (!streamRun || run === streamRun) && data.snapshot && typeof data.snapshot === 'object') {
+        const snapshot = data.snapshot as Pick<ItineraryDetail, 'id' | 'planningRevision' | 'dayList'>
+        if (snapshot.id === created.id && typeof snapshot.planningRevision === 'number' && Array.isArray(snapshot.dayList)) {
+          // React 自动批处理：权威快照与候选终态一起更新，不先清预览再等下一次轮询。
+          const revision = snapshot.planningRevision
+          setDraft(prev => prev && (prev.planningRevision ?? 0) > revision ? prev : { ...(prev ?? created), planningRevision: revision, dayList: snapshot.dayList })
+        }
+      }
+      if (event.type === 'item_preview' || event.type === 'item_preview_withdrawn' || event.type === 'day_preview_mapping') {
         setPreviewState((prev) => reduceItemPreviewEvent(prev, event))
       }
       // M5b：core_ready 只是非阻断里程碑提示（「主行程可查看」），done 的完整
@@ -223,7 +238,7 @@ export function useHomePlanning() {
         // 补帧不完整时 DB 是唯一权威：立刻对账一次，而不是等下一轮 2s 轮询。
         void getItineraryDetail(created.id, controller.signal)
           .then((detail) => {
-            if (!controller.signal.aborted && intakeOwnerIsCurrent(ownerEpoch)) setDraft(detail)
+            if (!controller.signal.aborted && intakeOwnerIsCurrent(ownerEpoch)) setDraft(prev => prev && (prev.planningRevision ?? 0) > (detail.planningRevision ?? 0) ? prev : detail)
           })
           .catch(() => {})
       }
@@ -245,7 +260,7 @@ export function useHomePlanning() {
         timeoutMs: 30 * 60 * 1000,
         onUpdate: (detail) => {
           if (!controller.signal.aborted && intakeOwnerIsCurrent(ownerEpoch)) {
-            setDraft(detail)
+            setDraft(prev => prev && (prev.planningRevision ?? 0) > (detail.planningRevision ?? 0) ? prev : detail)
             // M5a：正式 day 快照（轮询对账到达）是权威内容——已有条目的天候选整日让位
             setPreviewState((prev) => prunePreviewsByDraft(prev, detail))
             // M6（spec §12）：coreReady 随详情投影到达——刷新/断流后轮询对账也能亮

@@ -37,7 +37,11 @@ def _plan_items(plan: dict | None) -> list[dict]:
 
 
 def _item_names(items: list[dict]) -> list[str]:
-    return [str(item.get("poi_name") or item.get("name") or "") for item in items]
+    return [
+        str(name)
+        for item in items
+        for name in [item.get("poi_name") or item.get("name") or "", *(item.get("identity_names") or [])]
+    ]
 
 
 def _check_required(requirements: TripRequirements | None, day_no: int, items: list[dict]) -> list[ConstraintCheck]:
@@ -241,7 +245,9 @@ def _check_fixed(requirements: TripRequirements | None, day_no: int, items: list
         if fixed.day_no != day_no:
             continue
         matches = [
-            p for p in items if p.get("poi_name", p.get("name")) == fixed.name and p.get("item_type") == fixed.item_type
+            p
+            for p in items
+            if _norm(fixed.name) in {_norm(name) for name in _item_names([p])} and p.get("item_type") == fixed.item_type
         ]
         valid = len(matches) == 1 and all(
             str(matches[0].get(key) or "")[:5] == getattr(fixed, key) for key in ("start_time", "end_time")
@@ -307,6 +313,60 @@ def _check_time_conflicts(plan: dict | None, day_no: int) -> ConstraintCheck:
     )
 
 
+def _check_compiled_relations(requirements, day_no, items):
+    checks = []
+    for relation in requirements.place_relations:
+        if relation.day_no != day_no:
+            continue
+        groups = [
+            [item for item in items if _norm(name) in {_norm(n) for n in _item_names([item])}]
+            for name in relation.place_names
+        ]
+        if relation.kind == "one_of":
+            status = "pass" if any(groups) else "violation"
+        elif any(len(group) > 1 for group in groups):
+            status = "unknown"
+        elif not all(groups):
+            status = "violation"
+        else:
+            end, start = groups[0][0].get("end_time"), groups[1][0].get("start_time")
+            status = "unknown" if not end or not start else "pass" if str(end)[:5] <= str(start)[:5] else "violation"
+        checks.append(
+            ConstraintCheck(
+                constraint_id=f"relation:{relation.constraint_id}",
+                kind="place_relation",
+                day_no=day_no,
+                status=status,
+                blocking=relation.strength == "hard",
+                item_refs=relation.place_names,
+                reason="当前安排符合关系（不表示事实已核实）" if status == "pass" else "当前安排未能确认或满足地点关系",
+            )
+        )
+    return checks
+
+
+def _check_relations(requirements: TripRequirements | None, day_no: int, items) -> list[ConstraintCheck]:
+    if requirements and requirements.constraint_planning:
+        return _check_compiled_relations(requirements, day_no, items)
+    return (
+        [
+            ConstraintCheck(
+                constraint_id=f"relation:{relation.constraint_id}",
+                kind="place_relation",
+                day_no=day_no,
+                status="unknown",
+                blocking=relation.strength == "hard",
+                item_refs=relation.place_names,
+                reason="地点关系尚未接入正式生成链路；需由约束内核确认，不能当作已满足",
+            )
+            for relation in requirements.place_relations
+            if relation.day_no == day_no
+        ]
+        if requirements
+        else []
+    )
+
+
 def check_constraints(
     plan: dict | None,
     requirements: TripRequirements | None,
@@ -326,6 +386,7 @@ def check_constraints(
         *_check_fixed(requirements, day_no, items),
         *_check_excluded(requirements, day_no, items),
         *_check_content(requirements, day_no, items, policy),
+        *_check_relations(requirements, day_no, items),
         _check_window(plan, policy),
         _check_time_conflicts(plan, day_no),
     ]

@@ -56,6 +56,10 @@ def hard_delivery_blockers(
       strict 预算/时间冲突——判 status/blocking，不再靠中文子串。
     """
     plan_dict = {"day_no": day_no, "travel_date": travel_date, "items": [_rule_item(item) for item in plan.items]}
+    if plan.constraint_planning:
+        identities = {f.candidate_id: [f.name, *f.aliases] for f in plan.constraint_planning.facts}
+        for item, row in zip(plan.items, plan_dict["items"], strict=True):
+            row["identity_names"] = identities.get(item.poi_id or "", [])
     _, notes = validate_plans([plan_dict], requirements=requirements)
     for note in notes:
         if note.startswith("开放安排待确认") and note not in plan.practical_notes:
@@ -72,4 +76,7 @@ def hard_delivery_blockers(
         note = f"待确认（{check.kind}）：{check.reason}"
         if note not in plan.practical_notes:
             plan.practical_notes.append(note)
-    return hard_day_issues(plan_dict, requirements, locked_names=locked_names, strict_budget=strict_budget)
+    blockers = hard_day_issues(plan_dict, requirements, locked_names=locked_names, strict_budget=strict_budget)
+    if plan.constraint_planning and not plan.items:
+        blockers.append(plan.constraint_planning.reason)
+    return blockers

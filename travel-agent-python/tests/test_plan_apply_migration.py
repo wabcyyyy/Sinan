@@ -22,6 +22,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.api.business.auth import auth_router
 from app.api.business.itinerary import router as itinerary_router
+from app.api.business.preparation import router as preparation_router
 from app.common import cache_store
 from app.common.config import settings
 from app.common.envelope import install_exception_handlers
@@ -125,6 +126,7 @@ def client() -> TestClient:
     install_exception_handlers(app)
     app.include_router(auth_router)
     app.include_router(itinerary_router)
+    app.include_router(preparation_router)
     client = TestClient(app, follow_redirects=False)
     client.post("/api/auth/login", json={"username": "alice", "password": PASSWORD})
     return client
@@ -132,6 +134,98 @@ def client() -> TestClient:
 
 def _trip_id(client: TestClient) -> int:
     return client.get("/api/itinerary").json()["data"][0]["id"]
+
+
+def test_private_preparation_revision_and_confirmation_identity(client):
+    trip_id = _trip_id(client)
+    url = f"/api/itinerary/{trip_id}/preparation"
+    assert client.get(url).json()["data"]["revision"] == 0
+    body = {
+        "revision": 0,
+        "data": {
+            "places": [],
+            "bookings": [],
+            "tasks": [{"id": "task-1", "title": "确认预约", "category": "reservation", "dayNo": 1, "done": False}],
+            "confirmations": [],
+            "completedItemIds": [],
+        },
+    }
+    first = client.put(url, json=body)
+    assert first.status_code == 200, first.text
+    assert first.json()["data"]["revision"] == 1
+    assert client.put(url, json=body).status_code == 409
+    assert client.get(f"/api/itinerary/{trip_id + 900}/preparation").status_code == 404
+    body["revision"] = 1
+    body["data"]["confirmations"] = [
+        {"id": "c1", "itemId": 1, "name": "伪造地点", "aspect": "opening", "note": "我看过"}
+    ]
+    assert client.put(url, json=body).status_code == 400
+    body["data"]["confirmations"][0]["name"] = "西湖"
+    accepted = client.put(url, json=body)
+    assert accepted.status_code == 200, accepted.text
+    recorded = accepted.json()["data"]["data"]["confirmations"][0]["recordedAt"]
+    assert recorded
+    body["revision"] = 2
+    body["data"]["confirmations"][0]["recordedAt"] = "1999-01-01T00:00:00"
+    assert client.put(url, json=body).json()["data"]["data"]["confirmations"][0]["recordedAt"] == recorded
+
+
+def test_booking_can_fix_linked_item_without_claiming_provider_verification(client):
+    trip_id = _trip_id(client)
+    with db_session.session_scope() as session:
+        item = session.get(ItineraryItem, 1)
+        assert item is not None
+        item.end_time = time(10, 30)
+    url = f"/api/itinerary/{trip_id}/preparation"
+    body = {
+        "revision": 0,
+        "data": {
+            "places": [],
+            "bookings": [
+                {
+                    "id": "hotel-1",
+                    "kind": "hotel",
+                    "name": "我的预订",
+                    "itemId": 1,
+                    "startAt": "2026-04-20T20:00",
+                    "endAt": "2026-04-21T09:00",
+                    "reference": "ABC123",
+                }
+            ],
+            "tasks": [],
+            "confirmations": [],
+            "completedItemIds": [],
+        },
+    }
+    assert client.put(url, json=body).status_code == 200
+    fixed = client.post(url + "/bookings/hotel-1/fix", json={"planningRevision": 0})
+    assert fixed.status_code == 200, fixed.text
+    assert fixed.json()["data"]["fixedArrangements"][0]["name"] == "西湖"
+    assert client.post(url + "/bookings/hotel-1/fix", json={"planningRevision": 0}).status_code == 409
+    assert client.get(url).json()["data"]["data"]["bookings"][0]["reference"] == "ABC123"
+
+
+def test_direct_order_preserves_duration_rejects_fixed_and_can_undo(client):
+    with db_session.session_scope() as session:
+        first, second = session.get(ItineraryItem, 1), session.get(ItineraryItem, 2)
+        assert first is not None and second is not None
+        first.end_time = time(10, 30)
+        second.start_time, second.end_time = time(11), time(12, 30)
+    url = f"/api/itinerary/{_trip_id(client)}"
+    body = {"action": "move", "dayNo": 1, "targetIndex": 1, "planningRevision": 0}
+    response = client.post(url + "/items/1/action", json=body)
+    assert response.status_code == 200, response.text
+    trip = response.json()["data"]
+    items = trip["dayList"][0]["items"]
+    assert [p["poiName"] for p in items] == ["楼外楼", "西湖"]
+    assert items[0]["startTime"].startswith("09:30") and items[0]["endTime"].startswith("11:00")
+    assert items[1]["startTime"].startswith("11:30") and items[1]["endTime"].startswith("12:30")
+    assert client.post(url + "/items/1/action", json=body).status_code == 409
+    restored = client.post(url + f"/versions/{trip['undoVersionId']}/restore", json={"planningRevision": 1})
+    assert restored.status_code == 200, restored.text
+    assert client.post(url + "/items/2/action", json={"action": "fix", "planningRevision": 2}).status_code == 200
+    body["planningRevision"] = 3
+    assert client.post(url + "/items/1/action", json=body).status_code == 409
 
 
 def test_scenario_intent_only_extracts_conditions_and_rejects_foreign_ids(client, monkeypatch):

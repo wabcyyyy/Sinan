@@ -65,6 +65,7 @@ from app.schemas.business.llm_gateway import (
     LlmGatewayUpdateBody,
     LlmGatewayVO,
 )
+from app.schemas.business.preparation import PreparationPutBody, PreparationVO
 from app.schemas.business.scenario import (
     ItemActionBody,
     ItemCreateBody,
@@ -97,6 +98,23 @@ from app.schemas.expense import (
     ExpenseVO,
 )
 from app.schemas.feedback import FeedbackCreate, FeedbackListVO, FeedbackVO
+from app.schemas.replanning import (
+    ConstraintRepairBody,
+    ConstraintRepairVO,
+    ReplanBody,
+    ReplanCompareVO,
+    ReplanParseBody,
+    ReplanParseVO,
+    ReplanSelectBody,
+)
+from app.schemas.screenshot import (
+    ScreenshotConfirmBody,
+    ScreenshotConfirmVO,
+    ScreenshotDocumentVO,
+    ScreenshotManualBody,
+    ScreenshotResolveBody,
+    ScreenshotResolveVO,
+)
 from app.schemas.template import (
     TemplateCardVO,
     TemplateCostTier,
@@ -108,6 +126,7 @@ from app.schemas.template import (
     TemplatePublishVO,
     TemplateSummaryVO,
 )
+from app.schemas.travel_plan import TravelPlan
 from app.schemas.trial import (
     TrialGrantBody,
     TrialInviteBody,
@@ -176,6 +195,9 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
     ),
     # 业务面核心端点（/api/auth/**、/api/itinerary/** 写路径，G-1.1 取舍范围）
     "business_api": (
+        TravelPlan,
+        PreparationPutBody,
+        PreparationVO,
         PlanningQueueVO,
         TrialPolicyVO,
         TrialWalletVO,
@@ -210,6 +232,19 @@ CONTRACT_GROUPS: dict[str, tuple[type[BaseModel], ...]] = {
         ItemCreateBody,
         ScenarioSelectBody,
         ScenarioCompareVO,
+        ReplanBody,
+        ReplanCompareVO,
+        ReplanParseBody,
+        ReplanParseVO,
+        ReplanSelectBody,
+        ConstraintRepairBody,
+        ConstraintRepairVO,
+        ScreenshotDocumentVO,
+        ScreenshotResolveBody,
+        ScreenshotManualBody,
+        ScreenshotResolveVO,
+        ScreenshotConfirmBody,
+        ScreenshotConfirmVO,
         OptimizeDayBody,
         UpdateDayBody,
         NlEditBody,

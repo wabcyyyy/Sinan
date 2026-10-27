@@ -98,6 +98,18 @@ describe('draftChanges（草稿 vs 现行程）', () => {
 })
 
 describe('structuredDraftChanges（结构化草稿差异：M4 五类）', () => {
+  it('费用保留原币种，金额相同但币种变化也必须展示', () => {
+    const current = [richTripDay(1, [{ poiName: 'A', cost: 10, costCurrency: 'EUR' }])]
+    const proposed: ChatDayPlan[] = [{ day_no: 1, items: [{ poi_name: 'A', cost: 15, cost_currency: 'EUR' }] }]
+    const change = structuredDraftChanges(current, proposed)[0]
+    expect(change).toMatchObject({ field: 'cost', fromCurrency: 'EUR', toCurrency: 'EUR' })
+    expect(describeStructuredChange(change)).toContain('EUR')
+    expect(describeStructuredChange(change)).not.toMatch(/[¥￥]/)
+    proposed[0].items![0] = { poi_name: 'A', cost: 10, cost_currency: 'JPY' }
+    const currencyChange = structuredDraftChanges(current, proposed)[0]
+    expect(currencyChange).toMatchObject({ field: 'cost', from: '10', to: '10', fromCurrency: 'EUR', toCurrency: 'JPY' })
+    expect(describeStructuredChange(currencyChange)).toContain('JPY')
+  })
   it('added/removed：按天分组的新增与移除，语义与旧版一致', () => {
     const current = [tripDay(1, ['宽窄巷子', '人民公园'])]
     const draft = [draftDay(1, [{ name: '宽窄巷子' }, { name: '博物馆' }])]
@@ -152,13 +164,13 @@ describe('structuredDraftChanges（结构化草稿差异：M4 五类）', () => 
     expect(changes[0].toName).toBe('锦江宾馆')
   })
 
-  it('describe/diffBadge：五类文案（费用带 ¥）与徽标；中性兜底条目不出徽标', () => {
+  it('describe/diffBadge：五类文案与徽标；未声明币种的费用不猜人民币', () => {
     expect(describeStructuredChange({ type: 'added', label: '第 2 天新增', items: ['博物馆'] })).toBe('第 2 天新增：博物馆')
     expect(describeStructuredChange({ type: 'removed', label: '第 2 天移除', items: ['断桥'] })).toBe('第 2 天移除：断桥')
     expect(describeStructuredChange({ type: 'updated', dayNo: 1, field: 'time', label: '第 1 天', items: ['博物馆'], from: '09:00-10:00', to: '10:00-11:00' }))
       .toBe('博物馆（第 1 天）：09:00-10:00→10:00-11:00')
     expect(describeStructuredChange({ type: 'updated', dayNo: 1, field: 'cost', label: '第 1 天', items: ['博物馆'], from: '80', to: '100' }))
-      .toBe('博物馆（第 1 天）：¥80→¥100')
+      .toBe('博物馆（第 1 天）：80（币种待确认）→100（币种待确认）')
     expect(describeStructuredChange({ type: 'moved', label: '灵隐寺', items: ['灵隐寺'], fromDay: 1, toDay: 2 }))
       .toBe('灵隐寺：第 1 天→第 2 天')
     expect(describeStructuredChange({ type: 'hotelChanged', label: '住宿调整', items: [], fromName: '如归客栈', toName: '锦江宾馆' }))
@@ -326,7 +338,7 @@ describe('ChatPanel/L2：确认卡渲染（draft 带 requiresConfirmation → �
     expect(html).toContain('diff-badge is-update">~时间</span>')
     expect(html).toContain('灵隐寺（第 1 天）：09:00-10:00→10:00-11:00')
     expect(html).toContain('~费用</span>')
-    expect(html).toContain('¥80→¥100')
+    expect(html).toContain('80（币种待确认）→100（币种待确认）')
     expect(html).toContain('diff-badge is-move">→跨日</span>')
     expect(html).toContain('苏堤：第 1 天→第 2 天')
     expect(html).toContain('diff-badge is-hotel">酒店</span>')

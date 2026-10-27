@@ -107,6 +107,9 @@ def _disable_live_geocoding(monkeypatch):
     monkeypatch.setattr(settings, "amap_web_key", "")
     monkeypatch.setattr(settings, "google_places_api_key", "")
     monkeypatch.setattr(settings, "overpass_enabled", False)
+    # 外部路由仍由需网络的验收显式启用，普通 CI/本地套件不继承开发机配置。
+    monkeypatch.setattr(settings, "ors_base_url", "")
+    monkeypatch.setattr(settings, "osrm_base_url", "")
     # 真实报价数据面（L12 新增，L15 补钉）：token 留空即「零外呼」，但本机 .env
     # 里填过 token 的开发机上，任何走到取价的用例都会真打公网——离线纪律不能
     # 依赖"开发机恰好没配"。这里与上面几个收费源 key 同待遇钉死。

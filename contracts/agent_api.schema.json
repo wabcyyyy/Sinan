@@ -1,6 +1,56 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "ActiveEvidenceOptions": {
+      "properties": {
+        "strategy": {
+          "default": "fixed",
+          "enum": [
+            "fixed",
+            "all",
+            "decision",
+            "bottleneck"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "maxQueries": {
+          "default": 3,
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Maxqueries",
+          "type": "integer"
+        },
+        "budgetUnits": {
+          "default": 4,
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Budgetunits",
+          "type": "integer"
+        },
+        "timeLimitSeconds": {
+          "default": 8,
+          "maximum": 15.0,
+          "minimum": 0.5,
+          "title": "Timelimitseconds",
+          "type": "number"
+        },
+        "allowSourceSearch": {
+          "default": false,
+          "title": "Allowsourcesearch",
+          "type": "boolean"
+        }
+      },
+      "title": "ActiveEvidenceOptions",
+      "type": "object",
+      "required": [
+        "strategy",
+        "maxQueries",
+        "budgetUnits",
+        "timeLimitSeconds",
+        "allowSourceSearch"
+      ]
+    },
     "BudgetPolicy": {
       "properties": {
         "mode": {
@@ -38,6 +88,229 @@
         "mode",
         "includeIntercityTransport"
       ]
+    },
+    "ConfirmedPlaceInput": {
+      "properties": {
+        "inputId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Inputid",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "localName": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Localname",
+          "type": "string"
+        },
+        "itemType": {
+          "default": "attraction",
+          "enum": [
+            "attraction",
+            "transport"
+          ],
+          "title": "Itemtype",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Aliases",
+          "type": "array"
+        },
+        "city": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "City",
+          "type": "string"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "entityId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Entityid",
+          "type": "string"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "pattern": "^https://www\\.openstreetmap\\.org/(node|way|relation)/\\d+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "identitySource": {
+          "default": "nominatim",
+          "enum": [
+            "nominatim",
+            "user_provided"
+          ],
+          "title": "Identitysource",
+          "type": "string"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "originalAmount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalamount"
+        },
+        "originalCurrency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalcurrency"
+        },
+        "evidence": {
+          "$ref": "#/$defs/ScreenshotEvidence"
+        }
+      },
+      "required": [
+        "inputId",
+        "name",
+        "localName",
+        "itemType",
+        "aliases",
+        "city",
+        "address",
+        "countryCode",
+        "entityId",
+        "latitude",
+        "longitude",
+        "sourceUrl",
+        "identitySource",
+        "retrievedAt",
+        "originalAmount",
+        "originalCurrency",
+        "evidence"
+      ],
+      "title": "ConfirmedPlaceInput",
+      "type": "object"
+    },
+    "ConstraintPlanningOptions": {
+      "properties": {
+        "countryCode": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Countrycode",
+          "type": "string"
+        },
+        "timeZone": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "activeEvidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveEvidenceOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "countryCode",
+        "timeZone",
+        "currency",
+        "activeEvidence"
+      ],
+      "title": "ConstraintPlanningOptions",
+      "type": "object"
     },
     "DayWindow": {
       "properties": {
@@ -105,6 +378,42 @@
         "sourceTurnId"
       ],
       "title": "DayWindow",
+      "type": "object"
+    },
+    "EvidenceRegion": {
+      "properties": {
+        "x": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Y",
+          "type": "number"
+        },
+        "width": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Height",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "EvidenceRegion",
       "type": "object"
     },
     "FixedArrangement": {
@@ -176,6 +485,19 @@
           ],
           "default": null,
           "title": "Remark"
+        },
+        "sourceRef": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceref"
         }
       },
       "required": [
@@ -186,7 +508,8 @@
         "endTime",
         "cost",
         "address",
-        "remark"
+        "remark",
+        "sourceRef"
       ],
       "title": "FixedArrangement",
       "type": "object"
@@ -234,6 +557,102 @@
         "stayNightsExplicit"
       ]
     },
+    "PlaceRelation": {
+      "properties": {
+        "constraintId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "before",
+            "one_of"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "placeNames": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Placenames",
+          "type": "array"
+        },
+        "dayNo": {
+          "maximum": 7,
+          "minimum": 1,
+          "title": "Dayno",
+          "type": "integer"
+        },
+        "strength": {
+          "default": "hard",
+          "enum": [
+            "hard",
+            "soft"
+          ],
+          "title": "Strength",
+          "type": "string"
+        },
+        "priority": {
+          "default": 1,
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "negotiable": {
+          "default": false,
+          "title": "Negotiable",
+          "type": "boolean"
+        },
+        "sourceText": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcetext"
+        },
+        "sourceTurnId": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceturnid"
+        }
+      },
+      "required": [
+        "constraintId",
+        "kind",
+        "placeNames",
+        "dayNo",
+        "strength",
+        "priority",
+        "negotiable",
+        "sourceText",
+        "sourceTurnId"
+      ],
+      "title": "PlaceRelation",
+      "type": "object"
+    },
     "RequiredPlace": {
       "properties": {
         "constraintId": {
@@ -274,16 +693,332 @@
           ],
           "default": null,
           "title": "Sourceturnid"
+        },
+        "sourceRef": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceref"
         }
       },
       "required": [
         "constraintId",
         "name",
         "dayNo",
-        "sourceTurnId"
+        "sourceTurnId",
+        "sourceRef"
       ],
       "title": "RequiredPlace",
       "type": "object"
+    },
+    "RequirementSource": {
+      "properties": {
+        "sourceText": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Sourcetext",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "mapped",
+            "unresolved"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceText",
+        "target",
+        "disposition"
+      ],
+      "title": "RequirementSource",
+      "type": "object"
+    },
+    "ScreenshotEvidence": {
+      "properties": {
+        "imageId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Imageid",
+          "type": "string"
+        },
+        "recordId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Recordid",
+          "type": "string"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "extractedAt": {
+          "title": "Extractedat",
+          "type": "string"
+        },
+        "extractor": {
+          "title": "Extractor",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/ScreenshotField"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Fields",
+          "type": "array"
+        },
+        "confirmedFields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "title": "Confirmedfields",
+          "type": "object"
+        },
+        "status": {
+          "const": "user_confirmed_input",
+          "default": "user_confirmed_input",
+          "enum": [
+            "user_confirmed_input"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "imageId",
+        "recordId",
+        "width",
+        "height",
+        "extractedAt",
+        "extractor",
+        "fields",
+        "confirmedFields",
+        "status"
+      ],
+      "title": "ScreenshotEvidence",
+      "type": "object"
+    },
+    "ScreenshotField": {
+      "properties": {
+        "key": {
+          "enum": [
+            "name",
+            "localName",
+            "city",
+            "countryCode",
+            "date",
+            "endDate",
+            "startTime",
+            "endTime",
+            "timeZone",
+            "currency",
+            "amount",
+            "note"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/EvidenceRegion"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "quote",
+        "region",
+        "language"
+      ],
+      "title": "ScreenshotField",
+      "type": "object"
+    },
+    "TravelRequirements": {
+      "properties": {
+        "attractionTypes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Attractiontypes",
+          "type": "array"
+        },
+        "restaurantCuisines": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Restaurantcuisines",
+          "type": "array"
+        },
+        "hotelFeatures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hotelfeatures",
+          "type": "array"
+        },
+        "requiredNames": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requirednames",
+          "type": "array"
+        },
+        "excludedNames": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excludednames",
+          "type": "array"
+        },
+        "allowedIntercityModes": {
+          "items": {
+            "enum": [
+              "train",
+              "airplane"
+            ],
+            "type": "string"
+          },
+          "title": "Allowedintercitymodes",
+          "type": "array"
+        },
+        "requiredIntercityModes": {
+          "items": {
+            "enum": [
+              "train",
+              "airplane"
+            ],
+            "type": "string"
+          },
+          "title": "Requiredintercitymodes",
+          "type": "array"
+        },
+        "requiredInnercityModes": {
+          "items": {
+            "enum": [
+              "walk",
+              "metro",
+              "taxi"
+            ],
+            "type": "string"
+          },
+          "title": "Requiredinnercitymodes",
+          "type": "array"
+        },
+        "rooms": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "roomBeds": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roombeds"
+        },
+        "maxHotelCostPerPersonPerNight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxhotelcostperpersonpernight"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        }
+      },
+      "title": "TravelRequirements",
+      "type": "object",
+      "required": [
+        "attractionTypes",
+        "restaurantCuisines",
+        "hotelFeatures",
+        "requiredNames",
+        "excludedNames",
+        "allowedIntercityModes",
+        "requiredIntercityModes",
+        "requiredInnercityModes",
+        "rooms",
+        "roomBeds",
+        "maxHotelCostPerPersonPerNight",
+        "unresolved"
+      ]
     },
     "TripRequirements": {
       "properties": {
@@ -291,6 +1026,42 @@
           "default": 1,
           "title": "Schemaversion",
           "type": "integer"
+        },
+        "factSource": {
+          "anyOf": [
+            {
+              "const": "chinatravel",
+              "enum": [
+                "chinatravel"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factsource"
+        },
+        "travelPlanner": {
+          "default": "generate",
+          "enum": [
+            "generate",
+            "cp"
+          ],
+          "title": "Travelplanner",
+          "type": "string"
+        },
+        "travelConstraints": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "dayWindows": {
           "items": {
@@ -314,6 +1085,33 @@
           },
           "maxItems": 40,
           "title": "Fixedarrangements",
+          "type": "array"
+        },
+        "placeRelations": {
+          "items": {
+            "$ref": "#/$defs/PlaceRelation"
+          },
+          "maxItems": 20,
+          "title": "Placerelations",
+          "type": "array"
+        },
+        "constraintPlanning": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConstraintPlanningOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "placeInputs": {
+          "items": {
+            "$ref": "#/$defs/ConfirmedPlaceInput"
+          },
+          "maxItems": 8,
+          "title": "Placeinputs",
           "type": "array"
         },
         "excludedPlaces": {
@@ -461,15 +1259,29 @@
           "maxItems": 20,
           "title": "Unresolvedrequests",
           "type": "array"
+        },
+        "requirementSources": {
+          "items": {
+            "$ref": "#/$defs/RequirementSource"
+          },
+          "maxItems": 60,
+          "title": "Requirementsources",
+          "type": "array"
         }
       },
       "title": "TripRequirements",
       "type": "object",
       "required": [
         "schemaVersion",
+        "factSource",
+        "travelPlanner",
+        "travelConstraints",
         "dayWindows",
         "requiredPlaces",
         "fixedArrangements",
+        "placeRelations",
+        "constraintPlanning",
+        "placeInputs",
         "excludedPlaces",
         "excludedCategories",
         "pace",
@@ -480,7 +1292,8 @@
         "maxWalkMinutesPerLeg",
         "budgetPolicy",
         "lodging",
-        "unresolvedRequests"
+        "unresolvedRequests",
+        "requirementSources"
       ]
     },
     "GenerateRequest": {
@@ -629,6 +1442,109 @@
       "title": "GenerateRequest",
       "type": "object"
     },
+    "ActiveEvidenceReport": {
+      "properties": {
+        "policy": {
+          "default": "bottleneck_heuristic",
+          "title": "Policy",
+          "type": "string"
+        },
+        "probes": {
+          "items": {
+            "$ref": "#/$defs/EvidenceProbe"
+          },
+          "maxItems": 48,
+          "title": "Probes",
+          "type": "array"
+        },
+        "queries": {
+          "items": {
+            "$ref": "#/$defs/EvidenceQueryRecord"
+          },
+          "maxItems": 6,
+          "title": "Queries",
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Questions",
+          "type": "array"
+        },
+        "spentUnits": {
+          "default": 0,
+          "title": "Spentunits",
+          "type": "integer"
+        },
+        "budgetUnits": {
+          "default": 0,
+          "title": "Budgetunits",
+          "type": "integer"
+        },
+        "stopReason": {
+          "default": "disabled",
+          "title": "Stopreason",
+          "type": "string"
+        },
+        "solveCalls": {
+          "default": 0,
+          "title": "Solvecalls",
+          "type": "integer"
+        },
+        "elapsedSeconds": {
+          "default": 0,
+          "title": "Elapsedseconds",
+          "type": "number"
+        },
+        "retrievalCalls": {
+          "default": 0,
+          "title": "Retrievalcalls",
+          "type": "integer"
+        },
+        "llmCalls": {
+          "default": 0,
+          "title": "Llmcalls",
+          "type": "integer"
+        },
+        "promptTokens": {
+          "default": 0,
+          "title": "Prompttokens",
+          "type": "integer"
+        },
+        "completionTokens": {
+          "default": 0,
+          "title": "Completiontokens",
+          "type": "integer"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        }
+      },
+      "title": "ActiveEvidenceReport",
+      "type": "object",
+      "required": [
+        "policy",
+        "probes",
+        "queries",
+        "questions",
+        "spentUnits",
+        "budgetUnits",
+        "stopReason",
+        "solveCalls",
+        "elapsedSeconds",
+        "retrievalCalls",
+        "llmCalls",
+        "promptTokens",
+        "completionTokens",
+        "assumptions"
+      ]
+    },
     "BackupRule": {
       "properties": {
         "if": {
@@ -649,11 +1565,387 @@
       "title": "BackupRule",
       "type": "object"
     },
+    "ConstraintCheck": {
+      "properties": {
+        "constraintId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "required_place",
+            "excluded_place",
+            "excluded_category",
+            "attraction_limit",
+            "dietary_requirement",
+            "day_window",
+            "locked_item",
+            "budget_strict",
+            "time_conflict",
+            "place_relation",
+            "planning_evidence"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "violation",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "dayNo": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dayno"
+        },
+        "itemRefs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Itemrefs",
+          "type": "array"
+        },
+        "reason": {
+          "default": "",
+          "maxLength": 400,
+          "title": "Reason",
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Evidencerefs",
+          "type": "array"
+        },
+        "blocking": {
+          "default": false,
+          "title": "Blocking",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "constraintId",
+        "kind",
+        "status",
+        "dayNo",
+        "itemRefs",
+        "reason",
+        "evidenceRefs",
+        "blocking"
+      ],
+      "title": "ConstraintCheck",
+      "type": "object"
+    },
+    "ConstraintPlanningAssessment": {
+      "properties": {
+        "status": {
+          "enum": [
+            "OPTIMAL",
+            "FEASIBLE",
+            "INFEASIBLE",
+            "UNKNOWN"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "solverStatus": {
+          "title": "Solverstatus",
+          "type": "string"
+        },
+        "numericalStatus": {
+          "enum": [
+            "OPTIMAL",
+            "FEASIBLE",
+            "INFEASIBLE",
+            "UNKNOWN"
+          ],
+          "title": "Numericalstatus",
+          "type": "string"
+        },
+        "planningRevision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Planningrevision"
+        },
+        "isCurrent": {
+          "default": true,
+          "title": "Iscurrent",
+          "type": "boolean"
+        },
+        "conditional": {
+          "default": true,
+          "title": "Conditional",
+          "type": "boolean"
+        },
+        "scope": {
+          "const": "single_city_trip",
+          "default": "single_city_trip",
+          "enum": [
+            "single_city_trip"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "localDate": {
+          "format": "date",
+          "title": "Localdate",
+          "type": "string"
+        },
+        "destination": {
+          "$ref": "#/$defs/ConstraintPlanningOptions"
+        },
+        "destinationSource": {
+          "const": "user_confirmed",
+          "default": "user_confirmed",
+          "enum": [
+            "user_confirmed"
+          ],
+          "title": "Destinationsource",
+          "type": "string"
+        },
+        "budgetScope": {
+          "default": "仅已列活动费用；未列交通、住宿或其他费用待补，不代表全程总费用",
+          "title": "Budgetscope",
+          "type": "string"
+        },
+        "report": {
+          "$ref": "#/$defs/ConstraintReport"
+        },
+        "conflictIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conflictids",
+          "type": "array"
+        },
+        "conflictIrreducible": {
+          "default": false,
+          "title": "Conflictirreducible",
+          "type": "boolean"
+        },
+        "repairSuggestions": {
+          "items": {
+            "$ref": "#/$defs/ConstraintRepairSuggestion"
+          },
+          "title": "Repairsuggestions",
+          "type": "array"
+        },
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/PlanningRouteFact"
+          },
+          "title": "Routes",
+          "type": "array"
+        },
+        "facts": {
+          "items": {
+            "$ref": "#/$defs/PlanningFactContext"
+          },
+          "title": "Facts",
+          "type": "array"
+        },
+        "knownCost": {
+          "default": 0,
+          "title": "Knowncost",
+          "type": "number"
+        },
+        "totalCost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Totalcost"
+        },
+        "solveSeconds": {
+          "default": 0,
+          "title": "Solveseconds",
+          "type": "number"
+        },
+        "optimizedTiers": {
+          "default": 0,
+          "title": "Optimizedtiers",
+          "type": "integer"
+        },
+        "totalTiers": {
+          "default": 0,
+          "title": "Totaltiers",
+          "type": "integer"
+        },
+        "objectiveBound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Objectivebound"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "activeEvidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActiveEvidenceReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "status",
+        "solverStatus",
+        "numericalStatus",
+        "planningRevision",
+        "isCurrent",
+        "conditional",
+        "scope",
+        "localDate",
+        "destination",
+        "destinationSource",
+        "budgetScope",
+        "report",
+        "conflictIds",
+        "conflictIrreducible",
+        "repairSuggestions",
+        "routes",
+        "facts",
+        "knownCost",
+        "totalCost",
+        "solveSeconds",
+        "optimizedTiers",
+        "totalTiers",
+        "objectiveBound",
+        "reason",
+        "activeEvidence"
+      ],
+      "title": "ConstraintPlanningAssessment",
+      "type": "object"
+    },
+    "ConstraintRepairSuggestion": {
+      "properties": {
+        "constraintId": {
+          "title": "Constraintid",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "soften_relation",
+            "remove_required"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "sourceText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcetext"
+        }
+      },
+      "required": [
+        "constraintId",
+        "action",
+        "label",
+        "sourceText"
+      ],
+      "title": "ConstraintRepairSuggestion",
+      "type": "object"
+    },
+    "ConstraintReport": {
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ConstraintCheck"
+          },
+          "maxItems": 200,
+          "title": "Checks",
+          "type": "array"
+        }
+      },
+      "title": "ConstraintReport",
+      "type": "object",
+      "required": [
+        "checks"
+      ]
+    },
     "DailyPlan": {
       "properties": {
         "dayNo": {
           "title": "Dayno",
           "type": "integer"
+        },
+        "travelActivities": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/TravelActivity"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Travelactivities"
+        },
+        "travelHeader": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelHeader"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "note": {
           "anyOf": [
@@ -738,10 +2030,23 @@
           },
           "title": "Suggestions",
           "type": "array"
+        },
+        "constraintPlanning": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConstraintPlanningAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "dayNo",
+        "travelActivities",
+        "travelHeader",
         "note",
         "items",
         "theme",
@@ -751,7 +2056,8 @@
         "practicalNotes",
         "dayOptions",
         "tripTheme",
-        "suggestions"
+        "suggestions",
+        "constraintPlanning"
       ],
       "title": "DailyPlan",
       "type": "object"
@@ -786,6 +2092,163 @@
         "items"
       ],
       "title": "DayOption",
+      "type": "object"
+    },
+    "EvidenceProbe": {
+      "properties": {
+        "gapId": {
+          "title": "Gapid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "opening",
+            "price",
+            "duration",
+            "route"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        },
+        "importance": {
+          "title": "Importance",
+          "type": "integer"
+        },
+        "costUnits": {
+          "title": "Costunits",
+          "type": "integer"
+        },
+        "factState": {
+          "title": "Factstate",
+          "type": "string"
+        },
+        "lowStatus": {
+          "title": "Lowstatus",
+          "type": "string"
+        },
+        "highStatus": {
+          "title": "Highstatus",
+          "type": "string"
+        },
+        "sensitivity": {
+          "title": "Sensitivity",
+          "type": "integer"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gapId",
+        "kind",
+        "targets",
+        "importance",
+        "costUnits",
+        "factState",
+        "lowStatus",
+        "highStatus",
+        "sensitivity",
+        "score",
+        "reason"
+      ],
+      "title": "EvidenceProbe",
+      "type": "object"
+    },
+    "EvidenceQueryRecord": {
+      "properties": {
+        "gapId": {
+          "title": "Gapid",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "updated",
+            "unknown",
+            "ask_user",
+            "rejected",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "costUnits": {
+          "title": "Costunits",
+          "type": "integer"
+        },
+        "decisionChanged": {
+          "default": false,
+          "title": "Decisionchanged",
+          "type": "boolean"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "bindingBasis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bindingbasis"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gapId",
+        "tool",
+        "outcome",
+        "costUnits",
+        "decisionChanged",
+        "sourceUrl",
+        "retrievedAt",
+        "bindingBasis",
+        "reason"
+      ],
+      "title": "EvidenceQueryRecord",
       "type": "object"
     },
     "FactEvidence": {
@@ -1125,6 +2588,237 @@
       "title": "PhotoSpot",
       "type": "object"
     },
+    "PlanningFactContext": {
+      "properties": {
+        "candidateId": {
+          "title": "Candidateid",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "sourceEntityId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceentityid"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "sourceLanguage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcelanguage"
+        },
+        "retrievedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrievedat"
+        },
+        "countryCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Countrycode"
+        },
+        "originalCurrency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalcurrency"
+        },
+        "originalAmount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Originalamount"
+        }
+      },
+      "required": [
+        "candidateId",
+        "name",
+        "aliases",
+        "source",
+        "sourceEntityId",
+        "sourceUrl",
+        "sourceLanguage",
+        "retrievedAt",
+        "countryCode",
+        "originalCurrency",
+        "originalAmount"
+      ],
+      "title": "PlanningFactContext",
+      "type": "object"
+    },
+    "PlanningRouteFact": {
+      "properties": {
+        "fromId": {
+          "title": "Fromid",
+          "type": "string"
+        },
+        "toId": {
+          "title": "Toid",
+          "type": "string"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "string"
+        },
+        "durationMin": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durationmin"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "sourceUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceurl"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "fetchedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fetchedat"
+        },
+        "dataDate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Datadate"
+        },
+        "basis": {
+          "enum": [
+            "road_network",
+            "coordinate_estimate",
+            "unknown"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "timeDependent": {
+          "default": false,
+          "title": "Timedependent",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fromId",
+        "toId",
+        "mode",
+        "durationMin",
+        "source",
+        "sourceUrl",
+        "attribution",
+        "fetchedAt",
+        "dataDate",
+        "basis",
+        "timeDependent"
+      ],
+      "title": "PlanningRouteFact",
+      "type": "object"
+    },
     "QualityIssue": {
       "properties": {
         "code": {
@@ -1441,6 +3135,323 @@
       "title": "Suggestion",
       "type": "object"
     },
+    "TravelActivity": {
+      "properties": {
+        "type": {
+          "enum": [
+            "airplane",
+            "train",
+            "attraction",
+            "breakfast",
+            "lunch",
+            "dinner",
+            "accommodation"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "startTime": {
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "title": "Endtime",
+          "type": "string"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "number"
+        },
+        "transports": {
+          "items": {
+            "$ref": "#/$defs/TravelLeg"
+          },
+          "title": "Transports",
+          "type": "array"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "FlightID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flightid"
+        },
+        "TrainID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trainid"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "rooms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rooms"
+        },
+        "roomType": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roomtype"
+        },
+        "transferRequest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TravelTransferRequest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "type",
+        "startTime",
+        "endTime",
+        "price",
+        "cost",
+        "transports",
+        "position",
+        "start",
+        "end",
+        "FlightID",
+        "TrainID",
+        "tickets",
+        "rooms",
+        "roomType",
+        "transferRequest"
+      ],
+      "title": "TravelActivity",
+      "type": "object"
+    },
+    "TravelHeader": {
+      "properties": {
+        "peopleNumber": {
+          "title": "Peoplenumber",
+          "type": "integer"
+        },
+        "startCity": {
+          "title": "Startcity",
+          "type": "string"
+        },
+        "targetCity": {
+          "title": "Targetcity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "peopleNumber",
+        "startCity",
+        "targetCity"
+      ],
+      "title": "TravelHeader",
+      "type": "object"
+    },
+    "TravelLeg": {
+      "properties": {
+        "start": {
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "title": "End",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "walk",
+            "metro",
+            "taxi"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "startTime": {
+          "title": "Starttime",
+          "type": "string"
+        },
+        "endTime": {
+          "title": "Endtime",
+          "type": "string"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "cost": {
+          "title": "Cost",
+          "type": "number"
+        },
+        "distance": {
+          "title": "Distance",
+          "type": "number"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "cars": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cars"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "mode",
+        "startTime",
+        "endTime",
+        "price",
+        "cost",
+        "distance",
+        "tickets",
+        "cars"
+      ],
+      "title": "TravelLeg",
+      "type": "object"
+    },
+    "TravelTransferRequest": {
+      "properties": {
+        "mode": {
+          "enum": [
+            "walk",
+            "metro",
+            "taxi"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "departure": {
+          "title": "Departure",
+          "type": "string"
+        },
+        "tickets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tickets"
+        },
+        "cars": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cars"
+        }
+      },
+      "required": [
+        "mode",
+        "departure",
+        "tickets",
+        "cars"
+      ],
+      "title": "TravelTransferRequest",
+      "type": "object"
+    },
     "TripItem": {
       "properties": {
         "itemType": {
@@ -1564,10 +3575,7 @@
         "costCurrency": {
           "anyOf": [
             {
-              "const": "CNY",
-              "enum": [
-                "CNY"
-              ],
+              "pattern": "^[A-Z]{3}$",
               "type": "string"
             },
             {
@@ -2355,6 +4363,16 @@
           "default": null,
           "title": "Persons"
         },
+        "personCountOptions": {
+          "items": {
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "title": "Personcountoptions",
+          "type": "array"
+        },
         "budget": {
           "anyOf": [
             {
@@ -2473,6 +4491,7 @@
         "city",
         "days",
         "persons",
+        "personCountOptions",
         "budget",
         "startDate",
         "stayNights",

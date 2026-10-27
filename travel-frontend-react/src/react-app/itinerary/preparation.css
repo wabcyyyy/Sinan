@@ -1,0 +1,36 @@
+.preparation-panel { padding: 18px; max-height: 76vh; overflow-y: auto; }
+.preparation-panel h2 { margin: 4px 0 8px; font-size: 22px; }
+.preparation-panel h3 { font-size: 15px; margin: 8px 0; }
+.prep-caption, .prep-empty { color: var(--sinan-muted); font-size: 12px; line-height: 1.7; }
+.prep-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 14px 0; padding-bottom: 10px; border-bottom: 1px solid var(--sinan-line-soft); }
+.prep-tabs button, .prep-actions button, .preparation-panel form > button, .prep-task-form > button { padding: 8px 10px; background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); border-radius: 8px; font: inherit; font-size: 12px; color: var(--sinan-ink-soft); cursor: pointer; }
+.prep-tabs button[aria-pressed="true"] { background: var(--sinan-accent-wash); color: var(--sinan-accent-dark); border-color: var(--sinan-accent); }
+.prep-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.prep-form { padding: 12px; margin: 12px 0; background: var(--sinan-paper); border: 1px solid var(--sinan-line-soft); border-radius: 10px; }
+.prep-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; min-width: 0; }
+.prep-form label, .prep-task-form label { display: grid; gap: 5px; font-size: 12px; color: var(--sinan-ink-soft); min-width: 0; }
+.prep-form input, .prep-form textarea, .prep-form select, .prep-task-form input, .prep-task-form select { width: 100%; min-width: 0; box-sizing: border-box; padding: 9px; border: 1px solid var(--sinan-line); border-radius: 6px; background: var(--sinan-surface); color: var(--sinan-ink); font: inherit; }
+.prep-form textarea { min-height: 70px; resize: vertical; }
+.prep-list { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; }
+.prep-list > li { padding: 12px; border: 1px solid var(--sinan-line-soft); border-radius: 10px; overflow-wrap: anywhere; }
+.prep-list p { font-size: 12px; color: var(--sinan-ink-soft); margin: 6px 0; line-height: 1.65; }
+.prep-list small, .prep-budget-row small { display: block; color: var(--sinan-muted); font-size: 11px; line-height: 1.7; }
+.prep-list a { display: inline-block; font-size: 12px; color: var(--sinan-accent-dark); margin: 8px 8px 0 0; }
+.prep-preserve { white-space: pre-wrap; }
+.prep-task-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(80px, .6fr); gap: 10px; }
+.prep-task-form label:first-child { grid-column: 1 / -1; }
+.prep-list .prep-task { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.prep-task label { display: flex; gap: 10px; align-items: center; font-size: 13px; }
+.prep-task input { width: 18px; height: 18px; accent-color: var(--sinan-accent); }
+.prep-task input:checked + span { text-decoration: line-through; color: var(--sinan-muted); }
+.prep-task > button, .prep-list > li > button, .prep-error button { font: inherit; font-size: 11px; background: transparent; border: 0; color: var(--sinan-accent-dark); cursor: pointer; padding: 8px 4px; }
+.prep-error, .prep-unknown { color: var(--sinan-danger); font-size: 12px; line-height: 1.7; }
+.prep-budget-total { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--sinan-accent-wash); border-radius: 8px; font-size: 11px; }
+.prep-budget-total strong { display: block; font-size: 23px; margin-top: 6px; }
+.planning-budget table { width: 100%; font-size: 12px; border-collapse: collapse; margin: 14px 0; }
+.planning-budget caption { text-align: left; font-weight: 650; margin-bottom: 10px; }
+.planning-budget th, .planning-budget td { text-align: left; padding: 10px 6px; border-bottom: 1px solid var(--sinan-line-soft); }
+.planning-budget details { font-size: 12px; }
+.planning-budget summary { cursor: pointer; }
+.prep-budget-row { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--sinan-line-soft); font-size: 12px; }
+@media (max-width: 820px) { .preparation-panel { max-height: none; padding: 16px 12px; } .prep-actions button, .prep-tabs button { min-height: 40px; } }

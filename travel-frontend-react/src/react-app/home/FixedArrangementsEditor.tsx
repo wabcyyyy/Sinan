@@ -19,7 +19,7 @@ export function FixedArrangementsEditor({ days, requirements, busy, onChange }: 
     {adding && <>
       {requirements.requiredPlaces.length > 0 && <label>对应哪条已有必去要求？<select value={replaces} onChange={e => setReplaces(e.target.value)}><option value="">另加安排，不替换已有必去</option>{requirements.requiredPlaces.map(p => <option key={p.constraintId} value={p.constraintId}>{p.name}</option>)}</select><small>若指同一地点，请选中它；保存时将必去名称和日期更新为你填写的内容。</small></label>}
       <UserArrangementForm fixedRequired initial={emptyArrangement(1, true)} days={Array.from({ length: days }, (_, i) => i + 1)} busy={busy} create onCancel={() => setAdding(false)} onSave={value => {
-      onChange({ ...requirements, requiredPlaces: requirements.requiredPlaces.map(p => p.constraintId === replaces ? { ...p, name: value.poiName, dayNo: value.dayNo } : p), fixedArrangements: [...fixed, { dayNo: value.dayNo, name: value.poiName, itemType: value.itemType, startTime: value.startTime!, endTime: value.endTime!, cost: value.cost == null ? null : String(value.cost), address: value.address || null, remark: value.remark || null }] })
+      onChange({ ...requirements, requiredPlaces: requirements.requiredPlaces.map(p => p.constraintId === replaces ? { ...p, name: value.poiName, dayNo: value.dayNo } : p), fixedArrangements: [...fixed, { dayNo: value.dayNo, name: value.poiName, itemType: value.itemType, startTime: value.startTime!, endTime: value.endTime!, cost: value.cost == null ? null : String(value.cost), address: value.address || null, remark: value.remark || null, sourceRef: null }] })
       setAdding(false)
     }} /></>}
   </section>

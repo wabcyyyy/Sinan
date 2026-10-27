@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -312,6 +313,7 @@ def geocode_place_rows(
     *,
     namedetails: bool = False,
     viewbox: tuple[float, float, float, float] | None = None,
+    country_code: str | None = None,
 ) -> list[dict[str, Any]] | None:
     """点名→候选要素列表；**None 与 [] 是两种结论**，不可合并。
 
@@ -331,6 +333,9 @@ def geocode_place_rows(
     if not query:
         return None
     params: dict[str, Any] = {"q": query[:120], "format": "jsonv2", "limit": 5 if namedetails else 1}
+    params["addressdetails"] = "1"
+    if country_code:
+        params["countrycodes"] = country_code.lower()
     if namedetails:
         params["namedetails"] = "1"
         params["extratags"] = "1"
@@ -341,18 +346,27 @@ def geocode_place_rows(
         params["bounded"] = "1"
         box_key = f":box:{params['viewbox']}"
     payload = _nominatim_client.call(
-        f"q:v2:{query[:120]}:{int(namedetails)}{box_key}",
-        lambda: fetch_json(
-            _nominatim_client,
-            api_client(),
-            _NOMINATIM_BASE,
-            params=params,
-            headers={"User-Agent": _UA, "Accept-Language": "zh-CN,zh,en"},
-        ),
+        f"q:v3:{query[:120]}:{int(namedetails)}:{country_code or ''}{box_key}",
+        lambda: _fetch_geocoding(params),
     )
     if not isinstance(payload, list):
         return None
     return [row for row in map(_nominatim_row, payload) if row is not None]
+
+
+def _fetch_geocoding(params: dict) -> Any:
+    payload = fetch_json(
+        _nominatim_client,
+        api_client(),
+        _NOMINATIM_BASE,
+        params=params,
+        headers={"User-Agent": _UA, "Accept-Language": "zh-CN,zh,en"},
+    )
+    # 时间写进缓存的原始响应；缓存命中不能伪造“刚刚又查询过”。
+    if isinstance(payload, list):
+        stamp = datetime.now(UTC).isoformat()
+        return [{**row, "source_fetched_at": stamp} if isinstance(row, dict) else row for row in payload]
+    return payload
 
 
 def _nominatim_row(item: Any) -> dict[str, Any] | None:
@@ -376,7 +390,10 @@ def _nominatim_row(item: Any) -> dict[str, Any] | None:
             details.get("name:zh-Hans") or details.get("name:zh-CN") or details.get("name:zh") or ""
         ).strip()
         or None,
-        "country_code": str(item.get("country_code") or "").upper() or None,
+        "country_code": str((item.get("address") or {}).get("country_code") or item.get("country_code") or "").upper()
+        or None,
+        "source_fetched_at": item.get("source_fetched_at"),
+        "source_language": "multilingual" if details else None,
         "category": str(item.get("category") or ""),
         "type": str(item.get("type") or ""),
         "source": "nominatim",

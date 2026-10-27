@@ -1,0 +1,40 @@
+{
+  "recorded_utc": "2026-10-24T08:30:01.942799+00:00",
+  "source": "Nominatim / OpenStreetMap",
+  "attribution": "© OpenStreetMap contributors, ODbL; named place lookups only, no bulk POI extraction",
+  "selection": "Explicitly selected tourism=museum; subway entrance returned by the same query was not selected. No price/opening/duration facts added.",
+  "row": {
+    "name": "卢浮宫博物馆",
+    "display_name": "卢浮宫博物馆, 里沃利路, 圣日耳曼奥塞尔街区, 第一区;第一區, 巴黎, 法兰西岛大区;法蘭西島大區, 法國本土;法国本土, 75001, 法国;法國",
+    "latitude": 48.8611473,
+    "longitude": 2.3380277,
+    "aliases": [
+      "Louvre",
+      "Louvre Museum",
+      "Louvre Müzesi",
+      "Luvro",
+      "Museo del Louvre",
+      "Museu do Louvre",
+      "Museum des Louvre",
+      "Musée du Louvre",
+      "Лувр",
+      "متحف اللوفر",
+      "ルーブル美術館",
+      "卢浮宫",
+      "卢浮宫博物馆"
+    ],
+    "localized_name": "卢浮宫博物馆",
+    "country_code": "FR",
+    "source_fetched_at": "2026-10-24T08:30:01.942799+00:00",
+    "source_language": "multilingual",
+    "category": "tourism",
+    "type": "museum",
+    "source": "nominatim",
+    "place_id": "osm:relation:7515426",
+    "source_url": "https://www.openstreetmap.org/relation/7515426",
+    "dietary_options": [],
+    "category_tags": {
+      "tourism": "museum"
+    }
+  }
+}

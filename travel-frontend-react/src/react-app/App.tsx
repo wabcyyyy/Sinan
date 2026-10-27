@@ -17,6 +17,8 @@ import { ErrorBlock, LoadingBlock, NotFoundBlock, ScreenState } from './shared/S
 import { SharePage } from './shared/SharePage'
 import { PrivacyPage } from './shared/PrivacyPage'
 import { PublicItineraries, PublicItineraryDetail } from './templates/PublicItineraries'
+import { OfflineTripPage } from './itinerary/OfflineTripPage'
+import { clearOfflineOwner, setOfflineOwner } from './itinerary/offlineTrip'
 import '../styles/trial.css'
 const AdminPage = lazy(() => import('./admin/AdminPage').then((module) => ({ default: module.AdminPage })))
 
@@ -40,6 +42,7 @@ function pageTitle(path: string) {
 export default function App() {
   const location = useLocation()
   useEffect(() => { document.title = pageTitle(location.path) }, [location.path])
+  if (location.path === '/offline' || /^\/offline\/\d+$/.test(location.path)) return <OfflineTripPage path={location.path} />
   return <BusinessApp />
 }
 
@@ -68,6 +71,7 @@ function BusinessApp() {
         const info = await getUserInfo()
         if (disposed || mine !== revision.current) return
         activateIntakeOwner(info.id)
+        setOfflineOwner({ id: info.id, username: info.username })
         setUser(info)
         setStatus('ready')
         setSessionVersion((value) => value + 1)
@@ -75,6 +79,7 @@ function BusinessApp() {
         if (disposed || mine !== revision.current) return
         if (isUnauthorized(error)) {
           activateIntakeOwner(null)
+          clearOfflineOwner()
           setUser(null)
           try { localStorage.removeItem('sinan-username') } catch { /* unavailable storage */ }
           setStatus('ready')
@@ -91,6 +96,7 @@ function BusinessApp() {
     revision.current += 1
     cancelSessionRequests()
     activateIntakeOwner(info.id, true)
+    setOfflineOwner({ id: info.id, username: info.username })
     setUser(info)
     setStatus('ready')
     setSessionVersion((value) => value + 1)
@@ -105,6 +111,7 @@ function BusinessApp() {
       await logout()
       if (mine !== revision.current) return
       activateIntakeOwner(null)
+      clearOfflineOwner()
       setUser(null)
       broadcastIdentity('')
       setSessionVersion((value) => value + 1)

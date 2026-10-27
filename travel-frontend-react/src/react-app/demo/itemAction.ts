@@ -1,6 +1,7 @@
 import type { ItemActionBody, ItemCreateBody } from '../../types/generated/contracts'
 import { recalculate } from './fixtures'
 import type { ItineraryDetail } from '../../types/itinerary'
+import { moveDemoItem } from './moveItem'
 
 /** 纯手动编辑样例数据，不模拟 AI、地图验证或预订能力。 */
 export function editDemoItem(source: ItineraryDetail, id: number, body: ItemActionBody): ItineraryDetail {
@@ -13,10 +14,11 @@ export function editDemoItem(source: ItineraryDetail, id: number, body: ItemActi
   if (body.action === 'unfix') { if (index >= 0) fixed.splice(index, 1); return trip }
   if (body.action === 'fix') {
     if (!item.startTime || !item.endTime || item.endTime <= item.startTime) throw new Error('请先补齐有效起止时间')
-    if (index < 0) fixed.push({ dayNo: day.dayNo, name: item.poiName, itemType: item.itemType, startTime: item.startTime.slice(0, 5), endTime: item.endTime.slice(0, 5), cost: null, address: null, remark: null })
+    if (index < 0) fixed.push({ dayNo: day.dayNo, name: item.poiName, itemType: item.itemType, startTime: item.startTime.slice(0, 5), endTime: item.endTime.slice(0, 5), cost: null, address: null, remark: null, sourceRef: null })
     return trip
   }
   if (index >= 0) throw new Error('请先解除固定，再修改这条安排')
+  if (body.action === 'move') { moveDemoItem(trip, item, body); return recalculate(trip) }
   day.items = day.items.filter(p => p.id !== id)
   if (body.action === 'update') {
     const target = trip.dayList.find(d => d.dayNo === body.dayNo)
@@ -54,9 +56,10 @@ export function createDemoItem(source: ItineraryDetail, body: ItemCreateBody): I
   if (body.itemType === 'hotel' && (day.dayNo > trip.stayNights || day.items.some(p => p.itemType === 'hotel'))) throw new Error('该晚已有住宿或不在住宿晚次内')
   const id = Math.max(...trip.dayList.flatMap(d => d.items.map(p => p.id || 0))) + 1
   day.items.push({ id, itemType: body.itemType, poiName: body.poiName.trim(), startTime: body.startTime, endTime: body.endTime,
+    latitude: body.latitude, longitude: body.longitude,
     cost: body.cost == null ? null : Number(body.cost), address: body.address, remark: body.remark, source: 'user', verificationStatus: 'unverified', valueKind: 'estimated' })
   day.items.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
   syncSummary(day)
   const next = recalculate(trip)
-  return body.fixed ? editDemoItem(next, id, { ...body, action: 'fix' }) : next
+  return body.fixed ? editDemoItem(next, id, { ...body, action: 'fix', targetIndex: null }) : next
 }

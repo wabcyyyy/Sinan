@@ -140,7 +140,7 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
             raise ApiError(409, "任务归属与行程用户不一致")
         if row.deadline_at <= at:
             raise TaskWindowExpired(f"行程 {itinerary_id} 已超过绝对截止 {row.deadline_at}")
-        if row.state in LIVE_STATES and rows.lease_alive(row, at):
+        if row.state in LIVE_STATES and row.lease_owner and rows.lease_alive(row, at):
             # 调用方的 is_active() 读的是另一个事务，中间可能有 worker 刚续租。
             # 这里以 FOR UPDATE 锁住的当前行为准：租约还活着就是别人在跑，让路而不是抢占。
             raise LeaseHeld(f"行程 {itinerary_id} 的租约仍由 {row.lease_owner} 持有")
@@ -160,6 +160,7 @@ def take_over(user_id: int, itinerary_id: int) -> tuple[RunLimits, dict]:
             .where(
                 PlanningTask.itinerary_id == itinerary_id,
                 or_(
+                    (PlanningTask.state == QUEUED) & (PlanningTask.lease_owner == ""),
                     PlanningTask.lease_expires_at.is_(None),
                     PlanningTask.lease_expires_at <= at,
                     PlanningTask.state.notin_(LIVE_STATES),
@@ -189,7 +190,11 @@ def claim_queued() -> tuple[RunLimits, dict] | None:
             select(PlanningTask)
             .where(
                 PlanningTask.state == QUEUED,
-                or_(PlanningTask.lease_expires_at.is_(None), PlanningTask.lease_expires_at <= at),
+                or_(
+                    PlanningTask.lease_owner == "",
+                    PlanningTask.lease_expires_at.is_(None),
+                    PlanningTask.lease_expires_at <= at,
+                ),
                 PlanningTask.deadline_at > at,
                 PlanningTask.cancel_requested_at.is_(None),
             )

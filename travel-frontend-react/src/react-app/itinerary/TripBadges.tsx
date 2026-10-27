@@ -67,11 +67,12 @@ export function TripMetrics({
     .find(issue => issue.code === 'BUDGET_EXCEEDED')
   const items = (trip.dayList || []).flatMap(day => day.items)
   const hasCost = trip.totalAmount > 0 || (trip.budgetList || []).some(row => row.amount > 0) || items.some(item => item.cost != null)
-  const missingCost = items.some(item => item.cost == null)
+  const strictCurrency = (trip.dayList || []).some(day => day.constraintPlanning)
+  const missingCost = items.some(item => item.cost == null || (strictCurrency && item.costCurrency !== trip.budgetCurrency))
   return (
     <div className="detail-metrics">
       <span>
-        <strong>{hasCost ? <CountUp value={trip.totalAmount ?? 0} prefix="￥" /> : '待估算'}</strong>
+        <strong>{hasCost ? <CountUp value={trip.totalAmount ?? 0} prefix={strictCurrency ? `${trip.budgetCurrency || '币种待确认'} ` : '￥'} /> : '待估算'}</strong>
         <small>{hasCost ? (missingCost ? '部分费用估算 · 尚有条目未计价' : budgetCaption()) : '费用尚未填写'}</small>
         {budgetWarning && <small className="fact-warning" role="status">{budgetWarning.message}</small>}
       </span>

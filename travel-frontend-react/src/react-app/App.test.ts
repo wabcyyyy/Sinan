@@ -82,7 +82,7 @@ it('opens the full demo without session bootstrap or touching real identity and 
   sessionStorage.setItem('sinan-intake-v1', 'legacy real draft')
   sessionStorage.setItem('sinan-intake-v2:user-7:current', 'real draft')
   await act(async () => root.render(createElement(App)))
-  expect(container.textContent).toContain('产品交互演示')
+  expect(container.textContent).toContain('交互演示 · 固定样例 · 不调用 AI')
   expect(container.textContent).toContain('演示访客')
   expect(vi.mocked(getUserInfo)).not.toHaveBeenCalled()
   expect(localStorage.getItem('sinan-username')).toBe('real-user')

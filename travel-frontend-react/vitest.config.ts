@@ -6,6 +6,6 @@ export default defineConfig({
   esbuild: { jsx: 'automatic', jsxImportSource: 'react' },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })

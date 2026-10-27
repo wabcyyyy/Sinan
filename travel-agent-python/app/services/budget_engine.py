@@ -18,6 +18,7 @@ from sqlalchemy import delete, select
 from app.db.models import (
     BudgetDetail,
     CityConsumption,
+    ItineraryDay,
     ItineraryItem,
     ItineraryMain,
 )
@@ -42,7 +43,10 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
         if main is None:
             return []
         requirements = TripRequirements.model_validate(main.requirements_json or {})
+        if requirements.fact_source == "chinatravel":
+            return _recalculate_complete(session, main)
         explicit_rooms = requirements.lodging.rooms if requirements.lodging else None
+        planning_currency = requirements.constraint_planning.currency if requirements.constraint_planning else None
         persons = main.persons or 1
         days = main.days or 1
         items = session.execute(select(ItineraryItem).where(ItineraryItem.itinerary_id == itinerary_id)).scalars().all()
@@ -51,6 +55,8 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
         ticket_count = meal_count = hotel_count = 0
 
         for item in items:
+            if planning_currency and item.cost_currency != planning_currency:
+                continue  # 保留异币原值，但无带时点的汇率不得混入总额。
             item_type = item.item_type
             # 语料库退役后无"知识库权威价"回落：条目成本缺失或为 0 即不计入，如实缺省
             unit = Decimal(item.cost) if item.cost is not None and not _is_zero_cost_for(item_type, item.cost) else None
@@ -76,10 +82,13 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
         )
         transport = Decimal(transport_per_day) * Decimal(days) * Decimal(persons)
         transport_remark = "按城市系数×天数×人数"
+        if planning_currency:
+            transport = ZERO
+            transport_remark = "交通费用未知，未计入；不把人民币城市系数冒充目的地本币"
         # L14：有观测到的往返报价时，城际大交通用**观测价**（最低一条 × 人数）
         # 并如实注明来源与观测时点；没有报价则维持城市系数估算（estimated 叙事）。
         observed = _observed_flight_total(main.flight_quotes, persons)
-        if observed is not None:
+        if observed is not None and not planning_currency:
             transport, transport_remark = observed
         ticket *= Decimal(persons)
         meal *= Decimal(persons)
@@ -107,6 +116,35 @@ def recalculate(itinerary_id: int) -> list[BudgetDetail]:
     # 异步重算提交后再失效，避免生成时已缓存的旧合计持续展示 600 秒。
     itinerary_query.evict_detail(main.user_id, itinerary_id)
     return created
+
+
+def _recalculate_complete(session, main):
+    from app.schemas.travel_plan import TravelActivity
+
+    amounts = {key: ZERO for key in ("门票", "餐饮", "酒店", "交通")}
+    for day in session.scalars(select(ItineraryDay).where(ItineraryDay.itinerary_id == main.id)):
+        metadata = json.loads(day.metadata_json or "{}")
+        for raw in metadata.get("travelActivities", []):
+            activity = TravelActivity.model_validate(raw)
+            category = {"attraction": "门票", "accommodation": "酒店", "train": "交通", "airplane": "交通"}.get(
+                activity.type, "餐饮"
+            )
+            amounts[category] += Decimal(str(activity.cost))
+            amounts["交通"] += sum((Decimal(str(leg.cost)) for leg in activity.transports), ZERO)
+    session.execute(delete(BudgetDetail).where(BudgetDetail.itinerary_id == main.id))
+    details = [
+        BudgetDetail(
+            itinerary_id=main.id,
+            category=key,
+            amount=_money(value),
+            item_count=0,
+            remark="官方冻结沙箱：选定活动总价及逐段交通总价，不另乘人数或房数",
+        )
+        for key, value in amounts.items()
+    ]
+    session.add_all(details)
+    session.flush()
+    return details
 
 
 def _is_zero_cost_for(item_type: str | None, cost: Decimal) -> bool:

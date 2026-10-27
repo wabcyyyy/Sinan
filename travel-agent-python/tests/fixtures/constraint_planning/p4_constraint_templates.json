@@ -1,0 +1,8 @@
+{
+  "method": "new synthetic constraint structures; fixed P4 policy; independent rule oracle, not third-party blind travel holdout",
+  "cases": [
+    {"id":"choice-hard-budget","kind":"choice","country":"PT","city":"Lisboa","zone":"Europe/Lisbon","currency":"EUR","hidden_truth":{"price_a":120},"expected_names":["B"],"expected_status":"FEASIBLE"},
+    {"id":"before-departure-route","kind":"departure","country":"TH","city":"กรุงเทพมหานคร","zone":"Asia/Bangkok","currency":"THB","hidden_truth":{"route_minutes":90},"expected_names":[],"expected_status":"INFEASIBLE"},
+    {"id":"excluded-choice-no-query","kind":"excluded","country":"PT","city":"Lisboa","zone":"Europe/Lisbon","currency":"EUR","hidden_truth":{"price_a":120},"expected_names":["B"],"expected_status":"FEASIBLE"}
+  ]
+}

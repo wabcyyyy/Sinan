@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import type { ItineraryChatMessage } from '../../types/chat'
-import type { DayPlan, HotelOption } from '../../types/itinerary'
+import type { DayPlan, HotelOption, ItineraryDetail } from '../../types/itinerary'
+import { ReplanComposer } from './ReplanComposer'
 import { interpretImageIntent, isUnauthorized, liveHotelQuotes } from '../../api/sinan'
 import { ChatComposer, composeDraft, imageFeedbackText } from '../shared/ChatComposer'
 import { Icon } from '../shared/Icon'
@@ -27,6 +28,9 @@ export function ChatPanel({
   city,
   onAfterApply,
   draftRequest = 0,
+  selectedItem,
+  selectedItemId,
+  replanTrip,
 }: {
   itineraryId: number
   dayList: DayPlan[]
@@ -40,6 +44,9 @@ export function ChatPanel({
   onAfterApply?: () => void
   /** 每次点击查看后台草稿时递增，确保聊天已挂载时也重新取数。 */
   draftRequest?: number
+  selectedItem?: string
+  selectedItemId?: number
+  replanTrip?: ItineraryDetail
 }) {
   const [draft, setDraft] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
@@ -70,14 +77,17 @@ export function ChatPanel({
   const submit = () => {
     const text = draft
     setDraft('')
-    void chat.send(text)
+    void chat.send(scoped(text))
   }
 
   const handleQuickSend = (text: string) => {
     if (chat.sending) return
     setDraft('')
-    void chat.send(text)
+    void chat.send(scoped(text))
   }
+  const scoped = (text: string) => selectedItem
+    ? `仅调整第${currentDayNo}天的「${selectedItem}」，保留其他安排与固定约束。用户要求：${text}`
+    : `当前查看第${currentDayNo}天；除非以下要求明确点名其他日期，否则仅调整这一天，保留固定约束。用户要求：${text}`
 
   // 图片→一句话：建议消息回填草稿交用户编辑后照常 send（不自动发送），
   // 错误走 ChatPanel 既有 notice 通道
@@ -114,6 +124,7 @@ export function ChatPanel({
       )}
     </div>
     {!collapsed && <>
+    <p className="chat-scope" role="status">修改范围：第 {currentDayNo} 天{selectedItem ? ` · ${selectedItem}` : ' · 当天安排'}<small>先看受影响日期与差异，再确认保存</small></p>
     <div className="chat-log" role="log" aria-live="polite" ref={logRef}>
       {!chat.loaded && <div className="chat-empty">正在载入对话…</div>}
       {chat.loaded && !chat.msgs.length && (
@@ -122,7 +133,7 @@ export function ChatPanel({
             <div className="chat-bubble chat-greeting">想怎么调整这段行程？直接告诉我，比如「第 {currentDayNo} 天加个博物馆」「换个舒服点的酒店」。改动会先给你看，确认后才落到行程里。</div>
           </motion.div>
           {/* 场景建议：一次只亮一组（分组页签 + 滑块），不再把十几个按钮同时摊开 */}
-          <motion.div className="chat-scenes-guide" variants={fadeUp}>
+          {!replanTrip && <motion.div className="chat-scenes-guide" variants={fadeUp}>
             <div className="chat-scene-tabs" role="tablist" aria-label="建议分类">
               {sceneGroups.map((group, index) => (
                 <button key={group.sceneTitle} type="button" role="tab" aria-selected={group === scene} aria-label={group.sceneTitle} title={group.sceneTitle} className={group === scene ? 'chat-scene-tab is-active' : 'chat-scene-tab'} onClick={() => setSceneIdx(index)}>
@@ -138,7 +149,7 @@ export function ChatPanel({
                 </motion.button>
               ))}
             </motion.div>
-          </motion.div>
+          </motion.div>}
         </motion.div>
       )}
       {chat.msgs.map((msg, index) => {
@@ -180,7 +191,7 @@ export function ChatPanel({
     )}
 
     {/* 针对当前查看天数的智能微调指令条（对话改一切）：空会话时由上方场景建议承担，不重复摆 */}
-    {hasConversation && <div className="chat-quick-bar" aria-label="智能快捷微调">
+    {hasConversation && !replanTrip && <div className="chat-quick-bar" aria-label="智能快捷微调">
       <div className="chat-quick-label">
         <Icon name="spark" size={12} />
         <span>第 {currentDayNo} 天微调：</span>
@@ -201,7 +212,7 @@ export function ChatPanel({
       </div>
     </div>}
 
-    <ChatComposer
+    {replanTrip ? <ReplanComposer key={`${replanTrip.planningRevision}-${currentDayNo}-${selectedItemId}`} trip={replanTrip} dayNo={currentDayNo} selectedItemId={selectedItemId} onSelected={async () => { await chat.reload() }} /> : <ChatComposer
       className="chat-composer"
       value={draft}
       onChange={setDraft}
@@ -213,7 +224,7 @@ export function ChatPanel({
       onImage={handleImage}
       imageBusy={imageBusy}
       onNotice={chat.setNotice}
-    />
+    />}
     </>}
   </section>
 }
@@ -244,6 +255,7 @@ export function DraftCard({
   const changes = msg.plans?.length ? structuredDraftChanges(dayList, msg.plans) : []
   const unverified = msg.plans?.length ? unverifiedNames(dayList, msg.plans) : []
   return <div className="chat-draft">
+    {msg.plans?.[0]?._replanSummary && <p role="note">本次选择：{msg.plans[0]._replanSummary.title}；改动 {msg.plans[0]._replanSummary.metrics.changedItems} 项，跨天 {msg.plans[0]._replanSummary.metrics.crossDayMoves} 项，开始时间合计偏移 {msg.plans[0]._replanSummary.metrics.startShiftMinutes} 分钟。确认后才保存。</p>}
     {isCareDraft(msg) && <p className="chat-draft-source" role="note"><Icon name="sun" size={13} />来自出发前照看：按预报风险准备的调整，确认后才会改变行程。</p>}
     {msg.requiresConfirmation && msg.pendingAction && (
       <div className="chat-confirm" role="status">

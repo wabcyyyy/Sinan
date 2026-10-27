@@ -45,6 +45,7 @@ def _requirement_fields(req: GenerateRequest) -> dict:
     struct = req.requirements_struct
     required = [p.name for p in struct.required_places] if struct is not None else []
     return {
+        "budget_currency": struct.constraint_planning.currency if struct and struct.constraint_planning else "CNY",
         "persons": req.persons if req.persons and req.persons > 0 else 1,
         "required_names": required,
         "excluded_names": list(struct.excluded_places) if struct is not None else [],
@@ -202,6 +203,10 @@ def synthesize(packs: dict[ResearchDomain, EvidencePack], req: GenerateRequest) 
 
 def run_research_context(req: GenerateRequest) -> dict:
     """Supervisor 研究一站式入口：分解 → 并行 → 整合。"""
+    from app.agent.data import chinatravel
+
+    if chinatravel.enabled(req.requirements_struct):
+        return chinatravel.research(req)
     packs = run_research_parallel(decompose(req))
     return synthesize(packs, req)
 

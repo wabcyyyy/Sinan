@@ -1,0 +1,208 @@
+{
+  "recorded_utc": "2026-10-24T11:44:36.440661+00:00",
+  "source": "Nominatim / OpenStreetMap",
+  "query": {
+    "name": "京都駅",
+    "city": "京都",
+    "country_code": "JP"
+  },
+  "logical_lookups": 1,
+  "status": "found",
+  "rows": [
+    {
+      "name": "京都",
+      "display_name": "京都, Shiokōji Street, Higashishiokojicho, Shimogyo Ward, 京都市, 京都府, 600-8213, 日本",
+      "latitude": 34.9861909,
+      "longitude": 135.7600629,
+      "aliases": [
+        "K11",
+        "Kyōto",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "localized_name": "京都",
+      "country_code": "JP",
+      "source_fetched_at": "2026-10-24T11:44:36.440661+00:00",
+      "source_language": "multilingual",
+      "category": "railway",
+      "type": "station",
+      "source": "nominatim",
+      "place_id": "osm:node:7780637510",
+      "source_url": "https://www.openstreetmap.org/node/7780637510",
+      "dietary_options": [],
+      "category_tags": {
+        "railway": "station"
+      }
+    },
+    {
+      "name": "Kyoto",
+      "display_name": "Kyoto, 901, Higashishiokojicho, Shimogyo Ward, 京都市, 京都府, 600-8216, 日本",
+      "latitude": 34.9847375,
+      "longitude": 135.7576627,
+      "aliases": [
+        "B01",
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "京都",
+        "긴테츠교토"
+      ],
+      "localized_name": null,
+      "country_code": "JP",
+      "source_fetched_at": "2026-10-24T11:44:36.440661+00:00",
+      "source_language": "multilingual",
+      "category": "railway",
+      "type": "station",
+      "source": "nominatim",
+      "place_id": "osm:node:3340028686",
+      "source_url": "https://www.openstreetmap.org/node/3340028686",
+      "dietary_options": [],
+      "category_tags": {
+        "railway": "station"
+      }
+    },
+    {
+      "name": "Kyoto",
+      "display_name": "Kyoto, Hachijō Street, Nishikujo-Kitanouchicho, Minami Ward, 京都市, 京都府, 601-8412, 日本",
+      "latitude": 34.9853497,
+      "longitude": 135.758766,
+      "aliases": [
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "localized_name": null,
+      "country_code": "JP",
+      "source_fetched_at": "2026-10-24T11:44:36.440661+00:00",
+      "source_language": "multilingual",
+      "category": "railway",
+      "type": "station",
+      "source": "nominatim",
+      "place_id": "osm:node:267316272",
+      "source_url": "https://www.openstreetmap.org/node/267316272",
+      "dietary_options": [],
+      "category_tags": {
+        "railway": "station"
+      }
+    },
+    {
+      "name": "Kyoto",
+      "display_name": "Kyoto, North-South Free Passage, Higashikujo-Kamitonodacho, Minami Ward, 京都市, 京都府, 601-8002, 日本",
+      "latitude": 34.9846076,
+      "longitude": 135.7584303,
+      "aliases": [
+        "Kioto",
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "Кіото",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "localized_name": null,
+      "country_code": "JP",
+      "source_fetched_at": "2026-10-24T11:44:36.440661+00:00",
+      "source_language": "multilingual",
+      "category": "railway",
+      "type": "station",
+      "source": "nominatim",
+      "place_id": "osm:node:3628707764",
+      "source_url": "https://www.openstreetmap.org/node/3628707764",
+      "dietary_options": [],
+      "category_tags": {
+        "railway": "station"
+      }
+    }
+  ],
+  "adapter_choices": [
+    {
+      "entityId": "osm:node:7780637510",
+      "name": "京都",
+      "aliases": [
+        "K11",
+        "Kyōto",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "address": "京都, Shiokōji Street, Higashishiokojicho, Shimogyo Ward, 京都市, 京都府, 600-8213, 日本",
+      "countryCode": "JP",
+      "latitude": 34.9861909,
+      "longitude": 135.7600629,
+      "sourceUrl": "https://www.openstreetmap.org/node/7780637510",
+      "retrievedAt": "2026-10-24T11:44:36.440661+00:00",
+      "category": "railway",
+      "entityType": "station"
+    },
+    {
+      "entityId": "osm:node:3340028686",
+      "name": "Kyoto",
+      "aliases": [
+        "B01",
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "京都",
+        "긴테츠교토"
+      ],
+      "address": "Kyoto, 901, Higashishiokojicho, Shimogyo Ward, 京都市, 京都府, 600-8216, 日本",
+      "countryCode": "JP",
+      "latitude": 34.9847375,
+      "longitude": 135.7576627,
+      "sourceUrl": "https://www.openstreetmap.org/node/3340028686",
+      "retrievedAt": "2026-10-24T11:44:36.440661+00:00",
+      "category": "railway",
+      "entityType": "station"
+    },
+    {
+      "entityId": "osm:node:267316272",
+      "name": "Kyoto",
+      "aliases": [
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "address": "Kyoto, Hachijō Street, Nishikujo-Kitanouchicho, Minami Ward, 京都市, 京都府, 601-8412, 日本",
+      "countryCode": "JP",
+      "latitude": 34.9853497,
+      "longitude": 135.758766,
+      "sourceUrl": "https://www.openstreetmap.org/node/267316272",
+      "retrievedAt": "2026-10-24T11:44:36.440661+00:00",
+      "category": "railway",
+      "entityType": "station"
+    },
+    {
+      "entityId": "osm:node:3628707764",
+      "name": "Kyoto",
+      "aliases": [
+        "Kioto",
+        "Kyoto",
+        "Kyōto",
+        "Киото",
+        "Кіото",
+        "きょうと",
+        "京都",
+        "교토"
+      ],
+      "address": "Kyoto, North-South Free Passage, Higashikujo-Kamitonodacho, Minami Ward, 京都市, 京都府, 601-8002, 日本",
+      "countryCode": "JP",
+      "latitude": 34.9846076,
+      "longitude": 135.7584303,
+      "sourceUrl": "https://www.openstreetmap.org/node/3628707764",
+      "retrievedAt": "2026-10-24T11:44:36.440661+00:00",
+      "category": "railway",
+      "entityType": "station"
+    }
+  ],
+  "model_calls": 0,
+  "route_calls": 0,
+  "attribution": "© OpenStreetMap contributors, ODbL; explicit named lookup, no autocomplete or bulk extraction"
+}

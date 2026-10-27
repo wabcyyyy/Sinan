@@ -89,7 +89,7 @@ def evaluate_research(task: ResearchTask, items: list[dict], round_no: int) -> d
     try:
         raw = get_llm_client("fast").complete(
             f"研究域={task.domain}；城市={task.city}；任务要求：偏好={task.preferences}，"
-            f"预算={task.budget}，酒店档位={task.hotel_tier}。\n"
+            f"预算={task.budget} {task.budget_currency}（未取得汇率时不得跨币比较），酒店档位={task.hotel_tier}。\n"
             f"第 {round_no} 轮检索到 {len(items)} 条：{json.dumps(candidates, ensure_ascii=False)}。"
             "判断是否足够，不足请给出补充检索词。",
             system_prompt=_EVAL_SYSTEM,

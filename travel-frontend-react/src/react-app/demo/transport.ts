@@ -4,12 +4,14 @@ import type { ItineraryChatMessage } from '../../types/chat'
 import { makeDemoTrip, makeTemplateTrip, recalculate, relaxedPlans } from './fixtures'
 import { CURATED_ITINERARIES } from '../../types/generated/contracts'
 import type { ItineraryVersionVO } from '../../types/generated/contracts'
+import type { PreparationPutBody, PreparationVO } from '../../types/generated/contracts'
+import { emptyDemoPreparation, saveDemoPreparation } from './preparation'
 import { scenarioFixture } from './scenarioFixture'
 import { createDemoItem, editDemoItem } from './itemAction'
 import type { ItemActionBody, ItemCreateBody } from '../../types/generated/contracts'
 
 const KEY = 'sinan-demo:trips-v1'
-interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number; versions?: Array<ItineraryVersionVO & { snapshot: ItineraryDetail }>; scenarioMessageId?: number }
+interface RecordState { trip: ItineraryDetail; startedAt?: number; messages: ItineraryChatMessage[]; revision: number; versions?: Array<ItineraryVersionVO & { snapshot: ItineraryDetail }>; scenarioMessageId?: number; preparation?: PreparationVO }
 let memory: Record<string, RecordState> | undefined
 
 function records(): Record<string, RecordState> {
@@ -154,6 +156,24 @@ export async function demoFetch(url: string, init: RequestInit = {}): Promise<Re
   const record = records()[match[1]]
   if (!record) return json(null, 404, '没有找到这条演示行程，请从“我的行程”重新打开。')
   const action = match[2]
+  if (action === '/preparation' && method === 'GET') return json(record.preparation || emptyDemoPreparation())
+  if (action === '/preparation' && method === 'PUT') {
+    try { record.preparation = saveDemoPreparation(record.preparation || emptyDemoPreparation(), body as PreparationPutBody, snapshot(record)); save(); return json(record.preparation) }
+    catch (error) { return json(null, 409, error instanceof Error ? error.message : '保存失败') }
+  }
+  const bookingFix = action.match(/^\/preparation\/bookings\/([^/]+)\/fix$/)
+  if (bookingFix && method === 'POST') {
+    const booking = record.preparation?.data.bookings.find(b => b.id === decodeURIComponent(bookingFix[1]))
+    if (body.planningRevision !== record.revision) return json(null, 409, '行程已更新，请刷新后再操作')
+    if (!booking?.itemId) return json(null, 400, '请先关联这份预订对应的行程安排')
+    try {
+      const next = editDemoItem(snapshot(record), booking.itemId, { action: 'fix', planningRevision: record.revision, dayNo: null, poiName: null, startTime: null, endTime: null, address: null, cost: null, remark: null, targetIndex: null })
+      const undoVersionId = remember(record, 'before_item', '固定预订安排前')
+      record.trip = next; record.revision++; remember(record, 'item_action', '固定预订关联安排')
+      for (const msg of record.messages) { delete msg.plans; delete msg.baseRevision }
+      save(); return json({ ...snapshot(record), undoVersionId })
+    } catch (error) { return json(null, 400, error instanceof Error ? error.message : '固定失败') }
+  }
   if (action === '/items/action' && method === 'POST') {
     if (body.planningRevision !== record.revision) return json(null, 409, '行程已更新，请刷新后再操作')
     try {

@@ -98,8 +98,15 @@ export function googleMapsLink(pin: Pick<MapPin, 'latitude' | 'longitude' | 'poi
 /** 高德标记深链（国内核实主路径）。 */
 export function amapLink(pin: Pick<MapPin, 'latitude' | 'longitude' | 'poiName'>): string {
   return safeMapLink(
-    `https://uri.amap.com/marker?position=${pin.longitude},${pin.latitude}&name=${encodeURIComponent(pin.poiName)}`,
+    `https://uri.amap.com/marker?position=${pin.longitude},${pin.latitude}&name=${encodeURIComponent(pin.poiName)}&coordinate=wgs84`,
   )
+}
+
+/** 两点导航按城市、名称和地址解析；不把来源不明的 WGS84 坐标直接当高德 GCJ-02 使用。 */
+export function directionsLink(city: string, destination: { poiName: string; address?: string | null }, origin?: { poiName: string; address?: string | null }): string {
+  const params = new URLSearchParams({ api: '1', destination: [city, destination.poiName, destination.address].filter(Boolean).join(' ') })
+  if (origin) params.set('origin', [city, origin.poiName, origin.address].filter(Boolean).join(' '))
+  return safeMapLink(`https://www.google.com/maps/dir/?${params}`)
 }
 
 /**

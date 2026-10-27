@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, time
 from decimal import Decimal
 from typing import Any, TypeGuard, overload
@@ -74,7 +75,10 @@ def _apply_item_fields(entity: ItineraryItem, raw_item: dict[str, Any], name: st
         # 币种有据性跟着金额走：草稿显式带币种就用它；没带且金额变了，回到「未声明」，
         # 不让旧条目的「有据」冒充新金额的口径；金额没变则原样保留。
         if "cost_currency" in raw_item:
-            entity.cost_currency = "CNY" if raw_item.get("cost_currency") == "CNY" else None
+            currency = raw_item.get("cost_currency")
+            entity.cost_currency = (
+                currency if isinstance(currency, str) and re.fullmatch(r"[A-Z]{3}", currency) else None
+            )
         elif entity.cost is None or new_cost != entity.cost:
             entity.cost_currency = None
         entity.cost = new_cost

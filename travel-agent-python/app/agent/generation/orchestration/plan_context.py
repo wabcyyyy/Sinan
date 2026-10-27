@@ -99,6 +99,11 @@ def run_plan_context(request: GenerateRequest, *, itinerary_id: int | None = Non
             itinerary_id, "research", f"研究失败：{exc}", "该日返回错误信封，等待编排器重试", run_id=run_id
         )
         raise
+    if context.get("fact_source") == "chinatravel":
+        publish_research_done(
+            itinerary_id, sum(len(context[key]) for key in ("candidates", "foods", "hotels")), False, {}, run_id=run_id
+        )
+        return context  # Preserve timetable/source/relative-day fields; never project back into online context.
     evidence_count, degraded, domains, reason = _research_event_stats(context)
     publish_research_done(itinerary_id, evidence_count, degraded, domains, run_id=run_id)
     if degraded:

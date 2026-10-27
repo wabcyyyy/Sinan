@@ -168,8 +168,8 @@ def test_response_state_present_and_slots_match_base_slots(monkeypatch) -> None:
     assert res.ready is True
 
 
-def test_invalid_patch_shape_skipped_others_still_applied(monkeypatch) -> None:
-    """单条 patch 形状非法（target 不在枚举）只跳过该条：其余 patch 照常应用，且不进 unresolved。"""
+def test_invalid_patch_shape_retained_others_still_applied(monkeypatch) -> None:
+    """非法抽取保留原话待澄清；合法邻居照常应用，不能静默吞掉用户要求。"""
     res = _run(
         monkeypatch,
         '{"patches":['
@@ -178,4 +178,8 @@ def test_invalid_patch_shape_skipped_others_still_applied(monkeypatch) -> None:
         '"question":null,"options":null}',
     )
     assert res.state.requirements.excluded_categories == ["museum"], "合法 patch 不被坏邻居拖累"
-    assert res.state.requirements.unresolved_requests == [], "抽取层跳过 ≠ 语义拒绝，不写 unresolved"
+    assert len(res.state.requirements.unresolved_requests) == 1
+    assert "想去玩" in res.state.requirements.unresolved_requests[0]
+    assert any(
+        s.source_text == "想去玩" and s.disposition == "unresolved" for s in res.state.requirements.requirement_sources
+    )

@@ -1,0 +1,222 @@
+{
+  "family": "booking_lock",
+  "profile": {
+    "split": "development",
+    "days": 1,
+    "duration": 60,
+    "max_places": 4,
+    "fixed": true
+  },
+  "method": "real clarify and constrained real user expression; frozen controller, no future events sent",
+  "trajectories": [
+    {
+      "id": "booking_lock-0",
+      "style": "简短直接，可使用推迟/移到/预约/关闭/优先保留等词",
+      "turns": [
+        {
+          "operation": {
+            "kind": "delay",
+            "target": "地点1",
+            "delay_minutes": 15,
+            "expected": "apply"
+          },
+          "message": "把地点1推迟15分钟。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-0-1"
+        },
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "14:00",
+            "end_time": "15:00",
+            "expected": "apply"
+          },
+          "message": "把地点2的预约改到第1天14:00，第1天15:00前结束。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-0-2"
+        },
+        {
+          "operation": {
+            "kind": "close",
+            "target": "地点2",
+            "expected": "reject"
+          },
+          "message": "关闭地点2。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-0-3"
+        }
+      ]
+    },
+    {
+      "id": "booking_lock-1",
+      "style": "自然礼貌，但不能加其他意图",
+      "turns": [
+        {
+          "operation": {
+            "kind": "delay",
+            "target": "地点1",
+            "delay_minutes": 20,
+            "expected": "apply"
+          },
+          "message": "我想把地点1的预约推迟20分钟。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-1-1"
+        },
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "14:00",
+            "end_time": "15:00",
+            "expected": "apply"
+          },
+          "message": "请帮我预约第1天14:00到15:00的地点2，第1天15:00前结束。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-1-2"
+        },
+        {
+          "operation": {
+            "kind": "close",
+            "target": "地点2",
+            "expected": "reject"
+          },
+          "message": "请把地点2关闭。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-1-3"
+        }
+      ]
+    },
+    {
+      "id": "booking_lock-2",
+      "style": "明确点名活动，用简短同义词表达",
+      "turns": [
+        {
+          "operation": {
+            "kind": "delay",
+            "target": "地点1",
+            "delay_minutes": 30,
+            "expected": "apply"
+          },
+          "message": "地点1延后30分钟。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-2-1"
+        },
+        {
+          "operation": {
+            "kind": "appointment",
+            "target": "地点2",
+            "day_no": 1,
+            "start_time": "14:00",
+            "end_time": "15:00",
+            "expected": "apply"
+          },
+          "message": "帮我预约地点2，第1天14:00到15:00。",
+          "simulator_errors": [],
+          "request_id": "p5-booking_lock-2-2"
+        },
+        {
+          "operation": {
+            "kind": "close",
+            "target": "地点2",
+            "expected": "reject"
+          },
+          "message": "把地点2的活动关掉。",
+          "simulator_errors": [
+            "模拟器未表达关闭"
+          ],
+          "request_id": "p5-booking_lock-2-3"
+        }
+      ]
+    }
+  ],
+  "intake_message": "2026年11月3日去Paris玩1天，1个人，不住宿。活动总预算1000欧元是硬上限，每天最多4个景点；第1天09:00以后开始、18:00以前结束。其他安排在确认表单中核对。",
+  "intake": {
+    "state": {
+      "schema_version": 1,
+      "city": "Paris",
+      "days": 1,
+      "persons": 1,
+      "budget": 1000.0,
+      "start_date": "2026-11-03",
+      "stay_nights": 0,
+      "preferences": [],
+      "hotel_tier": null,
+      "origin_city": null,
+      "requirements": {
+        "schema_version": 1,
+        "day_windows": [
+          {
+            "day_no": 1,
+            "kind": "full",
+            "not_before": "09:00",
+            "finish_by": "18:00",
+            "source_turn_id": null
+          }
+        ],
+        "required_places": [],
+        "fixed_arrangements": [],
+        "place_relations": [],
+        "constraint_planning": {
+          "country_code": "FR",
+          "time_zone": "Europe/Paris",
+          "currency": "EUR",
+          "active_evidence": null
+        },
+        "place_inputs": [],
+        "excluded_places": [],
+        "excluded_categories": [],
+        "pace": null,
+        "max_attractions_per_day": 4,
+        "dietary_requirement": null,
+        "dining_evidence_policy": null,
+        "transport_preference": null,
+        "max_walk_minutes_per_leg": null,
+        "budget_policy": {
+          "mode": "hard_cap",
+          "include_intercity_transport": null
+        },
+        "lodging": null,
+        "unresolved_requests": []
+      },
+      "optional_asked": [
+        "preferences"
+      ],
+      "optional_pending": [],
+      "negotiations": {},
+      "acceptances": {}
+    },
+    "slots": {
+      "city": "Paris",
+      "days": 1,
+      "persons": 1,
+      "budget": 1000,
+      "start_date": "2026-11-03",
+      "stay_nights": 0
+    },
+    "missing": [],
+    "question": "这趟有什么特别的偏好吗？比如美食、自然风光，或者带爸妈要少走路。",
+    "ready": true,
+    "options": [
+      "特色美食 · 慢节奏",
+      "自然风光 · 拍照",
+      "经典打卡",
+      "直接开始规划"
+    ],
+    "blocked": false,
+    "degraded": false,
+    "reply": "巴黎一天、一个人、1000欧硬上限，时间窗也记下了。最后问一句：这趟想偏什么玩法，博物馆、老街美食还是塞纳河沿线散步？",
+    "reply_for": "preferences",
+    "next": "preferences"
+  },
+  "intake_checks": {
+    "not_degraded": true,
+    "destination": true,
+    "slots": true,
+    "hard_budget": true,
+    "daily_max": true,
+    "windows": true
+  }
+}

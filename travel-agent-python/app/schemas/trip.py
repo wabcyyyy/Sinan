@@ -20,6 +20,8 @@ from pydantic import BeforeValidator, Field, model_validator
 
 from app.schemas.common import WireModel
 from app.schemas.opening_hours import OpeningHours
+from app.schemas.planning import ConstraintPlanningAssessment
+from app.schemas.travel_plan import TravelActivity, TravelHeader
 from app.schemas.trip_requirements import (
     MAX_TRIP_DAYS,  # 常量真源在 trip_requirements（M1a），trip.py 引用并保持既有导入路径可用
     IntakeState,
@@ -143,10 +145,9 @@ class TripItem(WireModel):
     duration_min: int | None = None
     open_time: str | None = None
     cost: float | None = None
-    # cost 这个数字的币种：模型显式声明过币种的条目由 data.fx.normalize_item_cost 按固定汇率
-    # 换算后恒为 "CNY"（原始币种写进 remark）；None = 模型未声明，沿用旧约定按人民币理解，
-    # 可能经过按金额大小的推断兜底。前端据此区分「币种有据」与「币种未声明」。
-    cost_currency: Literal["CNY"] | None = None
+    # cost 这个数字的币种：原生成路径沿用 data.fx 的人民币归一；P1 显式约束路径
+    # 保留来源原币，不调用旧固定汇率。None = 币种未确认，新路径不得计入同币总额。
+    cost_currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     tag: str | None = None
     remark: str | None = None
     # 入选理由（≤120 字，M3-① 叙事层字段）：attraction 必填，讲该点与本趟
@@ -250,6 +251,9 @@ class DayOption(WireModel):
 
 class DailyPlan(WireModel):
     day_no: int
+    # Canonical complete activities; items are a display projection in explicit sandbox mode.
+    travel_activities: list[TravelActivity] | None = None
+    travel_header: TravelHeader | None = None
     note: str | None = None
     items: list[TripItem] = Field(default_factory=list)
     # 当日主题：叙事句语义（≤40 字）——一句说清「当天怎么玩」的主线，
@@ -265,6 +269,7 @@ class DailyPlan(WireModel):
     # 顶层）生成后随行程透传，第 2 天起模型省略该字段。
     trip_theme: Clip40Opt = None
     suggestions: list[Suggestion] = Field(default_factory=list)
+    constraint_planning: ConstraintPlanningAssessment | None = None
 
 
 class GenerateResponse(WireModel):

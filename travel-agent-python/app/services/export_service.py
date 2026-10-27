@@ -25,6 +25,7 @@ from app.common.task_pool import SlotExecutor, TaskRejected
 from app.common.vo_json import iso_datetime, iso_time
 from app.db.models import BudgetDetail, ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
+from app.schemas.trip_requirements import TripRequirements
 from app.services import export_pdf, generation_events, itinerary_query
 
 logger = logging.getLogger(__name__)
@@ -172,6 +173,7 @@ def build_model(main: ItineraryMain | None) -> dict[str, Any]:
                     "endTime": iso_time(item.end_time),
                     "durationMin": item.duration_min,
                     "cost": item.cost,
+                    "costCurrency": item.cost_currency,
                     "tag": item.tag,
                     "remark": item.remark,
                     "whyThis": item.why_note,
@@ -184,8 +186,10 @@ def build_model(main: ItineraryMain | None) -> dict[str, Any]:
         budgets = session.execute(select(BudgetDetail).where(BudgetDetail.itinerary_id == main.id)).scalars().all()
     budget_list = [{"category": b.category, "amount": b.amount, "itemCount": b.item_count} for b in budgets]
     total = sum((b["amount"] or 0 for b in budget_list), start=0)
+    planning = TripRequirements.model_validate(main.requirements_json or {}).constraint_planning
     return {
         "title": main.title,
+        "budgetCurrency": planning.currency if planning else "CNY",
         "city": main.city,
         "days": main.days,
         "persons": main.persons,

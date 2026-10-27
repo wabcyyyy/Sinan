@@ -54,6 +54,9 @@ export function TripBoard({ draft, previews, onReset }: {
 }) {
   const dayList = draft.dayList
   const incomplete = draft.genState === 'PARTIAL' || draft.genState === 'FAILED' || dayList.some((day) => day.generationStatus === 'FAILED')
+  const hasConstraintConflict = dayList.some(day => day.constraintPlanning?.status === 'INFEASIBLE')
+  const currency = draft.budgetCurrency || 'CNY'
+  const currencyPrefix = currency === 'CNY' ? '￥' : `${currency} `
   const completedDays = dayList.filter((day) => day.items.length > 0 && (!day.generationStatus || day.generationStatus === 'SUCCEEDED')).length
   // 点击切换当天；默认选中第一个已完成的天（逐日生成中途就绪的兜底：全空落第一天）
   const [pickedDay, setPickedDay] = useState<number | null>(null)
@@ -77,7 +80,9 @@ export function TripBoard({ draft, previews, onReset }: {
     </header>
     <p className="board-fact-notice" role="status">这是规划草案{draft.pendingFactCount ? `，${draft.pendingFactCount} 项事实待核实` : ''}。开放、预约、价格与交通时间请以出发前官方信息为准；路线连线不代表导航已验证。</p>
     <DietaryEvidenceNotice trip={draft} />
-    {incomplete && <p className="board-day-empty" role="status">部分日期未通过交付检查，已有安排已保留。请打开完整行程，选择未完成日期并点击「重新生成这一天」。</p>}
+    {incomplete && <p className="board-day-empty" role="status">{hasConstraintConflict
+      ? '这些要求无法同时满足，已有安排已保留。请先选择上方修订，或返回需求调整后重新规划。'
+      : '部分日期未通过交付检查，已有安排已保留。请打开完整行程，选择未完成日期并点击「重新生成这一天」。'}</p>}
     {dayList.length > 1 && <div className="board-days" role="group" aria-label="按天切换">
       {dayList.map((day) => (
         <button
@@ -96,7 +101,9 @@ export function TripBoard({ draft, previews, onReset }: {
     {activeDay && <section className="board-day" aria-label={`第 ${activeDay.dayNo} 天安排`}>
       <h4 className="board-day-title">{activeDay.theme || `第 ${activeDay.dayNo} 天`}</h4>
       {incomplete && activeDay.generationStatus !== 'SUCCEEDED'
-        ? <p className="board-day-empty">这一天尚未通过检查，不能作为已交付路线使用。请到完整行程重试。</p>
+        ? <p className="board-day-empty">{activeDay.constraintPlanning?.status === 'INFEASIBLE'
+          ? '这一天存在要求冲突，先调整需求再规划，不能作为已交付路线使用。'
+          : '这一天尚未通过检查，不能作为已交付路线使用。请到完整行程重试。'}</p>
         : activeDay.items.length || activeCandidates.length
         ? <div className="day-items" key={activeDay.dayNo}>
             {activeDay.items.map((item, index) => {
@@ -110,8 +117,8 @@ export function TripBoard({ draft, previews, onReset }: {
     <footer className="board-foot">
       {draft.budgetList.length > 0 && <div className="board-budget" aria-label="预算小计">
         <span className="board-budget-label">预算小计{incomplete ? "（尚未完成，仅供参考）" : "（估算）"}</span>
-        <strong className="board-budget-total"><CountUp value={draft.totalAmount ?? 0} prefix="￥" /></strong>
-        {draft.budgetList.map((row) => <em key={row.category}>{row.category} ￥{row.amount}</em>)}
+        <strong className="board-budget-total"><CountUp value={draft.totalAmount ?? 0} prefix={currencyPrefix} /></strong>
+        {draft.budgetList.map((row) => <em key={row.category}>{row.category} {currencyPrefix}{row.amount}</em>)}
       </div>}
       <p className="board-map-hint"><Icon name="pin" size={13} />地图与逐点编辑在完整行程里</p>
       <div className="board-actions">

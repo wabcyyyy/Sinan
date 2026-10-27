@@ -31,6 +31,18 @@ export function actOnItem(id: number, itemId: number, body: Contracts.ItemAction
   return apiRequest(`/itinerary/${id}/items/${itemId}/action`, { method: 'POST', body: JSON.stringify(body) })
 }
 
+export function getPreparation(id: number): Promise<Contracts.PreparationVO> {
+  return apiRequest(`/itinerary/${id}/preparation`)
+}
+
+export function putPreparation(id: number, body: Contracts.PreparationPutBody): Promise<Contracts.PreparationVO> {
+  return apiRequest(`/itinerary/${id}/preparation`, { method: 'PUT', body: JSON.stringify(body) })
+}
+
+export function fixBooking(id: number, bookingId: string, planningRevision: number): Promise<ItineraryDetail> {
+  return apiRequest(`/itinerary/${id}/preparation/bookings/${encodeURIComponent(bookingId)}/fix`, { method: 'POST', body: JSON.stringify({ planningRevision }) })
+}
+
 export function cancelSessionRequests(): void {
   for (const request of sessionRequests) request.abort()
   sessionRequests.clear()
@@ -323,6 +335,14 @@ export function optimizeDay(id: number | string, dayId: number) {
 
 /** 重生成第 N 天（P0-3 部分交付自救）：真·LLM 重新生成未交付天（PENDING/FAILED/空），
  * 服务端只拦分钟窗不扣当日配额；已成功天会被 400 拒（那类调整走 optimizeDay/对话编辑）。 */
+export function reviseConstraintRequirements(id: number, body: import('../types/generated/contracts').ConstraintRepairBody) {
+  return apiRequest<import('../types/generated/contracts').ConstraintRepairVO>(`/itinerary/${id}/constraint-repairs`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function registerManualScreenshotPlace(body: import('../types/generated/contracts').ScreenshotManualBody) {
+  return apiRequest<import('../types/generated/contracts').ScreenshotResolveVO>('/image-intent/manual', { method: 'POST', body: JSON.stringify(body) })
+}
+
 export function regenerateDay(id: number | string, dayNo: number) {
   return apiRequest<ItineraryDetail>(`/itinerary/${id}/days/${dayNo}/regenerate`, { method: 'POST' })
 }
@@ -791,6 +811,21 @@ export function interpretImageIntent(file: File, context?: string) {
   return apiRequest<Contracts.ImageIntentVO>('/image-intent', { method: 'POST', body })
 }
 
+export function extractScreenshot(file: File, kind: 'guide' | 'booking') {
+  const body = new FormData()
+  body.append('file', file)
+  body.append('kind', kind)
+  return apiRequest<Contracts.ScreenshotDocumentVO>('/image-intent/document', { method: 'POST', body })
+}
+
+export function resolveScreenshot(body: Contracts.ScreenshotResolveBody) {
+  return apiRequest<Contracts.ScreenshotResolveVO>('/image-intent/resolve', { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function confirmScreenshot(body: Contracts.ScreenshotConfirmBody) {
+  return apiRequest<Contracts.ScreenshotConfirmVO>('/image-intent/confirm', { method: 'POST', body: JSON.stringify(body) })
+}
+
 // ===== 语音意图理解（POST /speech-intent，对话输入的语音腿）=====
 
 /** 录音 → 可直接进对话的一句话：multipart 上传（file），服务端走 LLM_ROLE_STT（MiMo）。
@@ -854,4 +889,16 @@ export function testLlmGateway(id: number) {
 
 export function createUserItem(id: number, body: Contracts.ItemCreateBody): Promise<ItineraryDetail> {
   return apiRequest<ItineraryDetail>(`/itinerary/${id}/items/action`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function compareReplanning(id: number, body: Contracts.ReplanBody) {
+  return apiRequest<Contracts.ReplanCompareVO>(`/itinerary/${id}/replans/compare`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function parseReplanChange(id: number, body: Contracts.ReplanParseBody) {
+  return apiRequest<Contracts.ReplanParseVO>(`/itinerary/${id}/replans/parse`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function selectReplan(id: number, body: Contracts.ReplanSelectBody) {
+  return apiRequest<{ messageId: number; baseRevision: string }>(`/itinerary/${id}/replans/select`, { method: 'POST', body: JSON.stringify(body) })
 }

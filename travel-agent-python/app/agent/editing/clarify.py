@@ -14,10 +14,10 @@
 
 import json
 import logging
-from datetime import date
 from typing import get_args
 
 from app.agent.core.json_utils import parse_llm_json_or_none
+from app.agent.editing.clarify_contract import extraction_issues, reconcile_person_count, validate_extraction
 from app.agent.editing.clarify_policy import (
     BUDGET_WARN_SLOT,
     DINING_CHOICES,
@@ -27,10 +27,16 @@ from app.agent.editing.clarify_policy import (
     respond,
 )
 from app.agent.generation.content.json_output import parse_llm_json_with_repair
+from app.common import clock
 from app.common.llm_client import get_llm_client
-from app.schemas.requirement_patches import PatchTarget, RequirementPatch, apply_intake_patches
+from app.schemas.requirement_patches import (
+    PatchTarget,
+    RequirementPatch,
+    allowed_patch_operations,
+    apply_intake_patches,
+)
 from app.schemas.trip import MAX_TRIP_DAYS, ClarifyRequest, ClarifyResponse
-from app.schemas.trip_requirements import IntakeState
+from app.schemas.trip_requirements import IntakeState, PlaceRelation
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +64,8 @@ _EXTRACT_SPEC = (
     '"budget":数字或null,"hotel_tier":"经济型/舒适型/高档型/豪华型/奢华型或null",'
     '"preferences":["偏好"]或null,'
     '"patches":[{"op":"set/unset/add/remove","target":"目标枚举","value":值或null,'
-    '"name":名称或null,"day_no":数字或null}]或null,'
+    '"name":名称或null,"day_no":数字或null,"source_text":"最新原话中的连续原文",'
+    '"relation":关系对象或null}]或null,'
     '"ack":"对用户这句话的一句热情接话或null：像懂行的旅行朋友，具体回应他提到的地点/同伴/玩法'
     "（如「成都吃火锅逛老街，这个组合太对味了！」「带爸妈出门，节奏我会排得松一点～」），"
     '不超过30字，不提问，不复述已给参数",'
@@ -71,6 +78,21 @@ _EXTRACT_SPEC = (
     '"question":"仅当用户要的天数超过上限时给一句自然口语的协商话术，否则null",'
     '"options":["仅协商时给配合question的2~4个短选项，否则null"]}。'
     "patches 只在用户表达了基础槽位之外的需求时输出，目标只允许这些枚举："
+    "place_relation(同日先后或至少选一个，relation={constraint_id:稳定唯一ID,kind:before/one_of,"
+    "place_names:[两个明确地点],day_no:明确日期,strength:hard/soft,priority:1到5,negotiable:布尔值,"
+    "source_text:原文}；one_of至少选一个，可都选；软先后不能变成两个硬必去。"
+    "日期或地点指代不明、跨日关系、条件耦合等无法表达时，用unresolved_request保留原话并追问；"
+    "unresolved_request的value是原文，用户明确撤销时remove精确原条目。)"
+    "place_relation有独立字段：关系对象必须放在patch.relation，patch.value必须为null，"
+    "不得把关系对象放进value而让relation为null。完整示例："
+    '{"op":"add","target":"place_relation","value":null,"name":null,"day_no":1,'
+    '"source_text":"第1天必须先去甲馆再去乙馆","relation":{"constraint_id":"day1-order",'
+    '"kind":"before","place_names":["甲馆","乙馆"],"day_no":1,"strength":"hard",'
+    '"priority":1,"negotiable":false,"source_text":"第1天必须先去甲馆再去乙馆"}}。'
+    "op必须与目标类型一致：日窗、预算口径、每日景点上限等标量只用set或unset，不能用add/remove；"
+    "add/remove用于必去、排除、关系或未决请求等列表项。"
+    '例如每天最多3处：{"op":"set","target":"max_attractions_per_day","value":3,'
+    '"name":null,"day_no":null,"source_text":"每天最多3处","relation":null}。'
     "required_place(必去地点：name=地点名，day_no=指定第几天或null=全程必去，"
     '"改成第N天去X"用 op=set 替换日约束)、excluded_place(不去的具体地点，value=地点名)、'
     "excluded_category(不去的类别：museum=博物馆，temple=寺庙/神社，如「不要寺庙」)、"
@@ -86,10 +108,22 @@ _EXTRACT_SPEC = (
     "例如两天行程首日14点后开始、次日16点前结束：set day_not_before value=14:00 day_no=1，"
     "set day_window_kind value=arrival day_no=1，set day_finish_by value=16:00 day_no=2，"
     "set day_window_kind value=departure day_no=2。日期按start_date换算到day_no；取消时间限制用unset。"
+    "每天/每日的统一窗口必须对1到days的每一天分别输出set day_not_before和set day_finish_by；"
+    "不能只写第1天，也不能用add操作或仅把窗口放进preferences。"
+    "可表达的硬关系即使相互矛盾也分别保留，不先判断能否满足再决定是否抽取；"
+    "同日A必须先于B且B必须先于A，应输出两个不同ID的hard before，由求解器解释冲突，不能改软或改为未决。"
     "budget_policy_mode(值 target/hard_cap，「预算不限制了」用 op=unset)、"
     "budget_policy_include_intercity(布尔值，含往返大交通=true，不含=false)、"
     "lodging_rooms(房间数，正整数)、"
     "lodging_locked_hotel(锁定酒店名)。没提到的需求不要编 patch。"
+    "地点被提到不等于必去。用户明确说只是软偏好、可协商、能安排则优先时，"
+    "日期地点均明确的同日关系用soft place_relation，否则用preferences保留偏好文本并用unresolved_request追问，"
+    "不得为这些地点新增或改写required_place，"
+    "也不得为了表达软先后关系改成两个必去；当前不支持的结构不能用更强的硬约束代替。"
+    "只从最新一句话提取新变更，未改变的已有必去、排除、时窗和硬预算均保留；"
+    "同句兼有明确必须和软偏好时，只把明确必须的部分列为required_place。"
+    "保留偏好时，前一个/后一个/前者/后者必须对应用户原句的地点顺序；"
+    "只允许跳过前一个不能改写成跳过后一个。指代无法确定则保留原话并追问，不自行改写成具体地点。"
 )
 _SYSTEM_PROMPT = (
     "你是司南，一个热情又靠谱的旅行规划助手，正在和用户聊出这趟旅行的基本信息。"
@@ -101,7 +135,7 @@ _SYSTEM_PROMPT = (
     "接住用户这句话里的具体诉求（如「带爸妈」→回应省力安排，「吃火锅」→回应美食），"
     "热情要具体，不要空洞的「太棒了」「好的收到」，不要用「正式落库」这类系统话术，"
     "不要每轮重复罗列已有信息；每轮最多回应一个重点。"
-    "追问顺序（合并本轮抽取结果后判断）：目的地→天数→人数→预算（问全程总预算，不问人均）→出发日期→玩法偏好→确认；"
+    "追问顺序（合并本轮抽取结果后判断）：目的地→天数→人数→预算（按本轮模式的费用口径，不问人均）→出发日期→玩法偏好→确认；"
     "预算/出发日期/玩法偏好若已有值或在「已问过」里就跳过；全部齐了 reply_for 填 confirm，"
     "reply 只需说信息齐了、可以在右侧确认开工。"
     f"单次行程天数上限 {MAX_TRIP_DAYS} 天：用户要超过时 days 照实抽取，"
@@ -222,6 +256,31 @@ _OUTPUT_SCHEMA = _closed(
                     },
                     "name": {"type": ["string", "null"]},
                     "day_no": {"type": ["integer", "null"]},
+                    "source_text": {"type": ["string", "null"]},
+                    "relation": {
+                        "anyOf": [
+                            _closed(
+                                {
+                                    "constraint_id": {"type": "string"},
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": list(get_args(PlaceRelation.model_fields["kind"].annotation)),
+                                    },
+                                    "place_names": {"type": "array", "items": {"type": "string"}},
+                                    "day_no": {"type": "integer"},
+                                    "strength": {
+                                        "type": "string",
+                                        "enum": list(get_args(PlaceRelation.model_fields["strength"].annotation)),
+                                    },
+                                    "priority": {"type": "integer"},
+                                    "negotiable": {"type": "boolean"},
+                                    "source_text": {"type": ["string", "null"]},
+                                    "source_turn_id": {"type": ["string", "null"]},
+                                }
+                            ),
+                            {"type": "null"},
+                        ]
+                    },
                 }
             ),
         },
@@ -234,12 +293,41 @@ _OUTPUT_SCHEMA = _closed(
     }
 )
 
+# Same operation truth as deterministic application; no copied target allowlist.
+_OUTPUT_SCHEMA["properties"]["patches"]["items"]["allOf"] = [
+    {
+        "if": {"properties": {"target": {"const": target}}},
+        "then": {"properties": {"op": {"enum": list(allowed_patch_operations(target))}}},
+    }
+    for target in get_args(PatchTarget)
+]
+
 
 def _user_line(req: ClarifyRequest, slots: dict, state: IntakeState) -> str:
     """抽取请求的用户侧文本（唯一构造点：正调与有界修复共用，两处不能分叉）。"""
     requirements = state.requirements.model_dump(mode="json", by_alias=True, exclude_defaults=True, exclude_none=True)
+    if state.requirements.fact_source == "chinatravel":
+        return (
+            "这是官方冻结沙箱的相对行程日任务，未给具体出发日期则start_date保持null，不补今天。"
+            "预算保持用户全程总预算；只依据用户原话提取，不添加时间窗口或景点数量。\n"
+            "人数按自然语言中的明确组合计数：我和朋友/我和对象/我带我孩子通常为两人，"
+            "一家三口为三人；不要因没有阿拉伯数字就忽略人数，但一群人等确实不明时保留null。\n"
+            f"已有槽位：{json.dumps(slots, ensure_ascii=False)}\n用户说：{req.message}"
+        )
+    planning = state.requirements.constraint_planning
+    today = clock.destination_today(planning.time_zone) if planning else clock.shanghai_today()
+    currency_note = (
+        f"本次 budget 和固定安排单价以 {planning.currency} 计价，不换算为人民币，不写成元。\n" if planning else ""
+    )
+    budget_note = (
+        "本轮为活动约束规划：用户明确给的活动/门票预算（包括0）写入budget并保留hard_cap口径；"
+        "不要因不含食宿/交通而把明确金额置null或反复追问全程总预算。"
+        "若用户要求含食宿或城际，保留其原口径，不擅自改为活动预算。\n"
+        if planning
+        else ""
+    )
     return (
-        f"今天是 {date.today().isoformat()}。\n"
+        f"今天是 {today.isoformat()}。\n{currency_note}{budget_note}"
         f"已有槽位：{json.dumps(slots, ensure_ascii=False)}\n"
         f"已有需求约束：{json.dumps(requirements, ensure_ascii=False)}\n"
         f"已问过的可选问题：{json.dumps(state.optional_asked, ensure_ascii=False)}\n用户说：{req.message}"
@@ -287,6 +375,7 @@ def _repair(req: ClarifyRequest, slots: dict, state: IntakeState, raw: str) -> d
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user", "content": _user_line(req, slots, state)},
             ],
+            validate=lambda data: validate_extraction(data, req.message, state),
         )
     except Exception as e:
         logger.warning("clarify repair failed: %s: %s", type(e).__name__, e)
@@ -305,7 +394,7 @@ def _extract(
 
     返回 (question, options, patches, reply, reply_for, accepted, ack)；JSON 解析在
     调用方完成（`parse_llm_json_or_none` → `_repair`，唯一实现），这里只处理形状：
-    单条 patch 形状非法只跳过该条（记日志），不否定整轮。
+    单条 patch 形状非法保留原话待澄清，不否定整轮的其他合法动作。
     语义性拒绝（词表外类别、超界值）由 apply_intake_patches 处理并入 unresolved；
     reply 的目标校验在 clarify_policy.respond（服务端重算 next 后比对）。
     """
@@ -325,6 +414,9 @@ def _extract(
                 patches.append(RequirementPatch.model_validate(item))
             except Exception as e:
                 logger.warning("clarify patch invalid: %s | item=%s", e, str(item)[:120])
+                patches.append(
+                    RequirementPatch(op="add", target="unresolved_request", value="抽取的需求结构无效，请重新确认")
+                )
     reply = _trimmed_str(data.get("reply"))
     reply_for = _trimmed_str(data.get("reply_for"))
     accepted = _trimmed_str(data.get("accepted"))
@@ -339,8 +431,12 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
     # 解析走唯一实现（core.json_utils），失败交 `_repair` 有界修复一次；两条都不可用
     # 才是"本轮没抽到"——降级如实透出，已确认槽位与用户原话都不动（AILIVE-2）。
     data = parse_llm_json_or_none(raw) if raw is not None else None
-    if raw is not None and data is None:
-        data = _repair(req, slots, state, raw)
+    issues = extraction_issues(data, req.message, state) if data is not None else []
+    if raw is not None and (data is None or issues):
+        repaired = _repair(req, slots, state, raw)
+        if repaired is not None:
+            data = repaired
+        issues = extraction_issues(data, req.message, state) if data is not None else []
     parsed = data is not None
     if data is None:
         question, options, patches, llm_reply, reply_for, accepted, ack = None, None, [], None, None, None, None
@@ -359,23 +455,67 @@ def run_clarify(req: ClarifyRequest) -> ClarifyResponse:
         state.requirements.dining_evidence_policy = None  # 改口径须重新明确选择，不能静默保留旧取舍
     patches = [patch for patch in patches if patch.target != "dining_evidence_policy"]
     if patches:
+        anchored = []
+        for patch in patches:
+            quote = patch.source_text
+            if quote and quote not in req.message:
+                # 模型不可凭空提供来源；保留整句，等待用户确认，不能照常编译错误动作。
+                anchored.append(
+                    RequirementPatch(
+                        op="add",
+                        target="unresolved_request",
+                        source_text=req.message[:400],
+                        value="需求来源与原话不一致",
+                    )
+                )
+            else:
+                anchored.append(patch.model_copy(update={"source_text": quote or req.message[:400]}))
         # 有类型 patch 确定性应用；被拒条目进 unresolved_requests（不丢弃）
-        apply_intake_patches(state, patches)
+        apply_intake_patches(state, anchored)
+    if issues:
+        apply_intake_patches(
+            state,
+            [
+                RequirementPatch(
+                    op="add",
+                    target="unresolved_request",
+                    source_text=req.message[:400],
+                    value="抽取契约仍未满足：" + "；".join(issues)[:300],
+                )
+            ],
+        )
     if state.requirements.dietary_requirement and req.message.strip() in DINING_CHOICES:
         apply_intake_patches(
             state,
             [RequirementPatch(op="set", target="dining_evidence_policy", value=DINING_CHOICES[req.message.strip()])],
         )
     apply_acceptance(state, accepted)
+    reconcile_person_count(state, req.message)
+    slots = _slots_projection(state)
+    if (
+        state.requirements.fact_source == "chinatravel"
+        and state.city
+        and state.origin_city
+        and state.days
+        and state.persons
+    ):
+        from app.agent.editing.complete_travel_intake import extract
+
+        try:
+            state.requirements.travel_constraints = extract(req.message, state, get_llm_client())
+        except Exception as exc:
+            state.requirements.unresolved_requests.append(f"官方属性绑定未完成：{str(exc)[:180]}")
     missing = [k for k in REQUIRED_SLOTS if k not in slots or slots[k] in (None, "")]
     response = respond(state, missing, question, options, llm_reply, reply_for, ack)
     # 投影最后做：出口内的协商闸标记（budget/multicity warned）必须进当轮 slots
     response.slots = _slots_projection(state)
-    if raw is None or not parsed:
+    if raw is None or not parsed or issues:
         # AILIVE-2：本轮 LLM 调用失败或输出不可解析 = 槽位零进展且服务降级，必须
         # 如实透出（degraded 标记 + 兜底话术），不再伪装成正常的缺槽追问让用户
         # 无限循环。超天协商（blocked）话术本身已是明确引导，不覆盖。
         response.degraded = True
+        if issues:
+            response.ready = False
         if not response.ready and not response.blocked:
             response.question = _DEGRADED_NOTICE
             response.reply = None

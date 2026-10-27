@@ -45,15 +45,27 @@ def find_day(itinerary_id: int, day_no: int) -> ItineraryDay | None:
 
 def _apply_user_arrangements(plan: DailyPlan, requirements: TripRequirements | None, day_no: int) -> None:
     # 用户填写的预定资料不由模型估价覆盖，也不继承外部核验身份。
-    for fixed in requirements.fixed_arrangements if requirements else []:
+    if requirements is None:
+        return
+    identities = (
+        {f.candidate_id: [f.name, *f.aliases] for f in plan.constraint_planning.facts}
+        if plan.constraint_planning
+        else {}
+    )
+    for fixed in requirements.fixed_arrangements:
         if fixed.day_no != day_no:
             continue
         for item in plan.items:
-            if item.poi_name != fixed.name or item.item_type != fixed.item_type:
+            if (
+                fixed.name not in [item.poi_name, *identities.get(item.poi_id or "", [])]
+                or item.item_type != fixed.item_type
+            ):
                 continue
             if fixed.cost is not None:
                 item.cost = float(fixed.cost)
-                item.cost_currency = "CNY"
+                item.cost_currency = (
+                    requirements.constraint_planning.currency if requirements.constraint_planning else "CNY"
+                )
                 item.fact_evidence.pop("cost", None)
             if fixed.address is not None:
                 item.address = fixed.address
@@ -85,11 +97,12 @@ def persist(
         if day.generation_status == "SUCCEEDED" and not allow_overwrite:
             return
     requirements = getattr(request, "requirements_struct", None)
-    enrich_opening_hours(
-        plan,
-        city=str(getattr(request, "city", "")),
-        required_names=[place.name for place in requirements.required_places] if requirements else [],
-    )
+    if plan.constraint_planning is None:
+        enrich_opening_hours(
+            plan,
+            city=str(getattr(request, "city", "")),
+            required_names=[place.name for place in requirements.required_places] if requirements else [],
+        )
     with session_scope() as session:
         day = _require_day(session, itinerary_id, day_no)
         generation_gate.verify_action(day, action_id, fingerprint)
@@ -380,6 +393,7 @@ def _stay_nights(request: Any) -> int:
 
 
 _METADATA_FIELDS = (
+    ("constraint_planning", "constraintPlanning"),
     ("theme", None),
     ("mini_route", "miniRoute"),
     ("backup_plan", "backupPlan"),

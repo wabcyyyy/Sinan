@@ -10,6 +10,8 @@ import { INTAKE_PREFERENCES } from './intakeSlots'
 import type { IntakeSlots } from './intakeSlots'
 import { FixedArrangementsEditor } from './FixedArrangementsEditor'
 import { RequirementSummary } from './RequirementSummary'
+import { ConstraintPlanningEditor } from './ConstraintPlanningEditor'
+import { ScreenshotImport } from '../shared/ScreenshotImport'
 
 /** 长期记忆的边界（与后端 preferences 服务同一规则，仅前端提示用）：
  * 每项 trim 后 1–32 字符，正负合计最多 20 项。 */
@@ -202,7 +204,7 @@ export function IntakeConfirm({
             </span>
           </div>
           {slots.budget && slots.budget > 0 ? (
-            <span className="plan-brief-budget">预算 ¥{slots.budget}</span>
+            <span className="plan-brief-budget">预算 {requirements?.constraintPlanning?.currency || 'CNY'} {slots.budget}</span>
           ) : null}
         </div>
 
@@ -247,6 +249,8 @@ export function IntakeConfirm({
 
       {!demoMode && onRequirements && requirements && <FixedArrangementsEditor days={days} requirements={requirements} busy={busy || verifying} onChange={onRequirements} />}
       <RequirementSummary requirements={requirements} />
+      {!demoMode && onRequirements && requirements && <ConstraintPlanningEditor requirements={requirements} days={days} busy={busy || verifying} onChange={onRequirements} />}
+      {!demoMode && onRequirements && requirements && days <= 3 && <ScreenshotImport requirements={requirements} city={slots.city || ''} days={days} startDate={slots.start_date} busy={busy || verifying} onAdopt={next => onRequirements(next)} />}
 
       {/* 核心 CTA：用户一眼看清方案，直接开工；needsReconfirm 时先走后端重验 */}
       <button

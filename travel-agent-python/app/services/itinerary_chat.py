@@ -806,6 +806,14 @@ def run_chat_turn_in_process(ctx: ChatTurnContext, itinerary_id: int) -> dict[st
     预算——两者都挂在 ContextVar 上，只能在真正执行调用的那个线程/上下文里进。
     """
     request = ctx.chat_body
+    requirements = TripRequirements.model_validate(request.get("requirements_struct") or {})
+    if requirements.constraint_planning:
+        return {
+            "reply": "请在修改面板输入一句话或移动条目，比较求解结果后再确认保存。",
+            "changed": False,
+            "plans": [],
+            "hotelOptions": [],
+        }
     with use_scene("chat"), observe_run(request_id=f"itinerary-{itinerary_id}"):
         response = itinerary_city.guard_agent_call(
             "行程助手暂不可用",

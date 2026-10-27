@@ -28,13 +28,15 @@ from app.agent import (
     confirm_thread,
     day_policy_for,
     resume_confirmation,
+    validate_confirmation,
 )
 from app.common.envelope import ApiError
 from app.db.models import ItineraryDay, ItineraryItem, ItineraryMain
 from app.db.session import session_scope
 from app.schemas.business.itinerary import HotelOptionRequest
+from app.schemas.replanning import ReplanChange
 from app.schemas.trip import MAX_TRIP_DAYS
-from app.schemas.trip_requirements import TripRequirements, canonical_requirements_payload
+from app.schemas.trip_requirements import FixedArrangement, TripRequirements, canonical_requirements_payload
 from app.services import (
     budget_engine,
     itinerary_chat,
@@ -72,21 +74,26 @@ def apply_plans(
         提交后从数据库读回的最新行程详情。
     """
     with session_scope() as session:
+        itinerary_chat.lock_main_for_draft(session, itinerary_id)
         main = itinerary_query.require_writable_main(session, user_id, itinerary_id)
         message = itinerary_chat.require_pending_action(
             session, user_id, itinerary_id, action_message_id, base_revision, False
         )
-        # PR-6 确认流薄适配：有待确认提案时以 Command(resume) 续跑，服务端复核
+        # 有待确认提案时只读检查点，服务端复核；业务提交后再以 Command(resume) 收尾。
         # 「确认的确实是要应用的那份草稿」；无待确认提案（超时清理 / 存量消息）
         # 回退既有 message 级语义，不新增硬失败。
         # 出发前照看（§4.5）：线程只认服务端消息里的 `_confirmationThread`——care
         # 草稿落在独立 care 线程（不碰 chat-{id} 上的用户 checkpoint）；无该键的
         # 普通草稿仍用原共享线程。客户端无法指定线程。
         thread = itinerary_chat.action_confirmation_thread(message) or confirm_thread(itinerary_id)
-        verdict = resume_confirmation(thread, {"action": "apply_plans"})
+        verdict = validate_confirmation(thread, {"action": "apply_plans"})
         if verdict is not None and not verdict.confirmed:
             raise ApiError(409, f"确认与提案不一致：{verdict.reason}")
         plans = itinerary_chat.read_plans(message)
+        if TripRequirements.model_validate(main.requirements_json or {}).constraint_planning and not (
+            plans and plans[0].get("_replanProof")
+        ):
+            raise ApiError(409, "约束行程的草稿需要重新比较求解后再确认")
         # M4（spec §9.2）：草稿携带的整数修订基准（存量草稿 None → 退化 hash 比对）
         base_planning_revision = itinerary_chat.action_base_planning_revision(message)
         # M4（spec §9.1）：拟变更需求随草稿走——按拟变更需求验证草稿；确认应用时
@@ -100,6 +107,9 @@ def apply_plans(
             .all()
         )
         _validate_plans(plans, requirements=proposed_requirements)
+        from app.services.itinerary_replanning import validate_draft
+
+        validate_draft(plans)
         existing_items = _load_item_identity(session, itinerary_id)
         retained_item_ids: set[int] = set()
         day_by_no = {day.day_no: day for day in days}
@@ -127,21 +137,52 @@ def apply_plans(
         itinerary_version.append_version_in_session(session, user_id, itinerary_id, "apply_plans", "应用草稿完成")
         # M4 CAS：修订基准不匹配（并发写已推进）→ 409，整事务回滚（含快照/条目/草稿消费）
         itinerary_version.bump_planning_revision_with_cas(session, itinerary_id, base_planning_revision)
+        if plans and plans[0].get("_replanProof"):
+            for day in day_by_no.values():
+                metadata = json.loads(day.metadata_json or "{}")
+                if metadata.get("constraintPlanning"):
+                    metadata["constraintPlanning"]["planningRevision"] = main.planning_revision
+                    day.metadata_json = json.dumps(metadata, ensure_ascii=False)
 
+    _complete_confirmation(thread, {"action": "apply_plans"})
     itinerary_query.evict_detail(user_id, itinerary_id)
     return {**itinerary_query.detail(user_id, itinerary_id), "undoVersionId": before["id"]}
 
 
+def _complete_confirmation(thread, choice):
+    try:
+        resume_confirmation(thread, choice)
+    except Exception:
+        # MySQL 已提交，草稿已消费；检查点收尾失败不应让客户端误以为业务提交失败。
+        logger.exception("confirmation checkpoint completion deferred: %s", thread)
+
+
 def _retain_fixed(main, plans, proposed: TripRequirements | None) -> TripRequirements | None:
     current = TripRequirements.model_validate(main.requirements_json or {})
-    if not current.fixed_arrangements:
-        if proposed is not None:
-            proposed.fixed_arrangements = []
-        return proposed
+    retained = list(current.fixed_arrangements)
+    proof = plans[0].get("_replanProof") if plans else None
+    if current.constraint_planning and proposed is not None and proof:
+        operation = ReplanChange.model_validate(proof["operation"])
+        if operation.kind == "appointment":
+            assert operation.day_no is not None and operation.start_time and operation.end_time
+            target = next(p for day in proof["before"] for p in day["items"] if p["id"] == operation.item_id)
+            confirmed = FixedArrangement(
+                day_no=operation.day_no,
+                name=target["poi_name"],
+                item_type=target["item_type"],
+                start_time=operation.start_time,
+                end_time=operation.end_time,
+            )
+            if confirmed not in proposed.fixed_arrangements:
+                raise ApiError(409, "预约要求与比较草稿不一致，请重新比较")
+            if confirmed not in retained:
+                retained.append(confirmed)
+    if not retained and proposed is None:
+        return None
     result = proposed if proposed is not None else current
-    # 固定只能由用户在条目上显式解除，模型草稿不得丢弃或改写。
-    result.fixed_arrangements = current.fixed_arrangements
-    if any(f.day_no > len(plans) for f in current.fixed_arrangements):
+    # 旧固定仍不可丢弃/改写；只允许本次服务端比较且用户确认的预约操作新增固定。
+    result.fixed_arrangements = retained
+    if any(f.day_no > len(plans) for f in retained):
         raise ApiError(400, "缩短行程会移除固定安排，请先解除固定")
     return result
 
@@ -278,6 +319,9 @@ def apply_hotel_option(user_id: int, itinerary_id: int, request: HotelOptionRequ
             session, user_id, itinerary_id, request.actionMessageId, request.baseRevision, True
         )
         itinerary_plan_apply_hotel.apply_hotel_option(session, main, message, request)
+    _complete_confirmation(
+        confirm_thread(itinerary_id), {"action": "replace_hotel", "hotel_name": request.hotelName or ""}
+    )
     itinerary_query.evict_detail(user_id, itinerary_id)
     return itinerary_query.detail(user_id, itinerary_id)
 
@@ -356,6 +400,8 @@ _METADATA_KEYS = {
     "backup_plan": "backupPlan",
     "photo_spots": "photoSpots",
     "practical_notes": "practicalNotes",
+    "constraint_planning": "constraintPlanning",
+    "executed_item_ids": "executedItemIds",
 }
 
 
@@ -364,8 +410,10 @@ def _persist_day_metadata(day: ItineraryDay, plan: dict[str, Any], *, unchanged:
     has_metadata = any(key in plan for keys in _METADATA_KEYS.items() for key in keys)
     if unchanged and not has_metadata:
         return
-    metadata: dict[str, Any] = {} if has_metadata else json.loads(day.metadata_json or "{}")
-    if not has_metadata:
+    metadata: dict[str, Any] = (
+        {} if has_metadata and not plan.get("_replanned") else json.loads(day.metadata_json or "{}")
+    )
+    if not has_metadata or plan.get("_replanned"):
         metadata.pop("miniRoute", None)
     for source_key, output_key in _METADATA_KEYS.items():
         value = plan.get(source_key)

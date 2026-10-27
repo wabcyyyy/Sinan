@@ -10,6 +10,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 
 setWorkerUrl(maplibreWorkerUrl)
 import type { DayPlan } from '../../types/itinerary'
+import type { SavedPlace } from '../../types/generated/contracts'
 import { Icon } from '../shared/Icon'
 import {
   amapLink,
@@ -32,13 +33,25 @@ export function TripMapPanel({
   activeKey,
   onSelect,
   focusDayNo,
+  places = [],
+  onAddPlace,
 }: {
   days: DayPlan[]
   activeKey: string | null
   onSelect: (pin: MapPin) => void
   focusDayNo?: number
+  places?: SavedPlace[]
+  onAddPlace?: (latitude: number, longitude: number) => void
 }) {
-  const pins = useMemo(() => buildPins(days), [days])
+  const [onlyCurrent, setOnlyCurrent] = useState(true)
+  const [showPlaces, setShowPlaces] = useState(true)
+  const [picking, setPicking] = useState(false)
+  const pickingRef = useRef(false)
+  pickingRef.current = picking
+  const addRef = useRef(onAddPlace)
+  addRef.current = onAddPlace
+  const visibleDays = useMemo(() => onlyCurrent ? days.filter(d => d.dayNo === focusDayNo) : days, [days, onlyCurrent, focusDayNo])
+  const pins = useMemo(() => [...buildPins(visibleDays), ...(showPlaces ? places.filter(p => p.latitude != null && p.longitude != null).map((p): MapPin => ({ key: `place:${p.id}`, dayNo: 0, orderInDay: 0, poiName: p.name, latitude: p.latitude!, longitude: p.longitude!, estimated: true, startTime: null })) : [])], [visibleDays, places, showPlaces])
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const loadedRef = useRef(false)
@@ -73,6 +86,11 @@ export function TripMapPanel({
       return
     }
     mapRef.current = map
+    map.on('click', event => {
+      if (!pickingRef.current) return
+      setPicking(false)
+      addRef.current?.(event.lngLat.lat, event.lngLat.lng)
+    })
     map.on('error', (event) => {
       const status = (event.error as { status?: number } | undefined)?.status
       if (status === undefined || status >= 400) setTilesFailed(true)
@@ -133,7 +151,7 @@ export function TripMapPanel({
   // 仅在行程点位集合变化时调整全局视野
   useEffect(() => {
     if (loadedRef.current) resetBounds()
-  }, [days.length])
+  }, [visibleDays, showPlaces])
 
   // activeKey 单独联动：平滑飞移到对应点位，不重置全局视野
   useEffect(() => {
@@ -168,16 +186,16 @@ export function TripMapPanel({
         (pin.estimated ? ' is-estimated' : '') +
         (pin.key === activeKey ? ' is-active' : '') +
         (isDimmed ? ' is-dimmed' : '')
-      element.style.background = dayPinColor(pin.dayNo)
-      element.setAttribute('aria-label', `第 ${pin.dayNo} 天 第 ${pin.orderInDay} 站 ${pin.poiName}`)
+      element.style.background = pin.dayNo === 0 ? 'var(--sinan-ink-soft)' : dayPinColor(pin.dayNo)
+      element.setAttribute('aria-label', pin.dayNo === 0 ? `备选地点 ${pin.poiName}` : `第 ${pin.dayNo} 天 第 ${pin.orderInDay} 站 ${pin.poiName}`)
       element.title = `第 ${pin.dayNo} 天 · 第 ${pin.orderInDay} 站：${pin.poiName}`
       const label = document.createElement('span')
       // 展示当天点位序号（1, 2, 3...）展现游玩流向
-      label.textContent = pin.orderInDay.toString()
+      label.textContent = pin.dayNo === 0 ? '☆' : pin.orderInDay.toString()
       element.append(label)
       element.addEventListener('click', (event) => {
         event.stopPropagation()
-        selectRef.current(pin)
+        if (pin.dayNo > 0) selectRef.current(pin)
         showPopup(pin)
         map.flyTo({
           center: [pin.longitude, pin.latitude],
@@ -200,9 +218,9 @@ export function TripMapPanel({
     const content = document.createElement('div')
     content.className = 'map-pop'
     const name = document.createElement('strong')
-    name.textContent = `第 ${pin.orderInDay} 站 · ${pin.poiName}`
+    name.textContent = pin.dayNo === 0 ? `备选 · ${pin.poiName}` : `第 ${pin.orderInDay} 站 · ${pin.poiName}`
     const meta = document.createElement('small')
-    meta.textContent = `第 ${pin.dayNo} 天${pin.startTime ? ` · ${pin.startTime}` : ''}${pin.estimated ? ' · 位置为估算' : ''}`
+    meta.textContent = pin.dayNo === 0 ? '用户地图落点 · 尚未核实地点身份' : `第 ${pin.dayNo} 天${pin.startTime ? ` · ${pin.startTime}` : ''}${pin.estimated ? ' · 位置为估算' : ''}`
     const links = document.createElement('div')
     links.className = 'map-pop-links'
     const addLink = (label: string, href: string) => {
@@ -225,19 +243,19 @@ export function TripMapPanel({
       .addTo(map)
   }
 
-  const hidden = missingCoordCount(days)
+  const hidden = missingCoordCount(visibleDays)
   const estimated = estimatedPinCount(pins)
 
-  if (!pins.length) {
-    return <div className="trip-map is-empty"><Icon name="pin" size={20} /><p>这一趟还没有带坐标的点位。</p></div>
-  }
   return <div className={`trip-map-wrap${expanded ? ' is-expanded' : ''}`}>
     <div className="trip-map-head">
       <div className="map-summary">
         <Icon name="pin" size={13} />
-        <span>第 {focusDayNo ?? 1} 天空间路线</span>
+        <span>{onlyCurrent ? `第 ${focusDayNo ?? 1} 天空间路线` : '整趟行程空间路线'}</span>
       </div>
       <div className="map-controls">
+        <button type="button" className="map-control-btn" aria-pressed={onlyCurrent} onClick={() => setOnlyCurrent(v => !v)}>{onlyCurrent ? '当前日' : '所有天'}</button>
+        <button type="button" className="map-control-btn" aria-pressed={showPlaces} onClick={() => setShowPlaces(v => !v)}>备选 {places.length}</button>
+        {onAddPlace && <button type="button" className="map-control-btn" aria-pressed={picking} onClick={() => setPicking(v => !v)}>{picking ? '取消落点' : '＋ 地图落点'}</button>}
         <button
           type="button"
           className="map-control-btn"
@@ -258,6 +276,8 @@ export function TripMapPanel({
         </button>
       </div>
     </div>
+    {picking && <p className="workbench-map-hint" role="status">点击地图选择位置，再补地点名称。可保存到备选，随后安排到某天。</p>}
+    {!pins.length && <p className="workbench-map-hint">当前范围没有带坐标的安排，可切换所有天或手动落点。</p>}
     <div className="trip-map" ref={containerRef} aria-label="行程地图" />
     {mapBroken && (
       <div className="map-tiles-fallback" role="status">
@@ -280,7 +300,12 @@ export function TripMapPanel({
 /** 逐日路线层：每天一条折线连接当日有序点位。分组容器是原生 Map（groupPinsByDay），
  * 与地图实例严格分开——曾经 module 内 `Map` 遮蔽让分组误触 MapLibre 构造器直接崩。 */
 function syncRoutes(map: MapLibreMap, pins: MapPin[]) {
-  const byDay = groupPinsByDay(pins)
+  const byDay = groupPinsByDay(pins.filter(p => p.dayNo > 0))
+  // 切换日期时清除不再可见的旧折线。
+  for (const layer of map.getStyle().layers || []) {
+    const match = layer.id.match(/^route-day-(\d+)-line$/)
+    if (match && !byDay.has(Number(match[1]))) (map.getSource(`route-day-${match[1]}`) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: [] })
+  }
   for (const [dayNo, list] of byDay) {
     const sourceId = `route-day-${dayNo}`
     const line = list.length >= 2

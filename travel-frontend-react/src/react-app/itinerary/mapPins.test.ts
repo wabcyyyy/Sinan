@@ -122,6 +122,7 @@ describe('深链构造（构造后必须能过 safeMapLink 白名单）', () => 
   it('高德链是 marker URI，name 经编码', () => {
     const link = amapLink(pin)
     expect(link.startsWith('https://uri.amap.com/marker?position=120.15,30.26&name=')).toBe(true)
+    expect(link).toContain('coordinate=wgs84')
     expect(link).toContain(encodeURIComponent('断桥残雪'))
   })
 })

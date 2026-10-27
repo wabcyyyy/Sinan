@@ -53,6 +53,7 @@ def item_preview(itinerary_id: int, run_id: str, day_no: int, item_ordinal: int,
     """逐项候选预览（M5a）：单个 item 候选闭合即发，浏览器先亮「正在完善」。
 
     候选身份 = runId + dayNo + itemOrdinal（服务端分配，与 LLM chunk 切割无关），
+    dayNo=0 仅表示约束分支尚未分配日期的研究池，消费端单列「尚未排程」，不能放入某天。
     previewId = "runId:dayNo:itemOrdinal" 供消费端定位替换/移除。`item` 是开放
     形状（候选未过 ground，坐标/关键事实保持未知）；随后同一天的正式 day 快照
     到达即整体替换该日。runId 同时落当前 trace（事件↔行程↔轨迹三向对账），
@@ -94,7 +95,15 @@ def item_preview_withdrawn(itinerary_id: int, run_id: str, day_no: int, item_ord
     )
 
 
-def day_preview_mapping(itinerary_id: int, run_id: str, day_no: int, mappings: list[dict[str, Any]]) -> None:
+def day_preview_mapping(
+    itinerary_id: int,
+    run_id: str,
+    day_no: int,
+    mappings: list[dict[str, Any]],
+    *,
+    snapshot: dict | None = None,
+    withdrawn: list[dict] | None = None,
+) -> None:
     """previewId→itemId 映射（M5a spec §10.2「持久化后提供映射」的收口帧）。
 
     流式天落库后，把该日候选按 **poi_name** 对到正式条目：预览与正式快照之间
@@ -103,6 +112,8 @@ def day_preview_mapping(itinerary_id: int, run_id: str, day_no: int, mappings: l
     处理淘汰（缺席即如实陈述，不发伪 withdrawn）。映射只在生成进行中有意义
     （预览不落库，刷新重建后只有正式条目，映射自然消失）。
     """
+    # CP 候选以 candidateId 对账；快照和终态在同一帧交付，避免先撤卡、后等轮询的空窗。
+    extra = {} if snapshot is None else {"snapshot": snapshot, "withdrawn": withdrawn or []}
     rid = str(run_id)
     publish_event(
         itinerary_id,
@@ -111,6 +122,7 @@ def day_preview_mapping(itinerary_id: int, run_id: str, day_no: int, mappings: l
             "runId": rid,
             "dayNo": int(day_no),
             "mappings": [dict(entry) for entry in mappings],
+            **extra,
         },
         run_id=rid or None,
     )

@@ -4,9 +4,44 @@
 // 键名为后端 wire 键（camelCase / 显式别名），与 JSON 序列化结果逐键一致。
 
 // ===== agent_api =====
+export interface ActiveEvidenceOptions {
+  strategy: "fixed" | "all" | "decision" | "bottleneck"
+  maxQueries: number
+  budgetUnits: number
+  timeLimitSeconds: number
+  allowSourceSearch: boolean
+}
+
 export interface BudgetPolicy {
   mode: "target" | "hard_cap" | null
   includeIntercityTransport: boolean | null
+}
+
+export interface ConfirmedPlaceInput {
+  inputId: string
+  name: string
+  localName: string
+  itemType: "attraction" | "transport"
+  aliases: string[]
+  city: string
+  address: string | null
+  countryCode: string
+  entityId: string
+  latitude: number | null
+  longitude: number | null
+  sourceUrl: string | null
+  identitySource: "nominatim" | "user_provided"
+  retrievedAt: string | null
+  originalAmount: number | string | null
+  originalCurrency: string | null
+  evidence: ScreenshotEvidence
+}
+
+export interface ConstraintPlanningOptions {
+  countryCode: string
+  timeZone: string
+  currency: string
+  activeEvidence: ActiveEvidenceOptions | null
 }
 
 export interface DayWindow {
@@ -15,6 +50,13 @@ export interface DayWindow {
   notBefore: string | null
   finishBy: string | null
   sourceTurnId: string | null
+}
+
+export interface EvidenceRegion {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 export interface FixedArrangement {
@@ -26,6 +68,7 @@ export interface FixedArrangement {
   cost: number | string | null
   address: string | null
   remark: string | null
+  sourceRef: string | null
 }
 
 export interface LodgingRequirements {
@@ -34,18 +77,78 @@ export interface LodgingRequirements {
   stayNightsExplicit: boolean
 }
 
+export interface PlaceRelation {
+  constraintId: string
+  kind: "before" | "one_of"
+  placeNames: string[]
+  dayNo: number
+  strength: "hard" | "soft"
+  priority: number
+  negotiable: boolean
+  sourceText: string | null
+  sourceTurnId: string | null
+}
+
 export interface RequiredPlace {
   constraintId: string
   name: string
   dayNo: number | null
   sourceTurnId: string | null
+  sourceRef: string | null
+}
+
+export interface RequirementSource {
+  sourceText: string
+  target: string
+  disposition: "mapped" | "unresolved"
+}
+
+export interface ScreenshotEvidence {
+  imageId: string
+  recordId: string
+  width: number
+  height: number
+  extractedAt: string
+  extractor: string
+  fields: ScreenshotField[]
+  confirmedFields: Record<string, string>
+  status: "user_confirmed_input"
+}
+
+export interface ScreenshotField {
+  key: "name" | "localName" | "city" | "countryCode" | "date" | "endDate" | "startTime" | "endTime" | "timeZone" | "currency" | "amount" | "note"
+  value: string
+  quote: string
+  region: EvidenceRegion
+  language: string | null
+}
+
+export interface TravelRequirements {
+  attractionTypes: string[]
+  restaurantCuisines: string[]
+  hotelFeatures: string[]
+  requiredNames: string[]
+  excludedNames: string[]
+  allowedIntercityModes: ("train" | "airplane")[]
+  requiredIntercityModes: ("train" | "airplane")[]
+  requiredInnercityModes: ("walk" | "metro" | "taxi")[]
+  rooms: number | null
+  roomBeds: number | null
+  maxHotelCostPerPersonPerNight: number | string | null
+  unresolved: string[]
 }
 
 export interface TripRequirements {
   schemaVersion: number
+  factSource: "chinatravel" | null
+  travelPlanner: "generate" | "cp"
+  travelConstraints: TravelRequirements | null
   dayWindows: DayWindow[]
   requiredPlaces: RequiredPlace[]
   fixedArrangements: FixedArrangement[]
+  placeRelations: PlaceRelation[]
+  constraintPlanning: ConstraintPlanningOptions | null
+  placeInputs: ConfirmedPlaceInput[]
   excludedPlaces: string[]
   excludedCategories: string[]
   pace: "normal" | "relaxed" | null
@@ -57,6 +160,7 @@ export interface TripRequirements {
   budgetPolicy: BudgetPolicy | null
   lodging: LodgingRequirements | null
   unresolvedRequests: string[]
+  requirementSources: RequirementSource[]
 }
 
 export interface GenerateRequest {
@@ -74,13 +178,82 @@ export interface GenerateRequest {
   requirementsStruct: TripRequirements | null
 }
 
+export interface ActiveEvidenceReport {
+  policy: string
+  probes: EvidenceProbe[]
+  queries: EvidenceQueryRecord[]
+  questions: string[]
+  spentUnits: number
+  budgetUnits: number
+  stopReason: string
+  solveCalls: number
+  elapsedSeconds: number
+  retrievalCalls: number
+  llmCalls: number
+  promptTokens: number
+  completionTokens: number
+  assumptions: string[]
+}
+
 export interface BackupRule {
   "if": string
   action: string
 }
 
+export interface ConstraintCheck {
+  constraintId: string
+  kind: "required_place" | "excluded_place" | "excluded_category" | "attraction_limit" | "dietary_requirement" | "day_window" | "locked_item" | "budget_strict" | "time_conflict" | "place_relation" | "planning_evidence"
+  status: "pass" | "violation" | "unknown" | "not_applicable"
+  dayNo: number | null
+  itemRefs: string[]
+  reason: string
+  evidenceRefs: string[]
+  blocking: boolean
+}
+
+export interface ConstraintPlanningAssessment {
+  status: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "UNKNOWN"
+  solverStatus: string
+  numericalStatus: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "UNKNOWN"
+  planningRevision: number | null
+  isCurrent: boolean
+  conditional: boolean
+  scope: "single_city_trip"
+  localDate: string
+  destination: ConstraintPlanningOptions
+  destinationSource: "user_confirmed"
+  budgetScope: string
+  report: ConstraintReport
+  conflictIds: string[]
+  conflictIrreducible: boolean
+  repairSuggestions: ConstraintRepairSuggestion[]
+  routes: PlanningRouteFact[]
+  facts: PlanningFactContext[]
+  knownCost: number
+  totalCost: number | null
+  solveSeconds: number
+  optimizedTiers: number
+  totalTiers: number
+  objectiveBound: number | null
+  reason: string
+  activeEvidence: ActiveEvidenceReport | null
+}
+
+export interface ConstraintRepairSuggestion {
+  constraintId: string
+  action: "soften_relation" | "remove_required"
+  label: string
+  sourceText: string | null
+}
+
+export interface ConstraintReport {
+  checks: ConstraintCheck[]
+}
+
 export interface DailyPlan {
   dayNo: number
+  travelActivities: TravelActivity[] | null
+  travelHeader: TravelHeader | null
   note: string | null
   items: TripItem[]
   theme: string | null
@@ -91,6 +264,7 @@ export interface DailyPlan {
   dayOptions: DayOption[]
   tripTheme: string | null
   suggestions: Suggestion[]
+  constraintPlanning: ConstraintPlanningAssessment | null
 }
 
 export interface DayOption {
@@ -98,6 +272,32 @@ export interface DayOption {
   summary: string
   tradeoff: string
   items: unknown[]
+}
+
+export interface EvidenceProbe {
+  gapId: string
+  kind: "opening" | "price" | "duration" | "route"
+  targets: string[]
+  importance: number
+  costUnits: number
+  factState: string
+  lowStatus: string
+  highStatus: string
+  sensitivity: number
+  score: number
+  reason: string
+}
+
+export interface EvidenceQueryRecord {
+  gapId: string
+  tool: string
+  outcome: "updated" | "unknown" | "ask_user" | "rejected" | "error"
+  costUnits: number
+  decisionChanged: boolean
+  sourceUrl: string | null
+  retrievedAt: string | null
+  bindingBasis: string | null
+  reason: string
 }
 
 export interface FactEvidence {
@@ -142,6 +342,34 @@ export interface PhotoSpot {
   bestTime: string | null
 }
 
+export interface PlanningFactContext {
+  candidateId: string
+  name: string
+  aliases: string[]
+  source: string
+  sourceEntityId: string | null
+  sourceUrl: string | null
+  sourceLanguage: string | null
+  retrievedAt: string | null
+  countryCode: string | null
+  originalCurrency: string | null
+  originalAmount: number | null
+}
+
+export interface PlanningRouteFact {
+  fromId: string
+  toId: string
+  mode: string
+  durationMin: number | null
+  source: string
+  sourceUrl: string | null
+  attribution: string | null
+  fetchedAt: string | null
+  dataDate: string | null
+  basis: "road_network" | "coordinate_estimate" | "unknown"
+  timeDependent: boolean
+}
+
 export interface QualityIssue {
   code: string
   path: string | null
@@ -181,6 +409,50 @@ export interface Suggestion {
   used: boolean
 }
 
+export interface TravelActivity {
+  type: "airplane" | "train" | "attraction" | "breakfast" | "lunch" | "dinner" | "accommodation"
+  startTime: string
+  endTime: string
+  price: number
+  cost: number
+  transports: TravelLeg[]
+  position: string | null
+  start: string | null
+  end: string | null
+  FlightID: string | null
+  TrainID: string | null
+  tickets: number | null
+  rooms: number | null
+  roomType: number | null
+  transferRequest: TravelTransferRequest | null
+}
+
+export interface TravelHeader {
+  peopleNumber: number
+  startCity: string
+  targetCity: string
+}
+
+export interface TravelLeg {
+  start: string
+  end: string
+  mode: "walk" | "metro" | "taxi"
+  startTime: string
+  endTime: string
+  price: number
+  cost: number
+  distance: number
+  tickets: number | null
+  cars: number | null
+}
+
+export interface TravelTransferRequest {
+  mode: "walk" | "metro" | "taxi"
+  departure: string
+  tickets: number | null
+  cars: number | null
+}
+
 export interface TripItem {
   itemType: string
   poiName: string
@@ -193,7 +465,7 @@ export interface TripItem {
   durationMin: number | null
   openTime: string | null
   cost: number | null
-  costCurrency: "CNY" | null
+  costCurrency: string | null
   tag: string | null
   remark: string | null
   whyThis: string | null
@@ -283,6 +555,7 @@ export interface IntakeState {
   city: string | null
   days: number | null
   persons: number | null
+  personCountOptions: number[]
   budget: number | null
   startDate: string | null
   stayNights: number | null
@@ -526,6 +799,83 @@ export interface CityGuideResponse {
 }
 
 // ===== business_api =====
+export interface TravelDay {
+  day: number
+  activities: TravelActivity[]
+}
+
+export interface TravelPlan {
+  peopleNumber: number
+  startCity: string
+  targetCity: string
+  itinerary: TravelDay[]
+}
+
+export interface PreparationData {
+  places: SavedPlace[]
+  bookings: TravelBooking[]
+  tasks: PreparationTask[]
+  confirmations: UserConfirmation[]
+  completedItemIds: number[]
+}
+
+export interface PreparationTask {
+  id: string
+  title: string
+  category: "reservation" | "transport" | "stay" | "documents" | "packing" | "other"
+  dayNo: number | null
+  done: boolean
+}
+
+export interface SavedPlace {
+  id: string
+  name: string
+  address: string
+  url: string
+  note: string
+  latitude: number | null
+  longitude: number | null
+  coordinateSource: "map_wgs84" | null
+}
+
+export interface TravelBooking {
+  id: string
+  kind: "hotel" | "transport" | "ticket" | "other"
+  name: string
+  startAt: string | null
+  endAt: string | null
+  reference: string
+  address: string
+  note: string
+  documentUrl: string
+  itemId: number | null
+  inputEvidence: ScreenshotEvidence | null
+  timeZone: string | null
+  originalAmount: string | null
+  originalCurrency: string | null
+}
+
+export interface UserConfirmation {
+  id: string
+  itemId: number
+  name: string
+  aspect: "location" | "opening" | "price" | "booking"
+  note: string
+  sourceUrl: string
+  recordedAt: string | null
+}
+
+export interface PreparationPutBody {
+  revision: number
+  data: PreparationData
+}
+
+export interface PreparationVO {
+  revision: number
+  data: PreparationData
+  updatedAt: string | null
+}
+
 export interface PlanningTerminalVO {
   itineraryId: number
   attempt: number
@@ -794,7 +1144,8 @@ export interface ItemActionBody {
   dayNo: number | null
   poiName: string | null
   planningRevision: number
-  action: "update" | "delete" | "fix" | "unfix"
+  action: "update" | "delete" | "fix" | "unfix" | "move"
+  targetIndex: number | null
 }
 
 export interface ItemCreateBody {
@@ -809,6 +1160,8 @@ export interface ItemCreateBody {
   poiName: string
   dayNo: number
   fixed: boolean
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface ScenarioSelectBody {
@@ -847,6 +1200,187 @@ export interface ScenarioCompareVO {
   planningRevision: number
   options: ScenarioOptionVO[]
   assumptions: string[]
+}
+
+export interface ReplanChange {
+  kind: "move" | "delay" | "close" | "finish_by" | "appointment" | "prefer"
+  itemId: number | null
+  dayNo: number | null
+  anchorItemId: number | null
+  placement: "before" | "after"
+  startTime: string | null
+  endTime: string | null
+  delayMinutes: number | null
+}
+
+export interface ReplanBody {
+  planningRevision: number
+  change: ReplanChange
+  completedItemIds: number[]
+  optionalItemIds: number[]
+  allowCrossDay: boolean
+}
+
+export interface ReplanAttempt {
+  scope: "local" | "day" | "trip"
+  status: string
+  movableItemIds: number[]
+  reason: string
+  seconds: number
+}
+
+export interface ReplanMetrics {
+  removedItems: number
+  crossDayMoves: number
+  changedItems: number
+  orderChanges: number
+  startShiftMinutes: number
+  travelMinutes: number
+  meanStartShiftMinutes: number
+  lockedViolations: number
+}
+
+export interface ReplanOption {
+  key: string
+  title: string
+  numericalStatus: string
+  factStatus: string
+  metrics: ReplanMetrics
+  changedItemIds: number[]
+  affectedDayNos: number[]
+  reasons: string[]
+  signature: string
+}
+
+export interface ReplanCompareVO {
+  comparisonId: string | null
+  planningRevision: number
+  options: ReplanOption[]
+  attempts: ReplanAttempt[]
+  conflicts: string[]
+  dependencies: string[]
+  assumptions: string[]
+  activeEvidence: ActiveEvidenceReport | null
+}
+
+export interface ReplanParseBody {
+  planningRevision: number
+  message: string
+  itemId: number | null
+  dayNo: number
+}
+
+export interface ReplanParseVO {
+  change: ReplanChange | null
+  questions: string[]
+  parser: "bounded_rules"
+}
+
+export interface ReplanSelectBody {
+  planningRevision: number
+  comparisonId: string
+  choice: string
+}
+
+export interface ConstraintRepairBody {
+  planningRevision: number
+  constraintId: string
+  action: "soften_relation" | "remove_required"
+}
+
+export interface ConstraintRepairVO {
+  requirements: TripRequirements
+  baseRevision: number
+  notice: string
+}
+
+export interface ScreenshotEntry {
+  recordId: string
+  kind: "place" | "reservation" | "transport"
+  polarity: "recommended" | "excluded" | "unclear"
+  fields: ScreenshotField[]
+  questions: string[]
+}
+
+export interface ScreenshotDocumentVO {
+  entries: ScreenshotEntry[]
+  questions: string[]
+  documentId: string
+  imageId: string
+  width: number
+  height: number
+  documentKind: "guide" | "booking"
+  extractedAt: string
+  extractor: string
+}
+
+export interface ScreenshotResolveBody {
+  documentId: string
+  recordId: string
+  name: string
+  city: string
+  countryCode: string
+}
+
+export interface ScreenshotManualBody {
+  documentId: string
+  recordId: string
+  name: string
+  city: string
+  countryCode: string
+  address: string
+  latitude: number | null
+  longitude: number | null
+  entityType: "unconfirmed" | "museum" | "station" | "airport" | "bus_station" | "ferry_terminal"
+}
+
+export interface ScreenshotEntity {
+  entityId: string
+  name: string
+  aliases: string[]
+  address: string
+  countryCode: string
+  latitude: number | null
+  longitude: number | null
+  sourceUrl: string | null
+  identitySource: "nominatim" | "user_provided"
+  matchScore: number
+  matchReasons: string[]
+  retrievedAt: string | null
+  category: string
+  entityType: string
+}
+
+export interface ScreenshotResolveVO {
+  resolutionId: string
+  status: "choices" | "not_found" | "unavailable"
+  choices: ScreenshotEntity[]
+  question: string
+}
+
+export interface ScreenshotConfirmBody {
+  documentId: string
+  recordId: string
+  resolutionId: string
+  entityId: string
+  disposition: "candidate" | "required" | "excluded" | "fixed" | "booking"
+  requirements: TripRequirements
+  startDate: string | null
+  days: number
+  localDate: string | null
+  endDate: string | null
+  startTime: string | null
+  endTime: string | null
+  timeZone: string | null
+  amount: number | string | null
+  currency: string | null
+  overridePolarity: boolean
+}
+
+export interface ScreenshotConfirmVO {
+  requirements: TripRequirements
+  booking: TravelBooking | null
+  notice: string
 }
 
 export interface OptimizeDayBody {

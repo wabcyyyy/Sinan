@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.agent import confirm_thread, resume_confirmation
+from app.agent import confirm_thread, validate_confirmation
 from app.common.envelope import ApiError
 from app.db.models import ItineraryChatMessage, ItineraryDay, ItineraryItem, ItineraryMain
 from app.schemas.business.itinerary import HotelOptionRequest
@@ -28,10 +28,10 @@ def apply_hotel_option(
 ) -> None:
     itinerary_id = main.id
     hotel_name = request.hotelName or ""
-    # PR-6 确认流薄适配：有待确认提案时以 Command(resume) 续跑，服务端复核
+    # 业务提交前只读核对图提案，提交后由调用方续跑确认图。
     # 「确认的酒店确实出自当时提案的候选卡片」；无待确认提案（超时清理 / 存量
     # 消息）回退既有 message 级语义，不新增硬失败。
-    verdict = resume_confirmation(
+    verdict = validate_confirmation(
         confirm_thread(itinerary_id), {"action": "replace_hotel", "hotel_name": request.hotelName or ""}
     )
     if verdict is not None and not verdict.confirmed:

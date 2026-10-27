@@ -1,0 +1,14 @@
+{
+  "method": "synthetic frozen hidden truth; identical observed two-appointment pool; query units are not money",
+  "cases": [
+    {"id":"dev-route-45","split":"development","hidden_truth":{"forward_route":45,"closed":null,"price_b":10}},
+    {"id":"dev-route-60","split":"development","hidden_truth":{"forward_route":60,"closed":null,"price_b":10}},
+    {"id":"dev-price","split":"development","hidden_truth":{"forward_route":10,"closed":null,"price_b":110}},
+    {"id":"dev-opening","split":"development","hidden_truth":{"forward_route":10,"closed":"A","price_b":10}},
+    {"id":"dev-stable","split":"development","hidden_truth":{"forward_route":10,"closed":null,"price_b":10}},
+    {"id":"holdout-route-35","split":"holdout","hidden_truth":{"forward_route":35,"closed":null,"price_b":10}},
+    {"id":"holdout-price","split":"holdout","hidden_truth":{"forward_route":10,"closed":null,"price_b":150}},
+    {"id":"holdout-opening","split":"holdout","hidden_truth":{"forward_route":10,"closed":"B","price_b":10}},
+    {"id":"holdout-stable","split":"holdout","hidden_truth":{"forward_route":5,"closed":null,"price_b":20}}
+  ]
+}

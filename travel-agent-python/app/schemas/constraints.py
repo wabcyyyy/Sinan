@@ -31,6 +31,8 @@ ConstraintKind = Literal[
     "locked_item",  # 锁定条目（身份与明确时间）
     "budget_strict",  # strict（hard_cap）预算上限（无容差）
     "time_conflict",  # 时间冲突
+    "place_relation",  # 受控先后/至少二选一
+    "planning_evidence",  # 求解所需事实缺口，不当成已核实
 ]
 CheckStatus = Literal["pass", "violation", "unknown", "not_applicable"]
 

@@ -1,0 +1,83 @@
+{
+  "entries": [
+    {
+      "kind": "place",
+      "polarity": "recommended",
+      "fields": [
+        {
+          "key": "name",
+          "value": "Musée du Louvre",
+          "quote": "推荐 Musée du Louvre / 卢浮宫",
+          "region": {
+            "x": 0.035,
+            "y": 0.13157894736842105,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "city",
+          "value": "Paris",
+          "quote": "Paris · 法国 FR",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "countryCode",
+          "value": "FR",
+          "quote": "Paris · 法国 FR",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "note",
+          "value": "不去 Louvre-Lens",
+          "quote": "不去 Louvre-Lens（不同城市与馆区）",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        }
+      ],
+      "questions": [
+        "推荐仅作候选，是否本次必去需用户确认"
+      ]
+    },
+    {
+      "kind": "place",
+      "polarity": "excluded",
+      "fields": [
+        {
+          "key": "name",
+          "value": "Louvre-Lens",
+          "quote": "不去 Louvre-Lens（不同城市与馆区）",
+          "region": {
+            "x": 0.035,
+            "y": 0.32894736842105265,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "zh/fr"
+        }
+      ],
+      "questions": [
+        "此馆所在城市和国家待确认，不应当作巴黎卢浮宫"
+      ]
+    }
+  ],
+  "questions": []
+}

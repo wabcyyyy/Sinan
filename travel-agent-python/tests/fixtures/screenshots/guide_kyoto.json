@@ -1,0 +1,48 @@
+{
+  "entries": [
+    {
+      "kind": "place",
+      "polarity": "recommended",
+      "fields": [
+        {
+          "key": "name",
+          "value": "Kiyomizu-dera",
+          "quote": "おすすめ 清水寺 / Kiyomizu-dera",
+          "region": {
+            "x": 0.035,
+            "y": 0.13157894736842105,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "city",
+          "value": "京都",
+          "quote": "京都 · 日本 JP",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        },
+        {
+          "key": "countryCode",
+          "value": "JP",
+          "quote": "京都 · 日本 JP",
+          "region": {
+            "x": 0.035,
+            "y": 0.23026315789473684,
+            "width": 0.91,
+            "height": 0.07236842105263158
+          },
+          "language": "fr/zh"
+        }
+      ],
+      "questions": []
+    }
+  ],
+  "questions": []
+}

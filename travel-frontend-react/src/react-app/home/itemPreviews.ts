@@ -24,6 +24,7 @@ export interface ItemPreviewCandidate {
   /** 服务端身份 "runId:dayNo:itemOrdinal"：去重与撤回的唯一键 */
   previewId: string
   runId: string
+  /** 0 = 约束分支的研究池，尚未分配日期；正式日始终从1开始。 */
   dayNo: number
   itemOrdinal: number
   item: PreviewItem
@@ -37,6 +38,8 @@ export interface ItemPreviewState {
   runId: string | null
   /** 见过的 run 登记：换 run 后旧 run 的迟到帧按「陈旧 run」忽略，不回滚现状 */
   seenRuns: string[]
+  /** 同一 run 已接收的终态，防止重连/迟到预览复活。 */
+  settledIds?: string[]
   candidates: ItemPreviewCandidate[]
 }
 
@@ -82,9 +85,15 @@ export function reduceItemPreviewEvent(state: ItemPreviewState, event: Itinerary
     if (!runId || runId !== state.runId) return state
     const previewId = previewIdOf(data, runId)
     if (!state.candidates.some((candidate) => candidate.previewId === previewId)) return state
-    return { runId: state.runId, seenRuns: state.seenRuns, candidates: state.candidates.filter((candidate) => candidate.previewId !== previewId) }
+    return { ...state, settledIds: [...new Set([...(state.settledIds || []), previewId])], candidates: state.candidates.filter((candidate) => candidate.previewId !== previewId) }
   }
   if (event.type === 'day_preview_mapping') {
+    const mappingRun = readString(data, 'runId')
+    if (data.snapshot && mappingRun && (mappingRun === state.runId || state.runId === null) && !state.seenRuns.includes(mappingRun)) {
+      const terminal = [...(Array.isArray(data.mappings) ? data.mappings : []), ...(Array.isArray(data.withdrawn) ? data.withdrawn : [])]
+      const ids = new Set(terminal.flatMap(row => row && typeof row === 'object' && typeof row.previewId === 'string' ? [row.previewId] : []))
+      return { ...state, runId: mappingRun, settledIds: [...new Set([...(state.settledIds || []), ...ids])], candidates: state.candidates.filter(c => !ids.has(c.previewId)) }
+    }
     // B7（M5a 遗留收口，spec §10.2「持久化后提供 previewId→itemId 映射」）：
     // 正式落库后按内容身份对配。幸存候选挂 officialItemId（徽标换「已并入行程」）；
     // 没对上的 = 被后处理淘汰，缺席即如实，等快照整日替换。只认当前 run 的帧。
@@ -114,6 +123,7 @@ export function reduceItemPreviewEvent(state: ItemPreviewState, event: Itinerary
 
 function appendCandidate(state: ItemPreviewState, data: Record<string, unknown>, runId: string): ItemPreviewState {
   const previewId = previewIdOf(data, runId)
+  if (state.settledIds?.includes(previewId)) return state
   if (state.candidates.some((candidate) => candidate.previewId === previewId)) {
     // 首帧前 runId 尚未确立（null），去重命中也要落 runId，否则后续撤回/换 run 判定失效
     return state.runId === runId ? state : { runId, seenRuns: state.seenRuns, candidates: state.candidates }

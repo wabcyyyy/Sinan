@@ -107,6 +107,9 @@ def _budget_options(state: IntakeState) -> list[str]:
     """预算点选项：人均每天三档 × 人数 × 天数估出全程总额。
 
     国内 300 / 600 / 1200；海外（目的地有本币）600 / 1000 / 1800——东京两人两天给「全程 1200」不像话。"""
+    planning = state.requirements.constraint_planning
+    if planning and planning.currency != "CNY":
+        return [f"输入以 {planning.currency} 计价的全程预算", "预算不限"]
     persons = state.persons if isinstance(state.persons, int) and state.persons > 0 else 1
     days = state.days if isinstance(state.days, int) and state.days > 0 else 1
     tiers = (600, 1000, 1800) if destination_currency(state.city) else (300, 600, 1200)
@@ -121,6 +124,8 @@ def _slot_filled(state: IntakeState, slot: str) -> bool:
 
 def _ppd(state: IntakeState) -> float | None:
     """人均每天预算（口径同 BIZ-4）；参数不足以计算时 None。"""
+    if state.requirements.constraint_planning and state.requirements.constraint_planning.currency != "CNY":
+        return None  # 人民币阈值不适用于其他币种；没有已确认汇率，不做跨币比较。
     if not isinstance(state.budget, (int, float)) or not isinstance(state.days, int) or state.days <= 0:
         return None
     persons = state.persons if isinstance(state.persons, int) and state.persons > 0 else 1
@@ -181,6 +186,16 @@ def _hard_block(
     problem = destination_problem(str(state.city or ""))
     if problem:
         return build(missing=["city"], ready=False, blocked=True, question=problem, options=[], next="invalid_city")
+    if state.person_count_options:
+        numbers = "和".join(str(n) for n in state.person_count_options)
+        return build(
+            missing=["persons"],
+            ready=False,
+            blocked=True,
+            next="persons",
+            question=f"人数信息中有{numbers}两种说法，请确认这次一共几人？",
+            options=[f"{n} 人" for n in state.person_count_options],
+        )
     # ③ 缺必填：问哪个槽位就给哪个槽位的候选
     if missing:
         slot = missing[0]

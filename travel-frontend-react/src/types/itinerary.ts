@@ -61,6 +61,8 @@ export interface BackupPlanEntry {
 }
 
 export interface DayPlan {
+  executedItemIds?: Contracts.ReplanBody['completedItemIds']
+  constraintPlanning?: Contracts.ConstraintPlanningAssessment | null
   dayId: number
   dayNo: number
   /** 天级生成态（PENDING/RUNNING/SUCCEEDED/FAILED）：刷新/断线后按天显示「安排中」 */
@@ -91,6 +93,8 @@ export interface CoverCredit {
 }
 
 export interface ItineraryDetail {
+  requirementsStruct?: Contracts.TripRequirements | null
+  budgetCurrency?: string
   planningRevision?: number
   fixedArrangements?: Contracts.FixedArrangement[]
   undoVersionId?: number

@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -62,6 +62,7 @@ from app.schemas.trip_requirements import (
 )
 from app.services import (
     budget_engine,
+    constraint_planning,
     cost_admission,
     day_persistence,
     generation_events,
@@ -296,6 +297,11 @@ def plan_days(
                     "research context fingerprint mismatch for itinerary %s; discarding stale context", itinerary_id
                 )
                 context = None
+            constraint_mode = bool(command.requirements_struct and command.requirements_struct.constraint_planning)
+            if context is None and constraint_mode:
+                from app.services import constraint_context
+
+                context = constraint_context.load_context(user_id, itinerary_id, fingerprint)
             if context is None:
                 # 不包 observe_run：与迁移前的 /v1/plan-context 口径一致（研究事件不带 runId）。
                 # 但 scene 必须归位（P1-7）：研究段的 LLM 调用此前落 scene="other"，
@@ -309,16 +315,28 @@ def plan_days(
                 ):
                     context = run_plan_context(command.to_generate_request(), itinerary_id=itinerary_id)
                 context[_CONTEXT_FP_KEY] = fingerprint
+                if constraint_mode:
+                    constraint_context.save_context(user_id, itinerary_id, fingerprint, context)
             # M5b：首个研究上下文可用（本轮返回或恢复复用）即记 research 里程碑
             timing.mark("research")
             # L14：报价随研究上下文一次落库；空即写 NULL（续跑取回的 context 同样带它）
             day_persistence.save_flight_quotes(itinerary_id, context.get("flight_quotes"))
             day_persistence.save_origin_city(itinerary_id, command.origin_city)
 
+            if command.requirements_struct and command.requirements_struct.fact_source == "chinatravel":
+                from app.services import complete_travel
+
+                complete_travel.plan_trip(user_id, itinerary_id, command, context, fingerprint)
+                _finish(user_id, itinerary_id, command)
+                return
+
             suggestions_persisted = False
             unfinished = day_persistence.unfinished_day_nos(itinerary_id)
             fresh_trip = len(unfinished) >= command.days
-            if fresh_trip:
+            constraint_mode = bool(command.requirements_struct and command.requirements_struct.constraint_planning)
+            if constraint_mode:
+                constraint_planning.plan_trip(user_id, itinerary_id, command, context, fingerprint, timing)
+            elif fresh_trip:
                 try:
                     suggestions_persisted = _plan_whole_trip(
                         user_id, itinerary_id, command, context, fingerprint, timing=timing
@@ -330,6 +348,8 @@ def plan_days(
                 _revalidate_stream_days(itinerary_id, command, fingerprint)
 
             for day_no in range(1, command.days + 1):
+                if constraint_mode:
+                    continue  # 当前候选无解/未知不触发另一条 LLM 重试，保留求解报告并收敛为 PARTIAL。
                 action_id = f"day-{itinerary_id}-{day_no}"
                 if not generation_gate.try_day_lock(itinerary_id, day_no):
                     logger.warning("day lock busy, skip itinerary %s day %s", itinerary_id, day_no)
@@ -505,6 +525,8 @@ def regenerate_day(user_id: int, itinerary_id: int, day_no: int) -> dict[str, An
       参数变化 409）+ 活跃注册表（恢复扫描的存活探测据此跳过，见 generation_recovery）。
     """
     main = itinerary_query.find_owned_main(user_id, itinerary_id)
+    if TripRequirements.model_validate(main.requirements_json or {}).constraint_planning:
+        raise ApiError(400, "此行程采用整趟约束规划，请调整需求后重新规划；不支持单日模型重生成")
     if main.gen_state == "GENERATING" or main.status == 1 or planning_tasks.is_active(itinerary_id):
         # 在跑的 plan_days / 恢复续跑拥有这趟行程（含各未完成天），此刻抢跑同一天
         # 只会互相覆盖；用户等它终态后再来自救。
@@ -1136,7 +1158,8 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
         planning_tasks.finish_success(itinerary_id)
         itinerary_query.evict_detail(user_id, itinerary_id)
         return
-    stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
+    if not (command.requirements_struct and command.requirements_struct.fact_source == "chinatravel"):
+        stay_hotels.spread_stay_hotels(itinerary_id, command.stay_nights)
     # 最终预算是交付的一部分，不能依赖可能已满的后台富化队列。
     _recalculate_final_budget(itinerary_id)
     all_succeeded = day_persistence.all_days_succeeded(itinerary_id)
@@ -1157,6 +1180,9 @@ def _finish(user_id: int, itinerary_id: int, command: GenerateCommand, snapshot_
     )
     # 执行终态在富化释放句柄时才落（release 里带 outcome），这里只登记结论。
     planning_tasks.finish_success(itinerary_id)
+    if command.requirements_struct and command.requirements_struct.fact_source == "chinatravel":
+        itinerary_query.evict_detail(user_id, itinerary_id)
+        return  # Frozen-source runs must never start unbudgeted online/model enrichment.
     try:
         # M5b（spec §11）：富化任务绑定提交时的规划修订——core_ready 后用户的编辑
         # 会推进 revision，旧富化不得覆盖新行程；比对在富化侧写 suggestions_json
@@ -1191,9 +1217,7 @@ def _shell_exists(itinerary_id: int) -> bool:
 
 # ---------- 请求入口（Java `ItineraryGenerationService.generate`） ----------
 
-# Java 的 `\p{IsHan}` 覆盖全部汉字区块，这里用 BMP 常用汉字区近似；
-# 差异只出现在生僻扩展区汉字（本项目的城市名不会用到），不为它引第三方 regex 库。
-_CITY_RE = re.compile(r"^[一-鿿A-Za-z0-9][一-鿿A-Za-z0-9\s·'’\-()（）]{0,30}$")
+# 全球城市名允许 Unicode 字母/数字（如 São Paulo、กรุงเทพมหานคร），仍拒绝 URL/标记等符号。
 MAX_CITY_LENGTH = 32
 # requirements 上界（API-2）：Text 列 64KB 字节，10000 汉字（UTF-8 约 30KB）留足余量
 MAX_REQUIREMENTS_LENGTH = 10000
@@ -1380,7 +1404,14 @@ def _validate(body: GenerateTripRequest) -> GenerateCommand:
         raise ApiError(400, "旅行意图最多 800 字")
 
     city = body.city.strip()
-    if len(city) > MAX_CITY_LENGTH or not _CITY_RE.match(city):
+    if (
+        len(city) > MAX_CITY_LENGTH
+        or not city[0].isalnum()
+        or not all(
+            char.isalnum() or unicodedata.category(char).startswith("M") or char.isspace() or char in "·'’-()（）."
+            for char in city
+        )
+    ):
         raise ApiError(400, "目的地名称格式不正确，请输入城市或景点所在城市")
     persons = body.persons if body.persons is not None else 1
     if persons < 1 or persons > 20:

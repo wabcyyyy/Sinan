@@ -113,3 +113,6 @@ coverage.xml
 /travel-agent-python/tests/agent_eval/report/
 /travel-agent-python/tests/experience_cases/report/
 /travel-agent-python/tests/perf/report/
+
+# Local generated latency replay reports (raw evidence stays on this machine).
+/travel-agent-python/report/

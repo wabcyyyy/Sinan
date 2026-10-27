@@ -4,9 +4,7 @@ import { createEditTour } from './transport'
 import './demo.css'
 
 export function DemoBanner() {
-  const [expanded, setExpanded] = useState(() => {
-    try { return sessionStorage.getItem('sinan-demo:intro-seen') !== '1' } catch { return true }
-  })
+  const [expanded, setExpanded] = useState(false)
   const dismiss = () => {
     setExpanded(false)
     try { sessionStorage.setItem('sinan-demo:intro-seen', '1') } catch { /* 当前页面仍可收起。 */ }
@@ -21,7 +19,7 @@ export function DemoBanner() {
   }, [entering])
 
   return <aside className={`demo-banner${expanded ? ' is-expanded' : ''}`} aria-label="产品演示说明">
-    <div className="demo-banner-heading"><button type="button" className="demo-banner-toggle" aria-expanded={expanded} aria-controls="demo-intro" onClick={() => setExpanded(!expanded)}>产品交互演示 <span>{expanded ? '−' : '说明与体验入口 ＋'}</span></button>{expanded && <button className="text-action" onClick={dismiss}>知道了，开始体验</button>}</div>
+    <div className="demo-banner-heading"><button type="button" className="demo-banner-toggle" aria-expanded={expanded} aria-controls="demo-intro" onClick={() => setExpanded(!expanded)}>交互演示 · 固定样例 · 不调用 AI <span>{expanded ? '收起 −' : '说明 ＋'}</span></button>{expanded && <button className="text-action" onClick={dismiss}>收起说明</button>}</div>
     {expanded && <div id="demo-intro" className="demo-intro"><p>使用真实产品界面与固定样例，不调用 AI；修改仅保存在当前标签页。先体验一次调整，也可以自由浏览路线。</p><div className="demo-banner-actions">
       <button className="button button-primary" onClick={() => navigate(`/trips/${createEditTour()}?tour=edit`)}>90秒体验局部修改</button>
       <button className="button button-secondary" onClick={() => { resetHomeSession(); navigate('/?intent=两个人去成都两天一晚，预算1200元，想慢慢逛') }}>体验规划流程</button>

@@ -160,6 +160,14 @@ class Settings(BaseSettings):
     route_cache_ttl: float = 900
     route_peak_factor: float = 1.25
     route_max_calls: int = 64
+    # 默认留空：只在显式配置的 ORS 实例上查路，不自动调用托管 API。
+    ors_base_url: str = ""
+    ors_api_key: str = ""
+    ors_timeout_seconds: float = 4
+    ors_region: str = ""
+    # FOSSGIS 布局的 OSRM（如 https://routing.openstreetmap.de）；仅显式启用。
+    osrm_base_url: str = ""
+    osrm_timeout_seconds: float = 8
 
     # ---- Agent 运行预算 ----
     tool_max_calls: int = 32
